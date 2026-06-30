@@ -41,18 +41,21 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          sort_order: number | null
         }
         Insert: {
           created_at?: string | null
           description?: string | null
           id?: string
           name: string
+          sort_order?: number | null
         }
         Update: {
           created_at?: string | null
           description?: string | null
           id?: string
           name?: string
+          sort_order?: number | null
         }
         Relationships: []
       }
@@ -84,6 +87,129 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          id: string
+          name: string
+          note: string | null
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          note?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          note?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      machine_parts: {
+        Row: {
+          created_at: string | null
+          id: string
+          machine_unit_id: string
+          note: string | null
+          product_id: string
+          quantity: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          machine_unit_id: string
+          note?: string | null
+          product_id: string
+          quantity?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          machine_unit_id?: string
+          note?: string | null
+          product_id?: string
+          quantity?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_parts_machine_unit_id_fkey"
+            columns: ["machine_unit_id"]
+            isOneToOne: false
+            referencedRelation: "machine_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_parts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_units: {
+        Row: {
+          created_at: string | null
+          customer_id: string | null
+          id: string
+          install_date: string | null
+          model_id: string | null
+          note: string | null
+          serial_number: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          install_date?: string | null
+          model_id?: string | null
+          note?: string | null
+          serial_number: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          install_date?: string | null
+          model_id?: string | null
+          note?: string | null
+          serial_number?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_units_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_units_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "compressor_models"
             referencedColumns: ["id"]
           },
         ]
