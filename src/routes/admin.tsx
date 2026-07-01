@@ -501,7 +501,7 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
     await supabase.from("machine_parts").delete().eq("id", id);
     load();
   }
-  async function updatePart(id: string, patch: Record<string, unknown>) {
+  async function updatePart(id: string, patch: { quantity?: number; hours_used?: number | null; last_changed_at?: string | null }) {
     await supabase.from("machine_parts").update(patch).eq("id", id);
     load();
   }
