@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
       brands: {
         Row: {
           created_at: string | null
@@ -124,29 +148,38 @@ export type Database = {
       machine_parts: {
         Row: {
           created_at: string | null
+          hours_used: number | null
           id: string
+          last_changed_at: string | null
           machine_unit_id: string
           note: string | null
           product_id: string
           quantity: number
+          service_interval_hours: number | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          hours_used?: number | null
           id?: string
+          last_changed_at?: string | null
           machine_unit_id: string
           note?: string | null
           product_id: string
           quantity?: number
+          service_interval_hours?: number | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          hours_used?: number | null
           id?: string
+          last_changed_at?: string | null
           machine_unit_id?: string
           note?: string | null
           product_id?: string
           quantity?: number
+          service_interval_hours?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -170,6 +203,7 @@ export type Database = {
         Row: {
           created_at: string | null
           customer_id: string | null
+          daily_hours: number | null
           id: string
           install_date: string | null
           model_id: string | null
@@ -180,6 +214,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           customer_id?: string | null
+          daily_hours?: number | null
           id?: string
           install_date?: string | null
           model_id?: string | null
@@ -190,6 +225,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           customer_id?: string | null
+          daily_hours?: number | null
           id?: string
           install_date?: string | null
           model_id?: string | null
@@ -226,7 +262,9 @@ export type Database = {
           name: string
           part_number: string
           price: number | null
+          service_interval_hours: number | null
           stock_quantity: number | null
+          storage_location: string | null
           updated_at: string | null
         }
         Insert: {
@@ -240,7 +278,9 @@ export type Database = {
           name: string
           part_number: string
           price?: number | null
+          service_interval_hours?: number | null
           stock_quantity?: number | null
+          storage_location?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -254,7 +294,9 @@ export type Database = {
           name?: string
           part_number?: string
           price?: number | null
+          service_interval_hours?: number | null
           stock_quantity?: number | null
+          storage_location?: string | null
           updated_at?: string | null
         }
         Relationships: [

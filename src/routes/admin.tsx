@@ -214,7 +214,7 @@ function ProductsTab() {
   const [brands, setBrands] = useState<any[]>([]);
   const [cats, setCats] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
-  const empty = { name: "", part_number: "", price: "", stock_quantity: "0", brand_id: "", category_id: "", image_url: "" };
+  const empty = { name: "", part_number: "", price: "", stock_quantity: "0", brand_id: "", category_id: "", image_url: "", storage_location: "", service_interval_hours: "" };
   const [form, setForm] = useState(empty);
 
   async function load() {
@@ -250,6 +250,8 @@ function ProductsTab() {
       brand_id: form.brand_id || null,
       category_id: form.category_id || null,
       image_url: form.image_url || null,
+      storage_location: form.storage_location.trim() || null,
+      service_interval_hours: form.service_interval_hours ? Number(form.service_interval_hours) : null,
     });
     if (error) return toast.error(error.message);
     setForm(empty);
@@ -301,6 +303,14 @@ function ProductsTab() {
             <Label>คงเหลือ</Label>
             <Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} />
           </div>
+          <div>
+            <Label>ตำแหน่งจัดเก็บ (เช่น A1)</Label>
+            <Input value={form.storage_location} onChange={(e) => setForm({ ...form, storage_location: e.target.value })} />
+          </div>
+          <div>
+            <Label>รอบเปลี่ยน (ชม.)</Label>
+            <Input type="number" value={form.service_interval_hours} onChange={(e) => setForm({ ...form, service_interval_hours: e.target.value })} />
+          </div>
           <div className="sm:col-span-2">
             <Label>รูปสินค้า</Label>
             <div className="flex items-center gap-2">
@@ -343,7 +353,7 @@ function MachinesTab() {
   const [units, setUnits] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [models, setModels] = useState<any[]>([]);
-  const empty = { serial_number: "", model_id: "", customer_id: "", install_date: "", note: "" };
+  const empty = { serial_number: "", model_id: "", customer_id: "", install_date: "", daily_hours: "", note: "" };
   const [form, setForm] = useState(empty);
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -366,6 +376,7 @@ function MachinesTab() {
       model_id: form.model_id || null,
       customer_id: form.customer_id || null,
       install_date: form.install_date || null,
+      daily_hours: form.daily_hours ? Number(form.daily_hours) : null,
       note: form.note || null,
     });
     if (error) return toast.error(error.message);
@@ -411,6 +422,10 @@ function MachinesTab() {
             <div>
               <Label>วันที่ติดตั้ง</Label>
               <Input type="date" value={form.install_date} onChange={(e) => setForm({ ...form, install_date: e.target.value })} />
+            </div>
+            <div>
+              <Label>ชม.ทำงาน/วัน</Label>
+              <Input type="number" step="0.1" value={form.daily_hours} onChange={(e) => setForm({ ...form, daily_hours: e.target.value })} />
             </div>
             <div className="sm:col-span-2">
               <Label>หมายเหตุ</Label>
@@ -486,8 +501,8 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
     await supabase.from("machine_parts").delete().eq("id", id);
     load();
   }
-  async function updateQty(id: string, q: number) {
-    await supabase.from("machine_parts").update({ quantity: q }).eq("id", id);
+  async function updatePart(id: string, patch: { quantity?: number; hours_used?: number | null; last_changed_at?: string | null }) {
+    await supabase.from("machine_parts").update(patch).eq("id", id);
     load();
   }
 
@@ -509,21 +524,40 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
       </div>
       <ul className="divide-y rounded border bg-card">
         {parts.map((mp) => (
-          <li key={mp.id} className="flex items-center justify-between px-3 py-2">
-            <div>
-              <Badge variant="outline" className="mr-2">{mp.products?.categories?.name ?? "-"}</Badge>
-              <span className="font-medium">{mp.products?.part_number}</span>
-              <span className="ml-2 text-sm text-muted-foreground">{mp.products?.name}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min="1"
-                value={mp.quantity}
-                onChange={(e) => updateQty(mp.id, Number(e.target.value) || 1)}
-                className="h-8 w-20"
-              />
+          <li key={mp.id} className="space-y-2 px-3 py-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <Badge variant="outline" className="mr-2">{mp.products?.categories?.name ?? "-"}</Badge>
+                <span className="font-medium">{mp.products?.part_number}</span>
+                <span className="ml-2 text-sm text-muted-foreground">{mp.products?.name}</span>
+              </div>
               <Button size="sm" variant="ghost" onClick={() => del(mp.id)}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div>
+                <Label className="text-xs">จำนวน</Label>
+                <Input
+                  type="number" min="1" defaultValue={mp.quantity}
+                  onBlur={(e) => updatePart(mp.id, { quantity: Number(e.target.value) || 1 })}
+                  className="h-8"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">ชม.ที่ใช้</Label>
+                <Input
+                  type="number" step="0.1" defaultValue={mp.hours_used ?? ""}
+                  onBlur={(e) => updatePart(mp.id, { hours_used: e.target.value ? Number(e.target.value) : null })}
+                  className="h-8"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">เปลี่ยนล่าสุด</Label>
+                <Input
+                  type="date" defaultValue={mp.last_changed_at ?? ""}
+                  onBlur={(e) => updatePart(mp.id, { last_changed_at: e.target.value || null })}
+                  className="h-8"
+                />
+              </div>
             </div>
           </li>
         ))}
