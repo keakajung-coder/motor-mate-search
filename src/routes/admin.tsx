@@ -524,21 +524,40 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
       </div>
       <ul className="divide-y rounded border bg-card">
         {parts.map((mp) => (
-          <li key={mp.id} className="flex items-center justify-between px-3 py-2">
-            <div>
-              <Badge variant="outline" className="mr-2">{mp.products?.categories?.name ?? "-"}</Badge>
-              <span className="font-medium">{mp.products?.part_number}</span>
-              <span className="ml-2 text-sm text-muted-foreground">{mp.products?.name}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min="1"
-                value={mp.quantity}
-                onChange={(e) => updateQty(mp.id, Number(e.target.value) || 1)}
-                className="h-8 w-20"
-              />
+          <li key={mp.id} className="space-y-2 px-3 py-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <Badge variant="outline" className="mr-2">{mp.products?.categories?.name ?? "-"}</Badge>
+                <span className="font-medium">{mp.products?.part_number}</span>
+                <span className="ml-2 text-sm text-muted-foreground">{mp.products?.name}</span>
+              </div>
               <Button size="sm" variant="ghost" onClick={() => del(mp.id)}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div>
+                <Label className="text-xs">จำนวน</Label>
+                <Input
+                  type="number" min="1" defaultValue={mp.quantity}
+                  onBlur={(e) => updatePart(mp.id, { quantity: Number(e.target.value) || 1 })}
+                  className="h-8"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">ชม.ที่ใช้</Label>
+                <Input
+                  type="number" step="0.1" defaultValue={mp.hours_used ?? ""}
+                  onBlur={(e) => updatePart(mp.id, { hours_used: e.target.value ? Number(e.target.value) : null })}
+                  className="h-8"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">เปลี่ยนล่าสุด</Label>
+                <Input
+                  type="date" defaultValue={mp.last_changed_at ?? ""}
+                  onBlur={(e) => updatePart(mp.id, { last_changed_at: e.target.value || null })}
+                  className="h-8"
+                />
+              </div>
             </div>
           </li>
         ))}
