@@ -250,6 +250,8 @@ function ProductsTab() {
       brand_id: form.brand_id || null,
       category_id: form.category_id || null,
       image_url: form.image_url || null,
+      storage_location: form.storage_location.trim() || null,
+      service_interval_hours: form.service_interval_hours ? Number(form.service_interval_hours) : null,
     });
     if (error) return toast.error(error.message);
     setForm(empty);
