@@ -353,7 +353,7 @@ function MachinesTab() {
   const [units, setUnits] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [models, setModels] = useState<any[]>([]);
-  const empty = { serial_number: "", model_id: "", customer_id: "", install_date: "", note: "" };
+  const empty = { serial_number: "", model_id: "", customer_id: "", install_date: "", daily_hours: "", note: "" };
   const [form, setForm] = useState(empty);
   const [selected, setSelected] = useState<string | null>(null);
 
