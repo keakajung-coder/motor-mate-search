@@ -303,6 +303,14 @@ function ProductsTab() {
             <Label>คงเหลือ</Label>
             <Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} />
           </div>
+          <div>
+            <Label>ตำแหน่งจัดเก็บ (เช่น A1)</Label>
+            <Input value={form.storage_location} onChange={(e) => setForm({ ...form, storage_location: e.target.value })} />
+          </div>
+          <div>
+            <Label>รอบเปลี่ยน (ชม.)</Label>
+            <Input type="number" value={form.service_interval_hours} onChange={(e) => setForm({ ...form, service_interval_hours: e.target.value })} />
+          </div>
           <div className="sm:col-span-2">
             <Label>รูปสินค้า</Label>
             <div className="flex items-center gap-2">
