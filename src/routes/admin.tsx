@@ -423,6 +423,10 @@ function MachinesTab() {
               <Label>วันที่ติดตั้ง</Label>
               <Input type="date" value={form.install_date} onChange={(e) => setForm({ ...form, install_date: e.target.value })} />
             </div>
+            <div>
+              <Label>ชม.ทำงาน/วัน</Label>
+              <Input type="number" step="0.1" value={form.daily_hours} onChange={(e) => setForm({ ...form, daily_hours: e.target.value })} />
+            </div>
             <div className="sm:col-span-2">
               <Label>หมายเหตุ</Label>
               <Textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
