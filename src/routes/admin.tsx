@@ -376,6 +376,7 @@ function MachinesTab() {
       model_id: form.model_id || null,
       customer_id: form.customer_id || null,
       install_date: form.install_date || null,
+      daily_hours: form.daily_hours ? Number(form.daily_hours) : null,
       note: form.note || null,
     });
     if (error) return toast.error(error.message);
