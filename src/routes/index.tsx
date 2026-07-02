@@ -401,16 +401,13 @@ type MachineResult = {
 };
 
 function SnView() {
-  const [sn, setSn] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<MachineResult | null>(null);
-  const [searched, setSearched] = useState(false);
+  const [q, setQ] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [units, setUnits] = useState<MachineResult[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!sn.trim()) return;
+  async function load() {
     setLoading(true);
-    setSearched(true);
     const { data, error } = await supabase
       .from("machine_units")
       .select(
@@ -426,102 +423,154 @@ function SnView() {
            )
          )`
       )
-      .ilike("serial_number", sn.trim())
-      .maybeSingle();
+      .order("serial_number");
     setLoading(false);
-    if (error) {
-      toast.error("ค้นหาผิดพลาด: " + error.message);
-      return;
-    }
-    setResult(data as unknown as MachineResult | null);
-    if (!data) toast.message("ไม่พบเครื่องที่มี S/N นี้");
+    if (error) return toast.error("โหลดข้อมูลผิดพลาด: " + error.message);
+    setUnits((data as unknown as MachineResult[]) ?? []);
   }
+  useEffect(() => { load(); }, []);
 
-  const grouped = groupByCategory(result?.machine_parts ?? []);
+  const filtered = useMemo(() => {
+    const kw = q.trim().toLowerCase();
+    if (!kw) return units;
+    return units.filter((u) => {
+      const brand = u.compressor_models?.brands?.name ?? "";
+      const model = u.compressor_models?.name ?? "";
+      const cust = u.customers?.name ?? "";
+      const phone = u.customers?.phone ?? "";
+      const parts = (u.machine_parts ?? [])
+        .map((mp) =>
+          `${mp.products?.name ?? ""} ${mp.products?.part_number ?? ""} ${mp.products?.categories?.name ?? ""}`
+        )
+        .join(" ");
+      return `${u.serial_number} ${brand} ${model} ${cust} ${phone} ${parts}`
+        .toLowerCase()
+        .includes(kw);
+    });
+  }, [units, q]);
+
+  useEffect(() => {
+    if (filtered.length === 1) setOpenId(filtered[0].id);
+  }, [filtered]);
 
   return (
     <div className="space-y-5">
-      <form onSubmit={handleSearch} className="flex gap-2">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="กรอก S/N เครื่อง เช่น GA37-2023-001"
-          value={sn}
-          onChange={(e) => setSn(e.target.value)}
-          className="h-11 flex-1"
+          list="sn-search-options"
+          placeholder="ค้นหาด้วย S/N, รุ่น, ยี่ห้อ, ชื่อลูกค้า หรือชื่ออะไหล่"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="h-12 pl-10 text-base"
         />
-        <Button type="submit" disabled={loading} className="h-11">
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          <span className="ml-2 hidden sm:inline">ค้นหา</span>
-        </Button>
-      </form>
+        <datalist id="sn-search-options">
+          {units.map((u) => {
+            const label = [
+              u.serial_number,
+              u.compressor_models?.brands?.name,
+              u.compressor_models?.name,
+              u.customers?.name,
+            ].filter(Boolean).join(" • ");
+            return <option key={u.id} value={u.serial_number}>{label}</option>;
+          })}
+        </datalist>
+      </div>
 
-      {searched && !loading && !result && (
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            ไม่พบเครื่องที่มี S/N นี้ในระบบ
+            ไม่พบเครื่องที่ตรงกับคำค้นหา
           </CardContent>
         </Card>
-      )}
-
-      {result && (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">ข้อมูลเครื่อง</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2">
-              <Info label="S/N" value={result.serial_number} />
-              <Info
-                label="รุ่นเครื่อง"
-                value={
-                  result.compressor_models
-                    ? `${result.compressor_models.brands?.name ?? ""} ${result.compressor_models.name}`.trim()
-                    : "-"
-                }
-              />
-              <Info label="ลูกค้า" value={result.customers?.name ?? "-"} />
-              <Info label="เบอร์โทร" value={result.customers?.phone ?? "-"} />
-              <Info
-                label="ชม.ทำงาน/วัน"
-                value={result.daily_hours != null ? `${result.daily_hours} ชม.` : "-"}
-              />
-              {result.install_date && <Info label="วันที่ติดตั้ง" value={result.install_date} />}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Package className="h-4 w-4" /> รายการอะไหล่ ({result.machine_parts.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {grouped.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  ยังไม่มีรายการอะไหล่สำหรับเครื่องนี้
-                </p>
-              ) : (
-                <div className="space-y-6">
-                  {grouped.map((g) => (
-                    <div key={g.name}>
-                      <h3 className="mb-2 text-sm font-semibold text-primary">{g.name}</h3>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {g.items.map((mp) => (
-                          <PartRow
-                            key={mp.id}
-                            mp={mp}
-                            dailyHours={result.daily_hours ?? null}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">พบ {filtered.length} เครื่อง</p>
+          {filtered.map((u) => (
+            <MachineCard
+              key={u.id}
+              unit={u}
+              open={openId === u.id}
+              onToggle={() => setOpenId(openId === u.id ? null : u.id)}
+            />
+          ))}
+        </div>
       )}
     </div>
+  );
+}
+
+function MachineCard({
+  unit,
+  open,
+  onToggle,
+}: {
+  unit: MachineResult;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const grouped = groupByCategory(unit.machine_parts ?? []);
+  const model = unit.compressor_models
+    ? `${unit.compressor_models.brands?.name ?? ""} ${unit.compressor_models.name}`.trim()
+    : "-";
+  return (
+    <Card>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <div className="min-w-0">
+          <div className="font-semibold">{unit.serial_number}</div>
+          <div className="truncate text-xs text-muted-foreground">
+            {model} • {unit.customers?.name ?? "-"} • อะไหล่ {unit.machine_parts?.length ?? 0} รายการ
+          </div>
+        </div>
+        <Badge variant="outline">{open ? "ซ่อน" : "ดูข้อมูล"}</Badge>
+      </button>
+      {open && (
+        <CardContent className="space-y-4 border-t pt-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Info label="S/N" value={unit.serial_number} />
+            <Info label="รุ่นเครื่อง" value={model} />
+            <Info label="ลูกค้า" value={unit.customers?.name ?? "-"} />
+            <Info label="เบอร์โทร" value={unit.customers?.phone ?? "-"} />
+            <Info
+              label="ชม.ทำงาน/วัน"
+              value={unit.daily_hours != null ? `${unit.daily_hours} ชม.` : "-"}
+            />
+            {unit.install_date && <Info label="วันที่ติดตั้ง" value={unit.install_date} />}
+          </div>
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+              <Package className="h-4 w-4" /> รายการอะไหล่
+            </div>
+            {grouped.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                ยังไม่มีรายการอะไหล่สำหรับเครื่องนี้
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {grouped.map((g) => (
+                  <div key={g.name}>
+                    <h3 className="mb-2 text-sm font-semibold text-primary">{g.name}</h3>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {g.items.map((mp) => (
+                        <PartRow key={mp.id} mp={mp} dailyHours={unit.daily_hours ?? null} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      )}
+    </Card>
   );
 }
 

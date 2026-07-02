@@ -618,19 +618,41 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
     load();
   }
 
+  const [productQuery, setProductQuery] = useState("");
+  const selectedProduct = products.find((p) => p.id === productId);
+
+  function pickProduct(text: string) {
+    setProductQuery(text);
+    const match = products.find(
+      (p) =>
+        `${p.part_number} - ${p.name}`.toLowerCase() === text.toLowerCase() ||
+        p.part_number.toLowerCase() === text.toLowerCase() ||
+        p.name.toLowerCase() === text.toLowerCase(),
+    );
+    setProductId(match?.id ?? "");
+  }
+
   return (
     <div className="mt-3 space-y-3 rounded border bg-muted/30 p-3">
       <div className="grid gap-2 sm:grid-cols-[1fr_90px_110px_auto]">
-        <Select value={productId} onValueChange={setProductId}>
-          <SelectTrigger><SelectValue placeholder="เลือกอะไหล่" /></SelectTrigger>
-          <SelectContent>
+        <div>
+          <Input
+            list={`product-options-${machineId}`}
+            value={productQuery}
+            onChange={(e) => pickProduct(e.target.value)}
+            placeholder="พิมพ์หรือเลือกอะไหล่ (Part / ชื่อ)"
+          />
+          <datalist id={`product-options-${machineId}`}>
             {products.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                [{p.categories?.name ?? "-"}] {p.part_number} - {p.name}
-              </SelectItem>
+              <option key={p.id} value={`${p.part_number} - ${p.name}`}>
+                {p.categories?.name ?? ""}
+              </option>
             ))}
-          </SelectContent>
-        </Select>
+          </datalist>
+          {productQuery && !selectedProduct && (
+            <p className="mt-1 text-xs text-destructive">ยังไม่พบสินค้านี้ — เพิ่มที่แท็บ "สินค้า/อะไหล่" ก่อน</p>
+          )}
+        </div>
         <Input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="จำนวน" />
         <Input
           list="service-hour-presets"
@@ -642,7 +664,9 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
         <datalist id="service-hour-presets">
           {SERVICE_HOUR_PRESETS.map((h) => <option key={h} value={h} />)}
         </datalist>
-        <Button onClick={add}><Plus className="h-4 w-4" /></Button>
+        <Button onClick={async () => { await add(); setProductQuery(""); }}>
+          <Plus className="h-4 w-4" />
+        </Button>
       </div>
       <ul className="divide-y rounded border bg-card">
         {parts.map((mp) => (
