@@ -349,52 +349,133 @@ function ProductsTab() {
 }
 
 // ---------- Machines (S/N + parts list) ----------
+const SERVICE_HOUR_PRESETS = [500, 1500, 2000, 3000, 4500, 6000, 7500, 8000];
+
 function MachinesTab() {
   const [units, setUnits] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
   const [models, setModels] = useState<any[]>([]);
-  const empty = { serial_number: "", model_id: "", customer_id: "", install_date: "", daily_hours: "", note: "" };
+  const empty = {
+    id: "" as string,
+    serial_number: "",
+    customer_name: "",
+    brand_name: "",
+    model_name: "",
+    install_date: "",
+    daily_hours: "",
+    note: "",
+  };
   const [form, setForm] = useState(empty);
+  const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
 
   async function load() {
-    const [u, c, m] = await Promise.all([
-      supabase.from("machine_units").select("*, customers(name), compressor_models(name, brands(name))").order("serial_number"),
+    const [u, c, b, m] = await Promise.all([
+      supabase.from("machine_units").select("*, customers(id,name), compressor_models(id,name,brand_id, brands(id,name))").order("serial_number"),
       supabase.from("customers").select("*").order("name"),
+      supabase.from("brands").select("*").order("name"),
       supabase.from("compressor_models").select("*, brands(name)").order("name"),
     ]);
     setUnits(u.data ?? []);
     setCustomers(c.data ?? []);
+    setBrands(b.data ?? []);
     setModels(m.data ?? []);
   }
   useEffect(() => { load(); }, []);
 
-  async function add() {
-    if (!form.serial_number.trim()) return toast.error("กรอก S/N");
-    const { error } = await supabase.from("machine_units").insert({
-      serial_number: form.serial_number.trim(),
-      model_id: form.model_id || null,
-      customer_id: form.customer_id || null,
-      install_date: form.install_date || null,
-      daily_hours: form.daily_hours ? Number(form.daily_hours) : null,
-      note: form.note || null,
+  function resetForm() { setForm(empty); }
+
+  function startEdit(u: any) {
+    setForm({
+      id: u.id,
+      serial_number: u.serial_number ?? "",
+      customer_name: u.customers?.name ?? "",
+      brand_name: u.compressor_models?.brands?.name ?? "",
+      model_name: u.compressor_models?.name ?? "",
+      install_date: u.install_date ?? "",
+      daily_hours: u.daily_hours != null ? String(u.daily_hours) : "",
+      note: u.note ?? "",
     });
-    if (error) return toast.error(error.message);
-    setForm(empty);
-    toast.success("เพิ่มเครื่องแล้ว");
-    load();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // Get-or-create helper for customer/brand/model by name (case-insensitive)
+  async function resolveCustomerId(name: string): Promise<string | null> {
+    const n = name.trim();
+    if (!n) return null;
+    const existing = customers.find((c) => c.name.toLowerCase() === n.toLowerCase());
+    if (existing) return existing.id;
+    const { data, error } = await supabase.from("customers").insert({ name: n }).select("id").single();
+    if (error) { toast.error("เพิ่มลูกค้าไม่สำเร็จ: " + error.message); return null; }
+    return data.id;
+  }
+  async function resolveBrandId(name: string): Promise<string | null> {
+    const n = name.trim();
+    if (!n) return null;
+    const existing = brands.find((b) => b.name.toLowerCase() === n.toLowerCase());
+    if (existing) return existing.id;
+    const { data, error } = await supabase.from("brands").insert({ name: n }).select("id").single();
+    if (error) { toast.error("เพิ่มยี่ห้อไม่สำเร็จ: " + error.message); return null; }
+    return data.id;
+  }
+  async function resolveModelId(name: string, brandId: string | null): Promise<string | null> {
+    const n = name.trim();
+    if (!n || !brandId) return null;
+    const existing = models.find(
+      (m) => m.name.toLowerCase() === n.toLowerCase() && m.brand_id === brandId,
+    );
+    if (existing) return existing.id;
+    const { data, error } = await supabase.from("compressor_models").insert({ name: n, brand_id: brandId }).select("id").single();
+    if (error) { toast.error("เพิ่มรุ่นไม่สำเร็จ: " + error.message); return null; }
+    return data.id;
+  }
+
+  async function save() {
+    if (!form.serial_number.trim()) return toast.error("กรอก S/N");
+    setSaving(true);
+    try {
+      const customer_id = await resolveCustomerId(form.customer_name);
+      const brand_id = await resolveBrandId(form.brand_name);
+      const model_id = form.model_name ? await resolveModelId(form.model_name, brand_id) : null;
+
+      const payload = {
+        serial_number: form.serial_number.trim(),
+        model_id,
+        customer_id,
+        install_date: form.install_date || null,
+        daily_hours: form.daily_hours ? Number(form.daily_hours) : null,
+        note: form.note || null,
+      };
+
+      let error;
+      if (form.id) {
+        ({ error } = await supabase.from("machine_units").update(payload).eq("id", form.id));
+      } else {
+        ({ error } = await supabase.from("machine_units").insert(payload));
+      }
+      if (error) return toast.error(error.message);
+      toast.success(form.id ? "บันทึกเรียบร้อย" : "เพิ่มเครื่องแล้ว");
+      resetForm();
+      load();
+    } finally {
+      setSaving(false);
+    }
   }
   async function del(id: string) {
     if (!confirm("ลบเครื่องนี้?")) return;
     await supabase.from("machine_units").delete().eq("id", id);
     if (selected === id) setSelected(null);
+    if (form.id === id) resetForm();
     load();
   }
 
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader><CardTitle>เพิ่มเครื่อง (S/N)</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{form.id ? "แก้ไขเครื่อง" : "เพิ่มเครื่อง (S/N)"}</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-2 sm:grid-cols-2">
             <div>
@@ -402,22 +483,42 @@ function MachinesTab() {
               <Input value={form.serial_number} onChange={(e) => setForm({ ...form, serial_number: e.target.value })} />
             </div>
             <div>
-              <Label>รุ่น</Label>
-              <Select value={form.model_id} onValueChange={(v) => setForm({ ...form, model_id: v })}>
-                <SelectTrigger><SelectValue placeholder="เลือกรุ่น" /></SelectTrigger>
-                <SelectContent>
-                  {models.map((m) => <SelectItem key={m.id} value={m.id}>{m.brands?.name} - {m.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label>ลูกค้า (พิมพ์เพิ่มหรือเลือก)</Label>
+              <Input
+                list="customer-options"
+                value={form.customer_name}
+                onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
+                placeholder="เช่น บริษัท ABC"
+              />
+              <datalist id="customer-options">
+                {customers.map((c) => <option key={c.id} value={c.name} />)}
+              </datalist>
             </div>
             <div>
-              <Label>ลูกค้า</Label>
-              <Select value={form.customer_id} onValueChange={(v) => setForm({ ...form, customer_id: v })}>
-                <SelectTrigger><SelectValue placeholder="เลือกลูกค้า" /></SelectTrigger>
-                <SelectContent>
-                  {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label>ยี่ห้อ (พิมพ์เพิ่มหรือเลือก)</Label>
+              <Input
+                list="brand-options"
+                value={form.brand_name}
+                onChange={(e) => setForm({ ...form, brand_name: e.target.value })}
+                placeholder="เช่น Atlas Copco"
+              />
+              <datalist id="brand-options">
+                {brands.map((b) => <option key={b.id} value={b.name} />)}
+              </datalist>
+            </div>
+            <div>
+              <Label>รุ่น (พิมพ์เพิ่มหรือเลือก)</Label>
+              <Input
+                list="model-options"
+                value={form.model_name}
+                onChange={(e) => setForm({ ...form, model_name: e.target.value })}
+                placeholder="เช่น GA37"
+              />
+              <datalist id="model-options">
+                {models
+                  .filter((m) => !form.brand_name || m.brands?.name?.toLowerCase() === form.brand_name.toLowerCase())
+                  .map((m) => <option key={m.id} value={m.name}>{m.brands?.name}</option>)}
+              </datalist>
             </div>
             <div>
               <Label>วันที่ติดตั้ง</Label>
@@ -432,7 +533,15 @@ function MachinesTab() {
               <Textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
             </div>
           </div>
-          <Button onClick={add}><Plus className="h-4 w-4 mr-1" />เพิ่มเครื่อง</Button>
+          <div className="flex gap-2">
+            <Button onClick={save} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+              {form.id ? "บันทึก" : "เพิ่มเครื่อง"}
+            </Button>
+            {form.id && (
+              <Button variant="outline" onClick={resetForm}>ยกเลิก</Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -442,14 +551,15 @@ function MachinesTab() {
           <ul className="divide-y rounded border">
             {units.map((u) => (
               <li key={u.id} className="px-3 py-2">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
                     <div className="font-medium">{u.serial_number}</div>
                     <div className="text-xs text-muted-foreground">
                       {u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.name ?? "-"}
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => startEdit(u)}>แก้ไข</Button>
                     <Button size="sm" variant="outline" onClick={() => setSelected(selected === u.id ? null : u.id)}>
                       {selected === u.id ? "ปิด" : "จัดการอะไหล่"}
                     </Button>
@@ -472,12 +582,13 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
   const [products, setProducts] = useState<any[]>([]);
   const [productId, setProductId] = useState("");
   const [qty, setQty] = useState("1");
+  const [interval, setInterval] = useState("");
 
   async function load() {
     const [mp, p] = await Promise.all([
       supabase
         .from("machine_parts")
-        .select("*, products(name, part_number, categories(name, sort_order))")
+        .select("*, products(name, part_number, service_interval_hours, categories(name, sort_order))")
         .eq("machine_unit_id", machineId),
       supabase.from("products").select("id, name, part_number, categories(name)").order("part_number"),
     ]);
@@ -492,23 +603,24 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
       machine_unit_id: machineId,
       product_id: productId,
       quantity: Number(qty) || 1,
+      service_interval_hours: interval ? Number(interval) : null,
     });
     if (error) return toast.error(error.message);
-    setProductId(""); setQty("1");
+    setProductId(""); setQty("1"); setInterval("");
     load();
   }
   async function del(id: string) {
     await supabase.from("machine_parts").delete().eq("id", id);
     load();
   }
-  async function updatePart(id: string, patch: { quantity?: number; hours_used?: number | null; last_changed_at?: string | null }) {
+  async function updatePart(id: string, patch: { quantity?: number; hours_used?: number | null; last_changed_at?: string | null; service_interval_hours?: number | null }) {
     await supabase.from("machine_parts").update(patch).eq("id", id);
     load();
   }
 
   return (
     <div className="mt-3 space-y-3 rounded border bg-muted/30 p-3">
-      <div className="grid gap-2 sm:grid-cols-[1fr_100px_auto]">
+      <div className="grid gap-2 sm:grid-cols-[1fr_90px_110px_auto]">
         <Select value={productId} onValueChange={setProductId}>
           <SelectTrigger><SelectValue placeholder="เลือกอะไหล่" /></SelectTrigger>
           <SelectContent>
@@ -520,6 +632,16 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
           </SelectContent>
         </Select>
         <Input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="จำนวน" />
+        <Input
+          list="service-hour-presets"
+          type="number"
+          value={interval}
+          onChange={(e) => setInterval(e.target.value)}
+          placeholder="รอบ (ชม.)"
+        />
+        <datalist id="service-hour-presets">
+          {SERVICE_HOUR_PRESETS.map((h) => <option key={h} value={h} />)}
+        </datalist>
         <Button onClick={add}><Plus className="h-4 w-4" /></Button>
       </div>
       <ul className="divide-y rounded border bg-card">
@@ -533,7 +655,7 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
               </div>
               <Button size="sm" variant="ghost" onClick={() => del(mp.id)}><Trash2 className="h-4 w-4" /></Button>
             </div>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-4">
               <div>
                 <Label className="text-xs">จำนวน</Label>
                 <Input
@@ -548,6 +670,17 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
                   type="number" step="0.1" defaultValue={mp.hours_used ?? ""}
                   onBlur={(e) => updatePart(mp.id, { hours_used: e.target.value ? Number(e.target.value) : null })}
                   className="h-8"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">รอบเปลี่ยน (ชม.)</Label>
+                <Input
+                  list="service-hour-presets"
+                  type="number"
+                  defaultValue={mp.service_interval_hours ?? ""}
+                  onBlur={(e) => updatePart(mp.id, { service_interval_hours: e.target.value ? Number(e.target.value) : null })}
+                  className="h-8"
+                  placeholder={mp.products?.service_interval_hours ? `ค่ามาตรฐาน ${mp.products.service_interval_hours}` : ""}
                 />
               </div>
               <div>

@@ -559,13 +559,18 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
             </Badge>
           )}
         </div>
-        {(mp.last_changed_at || nextChange) && (
-          <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-            <CalendarClock className="h-3 w-3" />
-            {mp.last_changed_at && <span>เปลี่ยนล่าสุด {mp.last_changed_at}</span>}
-            {nextChange && <span className="ml-2">· ครั้งถัดไป {nextChange}</span>}
+        <div className="mt-1 grid gap-1 text-xs sm:grid-cols-2">
+          <div className="flex items-center gap-1 rounded bg-muted/50 px-2 py-1">
+            <CalendarClock className="h-3 w-3 text-muted-foreground" />
+            <span className="text-muted-foreground">เปลี่ยนล่าสุด:</span>
+            <span className="font-medium">{mp.last_changed_at ?? "-"}</span>
           </div>
-        )}
+          <div className="flex items-center gap-1 rounded bg-primary/10 px-2 py-1">
+            <CalendarClock className="h-3 w-3 text-primary" />
+            <span className="text-muted-foreground">ครั้งถัดไป:</span>
+            <span className="font-medium text-primary">{nextChange ?? "-"}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
