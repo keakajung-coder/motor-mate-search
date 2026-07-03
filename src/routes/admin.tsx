@@ -239,19 +239,27 @@ function ProductsTab() {
   const [items, setItems] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [cats, setCats] = useState<any[]>([]);
+  const [machinesByProduct, setMachinesByProduct] = useState<Record<string, any[]>>({});
   const [uploading, setUploading] = useState(false);
   const empty = { name: "", part_number: "", price: "", stock_quantity: "0", brand_id: "", category_id: "", image_url: "", storage_location: "", service_interval_hours: "" };
   const [form, setForm] = useState(empty);
 
   async function load() {
-    const [p, b, c] = await Promise.all([
+    const [p, b, c, mp] = await Promise.all([
       supabase.from("products").select("*, brands(name), categories(name)").order("part_number"),
       supabase.from("brands").select("*").order("name"),
       supabase.from("categories").select("*").order("sort_order"),
+      supabase.from("machine_parts").select("product_id, machine_units(id, serial_number, customers(name))"),
     ]);
     setItems(p.data ?? []);
     setBrands(b.data ?? []);
     setCats(c.data ?? []);
+    const map: Record<string, any[]> = {};
+    (mp.data ?? []).forEach((r: any) => {
+      if (!r.product_id || !r.machine_units) return;
+      (map[r.product_id] ||= []).push(r.machine_units);
+    });
+    setMachinesByProduct(map);
   }
   useEffect(() => { load(); }, []);
 
