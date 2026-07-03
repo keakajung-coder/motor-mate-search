@@ -29,7 +29,7 @@ function AdminPage() {
       <h1 className="text-2xl font-bold">จัดการข้อมูล</h1>
       <Tabs defaultValue="machines">
         <TabsList className="flex-wrap">
-          <TabsTrigger value="machines">เครื่อง & อะไหล่</TabsTrigger>
+          <TabsTrigger value="machines">S/N (หมายเลขเครื่อง)</TabsTrigger>
           <TabsTrigger value="customers">ลูกค้า</TabsTrigger>
           <TabsTrigger value="products">สินค้า/อะไหล่</TabsTrigger>
           <TabsTrigger value="brands">ยี่ห้อ</TabsTrigger>
