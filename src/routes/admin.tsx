@@ -29,7 +29,7 @@ function AdminPage() {
       <h1 className="text-2xl font-bold">จัดการข้อมูล</h1>
       <Tabs defaultValue="machines">
         <TabsList className="flex-wrap">
-          <TabsTrigger value="machines">เครื่อง & อะไหล่</TabsTrigger>
+          <TabsTrigger value="machines">S/N (หมายเลขเครื่อง)</TabsTrigger>
           <TabsTrigger value="customers">ลูกค้า</TabsTrigger>
           <TabsTrigger value="products">สินค้า/อะไหล่</TabsTrigger>
           <TabsTrigger value="brands">ยี่ห้อ</TabsTrigger>
@@ -155,11 +155,21 @@ function ModelsTab() {
 // ---------- Customers ----------
 function CustomersTab() {
   const [items, setItems] = useState<any[]>([]);
+  const [machinesByCust, setMachinesByCust] = useState<Record<string, any[]>>({});
   const [form, setForm] = useState({ name: "", phone: "", address: "" });
 
   async function load() {
-    const { data } = await supabase.from("customers").select("*").order("name");
-    setItems(data ?? []);
+    const [c, u] = await Promise.all([
+      supabase.from("customers").select("*").order("name"),
+      supabase.from("machine_units").select("id, serial_number, customer_id, compressor_models(name, brands(name))"),
+    ]);
+    setItems(c.data ?? []);
+    const map: Record<string, any[]> = {};
+    (u.data ?? []).forEach((m: any) => {
+      if (!m.customer_id) return;
+      (map[m.customer_id] ||= []).push(m);
+    });
+    setMachinesByCust(map);
   }
   useEffect(() => { load(); }, []);
 
@@ -192,15 +202,31 @@ function CustomersTab() {
         </div>
         <Button onClick={add}><Plus className="h-4 w-4 mr-1" />เพิ่มลูกค้า</Button>
         <ul className="divide-y rounded border">
-          {items.map((c) => (
-            <li key={c.id} className="flex items-center justify-between px-3 py-2">
-              <div>
-                <div className="font-medium">{c.name}</div>
-                <div className="text-xs text-muted-foreground">{c.phone} {c.address && `• ${c.address}`}</div>
-              </div>
-              <Button size="sm" variant="ghost" onClick={() => del(c.id)}><Trash2 className="h-4 w-4" /></Button>
-            </li>
-          ))}
+          {items.map((c) => {
+            const machines = machinesByCust[c.id] ?? [];
+            return (
+              <li key={c.id} className="px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium">{c.name}</div>
+                    <div className="text-xs text-muted-foreground">{c.phone} {c.address && `• ${c.address}`}</div>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => del(c.id)}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+                {machines.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="text-xs text-muted-foreground">เครื่อง ({machines.length}):</span>
+                    {machines.map((m: any) => (
+                      <Badge key={m.id} variant="secondary" className="font-mono text-xs">
+                        {m.serial_number}
+                        {m.compressor_models && ` · ${m.compressor_models.brands?.name ?? ""} ${m.compressor_models.name}`}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </li>
+            );
+          })}
           {items.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
         </ul>
       </CardContent>
@@ -213,19 +239,27 @@ function ProductsTab() {
   const [items, setItems] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [cats, setCats] = useState<any[]>([]);
+  const [machinesByProduct, setMachinesByProduct] = useState<Record<string, any[]>>({});
   const [uploading, setUploading] = useState(false);
   const empty = { name: "", part_number: "", price: "", stock_quantity: "0", brand_id: "", category_id: "", image_url: "", storage_location: "", service_interval_hours: "" };
   const [form, setForm] = useState(empty);
 
   async function load() {
-    const [p, b, c] = await Promise.all([
+    const [p, b, c, mp] = await Promise.all([
       supabase.from("products").select("*, brands(name), categories(name)").order("part_number"),
       supabase.from("brands").select("*").order("name"),
       supabase.from("categories").select("*").order("sort_order"),
+      supabase.from("machine_parts").select("product_id, machine_units(id, serial_number, customers(name))"),
     ]);
     setItems(p.data ?? []);
     setBrands(b.data ?? []);
     setCats(c.data ?? []);
+    const map: Record<string, any[]> = {};
+    (mp.data ?? []).forEach((r: any) => {
+      if (!r.product_id || !r.machine_units) return;
+      (map[r.product_id] ||= []).push(r.machine_units);
+    });
+    setMachinesByProduct(map);
   }
   useEffect(() => { load(); }, []);
 
@@ -323,24 +357,39 @@ function ProductsTab() {
         <Button onClick={add}><Plus className="h-4 w-4 mr-1" />เพิ่มสินค้า</Button>
 
         <ul className="divide-y rounded border">
-          {items.map((p) => (
-            <li key={p.id} className="flex items-center justify-between gap-2 px-3 py-2">
-              <div className="flex items-center gap-3">
-                {p.image_url ? (
-                  <img src={p.image_url} alt="" className="h-10 w-10 rounded object-cover" />
-                ) : (
-                  <div className="h-10 w-10 rounded bg-muted" />
-                )}
-                <div>
-                  <div className="font-medium">{p.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {p.part_number} {p.categories?.name && `• ${p.categories.name}`} {p.brands?.name && `• ${p.brands.name}`}
+          {items.map((p) => {
+            const machines = machinesByProduct[p.id] ?? [];
+            return (
+              <li key={p.id} className="px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    {p.image_url ? (
+                      <img src={p.image_url} alt="" className="h-10 w-10 rounded object-cover" />
+                    ) : (
+                      <div className="h-10 w-10 rounded bg-muted" />
+                    )}
+                    <div>
+                      <div className="font-medium">{p.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {p.part_number} {p.categories?.name && `• ${p.categories.name}`} {p.brands?.name && `• ${p.brands.name}`}
+                      </div>
+                    </div>
                   </div>
+                  <Button size="sm" variant="ghost" onClick={() => del(p.id)}><Trash2 className="h-4 w-4" /></Button>
                 </div>
-              </div>
-              <Button size="sm" variant="ghost" onClick={() => del(p.id)}><Trash2 className="h-4 w-4" /></Button>
-            </li>
-          ))}
+                {machines.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="text-xs text-muted-foreground">ใช้ในเครื่อง ({machines.length}):</span>
+                    {machines.map((m: any) => (
+                      <Badge key={m.id} variant="secondary" className="font-mono text-xs">
+                        {m.serial_number}{m.customers && ` · ${m.customers.name}`}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </li>
+            );
+          })}
           {items.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
         </ul>
       </CardContent>
