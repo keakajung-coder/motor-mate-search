@@ -590,9 +590,15 @@ function MachinesTab() {
               {form.id ? "บันทึก" : "เพิ่มเครื่อง"}
             </Button>
             {form.id && (
-              <Button variant="outline" onClick={resetForm}>ยกเลิก</Button>
+              <Button variant="outline" onClick={resetForm}>ล้างฟอร์ม / เพิ่มเครื่องใหม่</Button>
             )}
           </div>
+          {form.id && (
+            <div className="mt-2">
+              <Label className="text-sm font-semibold">รายการอะไหล่ของเครื่องนี้</Label>
+              <MachinePartsEditor machineId={form.id} />
+            </div>
+          )}
         </CardContent>
       </Card>
 
