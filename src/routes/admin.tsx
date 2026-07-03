@@ -497,15 +497,17 @@ function MachinesTab() {
         note: form.note || null,
       };
 
-      let error;
       if (form.id) {
-        ({ error } = await supabase.from("machine_units").update(payload).eq("id", form.id));
+        const { error } = await supabase.from("machine_units").update(payload).eq("id", form.id);
+        if (error) return toast.error(error.message);
+        toast.success("บันทึกเรียบร้อย");
       } else {
-        ({ error } = await supabase.from("machine_units").insert(payload));
+        const { data, error } = await supabase.from("machine_units").insert(payload).select("id").single();
+        if (error) return toast.error(error.message);
+        toast.success("เพิ่มเครื่องแล้ว — เพิ่มอะไหล่ได้เลย");
+        // keep form open in edit mode so user can add parts inline
+        setForm((f) => ({ ...f, id: data.id }));
       }
-      if (error) return toast.error(error.message);
-      toast.success(form.id ? "บันทึกเรียบร้อย" : "เพิ่มเครื่องแล้ว");
-      resetForm();
       load();
     } finally {
       setSaving(false);
