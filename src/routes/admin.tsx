@@ -461,6 +461,7 @@ function MachinesTab() {
     customer_name: "",
     brand_name: "",
     model_name: "",
+    pump_type: "",
     install_date: "",
     daily_hours: "",
     note: "",
@@ -471,7 +472,7 @@ function MachinesTab() {
 
   async function load() {
     const [u, c, b, m] = await Promise.all([
-      supabase.from("machine_units").select("*, customers(id,name), compressor_models(id,name,brand_id, brands(id,name))").order("serial_number"),
+      supabase.from("machine_units").select("*, customers(id,name), compressor_models(id,name,brand_id,pump_type, brands(id,name))").order("serial_number"),
       supabase.from("customers").select("*").order("name"),
       supabase.from("brands").select("*").order("name"),
       supabase.from("compressor_models").select("*, brands(name)").order("name"),
@@ -492,6 +493,7 @@ function MachinesTab() {
       customer_name: u.customers?.name ?? "",
       brand_name: u.compressor_models?.brands?.name ?? "",
       model_name: u.compressor_models?.name ?? "",
+      pump_type: u.compressor_models?.pump_type ?? "",
       install_date: u.install_date ?? "",
       daily_hours: u.daily_hours != null ? String(u.daily_hours) : "",
       note: u.note ?? "",
