@@ -90,6 +90,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          pump_type: string | null
         }
         Insert: {
           brand_id: string
@@ -97,6 +98,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          pump_type?: string | null
         }
         Update: {
           brand_id?: string
@@ -104,6 +106,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          pump_type?: string | null
         }
         Relationships: [
           {

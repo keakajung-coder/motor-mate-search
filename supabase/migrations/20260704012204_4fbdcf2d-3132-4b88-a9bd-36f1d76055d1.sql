@@ -1,0 +1,1 @@
+ALTER TABLE public.compressor_models ADD COLUMN IF NOT EXISTS pump_type TEXT;
