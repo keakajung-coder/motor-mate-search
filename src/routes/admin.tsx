@@ -16,7 +16,9 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Pencil } from "lucide-react";
+
+const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "จัดการข้อมูล - อะไหล่ปั๊มลม" }] }),
