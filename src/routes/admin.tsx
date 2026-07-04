@@ -101,6 +101,8 @@ function ModelsTab() {
   const [brands, setBrands] = useState<any[]>([]);
   const [name, setName] = useState("");
   const [brandId, setBrandId] = useState("");
+  const [pumpType, setPumpType] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
 
   async function load() {
     const [m, b] = await Promise.all([
@@ -112,17 +114,26 @@ function ModelsTab() {
   }
   useEffect(() => { load(); }, []);
 
-  async function add() {
+  function reset() { setEditId(null); setName(""); setBrandId(""); setPumpType(""); }
+
+  async function save() {
     if (!name.trim() || !brandId) return toast.error("กรอกชื่อรุ่นและเลือกยี่ห้อ");
-    const { error } = await supabase.from("compressor_models").insert({ name: name.trim(), brand_id: brandId });
+    const payload: any = { name: name.trim(), brand_id: brandId, pump_type: pumpType.trim() || null };
+    const { error } = editId
+      ? await supabase.from("compressor_models").update(payload).eq("id", editId)
+      : await supabase.from("compressor_models").insert(payload);
     if (error) return toast.error(error.message);
-    setName("");
-    toast.success("เพิ่มรุ่นแล้ว");
+    toast.success(editId ? "บันทึกแล้ว" : "เพิ่มรุ่นแล้ว");
+    reset();
     load();
+  }
+  function startEdit(m: any) {
+    setEditId(m.id); setName(m.name); setBrandId(m.brand_id); setPumpType(m.pump_type ?? "");
   }
   async function del(id: string) {
     if (!confirm("ลบรุ่นนี้?")) return;
     await supabase.from("compressor_models").delete().eq("id", id);
+    if (editId === id) reset();
     load();
   }
 
@@ -130,7 +141,7 @@ function ModelsTab() {
     <Card>
       <CardHeader><CardTitle>รุ่นเครื่อง</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
           <Select value={brandId} onValueChange={setBrandId}>
             <SelectTrigger><SelectValue placeholder="เลือกยี่ห้อ" /></SelectTrigger>
             <SelectContent>
@@ -138,13 +149,31 @@ function ModelsTab() {
             </SelectContent>
           </Select>
           <Input placeholder="ชื่อรุ่น เช่น GA37" value={name} onChange={(e) => setName(e.target.value)} />
-          <Button onClick={add}><Plus className="h-4 w-4" /></Button>
+          <Input
+            list="pump-type-options"
+            placeholder="ประเภทปั๊มลม"
+            value={pumpType}
+            onChange={(e) => setPumpType(e.target.value)}
+          />
+          <datalist id="pump-type-options">
+            {PUMP_TYPE_PRESETS.map((t) => <option key={t} value={t} />)}
+          </datalist>
+          <div className="flex gap-1">
+            <Button onClick={save}>{editId ? "บันทึก" : <Plus className="h-4 w-4" />}</Button>
+            {editId && <Button variant="outline" onClick={reset}>ยกเลิก</Button>}
+          </div>
         </div>
         <ul className="divide-y rounded border">
           {items.map((m) => (
             <li key={m.id} className="flex items-center justify-between px-3 py-2">
-              <span>{m.brands?.name} - {m.name}</span>
-              <Button size="sm" variant="ghost" onClick={() => del(m.id)}><Trash2 className="h-4 w-4" /></Button>
+              <div>
+                <div>{m.brands?.name} - {m.name}</div>
+                {m.pump_type && <div className="text-xs text-muted-foreground">{m.pump_type}</div>}
+              </div>
+              <div className="flex gap-1">
+                <Button size="sm" variant="ghost" onClick={() => startEdit(m)}><Pencil className="h-4 w-4" /></Button>
+                <Button size="sm" variant="ghost" onClick={() => del(m.id)}><Trash2 className="h-4 w-4" /></Button>
+              </div>
             </li>
           ))}
           {items.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
