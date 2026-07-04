@@ -520,14 +520,20 @@ function MachinesTab() {
     if (error) { toast.error("เพิ่มยี่ห้อไม่สำเร็จ: " + error.message); return null; }
     return data.id;
   }
-  async function resolveModelId(name: string, brandId: string | null): Promise<string | null> {
+  async function resolveModelId(name: string, brandId: string | null, pumpType: string): Promise<string | null> {
     const n = name.trim();
     if (!n || !brandId) return null;
     const existing = models.find(
       (m) => m.name.toLowerCase() === n.toLowerCase() && m.brand_id === brandId,
     );
-    if (existing) return existing.id;
-    const { data, error } = await supabase.from("compressor_models").insert({ name: n, brand_id: brandId }).select("id").single();
+    const pt = pumpType.trim() || null;
+    if (existing) {
+      if ((existing.pump_type ?? null) !== pt) {
+        await supabase.from("compressor_models").update({ pump_type: pt } as any).eq("id", existing.id);
+      }
+      return existing.id;
+    }
+    const { data, error } = await supabase.from("compressor_models").insert({ name: n, brand_id: brandId, pump_type: pt } as any).select("id").single();
     if (error) { toast.error("เพิ่มรุ่นไม่สำเร็จ: " + error.message); return null; }
     return data.id;
   }
