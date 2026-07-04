@@ -637,6 +637,7 @@ function MachinesTab() {
                 onChange={(e) => setForm({ ...form, pump_type: e.target.value })}
                 placeholder="เช่น ปั๊มลมสกรู"
               />
+            </div>
             <div>
               <Label>วันที่ติดตั้ง</Label>
               <Input type="date" value={form.install_date} onChange={(e) => setForm({ ...form, install_date: e.target.value })} />
