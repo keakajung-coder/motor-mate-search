@@ -422,7 +422,10 @@ function ProductsTab() {
                       </div>
                     </div>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => del(p.id)}><Trash2 className="h-4 w-4" /></Button>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => startEdit(p)}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => del(p.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
                 </div>
                 {machines.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
