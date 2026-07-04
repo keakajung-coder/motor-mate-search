@@ -16,7 +16,9 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Pencil } from "lucide-react";
+
+const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "จัดการข้อมูล - อะไหล่ปั๊มลม" }] }),
@@ -99,6 +101,8 @@ function ModelsTab() {
   const [brands, setBrands] = useState<any[]>([]);
   const [name, setName] = useState("");
   const [brandId, setBrandId] = useState("");
+  const [pumpType, setPumpType] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
 
   async function load() {
     const [m, b] = await Promise.all([
@@ -110,17 +114,26 @@ function ModelsTab() {
   }
   useEffect(() => { load(); }, []);
 
-  async function add() {
+  function reset() { setEditId(null); setName(""); setBrandId(""); setPumpType(""); }
+
+  async function save() {
     if (!name.trim() || !brandId) return toast.error("กรอกชื่อรุ่นและเลือกยี่ห้อ");
-    const { error } = await supabase.from("compressor_models").insert({ name: name.trim(), brand_id: brandId });
+    const payload: any = { name: name.trim(), brand_id: brandId, pump_type: pumpType.trim() || null };
+    const { error } = editId
+      ? await supabase.from("compressor_models").update(payload).eq("id", editId)
+      : await supabase.from("compressor_models").insert(payload);
     if (error) return toast.error(error.message);
-    setName("");
-    toast.success("เพิ่มรุ่นแล้ว");
+    toast.success(editId ? "บันทึกแล้ว" : "เพิ่มรุ่นแล้ว");
+    reset();
     load();
+  }
+  function startEdit(m: any) {
+    setEditId(m.id); setName(m.name); setBrandId(m.brand_id); setPumpType(m.pump_type ?? "");
   }
   async function del(id: string) {
     if (!confirm("ลบรุ่นนี้?")) return;
     await supabase.from("compressor_models").delete().eq("id", id);
+    if (editId === id) reset();
     load();
   }
 
@@ -128,7 +141,7 @@ function ModelsTab() {
     <Card>
       <CardHeader><CardTitle>รุ่นเครื่อง</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
           <Select value={brandId} onValueChange={setBrandId}>
             <SelectTrigger><SelectValue placeholder="เลือกยี่ห้อ" /></SelectTrigger>
             <SelectContent>
@@ -136,13 +149,31 @@ function ModelsTab() {
             </SelectContent>
           </Select>
           <Input placeholder="ชื่อรุ่น เช่น GA37" value={name} onChange={(e) => setName(e.target.value)} />
-          <Button onClick={add}><Plus className="h-4 w-4" /></Button>
+          <Input
+            list="pump-type-options"
+            placeholder="ประเภทปั๊มลม"
+            value={pumpType}
+            onChange={(e) => setPumpType(e.target.value)}
+          />
+          <datalist id="pump-type-options">
+            {PUMP_TYPE_PRESETS.map((t) => <option key={t} value={t} />)}
+          </datalist>
+          <div className="flex gap-1">
+            <Button onClick={save}>{editId ? "บันทึก" : <Plus className="h-4 w-4" />}</Button>
+            {editId && <Button variant="outline" onClick={reset}>ยกเลิก</Button>}
+          </div>
         </div>
         <ul className="divide-y rounded border">
           {items.map((m) => (
             <li key={m.id} className="flex items-center justify-between px-3 py-2">
-              <span>{m.brands?.name} - {m.name}</span>
-              <Button size="sm" variant="ghost" onClick={() => del(m.id)}><Trash2 className="h-4 w-4" /></Button>
+              <div>
+                <div>{m.brands?.name} - {m.name}</div>
+                {m.pump_type && <div className="text-xs text-muted-foreground">{m.pump_type}</div>}
+              </div>
+              <div className="flex gap-1">
+                <Button size="sm" variant="ghost" onClick={() => startEdit(m)}><Pencil className="h-4 w-4" /></Button>
+                <Button size="sm" variant="ghost" onClick={() => del(m.id)}><Trash2 className="h-4 w-4" /></Button>
+              </div>
             </li>
           ))}
           {items.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
@@ -241,7 +272,7 @@ function ProductsTab() {
   const [cats, setCats] = useState<any[]>([]);
   const [machinesByProduct, setMachinesByProduct] = useState<Record<string, any[]>>({});
   const [uploading, setUploading] = useState(false);
-  const empty = { name: "", part_number: "", price: "", stock_quantity: "0", brand_id: "", category_id: "", image_url: "", storage_location: "", service_interval_hours: "" };
+  const empty = { id: "", name: "", part_number: "", price: "", stock_quantity: "0", brand_id: "", category_id: "", image_url: "", storage_location: "", service_interval_hours: "" };
   const [form, setForm] = useState(empty);
 
   async function load() {
@@ -274,9 +305,9 @@ function ProductsTab() {
     toast.success("อัพโหลดรูปสำเร็จ");
   }
 
-  async function add() {
+  async function save() {
     if (!form.name.trim() || !form.part_number.trim()) return toast.error("กรอกชื่อและ Part Number");
-    const { error } = await supabase.from("products").insert({
+    const payload = {
       name: form.name.trim(),
       part_number: form.part_number.trim(),
       price: form.price ? Number(form.price) : null,
@@ -286,15 +317,30 @@ function ProductsTab() {
       image_url: form.image_url || null,
       storage_location: form.storage_location.trim() || null,
       service_interval_hours: form.service_interval_hours ? Number(form.service_interval_hours) : null,
-    });
+    };
+    const { error } = form.id
+      ? await supabase.from("products").update(payload).eq("id", form.id)
+      : await supabase.from("products").insert(payload);
     if (error) return toast.error(error.message);
     setForm(empty);
-    toast.success("เพิ่มสินค้าแล้ว");
+    toast.success(form.id ? "บันทึกแล้ว" : "เพิ่มสินค้าแล้ว");
     load();
+  }
+  function startEdit(p: any) {
+    setForm({
+      id: p.id, name: p.name ?? "", part_number: p.part_number ?? "",
+      price: p.price != null ? String(p.price) : "",
+      stock_quantity: p.stock_quantity != null ? String(p.stock_quantity) : "0",
+      brand_id: p.brand_id ?? "", category_id: p.category_id ?? "",
+      image_url: p.image_url ?? "", storage_location: p.storage_location ?? "",
+      service_interval_hours: p.service_interval_hours != null ? String(p.service_interval_hours) : "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   async function del(id: string) {
     if (!confirm("ลบสินค้านี้?")) return;
     await supabase.from("products").delete().eq("id", id);
+    if (form.id === id) setForm(empty);
     load();
   }
 
@@ -354,7 +400,8 @@ function ProductsTab() {
             </div>
           </div>
         </div>
-        <Button onClick={add}><Plus className="h-4 w-4 mr-1" />เพิ่มสินค้า</Button>
+        <Button onClick={save}><Plus className="h-4 w-4 mr-1" />{form.id ? "บันทึก" : "เพิ่มสินค้า"}</Button>
+        {form.id && <Button variant="outline" onClick={() => setForm(empty)}>ยกเลิก</Button>}
 
         <ul className="divide-y rounded border">
           {items.map((p) => {
@@ -375,7 +422,10 @@ function ProductsTab() {
                       </div>
                     </div>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => del(p.id)}><Trash2 className="h-4 w-4" /></Button>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => startEdit(p)}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => del(p.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
                 </div>
                 {machines.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -411,6 +461,7 @@ function MachinesTab() {
     customer_name: "",
     brand_name: "",
     model_name: "",
+    pump_type: "",
     install_date: "",
     daily_hours: "",
     note: "",
@@ -421,7 +472,7 @@ function MachinesTab() {
 
   async function load() {
     const [u, c, b, m] = await Promise.all([
-      supabase.from("machine_units").select("*, customers(id,name), compressor_models(id,name,brand_id, brands(id,name))").order("serial_number"),
+      supabase.from("machine_units").select("*, customers(id,name), compressor_models(id,name,brand_id,pump_type, brands(id,name))").order("serial_number"),
       supabase.from("customers").select("*").order("name"),
       supabase.from("brands").select("*").order("name"),
       supabase.from("compressor_models").select("*, brands(name)").order("name"),
@@ -442,6 +493,7 @@ function MachinesTab() {
       customer_name: u.customers?.name ?? "",
       brand_name: u.compressor_models?.brands?.name ?? "",
       model_name: u.compressor_models?.name ?? "",
+      pump_type: u.compressor_models?.pump_type ?? "",
       install_date: u.install_date ?? "",
       daily_hours: u.daily_hours != null ? String(u.daily_hours) : "",
       note: u.note ?? "",
@@ -468,14 +520,20 @@ function MachinesTab() {
     if (error) { toast.error("เพิ่มยี่ห้อไม่สำเร็จ: " + error.message); return null; }
     return data.id;
   }
-  async function resolveModelId(name: string, brandId: string | null): Promise<string | null> {
+  async function resolveModelId(name: string, brandId: string | null, pumpType: string): Promise<string | null> {
     const n = name.trim();
     if (!n || !brandId) return null;
     const existing = models.find(
       (m) => m.name.toLowerCase() === n.toLowerCase() && m.brand_id === brandId,
     );
-    if (existing) return existing.id;
-    const { data, error } = await supabase.from("compressor_models").insert({ name: n, brand_id: brandId }).select("id").single();
+    const pt = pumpType.trim() || null;
+    if (existing) {
+      if ((existing.pump_type ?? null) !== pt) {
+        await supabase.from("compressor_models").update({ pump_type: pt } as any).eq("id", existing.id);
+      }
+      return existing.id;
+    }
+    const { data, error } = await supabase.from("compressor_models").insert({ name: n, brand_id: brandId, pump_type: pt } as any).select("id").single();
     if (error) { toast.error("เพิ่มรุ่นไม่สำเร็จ: " + error.message); return null; }
     return data.id;
   }
@@ -486,7 +544,7 @@ function MachinesTab() {
     try {
       const customer_id = await resolveCustomerId(form.customer_name);
       const brand_id = await resolveBrandId(form.brand_name);
-      const model_id = form.model_name ? await resolveModelId(form.model_name, brand_id) : null;
+      const model_id = form.model_name ? await resolveModelId(form.model_name, brand_id, form.pump_type) : null;
 
       const payload = {
         serial_number: form.serial_number.trim(),
@@ -572,6 +630,15 @@ function MachinesTab() {
               </datalist>
             </div>
             <div>
+              <Label>ประเภทปั๊มลม (พิมพ์เพิ่มหรือเลือก)</Label>
+              <Input
+                list="pump-type-options"
+                value={form.pump_type}
+                onChange={(e) => setForm({ ...form, pump_type: e.target.value })}
+                placeholder="เช่น ปั๊มลมสกรู"
+              />
+            </div>
+            <div>
               <Label>วันที่ติดตั้ง</Label>
               <Input type="date" value={form.install_date} onChange={(e) => setForm({ ...form, install_date: e.target.value })} />
             </div>
@@ -637,102 +704,152 @@ function MachinesTab() {
 function MachinePartsEditor({ machineId }: { machineId: string }) {
   const [parts, setParts] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
-  const [productId, setProductId] = useState("");
+  const [cats, setCats] = useState<any[]>([]);
+  const [catId, setCatId] = useState("");
+  const [partNumber, setPartNumber] = useState("");
+  const [partName, setPartName] = useState("");
   const [qty, setQty] = useState("1");
   const [interval, setInterval] = useState("");
 
   async function load() {
-    const [mp, p] = await Promise.all([
+    const [mp, p, c] = await Promise.all([
       supabase
         .from("machine_parts")
-        .select("*, products(name, part_number, service_interval_hours, categories(name, sort_order))")
+        .select("*, products(id, name, part_number, service_interval_hours, category_id, categories(name, sort_order))")
         .eq("machine_unit_id", machineId),
-      supabase.from("products").select("id, name, part_number, categories(name)").order("part_number"),
+      supabase.from("products").select("id, name, part_number, category_id, service_interval_hours, categories(name)").order("part_number"),
+      supabase.from("categories").select("*").order("sort_order"),
     ]);
     setParts(mp.data ?? []);
     setProducts(p.data ?? []);
+    setCats(c.data ?? []);
   }
   useEffect(() => { load(); }, [machineId]);
 
+  const filteredProducts = catId ? products.filter((p) => p.category_id === catId) : products;
+
+  function pickPart(text: string) {
+    setPartNumber(text);
+    const match = products.find((p) => p.part_number.toLowerCase() === text.toLowerCase());
+    if (match) {
+      setPartName(match.name);
+      if (!catId && match.category_id) setCatId(match.category_id);
+    }
+  }
+
   async function add() {
-    if (!productId) return toast.error("เลือกสินค้า");
+    if (!partNumber.trim()) return toast.error("กรอก Part Number");
+    let product = products.find((p) => p.part_number.toLowerCase() === partNumber.trim().toLowerCase());
+    if (!product) {
+      // quick-create
+      if (!partName.trim()) return toast.error("กรอกชื่ออะไหล่ (Part Description) สำหรับสินค้าใหม่");
+      const { data, error } = await supabase.from("products").insert({
+        part_number: partNumber.trim(),
+        name: partName.trim(),
+        category_id: catId || null,
+        service_interval_hours: interval ? Number(interval) : null,
+      }).select("id, name, part_number, category_id, service_interval_hours").single();
+      if (error) return toast.error("เพิ่มสินค้าไม่สำเร็จ: " + error.message);
+      product = data;
+      toast.success("เพิ่มสินค้าใหม่ในคลังแล้ว");
+    }
     const { error } = await supabase.from("machine_parts").insert({
       machine_unit_id: machineId,
-      product_id: productId,
+      product_id: product!.id,
       quantity: Number(qty) || 1,
       service_interval_hours: interval ? Number(interval) : null,
     });
     if (error) return toast.error(error.message);
-    setProductId(""); setQty("1"); setInterval("");
+    setPartNumber(""); setPartName(""); setQty("1"); setInterval("");
     load();
   }
   async function del(id: string) {
     await supabase.from("machine_parts").delete().eq("id", id);
     load();
   }
-  async function updatePart(id: string, patch: { quantity?: number; hours_used?: number | null; last_changed_at?: string | null; service_interval_hours?: number | null }) {
+  async function updatePart(id: string, patch: any) {
     await supabase.from("machine_parts").update(patch).eq("id", id);
     load();
   }
-
-  const [productQuery, setProductQuery] = useState("");
-  const selectedProduct = products.find((p) => p.id === productId);
-
-  function pickProduct(text: string) {
-    setProductQuery(text);
-    const match = products.find(
-      (p) =>
-        `${p.part_number} - ${p.name}`.toLowerCase() === text.toLowerCase() ||
-        p.part_number.toLowerCase() === text.toLowerCase() ||
-        p.name.toLowerCase() === text.toLowerCase(),
-    );
-    setProductId(match?.id ?? "");
+  async function updateProduct(productId: string, patch: { name?: string; part_number?: string }) {
+    const { error } = await supabase.from("products").update(patch).eq("id", productId);
+    if (error) return toast.error(error.message);
+    load();
   }
 
   return (
     <div className="mt-3 space-y-3 rounded border bg-muted/30 p-3">
-      <div className="grid gap-2 sm:grid-cols-[1fr_90px_110px_auto]">
+      <div className="grid gap-2 sm:grid-cols-2">
         <div>
+          <Label className="text-xs">หมวดอะไหล่</Label>
+          <Select value={catId} onValueChange={setCatId}>
+            <SelectTrigger><SelectValue placeholder="เลือกหมวด (เช่น กรองอากาศ)" /></SelectTrigger>
+            <SelectContent>
+              {cats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Part Number (พิมพ์เพิ่มใหม่ หรือเลือก)</Label>
           <Input
-            list={`product-options-${machineId}`}
-            value={productQuery}
-            onChange={(e) => pickProduct(e.target.value)}
-            placeholder="พิมพ์หรือเลือกอะไหล่ (Part / ชื่อ)"
+            list={`part-num-${machineId}`}
+            value={partNumber}
+            onChange={(e) => pickPart(e.target.value)}
+            placeholder="รหัสอะไหล่"
           />
-          <datalist id={`product-options-${machineId}`}>
-            {products.map((p) => (
-              <option key={p.id} value={`${p.part_number} - ${p.name}`}>
-                {p.categories?.name ?? ""}
-              </option>
+          <datalist id={`part-num-${machineId}`}>
+            {filteredProducts.map((p) => (
+              <option key={p.id} value={p.part_number}>{p.name}</option>
             ))}
           </datalist>
-          {productQuery && !selectedProduct && (
-            <p className="mt-1 text-xs text-destructive">ยังไม่พบสินค้านี้ — เพิ่มที่แท็บ "สินค้า/อะไหล่" ก่อน</p>
-          )}
         </div>
-        <Input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="จำนวน" />
-        <Input
-          list="service-hour-presets"
-          type="number"
-          value={interval}
-          onChange={(e) => setInterval(e.target.value)}
-          placeholder="รอบ (ชม.)"
-        />
-        <datalist id="service-hour-presets">
-          {SERVICE_HOUR_PRESETS.map((h) => <option key={h} value={h} />)}
-        </datalist>
-        <Button onClick={async () => { await add(); setProductQuery(""); }}>
-          <Plus className="h-4 w-4" />
-        </Button>
+        <div>
+          <Label className="text-xs">ชื่ออะไหล่ (Part Description)</Label>
+          <Input value={partName} onChange={(e) => setPartName(e.target.value)} placeholder="ชื่อสินค้า" />
+        </div>
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+          <div>
+            <Label className="text-xs">จำนวน</Label>
+            <Input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">รอบ (ชม.)</Label>
+            <Input
+              list="service-hour-presets"
+              type="number"
+              value={interval}
+              onChange={(e) => setInterval(e.target.value)}
+            />
+            <datalist id="service-hour-presets">
+              {SERVICE_HOUR_PRESETS.map((h) => <option key={h} value={h} />)}
+            </datalist>
+          </div>
+          <div className="self-end">
+            <Button onClick={add}><Plus className="h-4 w-4" /></Button>
+          </div>
+        </div>
       </div>
+
       <ul className="divide-y rounded border bg-card">
         {parts.map((mp) => (
           <li key={mp.id} className="space-y-2 px-3 py-2">
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <Badge variant="outline" className="mr-2">{mp.products?.categories?.name ?? "-"}</Badge>
-                <span className="font-medium">{mp.products?.part_number}</span>
-                <span className="ml-2 text-sm text-muted-foreground">{mp.products?.name}</span>
+              <div className="min-w-0 flex-1">
+                <Badge variant="outline" className="mb-1">{mp.products?.categories?.name ?? "-"}</Badge>
+                <div className="grid gap-1 sm:grid-cols-2">
+                  <Input
+                    defaultValue={mp.products?.part_number ?? ""}
+                    onBlur={(e) => e.target.value !== mp.products?.part_number && updateProduct(mp.products.id, { part_number: e.target.value })}
+                    className="h-8 font-mono text-sm"
+                    placeholder="Part Number"
+                  />
+                  <Input
+                    defaultValue={mp.products?.name ?? ""}
+                    onBlur={(e) => e.target.value !== mp.products?.name && updateProduct(mp.products.id, { name: e.target.value })}
+                    className="h-8 text-sm"
+                    placeholder="Part Description"
+                  />
+                </div>
               </div>
               <Button size="sm" variant="ghost" onClick={() => del(mp.id)}><Trash2 className="h-4 w-4" /></Button>
             </div>
