@@ -630,6 +630,14 @@ function MachinesTab() {
               </datalist>
             </div>
             <div>
+              <Label>ประเภทปั๊มลม (พิมพ์เพิ่มหรือเลือก)</Label>
+              <Input
+                list="pump-type-options"
+                value={form.pump_type}
+                onChange={(e) => setForm({ ...form, pump_type: e.target.value })}
+                placeholder="เช่น ปั๊มลมสกรู"
+              />
+            <div>
               <Label>วันที่ติดตั้ง</Label>
               <Input type="date" value={form.install_date} onChange={(e) => setForm({ ...form, install_date: e.target.value })} />
             </div>
