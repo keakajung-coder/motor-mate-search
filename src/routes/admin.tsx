@@ -272,7 +272,7 @@ function ProductsTab() {
   const [cats, setCats] = useState<any[]>([]);
   const [machinesByProduct, setMachinesByProduct] = useState<Record<string, any[]>>({});
   const [uploading, setUploading] = useState(false);
-  const empty = { name: "", part_number: "", price: "", stock_quantity: "0", brand_id: "", category_id: "", image_url: "", storage_location: "", service_interval_hours: "" };
+  const empty = { id: "", name: "", part_number: "", price: "", stock_quantity: "0", brand_id: "", category_id: "", image_url: "", storage_location: "", service_interval_hours: "" };
   const [form, setForm] = useState(empty);
 
   async function load() {
@@ -305,9 +305,9 @@ function ProductsTab() {
     toast.success("อัพโหลดรูปสำเร็จ");
   }
 
-  async function add() {
+  async function save() {
     if (!form.name.trim() || !form.part_number.trim()) return toast.error("กรอกชื่อและ Part Number");
-    const { error } = await supabase.from("products").insert({
+    const payload = {
       name: form.name.trim(),
       part_number: form.part_number.trim(),
       price: form.price ? Number(form.price) : null,
@@ -317,15 +317,30 @@ function ProductsTab() {
       image_url: form.image_url || null,
       storage_location: form.storage_location.trim() || null,
       service_interval_hours: form.service_interval_hours ? Number(form.service_interval_hours) : null,
-    });
+    };
+    const { error } = form.id
+      ? await supabase.from("products").update(payload).eq("id", form.id)
+      : await supabase.from("products").insert(payload);
     if (error) return toast.error(error.message);
     setForm(empty);
-    toast.success("เพิ่มสินค้าแล้ว");
+    toast.success(form.id ? "บันทึกแล้ว" : "เพิ่มสินค้าแล้ว");
     load();
+  }
+  function startEdit(p: any) {
+    setForm({
+      id: p.id, name: p.name ?? "", part_number: p.part_number ?? "",
+      price: p.price != null ? String(p.price) : "",
+      stock_quantity: p.stock_quantity != null ? String(p.stock_quantity) : "0",
+      brand_id: p.brand_id ?? "", category_id: p.category_id ?? "",
+      image_url: p.image_url ?? "", storage_location: p.storage_location ?? "",
+      service_interval_hours: p.service_interval_hours != null ? String(p.service_interval_hours) : "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   async function del(id: string) {
     if (!confirm("ลบสินค้านี้?")) return;
     await supabase.from("products").delete().eq("id", id);
+    if (form.id === id) setForm(empty);
     load();
   }
 
