@@ -544,7 +544,7 @@ function MachinesTab() {
     try {
       const customer_id = await resolveCustomerId(form.customer_name);
       const brand_id = await resolveBrandId(form.brand_name);
-      const model_id = form.model_name ? await resolveModelId(form.model_name, brand_id) : null;
+      const model_id = form.model_name ? await resolveModelId(form.model_name, brand_id, form.pump_type) : null;
 
       const payload = {
         serial_number: form.serial_number.trim(),
