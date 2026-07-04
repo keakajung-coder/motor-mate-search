@@ -400,7 +400,8 @@ function ProductsTab() {
             </div>
           </div>
         </div>
-        <Button onClick={add}><Plus className="h-4 w-4 mr-1" />เพิ่มสินค้า</Button>
+        <Button onClick={save}><Plus className="h-4 w-4 mr-1" />{form.id ? "บันทึก" : "เพิ่มสินค้า"}</Button>
+        {form.id && <Button variant="outline" onClick={() => setForm(empty)}>ยกเลิก</Button>}
 
         <ul className="divide-y rounded border">
           {items.map((p) => {
