@@ -676,20 +676,67 @@ function groupByCategory(parts: MachinePart[]) {
   return Array.from(map.values()).sort((a, b) => a.sort - b.sort);
 }
 
-function printMachine(unitId: string) {
+async function printMachine(unitId: string, serial: string) {
   const el = document.getElementById(`print-${unitId}`);
-  if (!el) return window.print();
-  const wrap = document.createElement("div");
-  wrap.id = "print-area";
-  wrap.innerHTML = el.innerHTML;
-  document.body.appendChild(wrap);
-  const cleanup = () => {
-    wrap.remove();
-    window.removeEventListener("afterprint", cleanup);
-  };
-  window.addEventListener("afterprint", cleanup);
-  setTimeout(() => window.print(), 50);
+  if (!el) return;
+  toast.loading("กำลังสร้างไฟล์ PDF...", { id: "pdf" });
+  try {
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      import("html2canvas"),
+      import("jspdf"),
+    ]);
+    const canvas = await html2canvas(el, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+    });
+    const imgData = canvas.toDataURL("image/jpeg", 0.92);
+    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 8;
+    const imgW = pageW - margin * 2;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    let heightLeft = imgH;
+    let position = margin;
+    pdf.addImage(imgData, "JPEG", margin, position, imgW, imgH);
+    heightLeft -= pageH - margin * 2;
+    while (heightLeft > 0) {
+      position = margin - (imgH - heightLeft);
+      pdf.addPage();
+      pdf.addImage(imgData, "JPEG", margin, position, imgW, imgH);
+      heightLeft -= pageH - margin * 2;
+    }
+    const filename = `machine-${serial}.pdf`;
+    const blob = pdf.output("blob");
+    // Try native share with file (works in LINE in-app browser on iOS/Android with share support)
+    const file = new File([blob], filename, { type: "application/pdf" });
+    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+    if (nav.canShare && nav.canShare({ files: [file] })) {
+      try {
+        await nav.share({ files: [file], title: filename });
+        toast.success("ส่งออก PDF แล้ว", { id: "pdf" });
+        return;
+      } catch {
+        /* fall through to download */
+      }
+    }
+    // Fallback: trigger download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast.success("ดาวน์โหลด PDF แล้ว", { id: "pdf" });
+  } catch (err) {
+    console.error(err);
+    toast.error("สร้าง PDF ไม่สำเร็จ", { id: "pdf" });
+  }
 }
+
 
 async function shareMachine(unit: MachineResult) {
   const model = unit.compressor_models
