@@ -636,12 +636,13 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
           <div className="flex items-center gap-1 rounded bg-muted/50 px-2 py-1">
             <CalendarClock className="h-3 w-3 text-muted-foreground" />
             <span className="text-muted-foreground">เปลี่ยนล่าสุด:</span>
-            <span className="font-medium">{mp.last_changed_at ?? "-"}</span>
+            <span className="font-medium">{formatDate(mp.last_changed_at)}</span>
           </div>
           <div className="flex items-center gap-1 rounded bg-primary/10 px-2 py-1">
             <CalendarClock className="h-3 w-3 text-primary" />
             <span className="text-muted-foreground">ครั้งถัดไป:</span>
-            <span className="font-medium text-primary">{nextChange ?? "-"}</span>
+            <span className="font-medium text-primary">{formatDate(nextChange)}</span>
+
           </div>
         </div>
       </div>
