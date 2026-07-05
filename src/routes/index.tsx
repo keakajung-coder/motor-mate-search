@@ -68,18 +68,19 @@ function HomePage() {
         </p>
       </header>
 
-      <Tabs defaultValue="catalog" className="w-full">
+      <Tabs defaultValue="sn" className="w-full">
         <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex">
-          <TabsTrigger value="catalog">คลังอะไหล่</TabsTrigger>
           <TabsTrigger value="sn">ค้นด้วย S/N เครื่อง</TabsTrigger>
+          <TabsTrigger value="catalog">คลังอะไหล่</TabsTrigger>
         </TabsList>
-        <TabsContent value="catalog" className="mt-4">
-          <CatalogView />
-        </TabsContent>
         <TabsContent value="sn" className="mt-4">
           <SnView />
         </TabsContent>
+        <TabsContent value="catalog" className="mt-4">
+          <CatalogView />
+        </TabsContent>
       </Tabs>
+
     </div>
   );
 }
