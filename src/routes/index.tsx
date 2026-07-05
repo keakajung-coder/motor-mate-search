@@ -443,6 +443,12 @@ function SnView() {
     setUnits((data as unknown as MachineResult[]) ?? []);
   }
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const sn = sp.get("sn");
+    if (sn) setQ(sn);
+  }, []);
+
 
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
