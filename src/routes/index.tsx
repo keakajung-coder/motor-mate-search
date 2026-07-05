@@ -24,8 +24,21 @@ import {
   MessageCircle,
   Phone,
   Wrench,
+  Printer,
+  Share2,
 } from "lucide-react";
 import { toast } from "sonner";
+
+function formatDate(d: string | null | undefined): string {
+  if (!d) return "-";
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return d;
+  const dd = String(dt.getDate()).padStart(2, "0");
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const yyyy = dt.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -68,18 +81,19 @@ function HomePage() {
         </p>
       </header>
 
-      <Tabs defaultValue="catalog" className="w-full">
+      <Tabs defaultValue="sn" className="w-full">
         <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex">
-          <TabsTrigger value="catalog">คลังอะไหล่</TabsTrigger>
           <TabsTrigger value="sn">ค้นด้วย S/N เครื่อง</TabsTrigger>
+          <TabsTrigger value="catalog">คลังอะไหล่</TabsTrigger>
         </TabsList>
-        <TabsContent value="catalog" className="mt-4">
-          <CatalogView />
-        </TabsContent>
         <TabsContent value="sn" className="mt-4">
           <SnView />
         </TabsContent>
+        <TabsContent value="catalog" className="mt-4">
+          <CatalogView />
+        </TabsContent>
       </Tabs>
+
     </div>
   );
 }
@@ -446,8 +460,9 @@ function SnView() {
       return `${u.serial_number} ${brand} ${model} ${cust} ${phone} ${parts}`
         .toLowerCase()
         .includes(kw);
-    });
+    }).sort((a, b) => a.serial_number.localeCompare(b.serial_number, "th"));
   }, [units, q]);
+
 
   useEffect(() => {
     if (filtered.length === 1) setOpenId(filtered[0].id);
@@ -533,7 +548,15 @@ function MachineCard({
         <Badge variant="outline">{open ? "ซ่อน" : "ดูข้อมูล"}</Badge>
       </button>
       {open && (
-        <CardContent className="space-y-4 border-t pt-4">
+        <CardContent id={`print-${unit.id}`} className="space-y-4 border-t pt-4">
+          <div className="no-print flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => printMachine(unit.id)}>
+              <Printer className="mr-1 h-4 w-4" /> พรีวิว / พิมพ์ PDF
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => shareMachine(unit)}>
+              <Share2 className="mr-1 h-4 w-4" /> ส่งออก / แชร์
+            </Button>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Info label="S/N" value={unit.serial_number} />
             <Info label="รุ่นเครื่อง" value={model} />
@@ -543,8 +566,9 @@ function MachineCard({
               label="ชม.ทำงาน/วัน"
               value={unit.daily_hours != null ? `${unit.daily_hours} ชม.` : "-"}
             />
-            {unit.install_date && <Info label="วันที่ติดตั้ง" value={unit.install_date} />}
+            {unit.install_date && <Info label="วันที่ติดตั้ง" value={formatDate(unit.install_date)} />}
           </div>
+
           <div>
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
               <Package className="h-4 w-4" /> รายการอะไหล่
@@ -612,12 +636,13 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
           <div className="flex items-center gap-1 rounded bg-muted/50 px-2 py-1">
             <CalendarClock className="h-3 w-3 text-muted-foreground" />
             <span className="text-muted-foreground">เปลี่ยนล่าสุด:</span>
-            <span className="font-medium">{mp.last_changed_at ?? "-"}</span>
+            <span className="font-medium">{formatDate(mp.last_changed_at)}</span>
           </div>
           <div className="flex items-center gap-1 rounded bg-primary/10 px-2 py-1">
             <CalendarClock className="h-3 w-3 text-primary" />
             <span className="text-muted-foreground">ครั้งถัดไป:</span>
-            <span className="font-medium text-primary">{nextChange ?? "-"}</span>
+            <span className="font-medium text-primary">{formatDate(nextChange)}</span>
+
           </div>
         </div>
       </div>
@@ -650,3 +675,63 @@ function groupByCategory(parts: MachinePart[]) {
   }
   return Array.from(map.values()).sort((a, b) => a.sort - b.sort);
 }
+
+function printMachine(unitId: string) {
+  const el = document.getElementById(`print-${unitId}`);
+  if (!el) return window.print();
+  const wrap = document.createElement("div");
+  wrap.id = "print-area";
+  wrap.innerHTML = el.innerHTML;
+  document.body.appendChild(wrap);
+  const cleanup = () => {
+    wrap.remove();
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  setTimeout(() => window.print(), 50);
+}
+
+async function shareMachine(unit: MachineResult) {
+  const model = unit.compressor_models
+    ? `${unit.compressor_models.brands?.name ?? ""} ${unit.compressor_models.name}`.trim()
+    : "-";
+  const lines: string[] = [
+    `S/N: ${unit.serial_number}`,
+    `รุ่น: ${model}`,
+    `ลูกค้า: ${unit.customers?.name ?? "-"}`,
+    `เบอร์: ${unit.customers?.phone ?? "-"}`,
+    `ติดตั้ง: ${formatDate(unit.install_date)}`,
+    `ชม./วัน: ${unit.daily_hours ?? "-"}`,
+    "",
+    "รายการอะไหล่:",
+  ];
+  for (const mp of unit.machine_parts ?? []) {
+    const interval = mp.service_interval_hours ?? mp.products?.service_interval_hours ?? null;
+    const next = (() => {
+      if (!mp.last_changed_at || !interval || !unit.daily_hours || unit.daily_hours <= 0) return null;
+      const d = new Date(mp.last_changed_at);
+      d.setDate(d.getDate() + Math.round(interval / unit.daily_hours));
+      return d.toISOString().slice(0, 10);
+    })();
+    lines.push(
+      `- [${mp.products?.categories?.name ?? "-"}] ${mp.products?.name ?? ""} (${mp.products?.part_number ?? ""}) x${mp.quantity} | เปลี่ยนล่าสุด ${formatDate(mp.last_changed_at)} | ครั้งถัดไป ${formatDate(next)}`,
+    );
+  }
+  const text = lines.join("\n");
+  const title = `ข้อมูลเครื่อง ${unit.serial_number}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title, text });
+      return;
+    }
+  } catch {
+    /* user cancelled */
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success("คัดลอกข้อมูลแล้ว พร้อมส่งเข้า LINE / อีเมล");
+  } catch {
+    toast.error("ไม่สามารถคัดลอกได้");
+  }
+}
+
