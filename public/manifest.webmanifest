@@ -1,0 +1,13 @@
+{
+  "name": "ระบบค้นหาอะไหล่ปั๊มลม",
+  "short_name": "อะไหล่ปั๊มลม",
+  "description": "ค้นหาอะไหล่ปั๊มลมด้วย S/N เครื่อง",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf8f3",
+  "theme_color": "#faf8f3",
+  "lang": "th",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" }
+  ]
+}
