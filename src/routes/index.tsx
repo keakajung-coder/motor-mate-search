@@ -460,8 +460,9 @@ function SnView() {
       return `${u.serial_number} ${brand} ${model} ${cust} ${phone} ${parts}`
         .toLowerCase()
         .includes(kw);
-    });
+    }).sort((a, b) => a.serial_number.localeCompare(b.serial_number, "th"));
   }, [units, q]);
+
 
   useEffect(() => {
     if (filtered.length === 1) setOpenId(filtered[0].id);
