@@ -764,21 +764,20 @@ async function shareMachine(unit: MachineResult) {
       `- [${mp.products?.categories?.name ?? "-"}] ${mp.products?.name ?? ""} (${mp.products?.part_number ?? ""}) x${mp.quantity} | เปลี่ยนล่าสุด ${formatDate(mp.last_changed_at)} | ครั้งถัดไป ${formatDate(next)}`,
     );
   }
-  const text = lines.join("\n");
+  const shareUrl = `${window.location.origin}/?sn=${encodeURIComponent(unit.serial_number)}`;
+  const text = lines.join("\n") + `\n\nเปิดค้นหา: ${shareUrl}`;
   const title = `ข้อมูลเครื่อง ${unit.serial_number}`;
   try {
     if (navigator.share) {
-      await navigator.share({ title, text });
+      await navigator.share({ title, text, url: shareUrl });
       return;
     }
   } catch {
     /* user cancelled */
   }
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success("คัดลอกข้อมูลแล้ว พร้อมส่งเข้า LINE / อีเมล");
-  } catch {
-    toast.error("ไม่สามารถคัดลอกได้");
-  }
+  // Fallback: open LINE share
+  const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+  window.open(lineUrl, "_blank");
 }
+
 
