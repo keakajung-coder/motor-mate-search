@@ -443,6 +443,12 @@ function SnView() {
     setUnits((data as unknown as MachineResult[]) ?? []);
   }
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const sn = sp.get("sn");
+    if (sn) setQ(sn);
+  }, []);
+
 
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
@@ -550,7 +556,7 @@ function MachineCard({
       {open && (
         <CardContent id={`print-${unit.id}`} className="space-y-4 border-t pt-4">
           <div className="no-print flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => printMachine(unit.id)}>
+            <Button size="sm" variant="outline" onClick={() => printMachine(unit.id, unit.serial_number)}>
               <Printer className="mr-1 h-4 w-4" /> พรีวิว / พิมพ์ PDF
             </Button>
             <Button size="sm" variant="outline" onClick={() => shareMachine(unit)}>
@@ -676,20 +682,67 @@ function groupByCategory(parts: MachinePart[]) {
   return Array.from(map.values()).sort((a, b) => a.sort - b.sort);
 }
 
-function printMachine(unitId: string) {
+async function printMachine(unitId: string, serial: string) {
   const el = document.getElementById(`print-${unitId}`);
-  if (!el) return window.print();
-  const wrap = document.createElement("div");
-  wrap.id = "print-area";
-  wrap.innerHTML = el.innerHTML;
-  document.body.appendChild(wrap);
-  const cleanup = () => {
-    wrap.remove();
-    window.removeEventListener("afterprint", cleanup);
-  };
-  window.addEventListener("afterprint", cleanup);
-  setTimeout(() => window.print(), 50);
+  if (!el) return;
+  toast.loading("กำลังสร้างไฟล์ PDF...", { id: "pdf" });
+  try {
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      import("html2canvas"),
+      import("jspdf"),
+    ]);
+    const canvas = await html2canvas(el, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+    });
+    const imgData = canvas.toDataURL("image/jpeg", 0.92);
+    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 8;
+    const imgW = pageW - margin * 2;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    let heightLeft = imgH;
+    let position = margin;
+    pdf.addImage(imgData, "JPEG", margin, position, imgW, imgH);
+    heightLeft -= pageH - margin * 2;
+    while (heightLeft > 0) {
+      position = margin - (imgH - heightLeft);
+      pdf.addPage();
+      pdf.addImage(imgData, "JPEG", margin, position, imgW, imgH);
+      heightLeft -= pageH - margin * 2;
+    }
+    const filename = `machine-${serial}.pdf`;
+    const blob = pdf.output("blob");
+    // Try native share with file (works in LINE in-app browser on iOS/Android with share support)
+    const file = new File([blob], filename, { type: "application/pdf" });
+    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+    if (nav.canShare && nav.canShare({ files: [file] })) {
+      try {
+        await nav.share({ files: [file], title: filename });
+        toast.success("ส่งออก PDF แล้ว", { id: "pdf" });
+        return;
+      } catch {
+        /* fall through to download */
+      }
+    }
+    // Fallback: trigger download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast.success("ดาวน์โหลด PDF แล้ว", { id: "pdf" });
+  } catch (err) {
+    console.error(err);
+    toast.error("สร้าง PDF ไม่สำเร็จ", { id: "pdf" });
+  }
 }
+
 
 async function shareMachine(unit: MachineResult) {
   const model = unit.compressor_models
@@ -717,21 +770,20 @@ async function shareMachine(unit: MachineResult) {
       `- [${mp.products?.categories?.name ?? "-"}] ${mp.products?.name ?? ""} (${mp.products?.part_number ?? ""}) x${mp.quantity} | เปลี่ยนล่าสุด ${formatDate(mp.last_changed_at)} | ครั้งถัดไป ${formatDate(next)}`,
     );
   }
-  const text = lines.join("\n");
+  const shareUrl = `${window.location.origin}/?sn=${encodeURIComponent(unit.serial_number)}`;
+  const text = lines.join("\n") + `\n\nเปิดค้นหา: ${shareUrl}`;
   const title = `ข้อมูลเครื่อง ${unit.serial_number}`;
   try {
     if (navigator.share) {
-      await navigator.share({ title, text });
+      await navigator.share({ title, text, url: shareUrl });
       return;
     }
   } catch {
     /* user cancelled */
   }
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success("คัดลอกข้อมูลแล้ว พร้อมส่งเข้า LINE / อีเมล");
-  } catch {
-    toast.error("ไม่สามารถคัดลอกได้");
-  }
+  // Fallback: open LINE share
+  const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+  window.open(lineUrl, "_blank");
 }
+
 
