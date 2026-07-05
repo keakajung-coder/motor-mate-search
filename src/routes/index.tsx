@@ -675,3 +675,63 @@ function groupByCategory(parts: MachinePart[]) {
   }
   return Array.from(map.values()).sort((a, b) => a.sort - b.sort);
 }
+
+function printMachine(unitId: string) {
+  const el = document.getElementById(`print-${unitId}`);
+  if (!el) return window.print();
+  const wrap = document.createElement("div");
+  wrap.id = "print-area";
+  wrap.innerHTML = el.innerHTML;
+  document.body.appendChild(wrap);
+  const cleanup = () => {
+    wrap.remove();
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  setTimeout(() => window.print(), 50);
+}
+
+async function shareMachine(unit: MachineResult) {
+  const model = unit.compressor_models
+    ? `${unit.compressor_models.brands?.name ?? ""} ${unit.compressor_models.name}`.trim()
+    : "-";
+  const lines: string[] = [
+    `S/N: ${unit.serial_number}`,
+    `รุ่น: ${model}`,
+    `ลูกค้า: ${unit.customers?.name ?? "-"}`,
+    `เบอร์: ${unit.customers?.phone ?? "-"}`,
+    `ติดตั้ง: ${formatDate(unit.install_date)}`,
+    `ชม./วัน: ${unit.daily_hours ?? "-"}`,
+    "",
+    "รายการอะไหล่:",
+  ];
+  for (const mp of unit.machine_parts ?? []) {
+    const interval = mp.service_interval_hours ?? mp.products?.service_interval_hours ?? null;
+    const next = (() => {
+      if (!mp.last_changed_at || !interval || !unit.daily_hours || unit.daily_hours <= 0) return null;
+      const d = new Date(mp.last_changed_at);
+      d.setDate(d.getDate() + Math.round(interval / unit.daily_hours));
+      return d.toISOString().slice(0, 10);
+    })();
+    lines.push(
+      `- [${mp.products?.categories?.name ?? "-"}] ${mp.products?.name ?? ""} (${mp.products?.part_number ?? ""}) x${mp.quantity} | เปลี่ยนล่าสุด ${formatDate(mp.last_changed_at)} | ครั้งถัดไป ${formatDate(next)}`,
+    );
+  }
+  const text = lines.join("\n");
+  const title = `ข้อมูลเครื่อง ${unit.serial_number}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title, text });
+      return;
+    }
+  } catch {
+    /* user cancelled */
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success("คัดลอกข้อมูลแล้ว พร้อมส่งเข้า LINE / อีเมล");
+  } catch {
+    toast.error("ไม่สามารถคัดลอกได้");
+  }
+}
+
