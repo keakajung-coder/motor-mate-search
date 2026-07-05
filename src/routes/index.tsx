@@ -548,7 +548,15 @@ function MachineCard({
         <Badge variant="outline">{open ? "ซ่อน" : "ดูข้อมูล"}</Badge>
       </button>
       {open && (
-        <CardContent className="space-y-4 border-t pt-4">
+        <CardContent id={`print-${unit.id}`} className="space-y-4 border-t pt-4">
+          <div className="no-print flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => printMachine(unit.id)}>
+              <Printer className="mr-1 h-4 w-4" /> พรีวิว / พิมพ์ PDF
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => shareMachine(unit)}>
+              <Share2 className="mr-1 h-4 w-4" /> ส่งออก / แชร์
+            </Button>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Info label="S/N" value={unit.serial_number} />
             <Info label="รุ่นเครื่อง" value={model} />
@@ -558,8 +566,9 @@ function MachineCard({
               label="ชม.ทำงาน/วัน"
               value={unit.daily_hours != null ? `${unit.daily_hours} ชม.` : "-"}
             />
-            {unit.install_date && <Info label="วันที่ติดตั้ง" value={unit.install_date} />}
+            {unit.install_date && <Info label="วันที่ติดตั้ง" value={formatDate(unit.install_date)} />}
           </div>
+
           <div>
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
               <Package className="h-4 w-4" /> รายการอะไหล่
