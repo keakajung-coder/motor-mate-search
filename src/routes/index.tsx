@@ -550,7 +550,7 @@ function MachineCard({
       {open && (
         <CardContent id={`print-${unit.id}`} className="space-y-4 border-t pt-4">
           <div className="no-print flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => printMachine(unit.id)}>
+            <Button size="sm" variant="outline" onClick={() => printMachine(unit.id, unit.serial_number)}>
               <Printer className="mr-1 h-4 w-4" /> พรีวิว / พิมพ์ PDF
             </Button>
             <Button size="sm" variant="outline" onClick={() => shareMachine(unit)}>
