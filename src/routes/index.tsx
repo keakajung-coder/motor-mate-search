@@ -184,6 +184,89 @@ function ShareAppButton() {
   );
 }
 
+const THEME_PRESETS: { name: string; primary: string; ring: string; swatch: string }[] = [
+  { name: "น้ำเงินเข้ม (ค่าเริ่มต้น)", primary: "oklch(0.42 0.06 220)", ring: "oklch(0.42 0.06 220)", swatch: "#264a6b" },
+  { name: "ฟ้า", primary: "oklch(0.55 0.18 240)", ring: "oklch(0.55 0.18 240)", swatch: "#2563eb" },
+  { name: "เขียว", primary: "oklch(0.55 0.15 150)", ring: "oklch(0.55 0.15 150)", swatch: "#16a34a" },
+  { name: "ส้ม", primary: "oklch(0.65 0.18 45)", ring: "oklch(0.65 0.18 45)", swatch: "#ea580c" },
+  { name: "แดง", primary: "oklch(0.55 0.2 25)", ring: "oklch(0.55 0.2 25)", swatch: "#dc2626" },
+  { name: "ม่วง", primary: "oklch(0.5 0.2 300)", ring: "oklch(0.5 0.2 300)", swatch: "#7c3aed" },
+  { name: "ชมพู", primary: "oklch(0.65 0.2 350)", ring: "oklch(0.65 0.2 350)", swatch: "#ec4899" },
+  { name: "เทา", primary: "oklch(0.35 0.02 260)", ring: "oklch(0.35 0.02 260)", swatch: "#334155" },
+];
+
+function applyTheme(primary: string, ring: string) {
+  const root = document.documentElement;
+  root.style.setProperty("--primary", primary);
+  root.style.setProperty("--ring", ring);
+}
+
+function ThemePicker() {
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState<string>(THEME_PRESETS[0].swatch);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("app_theme");
+    if (saved) {
+      const preset = THEME_PRESETS.find((t) => t.swatch === saved);
+      if (preset) {
+        applyTheme(preset.primary, preset.ring);
+        setCurrent(preset.swatch);
+      }
+    }
+  }, []);
+
+  const pick = (p: (typeof THEME_PRESETS)[number]) => {
+    applyTheme(p.primary, p.ring);
+    localStorage.setItem("app_theme", p.swatch);
+    setCurrent(p.swatch);
+  };
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <span
+          className="mr-2 inline-block h-4 w-4 rounded-full border"
+          style={{ background: current }}
+        />
+        ธีมสี
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>เลือกธีมสี</DialogTitle>
+            <DialogDescription>เลือกสีหลักของแอป จะบันทึกไว้ในเครื่องนี้อัตโนมัติ</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 py-2 sm:grid-cols-4">
+            {THEME_PRESETS.map((p) => {
+              const active = current === p.swatch;
+              return (
+                <button
+                  key={p.swatch}
+                  type="button"
+                  onClick={() => pick(p)}
+                  className={
+                    "flex flex-col items-center gap-2 rounded-lg border p-3 text-xs transition-colors " +
+                    (active ? "border-primary ring-2 ring-primary" : "hover:bg-accent")
+                  }
+                >
+                  <span
+                    className="h-10 w-10 rounded-full border"
+                    style={{ background: p.swatch }}
+                  />
+                  <span className="text-center leading-tight">{p.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+
+
 
 /* ---------------- Catalog ---------------- */
 
