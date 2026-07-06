@@ -237,15 +237,21 @@ function CatalogView() {
 
   return (
     <div className="space-y-5">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="ค้นหาด้วยรหัสอะไหล่ ชื่อ หรือรุ่นปั๊มลม"
-          className="h-12 pl-10 text-base"
-        />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="ค้นหาด้วยรหัสอะไหล่ ชื่อ หรือรุ่นปั๊มลม"
+            className="h-12 pl-10 text-base"
+          />
+        </div>
+        <Button className="h-12 px-5" onClick={() => setQ((v) => v.trim())}>
+          <Search className="mr-1 h-4 w-4" /> ค้นหา
+        </Button>
       </div>
+
 
       <div className="flex flex-wrap gap-2">
         <FilterChip active={selectedCat === null} onClick={() => setSelectedCat(null)}>
