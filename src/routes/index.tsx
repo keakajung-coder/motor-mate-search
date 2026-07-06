@@ -74,13 +74,16 @@ type Product = {
 function HomePage() {
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          ระบบค้นหาอะไหล่ปั๊มลม
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          ค้นหาอะไหล่ด้วยรหัส ชื่อ หรือรุ่น พร้อมกรองตามหมวดหมู่และเช็กสต็อกคงเหลือ
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            ระบบค้นหาอะไหล่ปั๊มลม
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            ค้นหาอะไหล่ด้วยรหัส ชื่อ หรือรุ่น พร้อมกรองตามหมวดหมู่และเช็กสต็อกคงเหลือ
+          </p>
+        </div>
+        <ShareAppButton />
       </header>
 
       <Tabs defaultValue="sn" className="w-full">
@@ -99,6 +102,84 @@ function HomePage() {
     </div>
   );
 }
+
+function ShareAppButton() {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setUrl(`${window.location.origin}/`);
+    }
+  }, []);
+
+  const shareToLine = () => {
+    const text = `ระบบค้นหาอะไหล่ปั๊มลม\n${url}`;
+    const lineShare = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+    window.open(lineShare, "_blank");
+  };
+
+  const nativeShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "ระบบค้นหาอะไหล่ปั๊มลม", url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success("คัดลอกลิงก์แล้ว");
+      }
+    } catch {
+      /* user cancelled */
+    }
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("คัดลอกลิงก์แล้ว");
+    } catch {
+      toast.error("คัดลอกไม่สำเร็จ");
+    }
+  };
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <QrCode className="mr-1 h-4 w-4" /> QR / แชร์แอป
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>เปิดแอปโดยไม่ต้องเข้าเว็บไซต์</DialogTitle>
+            <DialogDescription>
+              สแกน QR ด้วยกล้องในแอป LINE / กล้องมือถือ เพื่อเปิดระบบค้นหาได้ทันที
+              หรือกดแชร์ลิงก์ไปยัง LINE / แอปอื่น
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3 py-2">
+            {url && (
+              <div className="rounded-lg bg-white p-4">
+                <QRCodeCanvas value={url} size={220} includeMargin />
+              </div>
+            )}
+            <div className="break-all text-center text-xs text-muted-foreground">{url}</div>
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={copyLink} className="w-full sm:w-auto">
+              คัดลอกลิงก์
+            </Button>
+            <Button variant="outline" onClick={nativeShare} className="w-full sm:w-auto">
+              <Share2 className="mr-1 h-4 w-4" /> แชร์
+            </Button>
+            <Button onClick={shareToLine} className="w-full sm:w-auto">
+              <MessageCircle className="mr-1 h-4 w-4" /> ส่งเข้า LINE
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 
 /* ---------------- Catalog ---------------- */
 
