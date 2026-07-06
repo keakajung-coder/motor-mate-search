@@ -770,35 +770,41 @@ async function printMachine(unitId: string, serial: string) {
   if (!el) return;
   toast.loading("กำลังสร้างไฟล์ PDF...", { id: "pdf" });
   try {
-    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-      import("html2canvas"),
+    const [{ toPng }, { default: jsPDF }] = await Promise.all([
+      import("html-to-image"),
       import("jspdf"),
     ]);
-    const canvas = await html2canvas(el, {
+    // html-to-image ใช้ SVG foreignObject จึงรองรับ oklch โดย browser render เอง
+    const dataUrl = await toPng(el, {
       backgroundColor: "#ffffff",
-      scale: 2,
-      useCORS: true,
+      pixelRatio: 2,
+      cacheBust: true,
     });
-    const imgData = canvas.toDataURL("image/jpeg", 0.92);
+    // โหลด image กลับเพื่อวัดขนาด
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = dataUrl;
+    });
     const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
     const margin = 8;
     const imgW = pageW - margin * 2;
-    const imgH = (canvas.height * imgW) / canvas.width;
+    const imgH = (img.height * imgW) / img.width;
     let heightLeft = imgH;
     let position = margin;
-    pdf.addImage(imgData, "JPEG", margin, position, imgW, imgH);
+    pdf.addImage(dataUrl, "PNG", margin, position, imgW, imgH);
     heightLeft -= pageH - margin * 2;
     while (heightLeft > 0) {
       position = margin - (imgH - heightLeft);
       pdf.addPage();
-      pdf.addImage(imgData, "JPEG", margin, position, imgW, imgH);
+      pdf.addImage(dataUrl, "PNG", margin, position, imgW, imgH);
       heightLeft -= pageH - margin * 2;
     }
     const filename = `machine-${serial}.pdf`;
     const blob = pdf.output("blob");
-    // Try native share with file (works in LINE in-app browser on iOS/Android with share support)
     const file = new File([blob], filename, { type: "application/pdf" });
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
     if (nav.canShare && nav.canShare({ files: [file] })) {
@@ -810,7 +816,6 @@ async function printMachine(unitId: string, serial: string) {
         /* fall through to download */
       }
     }
-    // Fallback: trigger download
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
