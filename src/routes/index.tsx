@@ -26,7 +26,9 @@ import {
   Wrench,
   Printer,
   Share2,
+  QrCode,
 } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 
 function formatDate(d: string | null | undefined): string {
