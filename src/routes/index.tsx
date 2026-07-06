@@ -83,7 +83,11 @@ function HomePage() {
             ค้นหาอะไหล่ด้วยรหัส ชื่อ หรือรุ่น พร้อมกรองตามหมวดหมู่และเช็กสต็อกคงเหลือ
           </p>
         </div>
-        <ShareAppButton />
+        <div className="flex flex-wrap items-center gap-2">
+          <ThemePicker />
+          <ShareAppButton />
+        </div>
+
       </header>
 
       <Tabs defaultValue="sn" className="w-full">
