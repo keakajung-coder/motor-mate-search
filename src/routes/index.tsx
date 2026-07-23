@@ -83,7 +83,11 @@ function HomePage() {
             ค้นหาอะไหล่ด้วยรหัส ชื่อ หรือรุ่น พร้อมกรองตามหมวดหมู่และเช็กสต็อกคงเหลือ
           </p>
         </div>
-        <ShareAppButton />
+        <div className="flex flex-wrap items-center gap-2">
+          <ThemePicker />
+          <ShareAppButton />
+        </div>
+
       </header>
 
       <Tabs defaultValue="sn" className="w-full">
@@ -180,6 +184,89 @@ function ShareAppButton() {
   );
 }
 
+const THEME_PRESETS: { name: string; primary: string; ring: string; swatch: string }[] = [
+  { name: "น้ำเงินเข้ม (ค่าเริ่มต้น)", primary: "oklch(0.42 0.06 220)", ring: "oklch(0.42 0.06 220)", swatch: "#264a6b" },
+  { name: "ฟ้า", primary: "oklch(0.55 0.18 240)", ring: "oklch(0.55 0.18 240)", swatch: "#2563eb" },
+  { name: "เขียว", primary: "oklch(0.55 0.15 150)", ring: "oklch(0.55 0.15 150)", swatch: "#16a34a" },
+  { name: "ส้ม", primary: "oklch(0.65 0.18 45)", ring: "oklch(0.65 0.18 45)", swatch: "#ea580c" },
+  { name: "แดง", primary: "oklch(0.55 0.2 25)", ring: "oklch(0.55 0.2 25)", swatch: "#dc2626" },
+  { name: "ม่วง", primary: "oklch(0.5 0.2 300)", ring: "oklch(0.5 0.2 300)", swatch: "#7c3aed" },
+  { name: "ชมพู", primary: "oklch(0.65 0.2 350)", ring: "oklch(0.65 0.2 350)", swatch: "#ec4899" },
+  { name: "เทา", primary: "oklch(0.35 0.02 260)", ring: "oklch(0.35 0.02 260)", swatch: "#334155" },
+];
+
+function applyTheme(primary: string, ring: string) {
+  const root = document.documentElement;
+  root.style.setProperty("--primary", primary);
+  root.style.setProperty("--ring", ring);
+}
+
+function ThemePicker() {
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState<string>(THEME_PRESETS[0].swatch);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("app_theme");
+    if (saved) {
+      const preset = THEME_PRESETS.find((t) => t.swatch === saved);
+      if (preset) {
+        applyTheme(preset.primary, preset.ring);
+        setCurrent(preset.swatch);
+      }
+    }
+  }, []);
+
+  const pick = (p: (typeof THEME_PRESETS)[number]) => {
+    applyTheme(p.primary, p.ring);
+    localStorage.setItem("app_theme", p.swatch);
+    setCurrent(p.swatch);
+  };
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <span
+          className="mr-2 inline-block h-4 w-4 rounded-full border"
+          style={{ background: current }}
+        />
+        ธีมสี
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>เลือกธีมสี</DialogTitle>
+            <DialogDescription>เลือกสีหลักของแอป จะบันทึกไว้ในเครื่องนี้อัตโนมัติ</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 py-2 sm:grid-cols-4">
+            {THEME_PRESETS.map((p) => {
+              const active = current === p.swatch;
+              return (
+                <button
+                  key={p.swatch}
+                  type="button"
+                  onClick={() => pick(p)}
+                  className={
+                    "flex flex-col items-center gap-2 rounded-lg border p-3 text-xs transition-colors " +
+                    (active ? "border-primary ring-2 ring-primary" : "hover:bg-accent")
+                  }
+                >
+                  <span
+                    className="h-10 w-10 rounded-full border"
+                    style={{ background: p.swatch }}
+                  />
+                  <span className="text-center leading-tight">{p.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+
+
 
 /* ---------------- Catalog ---------------- */
 
@@ -237,15 +324,21 @@ function CatalogView() {
 
   return (
     <div className="space-y-5">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="ค้นหาด้วยรหัสอะไหล่ ชื่อ หรือรุ่นปั๊มลม"
-          className="h-12 pl-10 text-base"
-        />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="ค้นหาด้วยรหัสอะไหล่ ชื่อ หรือรุ่นปั๊มลม"
+            className="h-12 pl-10 text-base"
+          />
+        </div>
+        <Button className="h-12 px-5" onClick={() => setQ((v) => v.trim())}>
+          <Search className="mr-1 h-4 w-4" /> ค้นหา
+        </Button>
       </div>
+
 
       <div className="flex flex-wrap gap-2">
         <FilterChip active={selectedCat === null} onClick={() => setSelectedCat(null)}>
@@ -559,27 +652,33 @@ function SnView() {
 
   return (
     <div className="space-y-5">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          list="sn-search-options"
-          placeholder="ค้นหาด้วย S/N, รุ่น, ยี่ห้อ, ชื่อลูกค้า หรือชื่ออะไหล่"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="h-12 pl-10 text-base"
-        />
-        <datalist id="sn-search-options">
-          {units.map((u) => {
-            const label = [
-              u.serial_number,
-              u.compressor_models?.brands?.name,
-              u.compressor_models?.name,
-              u.customers?.name,
-            ].filter(Boolean).join(" • ");
-            return <option key={u.id} value={u.serial_number}>{label}</option>;
-          })}
-        </datalist>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            list="sn-search-options"
+            placeholder="ค้นหาด้วย S/N, รุ่น, ยี่ห้อ, ชื่อลูกค้า หรือชื่ออะไหล่"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="h-12 pl-10 text-base"
+          />
+          <datalist id="sn-search-options">
+            {units.map((u) => {
+              const label = [
+                u.serial_number,
+                u.compressor_models?.brands?.name,
+                u.compressor_models?.name,
+                u.customers?.name,
+              ].filter(Boolean).join(" • ");
+              return <option key={u.id} value={u.serial_number}>{label}</option>;
+            })}
+          </datalist>
+        </div>
+        <Button className="h-12 px-5" onClick={() => setQ((v) => v.trim())}>
+          <Search className="mr-1 h-4 w-4" /> ค้นหา
+        </Button>
       </div>
+
 
       {loading ? (
         <div className="flex justify-center py-10">
@@ -770,35 +869,41 @@ async function printMachine(unitId: string, serial: string) {
   if (!el) return;
   toast.loading("กำลังสร้างไฟล์ PDF...", { id: "pdf" });
   try {
-    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-      import("html2canvas"),
+    const [{ toPng }, { default: jsPDF }] = await Promise.all([
+      import("html-to-image"),
       import("jspdf"),
     ]);
-    const canvas = await html2canvas(el, {
+    // html-to-image ใช้ SVG foreignObject จึงรองรับ oklch โดย browser render เอง
+    const dataUrl = await toPng(el, {
       backgroundColor: "#ffffff",
-      scale: 2,
-      useCORS: true,
+      pixelRatio: 2,
+      cacheBust: true,
     });
-    const imgData = canvas.toDataURL("image/jpeg", 0.92);
+    // โหลด image กลับเพื่อวัดขนาด
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = dataUrl;
+    });
     const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
     const margin = 8;
     const imgW = pageW - margin * 2;
-    const imgH = (canvas.height * imgW) / canvas.width;
+    const imgH = (img.height * imgW) / img.width;
     let heightLeft = imgH;
     let position = margin;
-    pdf.addImage(imgData, "JPEG", margin, position, imgW, imgH);
+    pdf.addImage(dataUrl, "PNG", margin, position, imgW, imgH);
     heightLeft -= pageH - margin * 2;
     while (heightLeft > 0) {
       position = margin - (imgH - heightLeft);
       pdf.addPage();
-      pdf.addImage(imgData, "JPEG", margin, position, imgW, imgH);
+      pdf.addImage(dataUrl, "PNG", margin, position, imgW, imgH);
       heightLeft -= pageH - margin * 2;
     }
     const filename = `machine-${serial}.pdf`;
     const blob = pdf.output("blob");
-    // Try native share with file (works in LINE in-app browser on iOS/Android with share support)
     const file = new File([blob], filename, { type: "application/pdf" });
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
     if (nav.canShare && nav.canShare({ files: [file] })) {
@@ -810,7 +915,6 @@ async function printMachine(unitId: string, serial: string) {
         /* fall through to download */
       }
     }
-    // Fallback: trigger download
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
