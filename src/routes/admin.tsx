@@ -510,7 +510,6 @@ function ProductsTab() {
             })
             .map((p) => {
             const machines = machinesByProduct[p.id] ?? [];
-            const machines = machinesByProduct[p.id] ?? [];
             return (
               <li key={p.id} className="px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
