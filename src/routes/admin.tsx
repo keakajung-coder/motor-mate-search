@@ -771,13 +771,44 @@ function MachinesTab() {
               <Label>ชม.ทำงาน/วัน</Label>
               <Input type="number" step="0.1" value={form.daily_hours} onChange={(e) => setForm({ ...form, daily_hours: e.target.value })} />
             </div>
+            <div>
+              <Label>สถานที่ติดตั้ง (ชื่อโรงงาน/ไซต์)</Label>
+              <Input value={form.site_name} onChange={(e) => setForm({ ...form, site_name: e.target.value })} placeholder="เช่น โรงงาน 2 อาคาร B" />
+            </div>
+            <div>
+              <Label>ที่อยู่ / แถว / โซน</Label>
+              <Input value={form.address_line} onChange={(e) => setForm({ ...form, address_line: e.target.value })} placeholder="เช่น แถว A นิคมฯ บางปู" />
+            </div>
+            <div>
+              <Label>อำเภอ / เขต</Label>
+              <Input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} placeholder="เช่น เมือง" />
+            </div>
+            <div>
+              <Label>จังหวัด</Label>
+              <Input
+                list="province-options"
+                value={form.province}
+                onChange={(e) => setForm({ ...form, province: e.target.value })}
+                placeholder="เช่น สมุทรปราการ"
+              />
+              <datalist id="province-options">
+                {THAI_PROVINCES.map((p) => <option key={p} value={p} />)}
+              </datalist>
+            </div>
             <div className="sm:col-span-2">
               <Label>หมายเหตุ</Label>
               <Textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
             </div>
           </div>
+          {dupUnit && (
+            <div className="flex flex-wrap items-center gap-2 rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <span>S/N นี้มีอยู่แล้ว ({dupUnit.customers?.name ?? "ไม่ระบุลูกค้า"})</span>
+              <Button size="sm" variant="outline" onClick={() => startEdit(dupUnit)}>ไปแก้ไขรายการเดิม</Button>
+            </div>
+          )}
           <div className="flex gap-2">
-            <Button onClick={save} disabled={saving}>
+            <Button onClick={save} disabled={saving || !!dupUnit}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
               {form.id ? "บันทึก" : "เพิ่มเครื่อง"}
             </Button>
@@ -788,7 +819,11 @@ function MachinesTab() {
           {form.id && (
             <div className="mt-2">
               <Label className="text-sm font-semibold">รายการอะไหล่ของเครื่องนี้</Label>
-              <MachinePartsEditor machineId={form.id} />
+              <MachinePartsEditor
+                machineId={form.id}
+                dailyHours={form.daily_hours ? Number(form.daily_hours) : null}
+                installDate={form.install_date || null}
+              />
             </div>
           )}
         </CardContent>
