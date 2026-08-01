@@ -831,9 +831,17 @@ function MachinesTab() {
 
       <Card>
         <CardHeader><CardTitle>รายการเครื่อง</CardTitle></CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <SearchBox value={q} onChange={setQ} placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด" />
           <ul className="divide-y rounded border">
-            {units.map((u) => (
+            {units
+              .filter((u) => {
+                const kw = q.trim().toLowerCase();
+                if (!kw) return true;
+                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""}`
+                  .toLowerCase().includes(kw);
+              })
+              .map((u) => (
               <li key={u.id} className="px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
@@ -841,6 +849,11 @@ function MachinesTab() {
                     <div className="text-xs text-muted-foreground">
                       {u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.name ?? "-"}
                     </div>
+                    {(u.site_name || u.district || u.province) && (
+                      <div className="text-xs text-muted-foreground">
+                        📍 {[u.site_name, u.address_line, u.district, u.province].filter(Boolean).join(" • ")}
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => startEdit(u)}>แก้ไข</Button>
@@ -850,7 +863,13 @@ function MachinesTab() {
                     <Button size="sm" variant="ghost" onClick={() => del(u.id)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
-                {selected === u.id && <MachinePartsEditor machineId={u.id} />}
+                {selected === u.id && (
+                  <MachinePartsEditor
+                    machineId={u.id}
+                    dailyHours={u.daily_hours ?? null}
+                    installDate={u.install_date ?? null}
+                  />
+                )}
               </li>
             ))}
             {units.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
