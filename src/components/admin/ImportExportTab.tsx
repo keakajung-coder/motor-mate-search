@@ -117,11 +117,11 @@ const DATASETS: Dataset[] = [
         .from("machine_units").select("id").eq("serial_number", sn).limit(1);
       if (exist && exist.length) {
         if (mode === "insert") return "skipped";
-        const { error } = await supabase.from("machine_units").update(payload).eq("id", exist[0].id);
+        const { error } = await supabase.from("machine_units").update(payload as any).eq("id", exist[0].id);
         if (error) throw new Error(error.message);
         return "updated";
       }
-      const { error } = await supabase.from("machine_units").insert(payload);
+      const { error } = await supabase.from("machine_units").insert(payload as any);
       if (error) throw new Error(error.message);
       return "inserted";
     },
@@ -147,11 +147,11 @@ const DATASETS: Dataset[] = [
       const { data: exist } = await supabase.from("customers").select("id").ilike("name", name).limit(1);
       if (exist && exist.length) {
         if (mode === "insert") return "skipped";
-        const { error } = await supabase.from("customers").update(payload).eq("id", exist[0].id);
+        const { error } = await supabase.from("customers").update(payload as any).eq("id", exist[0].id);
         if (error) throw new Error(error.message);
         return "updated";
       }
-      const { error } = await supabase.from("customers").insert(payload);
+      const { error } = await supabase.from("customers").insert(payload as any);
       if (error) throw new Error(error.message);
       return "inserted";
     },
@@ -198,11 +198,11 @@ const DATASETS: Dataset[] = [
       const { data: exist } = await supabase.from("products").select("id").eq("part_number", pn).limit(1);
       if (exist && exist.length) {
         if (mode === "insert") return "skipped";
-        const { error } = await supabase.from("products").update(payload).eq("id", exist[0].id);
+        const { error } = await supabase.from("products").update(payload as any).eq("id", exist[0].id);
         if (error) throw new Error(error.message);
         return "updated";
       }
-      const { error } = await supabase.from("products").insert(payload);
+      const { error } = await supabase.from("products").insert(payload as any);
       if (error) throw new Error(error.message);
       return "inserted";
     },
@@ -267,11 +267,11 @@ const DATASETS: Dataset[] = [
         .eq("machine_unit_id", units[0].id).eq("product_id", productId).limit(1);
       if (exist && exist.length) {
         if (mode === "insert") return "skipped";
-        const { error } = await supabase.from("machine_parts").update(payload).eq("id", exist[0].id);
+        const { error } = await supabase.from("machine_parts").update(payload as any).eq("id", exist[0].id);
         if (error) throw new Error(error.message);
         return "updated";
       }
-      const { error } = await supabase.from("machine_parts").insert(payload);
+      const { error } = await supabase.from("machine_parts").insert(payload as any);
       if (error) throw new Error(error.message);
       return "inserted";
     },
