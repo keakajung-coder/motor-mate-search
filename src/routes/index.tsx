@@ -755,6 +755,13 @@ function MachineCard({
               value={unit.daily_hours != null ? `${unit.daily_hours} ชม.` : "-"}
             />
             {unit.install_date && <Info label="วันที่ติดตั้ง" value={formatDate(unit.install_date)} />}
+            {(unit as any).site_name && <Info label="สถานที่ติดตั้ง" value={(unit as any).site_name} />}
+            {((unit as any).address_line || (unit as any).district || (unit as any).province) && (
+              <Info
+                label="ที่อยู่"
+                value={[(unit as any).address_line, (unit as any).district, (unit as any).province].filter(Boolean).join(" • ")}
+              />
+            )}
           </div>
 
           <div>
