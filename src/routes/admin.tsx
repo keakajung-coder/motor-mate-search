@@ -361,6 +361,7 @@ function ProductsTab() {
   const [uploading, setUploading] = useState(false);
   const empty = { id: "", name: "", part_number: "", price: "", stock_quantity: "0", brand_id: "", category_id: "", image_url: "", storage_location: "", service_interval_hours: "" };
   const [form, setForm] = useState(empty);
+  const [q, setQ] = useState("");
 
   async function load() {
     const [p, b, c, mp] = await Promise.all([
