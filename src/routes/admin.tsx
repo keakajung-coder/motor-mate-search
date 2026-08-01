@@ -488,11 +488,28 @@ function ProductsTab() {
             </div>
           </div>
         </div>
-        <Button onClick={save}><Plus className="h-4 w-4 mr-1" />{form.id ? "บันทึก" : "เพิ่มสินค้า"}</Button>
-        {form.id && <Button variant="outline" onClick={() => setForm(empty)}>ยกเลิก</Button>}
+        {form.part_number.trim() !== "" &&
+          items.some((p) => p.part_number?.trim().toLowerCase() === form.part_number.trim().toLowerCase() && p.id !== form.id) && (
+          <p className="flex items-center gap-1 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4" /> Part Number นี้มีอยู่แล้วในคลัง
+          </p>
+        )}
+        <div className="flex gap-2">
+          <Button onClick={save}><Plus className="h-4 w-4 mr-1" />{form.id ? "บันทึก" : "เพิ่มสินค้า"}</Button>
+          {form.id && <Button variant="outline" onClick={() => setForm(empty)}>ยกเลิก</Button>}
+        </div>
 
+        <SearchBox value={q} onChange={setQ} placeholder="ค้นหารหัสอะไหล่ / ชื่อ / หมวด / ตำแหน่งจัดเก็บ" />
         <ul className="divide-y rounded border">
-          {items.map((p) => {
+          {items
+            .filter((p) => {
+              const kw = q.trim().toLowerCase();
+              if (!kw) return true;
+              return `${p.part_number ?? ""} ${p.name ?? ""} ${p.categories?.name ?? ""} ${p.brands?.name ?? ""} ${p.storage_location ?? ""}`
+                .toLowerCase().includes(kw);
+            })
+            .map((p) => {
+            const machines = machinesByProduct[p.id] ?? [];
             const machines = machinesByProduct[p.id] ?? [];
             return (
               <li key={p.id} className="px-3 py-2">
