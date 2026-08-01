@@ -568,11 +568,23 @@ function MachinesTab() {
     pump_type: "",
     install_date: "",
     daily_hours: "",
+    site_name: "",
+    address_line: "",
+    district: "",
+    province: "",
     note: "",
   };
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+
+  const dupUnit = units.find(
+    (u) =>
+      form.serial_number.trim() !== "" &&
+      u.serial_number?.trim().toLowerCase() === form.serial_number.trim().toLowerCase() &&
+      u.id !== form.id,
+  );
 
   async function load() {
     const [u, c, b, m] = await Promise.all([
