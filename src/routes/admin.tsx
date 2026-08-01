@@ -660,6 +660,7 @@ function MachinesTab() {
 
   async function save() {
     if (!form.serial_number.trim()) return toast.error("กรอก S/N");
+    if (dupUnit) return toast.error(`S/N นี้มีอยู่แล้ว (${dupUnit.customers?.name ?? "ไม่ระบุลูกค้า"})`);
     setSaving(true);
     try {
       const customer_id = await resolveCustomerId(form.customer_name);
@@ -672,6 +673,10 @@ function MachinesTab() {
         customer_id,
         install_date: form.install_date || null,
         daily_hours: form.daily_hours ? Number(form.daily_hours) : null,
+        site_name: form.site_name.trim() || null,
+        address_line: form.address_line.trim() || null,
+        district: form.district.trim() || null,
+        province: form.province.trim() || null,
         note: form.note || null,
       };
 
