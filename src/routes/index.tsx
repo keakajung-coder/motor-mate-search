@@ -796,6 +796,15 @@ function MachineCard({
 function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | null }) {
   const interval = mp.service_interval_hours ?? mp.products?.service_interval_hours ?? null;
   const nextChange = computeNextChange(mp.last_changed_at, interval, dailyHours);
+  const usedHours =
+    mp.hours_used != null && mp.hours_used > 0
+      ? mp.hours_used
+      : mp.last_changed_at && dailyHours && dailyHours > 0
+        ? Math.round(
+            Math.max(0, Math.floor((Date.now() - new Date(mp.last_changed_at).getTime()) / 86400000)) * dailyHours,
+          )
+        : null;
+  const remaining = usedHours != null && interval ? interval - usedHours : null;
   return (
     <div className="flex gap-3 rounded-lg border bg-card p-3">
       {mp.products?.image_url ? (
