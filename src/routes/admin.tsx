@@ -64,6 +64,8 @@ function AdminPage() {
 function BrandsTab() {
   const [items, setItems] = useState<any[]>([]);
   const [name, setName] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [q, setQ] = useState("");
 
   async function load() {
     const { data } = await supabase.from("brands").select("*").order("name");
@@ -71,20 +73,31 @@ function BrandsTab() {
   }
   useEffect(() => { load(); }, []);
 
-  async function add() {
+  const dup = items.some(
+    (b) => b.name.trim().toLowerCase() === name.trim().toLowerCase() && b.id !== editId,
+  ) && name.trim() !== "";
+
+  async function save() {
     if (!name.trim()) return;
-    const { error } = await supabase.from("brands").insert({ name: name.trim() });
+    if (dup) return toast.error("ชื่อยี่ห้อนี้มีอยู่แล้ว");
+    const payload = { name: name.trim() };
+    const { error } = editId
+      ? await supabase.from("brands").update(payload).eq("id", editId)
+      : await supabase.from("brands").insert(payload);
     if (error) return toast.error(error.message);
-    setName("");
-    toast.success("เพิ่มยี่ห้อแล้ว");
+    setName(""); setEditId(null);
+    toast.success(editId ? "บันทึกแล้ว" : "เพิ่มยี่ห้อแล้ว");
     load();
   }
   async function del(id: string) {
     if (!confirm("ลบยี่ห้อนี้?")) return;
     const { error } = await supabase.from("brands").delete().eq("id", id);
     if (error) return toast.error(error.message);
+    if (editId === id) { setEditId(null); setName(""); }
     load();
   }
+
+  const filtered = items.filter((b) => b.name.toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
     <Card>
@@ -92,16 +105,26 @@ function BrandsTab() {
       <CardContent className="space-y-3">
         <div className="flex gap-2">
           <Input placeholder="ชื่อยี่ห้อ เช่น Atlas Copco" value={name} onChange={(e) => setName(e.target.value)} />
-          <Button onClick={add}><Plus className="h-4 w-4" /></Button>
+          <Button onClick={save}>{editId ? "บันทึก" : <Plus className="h-4 w-4" />}</Button>
+          {editId && <Button variant="outline" onClick={() => { setEditId(null); setName(""); }}>ยกเลิก</Button>}
         </div>
+        {dup && (
+          <p className="flex items-center gap-1 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4" /> ชื่อยี่ห้อนี้มีอยู่แล้ว
+          </p>
+        )}
+        <SearchBox value={q} onChange={setQ} placeholder="ค้นหายี่ห้อ" />
         <ul className="divide-y rounded border">
-          {items.map((b) => (
+          {filtered.map((b) => (
             <li key={b.id} className="flex items-center justify-between px-3 py-2">
               <span>{b.name}</span>
-              <Button size="sm" variant="ghost" onClick={() => del(b.id)}><Trash2 className="h-4 w-4" /></Button>
+              <div className="flex gap-1">
+                <Button size="sm" variant="ghost" onClick={() => { setEditId(b.id); setName(b.name); }}><Pencil className="h-4 w-4" /></Button>
+                <Button size="sm" variant="ghost" onClick={() => del(b.id)}><Trash2 className="h-4 w-4" /></Button>
+              </div>
             </li>
           ))}
-          {items.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
+          {filtered.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
         </ul>
       </CardContent>
     </Card>
