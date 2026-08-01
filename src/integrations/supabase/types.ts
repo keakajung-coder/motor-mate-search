@@ -204,36 +204,48 @@ export type Database = {
       }
       machine_units: {
         Row: {
+          address_line: string | null
           created_at: string | null
           customer_id: string | null
           daily_hours: number | null
+          district: string | null
           id: string
           install_date: string | null
           model_id: string | null
           note: string | null
+          province: string | null
           serial_number: string
+          site_name: string | null
           updated_at: string | null
         }
         Insert: {
+          address_line?: string | null
           created_at?: string | null
           customer_id?: string | null
           daily_hours?: number | null
+          district?: string | null
           id?: string
           install_date?: string | null
           model_id?: string | null
           note?: string | null
+          province?: string | null
           serial_number: string
+          site_name?: string | null
           updated_at?: string | null
         }
         Update: {
+          address_line?: string | null
           created_at?: string | null
           customer_id?: string | null
           daily_hours?: number | null
+          district?: string | null
           id?: string
           install_date?: string | null
           model_id?: string | null
           note?: string | null
+          province?: string | null
           serial_number?: string
+          site_name?: string | null
           updated_at?: string | null
         }
         Relationships: [

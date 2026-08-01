@@ -755,6 +755,13 @@ function MachineCard({
               value={unit.daily_hours != null ? `${unit.daily_hours} ชม.` : "-"}
             />
             {unit.install_date && <Info label="วันที่ติดตั้ง" value={formatDate(unit.install_date)} />}
+            {(unit as any).site_name && <Info label="สถานที่ติดตั้ง" value={(unit as any).site_name} />}
+            {((unit as any).address_line || (unit as any).district || (unit as any).province) && (
+              <Info
+                label="ที่อยู่"
+                value={[(unit as any).address_line, (unit as any).district, (unit as any).province].filter(Boolean).join(" • ")}
+              />
+            )}
           </div>
 
           <div>
@@ -789,6 +796,15 @@ function MachineCard({
 function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | null }) {
   const interval = mp.service_interval_hours ?? mp.products?.service_interval_hours ?? null;
   const nextChange = computeNextChange(mp.last_changed_at, interval, dailyHours);
+  const usedHours =
+    mp.hours_used != null && mp.hours_used > 0
+      ? mp.hours_used
+      : mp.last_changed_at && dailyHours && dailyHours > 0
+        ? Math.round(
+            Math.max(0, Math.floor((Date.now() - new Date(mp.last_changed_at).getTime()) / 86400000)) * dailyHours,
+          )
+        : null;
+  const remaining = usedHours != null && interval ? interval - usedHours : null;
   return (
     <div className="flex gap-3 rounded-lg border bg-card p-3">
       {mp.products?.image_url ? (
@@ -809,9 +825,14 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="secondary">จำนวน {mp.quantity}</Badge>
-          {mp.hours_used != null && (
+          {usedHours != null && (
             <Badge variant="outline" className="gap-1">
-              <Clock className="h-3 w-3" /> {mp.hours_used} ชม.
+              <Clock className="h-3 w-3" /> ใช้แล้ว {usedHours.toLocaleString()} ชม.
+            </Badge>
+          )}
+          {remaining != null && (
+            <Badge variant={remaining <= 0 ? "destructive" : "outline"}>
+              {remaining <= 0 ? "ถึงกำหนดเปลี่ยน" : `เหลือ ${remaining.toLocaleString()} ชม.`}
             </Badge>
           )}
           {mp.products?.storage_location && (
@@ -869,61 +890,10 @@ async function printMachine(unitId: string, serial: string) {
   if (!el) return;
   toast.loading("กำลังสร้างไฟล์ PDF...", { id: "pdf" });
   try {
-    const [{ toPng }, { default: jsPDF }] = await Promise.all([
-      import("html-to-image"),
-      import("jspdf"),
-    ]);
-    // html-to-image ใช้ SVG foreignObject จึงรองรับ oklch โดย browser render เอง
-    const dataUrl = await toPng(el, {
-      backgroundColor: "#ffffff",
-      pixelRatio: 2,
-      cacheBust: true,
-    });
-    // โหลด image กลับเพื่อวัดขนาด
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = reject;
-      i.src = dataUrl;
-    });
-    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 8;
-    const imgW = pageW - margin * 2;
-    const imgH = (img.height * imgW) / img.width;
-    let heightLeft = imgH;
-    let position = margin;
-    pdf.addImage(dataUrl, "PNG", margin, position, imgW, imgH);
-    heightLeft -= pageH - margin * 2;
-    while (heightLeft > 0) {
-      position = margin - (imgH - heightLeft);
-      pdf.addPage();
-      pdf.addImage(dataUrl, "PNG", margin, position, imgW, imgH);
-      heightLeft -= pageH - margin * 2;
-    }
-    const filename = `machine-${serial}.pdf`;
-    const blob = pdf.output("blob");
-    const file = new File([blob], filename, { type: "application/pdf" });
-    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-    if (nav.canShare && nav.canShare({ files: [file] })) {
-      try {
-        await nav.share({ files: [file], title: filename });
-        toast.success("ส่งออก PDF แล้ว", { id: "pdf" });
-        return;
-      } catch {
-        /* fall through to download */
-      }
-    }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast.success("ดาวน์โหลด PDF แล้ว", { id: "pdf" });
+    const { elementToPdfBlob, shareOrDownload } = await import("@/lib/report");
+    const blob = await elementToPdfBlob(el);
+    const res = await shareOrDownload(blob, `machine-${serial}.pdf`);
+    toast.success(res === "shared" ? "ส่งออก PDF แล้ว" : "ดาวน์โหลด PDF แล้ว", { id: "pdf" });
   } catch (err) {
     console.error(err);
     toast.error("สร้าง PDF ไม่สำเร็จ", { id: "pdf" });

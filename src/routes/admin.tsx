@@ -16,7 +16,9 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2, Pencil } from "lucide-react";
+import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle } from "lucide-react";
+import { ImportExportTab } from "@/components/admin/ImportExportTab";
+import { THAI_PROVINCES, computeUsage, formatDate } from "@/lib/report";
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 
@@ -24,6 +26,15 @@ export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "จัดการข้อมูล - อะไหล่ปั๊มลม" }] }),
   component: AdminPage,
 });
+
+function SearchBox({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input className="pl-9" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
 
 function AdminPage() {
   return (
@@ -36,12 +47,14 @@ function AdminPage() {
           <TabsTrigger value="products">สินค้า/อะไหล่</TabsTrigger>
           <TabsTrigger value="brands">ยี่ห้อ</TabsTrigger>
           <TabsTrigger value="models">รุ่นเครื่อง</TabsTrigger>
+          <TabsTrigger value="io">นำเข้า / ส่งออก</TabsTrigger>
         </TabsList>
         <TabsContent value="machines"><MachinesTab /></TabsContent>
         <TabsContent value="customers"><CustomersTab /></TabsContent>
         <TabsContent value="products"><ProductsTab /></TabsContent>
         <TabsContent value="brands"><BrandsTab /></TabsContent>
         <TabsContent value="models"><ModelsTab /></TabsContent>
+        <TabsContent value="io"><ImportExportTab /></TabsContent>
       </Tabs>
     </div>
   );
@@ -51,6 +64,8 @@ function AdminPage() {
 function BrandsTab() {
   const [items, setItems] = useState<any[]>([]);
   const [name, setName] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [q, setQ] = useState("");
 
   async function load() {
     const { data } = await supabase.from("brands").select("*").order("name");
@@ -58,20 +73,31 @@ function BrandsTab() {
   }
   useEffect(() => { load(); }, []);
 
-  async function add() {
+  const dup = items.some(
+    (b) => b.name.trim().toLowerCase() === name.trim().toLowerCase() && b.id !== editId,
+  ) && name.trim() !== "";
+
+  async function save() {
     if (!name.trim()) return;
-    const { error } = await supabase.from("brands").insert({ name: name.trim() });
+    if (dup) return toast.error("ชื่อยี่ห้อนี้มีอยู่แล้ว");
+    const payload = { name: name.trim() };
+    const { error } = editId
+      ? await supabase.from("brands").update(payload).eq("id", editId)
+      : await supabase.from("brands").insert(payload);
     if (error) return toast.error(error.message);
-    setName("");
-    toast.success("เพิ่มยี่ห้อแล้ว");
+    setName(""); setEditId(null);
+    toast.success(editId ? "บันทึกแล้ว" : "เพิ่มยี่ห้อแล้ว");
     load();
   }
   async function del(id: string) {
     if (!confirm("ลบยี่ห้อนี้?")) return;
     const { error } = await supabase.from("brands").delete().eq("id", id);
     if (error) return toast.error(error.message);
+    if (editId === id) { setEditId(null); setName(""); }
     load();
   }
+
+  const filtered = items.filter((b) => b.name.toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
     <Card>
@@ -79,16 +105,26 @@ function BrandsTab() {
       <CardContent className="space-y-3">
         <div className="flex gap-2">
           <Input placeholder="ชื่อยี่ห้อ เช่น Atlas Copco" value={name} onChange={(e) => setName(e.target.value)} />
-          <Button onClick={add}><Plus className="h-4 w-4" /></Button>
+          <Button onClick={save}>{editId ? "บันทึก" : <Plus className="h-4 w-4" />}</Button>
+          {editId && <Button variant="outline" onClick={() => { setEditId(null); setName(""); }}>ยกเลิก</Button>}
         </div>
+        {dup && (
+          <p className="flex items-center gap-1 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4" /> ชื่อยี่ห้อนี้มีอยู่แล้ว
+          </p>
+        )}
+        <SearchBox value={q} onChange={setQ} placeholder="ค้นหายี่ห้อ" />
         <ul className="divide-y rounded border">
-          {items.map((b) => (
+          {filtered.map((b) => (
             <li key={b.id} className="flex items-center justify-between px-3 py-2">
               <span>{b.name}</span>
-              <Button size="sm" variant="ghost" onClick={() => del(b.id)}><Trash2 className="h-4 w-4" /></Button>
+              <div className="flex gap-1">
+                <Button size="sm" variant="ghost" onClick={() => { setEditId(b.id); setName(b.name); }}><Pencil className="h-4 w-4" /></Button>
+                <Button size="sm" variant="ghost" onClick={() => del(b.id)}><Trash2 className="h-4 w-4" /></Button>
+              </div>
             </li>
           ))}
-          {items.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
+          {filtered.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
         </ul>
       </CardContent>
     </Card>
@@ -187,7 +223,9 @@ function ModelsTab() {
 function CustomersTab() {
   const [items, setItems] = useState<any[]>([]);
   const [machinesByCust, setMachinesByCust] = useState<Record<string, any[]>>({});
-  const [form, setForm] = useState({ name: "", phone: "", address: "" });
+  const emptyForm = { id: "", name: "", phone: "", address: "", note: "" };
+  const [form, setForm] = useState(emptyForm);
+  const [q, setQ] = useState("");
 
   async function load() {
     const [c, u] = await Promise.all([
@@ -204,36 +242,82 @@ function CustomersTab() {
   }
   useEffect(() => { load(); }, []);
 
-  async function add() {
+  const dup =
+    form.name.trim() !== "" &&
+    items.some((c) => c.name.trim().toLowerCase() === form.name.trim().toLowerCase() && c.id !== form.id);
+
+  async function save() {
     if (!form.name.trim()) return toast.error("กรอกชื่อลูกค้า");
-    const { error } = await supabase.from("customers").insert({
+    if (dup) return toast.error("ชื่อลูกค้านี้มีอยู่แล้ว");
+    const payload = {
       name: form.name.trim(),
       phone: form.phone.trim() || null,
       address: form.address.trim() || null,
-    });
+      note: form.note.trim() || null,
+    };
+    const { error } = form.id
+      ? await supabase.from("customers").update(payload).eq("id", form.id)
+      : await supabase.from("customers").insert(payload);
     if (error) return toast.error(error.message);
-    setForm({ name: "", phone: "", address: "" });
-    toast.success("เพิ่มลูกค้าแล้ว");
+    setForm(emptyForm);
+    toast.success(form.id ? "บันทึกแล้ว" : "เพิ่มลูกค้าแล้ว");
     load();
+  }
+  function startEdit(c: any) {
+    setForm({
+      id: c.id, name: c.name ?? "", phone: c.phone ?? "",
+      address: c.address ?? "", note: c.note ?? "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   async function del(id: string) {
     if (!confirm("ลบลูกค้านี้?")) return;
     await supabase.from("customers").delete().eq("id", id);
+    if (form.id === id) setForm(emptyForm);
     load();
   }
 
+  const kw = q.trim().toLowerCase();
+  const filtered = kw
+    ? items.filter((c) =>
+        `${c.name ?? ""} ${c.phone ?? ""} ${c.address ?? ""} ${c.note ?? ""}`.toLowerCase().includes(kw),
+      )
+    : items;
+
   return (
     <Card>
-      <CardHeader><CardTitle>ลูกค้า</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{form.id ? "แก้ไขลูกค้า" : "ลูกค้า"}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid gap-2 sm:grid-cols-3">
-          <Input placeholder="ชื่อลูกค้า" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <Input placeholder="เบอร์โทร" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <Input placeholder="ที่อยู่" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div>
+            <Label>ชื่อลูกค้า</Label>
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div>
+            <Label>เบอร์โทร</Label>
+            <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          </div>
+          <div>
+            <Label>ที่อยู่</Label>
+            <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          </div>
+          <div>
+            <Label>หมายเหตุ</Label>
+            <Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+          </div>
         </div>
-        <Button onClick={add}><Plus className="h-4 w-4 mr-1" />เพิ่มลูกค้า</Button>
+        {dup && (
+          <p className="flex items-center gap-1 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4" /> ชื่อลูกค้านี้มีอยู่แล้ว
+          </p>
+        )}
+        <div className="flex gap-2">
+          <Button onClick={save}><Plus className="h-4 w-4 mr-1" />{form.id ? "บันทึก" : "เพิ่มลูกค้า"}</Button>
+          {form.id && <Button variant="outline" onClick={() => setForm(emptyForm)}>ยกเลิก</Button>}
+        </div>
+        <SearchBox value={q} onChange={setQ} placeholder="ค้นหาชื่อลูกค้า / เบอร์ / ที่อยู่" />
         <ul className="divide-y rounded border">
-          {items.map((c) => {
+          {filtered.map((c) => {
             const machines = machinesByCust[c.id] ?? [];
             return (
               <li key={c.id} className="px-3 py-2">
@@ -242,7 +326,10 @@ function CustomersTab() {
                     <div className="font-medium">{c.name}</div>
                     <div className="text-xs text-muted-foreground">{c.phone} {c.address && `• ${c.address}`}</div>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => del(c.id)}><Trash2 className="h-4 w-4" /></Button>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => startEdit(c)}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => del(c.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
                 </div>
                 {machines.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -258,7 +345,7 @@ function CustomersTab() {
               </li>
             );
           })}
-          {items.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
+          {filtered.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
         </ul>
       </CardContent>
     </Card>
@@ -274,6 +361,7 @@ function ProductsTab() {
   const [uploading, setUploading] = useState(false);
   const empty = { id: "", name: "", part_number: "", price: "", stock_quantity: "0", brand_id: "", category_id: "", image_url: "", storage_location: "", service_interval_hours: "" };
   const [form, setForm] = useState(empty);
+  const [q, setQ] = useState("");
 
   async function load() {
     const [p, b, c, mp] = await Promise.all([
@@ -400,11 +488,27 @@ function ProductsTab() {
             </div>
           </div>
         </div>
-        <Button onClick={save}><Plus className="h-4 w-4 mr-1" />{form.id ? "บันทึก" : "เพิ่มสินค้า"}</Button>
-        {form.id && <Button variant="outline" onClick={() => setForm(empty)}>ยกเลิก</Button>}
+        {form.part_number.trim() !== "" &&
+          items.some((p) => p.part_number?.trim().toLowerCase() === form.part_number.trim().toLowerCase() && p.id !== form.id) && (
+          <p className="flex items-center gap-1 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4" /> Part Number นี้มีอยู่แล้วในคลัง
+          </p>
+        )}
+        <div className="flex gap-2">
+          <Button onClick={save}><Plus className="h-4 w-4 mr-1" />{form.id ? "บันทึก" : "เพิ่มสินค้า"}</Button>
+          {form.id && <Button variant="outline" onClick={() => setForm(empty)}>ยกเลิก</Button>}
+        </div>
 
+        <SearchBox value={q} onChange={setQ} placeholder="ค้นหารหัสอะไหล่ / ชื่อ / หมวด / ตำแหน่งจัดเก็บ" />
         <ul className="divide-y rounded border">
-          {items.map((p) => {
+          {items
+            .filter((p) => {
+              const kw = q.trim().toLowerCase();
+              if (!kw) return true;
+              return `${p.part_number ?? ""} ${p.name ?? ""} ${p.categories?.name ?? ""} ${p.brands?.name ?? ""} ${p.storage_location ?? ""}`
+                .toLowerCase().includes(kw);
+            })
+            .map((p) => {
             const machines = machinesByProduct[p.id] ?? [];
             return (
               <li key={p.id} className="px-3 py-2">
@@ -464,11 +568,23 @@ function MachinesTab() {
     pump_type: "",
     install_date: "",
     daily_hours: "",
+    site_name: "",
+    address_line: "",
+    district: "",
+    province: "",
     note: "",
   };
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+
+  const dupUnit = units.find(
+    (u) =>
+      form.serial_number.trim() !== "" &&
+      u.serial_number?.trim().toLowerCase() === form.serial_number.trim().toLowerCase() &&
+      u.id !== form.id,
+  );
 
   async function load() {
     const [u, c, b, m] = await Promise.all([
@@ -496,6 +612,10 @@ function MachinesTab() {
       pump_type: u.compressor_models?.pump_type ?? "",
       install_date: u.install_date ?? "",
       daily_hours: u.daily_hours != null ? String(u.daily_hours) : "",
+      site_name: u.site_name ?? "",
+      address_line: u.address_line ?? "",
+      district: u.district ?? "",
+      province: u.province ?? "",
       note: u.note ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -540,6 +660,7 @@ function MachinesTab() {
 
   async function save() {
     if (!form.serial_number.trim()) return toast.error("กรอก S/N");
+    if (dupUnit) return toast.error(`S/N นี้มีอยู่แล้ว (${dupUnit.customers?.name ?? "ไม่ระบุลูกค้า"})`);
     setSaving(true);
     try {
       const customer_id = await resolveCustomerId(form.customer_name);
@@ -552,6 +673,10 @@ function MachinesTab() {
         customer_id,
         install_date: form.install_date || null,
         daily_hours: form.daily_hours ? Number(form.daily_hours) : null,
+        site_name: form.site_name.trim() || null,
+        address_line: form.address_line.trim() || null,
+        district: form.district.trim() || null,
+        province: form.province.trim() || null,
         note: form.note || null,
       };
 
@@ -646,13 +771,44 @@ function MachinesTab() {
               <Label>ชม.ทำงาน/วัน</Label>
               <Input type="number" step="0.1" value={form.daily_hours} onChange={(e) => setForm({ ...form, daily_hours: e.target.value })} />
             </div>
+            <div>
+              <Label>สถานที่ติดตั้ง (ชื่อโรงงาน/ไซต์)</Label>
+              <Input value={form.site_name} onChange={(e) => setForm({ ...form, site_name: e.target.value })} placeholder="เช่น โรงงาน 2 อาคาร B" />
+            </div>
+            <div>
+              <Label>ที่อยู่ / แถว / โซน</Label>
+              <Input value={form.address_line} onChange={(e) => setForm({ ...form, address_line: e.target.value })} placeholder="เช่น แถว A นิคมฯ บางปู" />
+            </div>
+            <div>
+              <Label>อำเภอ / เขต</Label>
+              <Input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} placeholder="เช่น เมือง" />
+            </div>
+            <div>
+              <Label>จังหวัด</Label>
+              <Input
+                list="province-options"
+                value={form.province}
+                onChange={(e) => setForm({ ...form, province: e.target.value })}
+                placeholder="เช่น สมุทรปราการ"
+              />
+              <datalist id="province-options">
+                {THAI_PROVINCES.map((p) => <option key={p} value={p} />)}
+              </datalist>
+            </div>
             <div className="sm:col-span-2">
               <Label>หมายเหตุ</Label>
               <Textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
             </div>
           </div>
+          {dupUnit && (
+            <div className="flex flex-wrap items-center gap-2 rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <span>S/N นี้มีอยู่แล้ว ({dupUnit.customers?.name ?? "ไม่ระบุลูกค้า"})</span>
+              <Button size="sm" variant="outline" onClick={() => startEdit(dupUnit)}>ไปแก้ไขรายการเดิม</Button>
+            </div>
+          )}
           <div className="flex gap-2">
-            <Button onClick={save} disabled={saving}>
+            <Button onClick={save} disabled={saving || !!dupUnit}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
               {form.id ? "บันทึก" : "เพิ่มเครื่อง"}
             </Button>
@@ -663,7 +819,11 @@ function MachinesTab() {
           {form.id && (
             <div className="mt-2">
               <Label className="text-sm font-semibold">รายการอะไหล่ของเครื่องนี้</Label>
-              <MachinePartsEditor machineId={form.id} />
+              <MachinePartsEditor
+                machineId={form.id}
+                dailyHours={form.daily_hours ? Number(form.daily_hours) : null}
+                installDate={form.install_date || null}
+              />
             </div>
           )}
         </CardContent>
@@ -671,9 +831,17 @@ function MachinesTab() {
 
       <Card>
         <CardHeader><CardTitle>รายการเครื่อง</CardTitle></CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <SearchBox value={q} onChange={setQ} placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด" />
           <ul className="divide-y rounded border">
-            {units.map((u) => (
+            {units
+              .filter((u) => {
+                const kw = q.trim().toLowerCase();
+                if (!kw) return true;
+                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""}`
+                  .toLowerCase().includes(kw);
+              })
+              .map((u) => (
               <li key={u.id} className="px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
@@ -681,6 +849,11 @@ function MachinesTab() {
                     <div className="text-xs text-muted-foreground">
                       {u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.name ?? "-"}
                     </div>
+                    {(u.site_name || u.district || u.province) && (
+                      <div className="text-xs text-muted-foreground">
+                        📍 {[u.site_name, u.address_line, u.district, u.province].filter(Boolean).join(" • ")}
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => startEdit(u)}>แก้ไข</Button>
@@ -690,7 +863,13 @@ function MachinesTab() {
                     <Button size="sm" variant="ghost" onClick={() => del(u.id)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
-                {selected === u.id && <MachinePartsEditor machineId={u.id} />}
+                {selected === u.id && (
+                  <MachinePartsEditor
+                    machineId={u.id}
+                    dailyHours={u.daily_hours ?? null}
+                    installDate={u.install_date ?? null}
+                  />
+                )}
               </li>
             ))}
             {units.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
@@ -701,7 +880,15 @@ function MachinesTab() {
   );
 }
 
-function MachinePartsEditor({ machineId }: { machineId: string }) {
+function MachinePartsEditor({
+  machineId,
+  dailyHours = null,
+  installDate = null,
+}: {
+  machineId: string;
+  dailyHours?: number | null;
+  installDate?: string | null;
+}) {
   const [parts, setParts] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [cats, setCats] = useState<any[]>([]);
@@ -831,7 +1018,15 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
       </div>
 
       <ul className="divide-y rounded border bg-card">
-        {parts.map((mp) => (
+        {parts.map((mp) => {
+          const usage = computeUsage({
+            lastChanged: mp.last_changed_at,
+            installDate,
+            intervalHours: mp.service_interval_hours ?? mp.products?.service_interval_hours ?? null,
+            dailyHours,
+            manualHours: mp.hours_used,
+          });
+          return (
           <li key={mp.id} className="space-y-2 px-3 py-2">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
@@ -890,8 +1085,19 @@ function MachinePartsEditor({ machineId }: { machineId: string }) {
                 />
               </div>
             </div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <Badge variant="secondary">ชม.สะสม: {usage.used != null ? usage.used.toLocaleString() : "-"}</Badge>
+              <Badge variant={usage.overdue ? "destructive" : "outline"}>
+                คงเหลือ: {usage.remaining != null ? `${usage.remaining.toLocaleString()} ชม.` : "-"}
+              </Badge>
+              <Badge variant={usage.overdue ? "destructive" : "outline"}>
+                ครั้งถัดไป: {usage.nextDate ? formatDate(usage.nextDate) : "-"}
+              </Badge>
+              {usage.overdue && <Badge variant="destructive">ถึงกำหนดเปลี่ยน</Badge>}
+            </div>
           </li>
-        ))}
+          );
+        })}
         {parts.length === 0 && <li className="px-3 py-3 text-sm text-muted-foreground">ยังไม่มีอะไหล่ในเครื่องนี้</li>}
       </ul>
     </div>
