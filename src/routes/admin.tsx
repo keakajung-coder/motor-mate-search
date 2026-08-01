@@ -880,7 +880,15 @@ function MachinesTab() {
   );
 }
 
-function MachinePartsEditor({ machineId }: { machineId: string }) {
+function MachinePartsEditor({
+  machineId,
+  dailyHours = null,
+  installDate = null,
+}: {
+  machineId: string;
+  dailyHours?: number | null;
+  installDate?: string | null;
+}) {
   const [parts, setParts] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [cats, setCats] = useState<any[]>([]);
