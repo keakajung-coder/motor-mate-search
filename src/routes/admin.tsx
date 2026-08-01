@@ -1085,8 +1085,19 @@ function MachinePartsEditor({
                 />
               </div>
             </div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <Badge variant="secondary">ชม.สะสม: {usage.used != null ? usage.used.toLocaleString() : "-"}</Badge>
+              <Badge variant={usage.overdue ? "destructive" : "outline"}>
+                คงเหลือ: {usage.remaining != null ? `${usage.remaining.toLocaleString()} ชม.` : "-"}
+              </Badge>
+              <Badge variant={usage.overdue ? "destructive" : "outline"}>
+                ครั้งถัดไป: {usage.nextDate ? formatDate(usage.nextDate) : "-"}
+              </Badge>
+              {usage.overdue && <Badge variant="destructive">ถึงกำหนดเปลี่ยน</Badge>}
+            </div>
           </li>
-        ))}
+          );
+        })}
         {parts.length === 0 && <li className="px-3 py-3 text-sm text-muted-foreground">ยังไม่มีอะไหล่ในเครื่องนี้</li>}
       </ul>
     </div>
