@@ -1018,7 +1018,15 @@ function MachinePartsEditor({
       </div>
 
       <ul className="divide-y rounded border bg-card">
-        {parts.map((mp) => (
+        {parts.map((mp) => {
+          const usage = computeUsage({
+            lastChanged: mp.last_changed_at,
+            installDate,
+            intervalHours: mp.service_interval_hours ?? mp.products?.service_interval_hours ?? null,
+            dailyHours,
+            manualHours: mp.hours_used,
+          });
+          return (
           <li key={mp.id} className="space-y-2 px-3 py-2">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
