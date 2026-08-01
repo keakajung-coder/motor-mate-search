@@ -223,7 +223,9 @@ function ModelsTab() {
 function CustomersTab() {
   const [items, setItems] = useState<any[]>([]);
   const [machinesByCust, setMachinesByCust] = useState<Record<string, any[]>>({});
-  const [form, setForm] = useState({ name: "", phone: "", address: "" });
+  const emptyForm = { id: "", name: "", phone: "", address: "", note: "" };
+  const [form, setForm] = useState(emptyForm);
+  const [q, setQ] = useState("");
 
   async function load() {
     const [c, u] = await Promise.all([
@@ -240,36 +242,82 @@ function CustomersTab() {
   }
   useEffect(() => { load(); }, []);
 
-  async function add() {
+  const dup =
+    form.name.trim() !== "" &&
+    items.some((c) => c.name.trim().toLowerCase() === form.name.trim().toLowerCase() && c.id !== form.id);
+
+  async function save() {
     if (!form.name.trim()) return toast.error("กรอกชื่อลูกค้า");
-    const { error } = await supabase.from("customers").insert({
+    if (dup) return toast.error("ชื่อลูกค้านี้มีอยู่แล้ว");
+    const payload = {
       name: form.name.trim(),
       phone: form.phone.trim() || null,
       address: form.address.trim() || null,
-    });
+      note: form.note.trim() || null,
+    };
+    const { error } = form.id
+      ? await supabase.from("customers").update(payload).eq("id", form.id)
+      : await supabase.from("customers").insert(payload);
     if (error) return toast.error(error.message);
-    setForm({ name: "", phone: "", address: "" });
-    toast.success("เพิ่มลูกค้าแล้ว");
+    setForm(emptyForm);
+    toast.success(form.id ? "บันทึกแล้ว" : "เพิ่มลูกค้าแล้ว");
     load();
+  }
+  function startEdit(c: any) {
+    setForm({
+      id: c.id, name: c.name ?? "", phone: c.phone ?? "",
+      address: c.address ?? "", note: c.note ?? "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   async function del(id: string) {
     if (!confirm("ลบลูกค้านี้?")) return;
     await supabase.from("customers").delete().eq("id", id);
+    if (form.id === id) setForm(emptyForm);
     load();
   }
 
+  const kw = q.trim().toLowerCase();
+  const filtered = kw
+    ? items.filter((c) =>
+        `${c.name ?? ""} ${c.phone ?? ""} ${c.address ?? ""} ${c.note ?? ""}`.toLowerCase().includes(kw),
+      )
+    : items;
+
   return (
     <Card>
-      <CardHeader><CardTitle>ลูกค้า</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{form.id ? "แก้ไขลูกค้า" : "ลูกค้า"}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid gap-2 sm:grid-cols-3">
-          <Input placeholder="ชื่อลูกค้า" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <Input placeholder="เบอร์โทร" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <Input placeholder="ที่อยู่" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div>
+            <Label>ชื่อลูกค้า</Label>
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div>
+            <Label>เบอร์โทร</Label>
+            <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          </div>
+          <div>
+            <Label>ที่อยู่</Label>
+            <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          </div>
+          <div>
+            <Label>หมายเหตุ</Label>
+            <Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+          </div>
         </div>
-        <Button onClick={add}><Plus className="h-4 w-4 mr-1" />เพิ่มลูกค้า</Button>
+        {dup && (
+          <p className="flex items-center gap-1 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4" /> ชื่อลูกค้านี้มีอยู่แล้ว
+          </p>
+        )}
+        <div className="flex gap-2">
+          <Button onClick={save}><Plus className="h-4 w-4 mr-1" />{form.id ? "บันทึก" : "เพิ่มลูกค้า"}</Button>
+          {form.id && <Button variant="outline" onClick={() => setForm(emptyForm)}>ยกเลิก</Button>}
+        </div>
+        <SearchBox value={q} onChange={setQ} placeholder="ค้นหาชื่อลูกค้า / เบอร์ / ที่อยู่" />
         <ul className="divide-y rounded border">
-          {items.map((c) => {
+          {filtered.map((c) => {
             const machines = machinesByCust[c.id] ?? [];
             return (
               <li key={c.id} className="px-3 py-2">
@@ -278,7 +326,10 @@ function CustomersTab() {
                     <div className="font-medium">{c.name}</div>
                     <div className="text-xs text-muted-foreground">{c.phone} {c.address && `• ${c.address}`}</div>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => del(c.id)}><Trash2 className="h-4 w-4" /></Button>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => startEdit(c)}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => del(c.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
                 </div>
                 {machines.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -294,7 +345,7 @@ function CustomersTab() {
               </li>
             );
           })}
-          {items.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
+          {filtered.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
         </ul>
       </CardContent>
     </Card>
