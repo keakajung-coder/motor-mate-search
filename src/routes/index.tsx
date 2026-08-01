@@ -869,61 +869,10 @@ async function printMachine(unitId: string, serial: string) {
   if (!el) return;
   toast.loading("กำลังสร้างไฟล์ PDF...", { id: "pdf" });
   try {
-    const [{ toPng }, { default: jsPDF }] = await Promise.all([
-      import("html-to-image"),
-      import("jspdf"),
-    ]);
-    // html-to-image ใช้ SVG foreignObject จึงรองรับ oklch โดย browser render เอง
-    const dataUrl = await toPng(el, {
-      backgroundColor: "#ffffff",
-      pixelRatio: 2,
-      cacheBust: true,
-    });
-    // โหลด image กลับเพื่อวัดขนาด
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = reject;
-      i.src = dataUrl;
-    });
-    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 8;
-    const imgW = pageW - margin * 2;
-    const imgH = (img.height * imgW) / img.width;
-    let heightLeft = imgH;
-    let position = margin;
-    pdf.addImage(dataUrl, "PNG", margin, position, imgW, imgH);
-    heightLeft -= pageH - margin * 2;
-    while (heightLeft > 0) {
-      position = margin - (imgH - heightLeft);
-      pdf.addPage();
-      pdf.addImage(dataUrl, "PNG", margin, position, imgW, imgH);
-      heightLeft -= pageH - margin * 2;
-    }
-    const filename = `machine-${serial}.pdf`;
-    const blob = pdf.output("blob");
-    const file = new File([blob], filename, { type: "application/pdf" });
-    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-    if (nav.canShare && nav.canShare({ files: [file] })) {
-      try {
-        await nav.share({ files: [file], title: filename });
-        toast.success("ส่งออก PDF แล้ว", { id: "pdf" });
-        return;
-      } catch {
-        /* fall through to download */
-      }
-    }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast.success("ดาวน์โหลด PDF แล้ว", { id: "pdf" });
+    const { elementToPdfBlob, shareOrDownload } = await import("@/lib/report");
+    const blob = await elementToPdfBlob(el);
+    const res = await shareOrDownload(blob, `machine-${serial}.pdf`);
+    toast.success(res === "shared" ? "ส่งออก PDF แล้ว" : "ดาวน์โหลด PDF แล้ว", { id: "pdf" });
   } catch (err) {
     console.error(err);
     toast.error("สร้าง PDF ไม่สำเร็จ", { id: "pdf" });
