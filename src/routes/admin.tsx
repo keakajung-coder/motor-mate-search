@@ -612,6 +612,10 @@ function MachinesTab() {
       pump_type: u.compressor_models?.pump_type ?? "",
       install_date: u.install_date ?? "",
       daily_hours: u.daily_hours != null ? String(u.daily_hours) : "",
+      site_name: u.site_name ?? "",
+      address_line: u.address_line ?? "",
+      district: u.district ?? "",
+      province: u.province ?? "",
       note: u.note ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
