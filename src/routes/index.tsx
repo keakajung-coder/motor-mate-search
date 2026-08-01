@@ -825,9 +825,14 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="secondary">จำนวน {mp.quantity}</Badge>
-          {mp.hours_used != null && (
+          {usedHours != null && (
             <Badge variant="outline" className="gap-1">
-              <Clock className="h-3 w-3" /> {mp.hours_used} ชม.
+              <Clock className="h-3 w-3" /> ใช้แล้ว {usedHours.toLocaleString()} ชม.
+            </Badge>
+          )}
+          {remaining != null && (
+            <Badge variant={remaining <= 0 ? "destructive" : "outline"}>
+              {remaining <= 0 ? "ถึงกำหนดเปลี่ยน" : `เหลือ ${remaining.toLocaleString()} ชม.`}
             </Badge>
           )}
           {mp.products?.storage_location && (
