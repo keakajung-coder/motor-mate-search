@@ -15,7 +15,37 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Download, Upload, FileSpreadsheet, Loader2 } from "lucide-react";
-import { downloadBlob, elementToPdfBlob, formatBytes, shareOrDownload } from "@/lib/report";
+import { downloadBlob, formatBytes, shareOrDownload, tableToPdfBlob } from "@/lib/report";
+
+const LABELS: Record<string, string> = {
+  serial_number: "S/N",
+  customer: "ลูกค้า",
+  brand: "ยี่ห้อ",
+  model: "รุ่น",
+  pump_type: "ประเภทปั๊ม",
+  install_date: "วันติดตั้ง",
+  daily_hours: "ชม./วัน",
+  site_name: "สถานที่",
+  address_line: "ที่อยู่",
+  district: "อำเภอ/เขต",
+  province: "จังหวัด",
+  seller: "ผู้ขาย",
+  note: "หมายเหตุ",
+  name: "ชื่อ",
+  phone: "เบอร์โทร",
+  address: "ที่อยู่",
+  part_number: "รหัสพาร์ท",
+  part_name: "ชื่ออะไหล่",
+  category: "หมวดหมู่",
+  price: "ราคา",
+  stock_quantity: "สต็อก",
+  storage_location: "ที่จัดเก็บ",
+  service_interval_hours: "รอบเปลี่ยน (ชม.)",
+  hours_used: "ชม.ใช้งาน",
+  last_changed_at: "เปลี่ยนล่าสุด",
+  quantity: "จำนวน",
+  description: "รายละเอียด",
+};
 
 type Row = Record<string, any>;
 
@@ -75,7 +105,7 @@ const DATASETS: Dataset[] = [
     label: "เครื่อง (S/N)",
     columns: [
       "serial_number", "customer", "brand", "model", "pump_type",
-      "install_date", "daily_hours", "site_name", "address_line", "district", "province", "note",
+      "install_date", "daily_hours", "site_name", "address_line", "district", "province", "seller", "note",
     ],
     matchKey: "serial_number",
     load: async () => {
@@ -95,6 +125,7 @@ const DATASETS: Dataset[] = [
         address_line: u.address_line ?? "",
         district: u.district ?? "",
         province: u.province ?? "",
+        seller: u.seller ?? "",
         note: u.note ?? "",
       }));
     },
@@ -111,6 +142,7 @@ const DATASETS: Dataset[] = [
         address_line: str(row.address_line) || null,
         district: str(row.district) || null,
         province: str(row.province) || null,
+        seller: str(row.seller) || null,
         note: str(row.note) || null,
       };
       const { data: exist } = await supabase
@@ -326,19 +358,49 @@ export function ImportExportTab() {
   const [preview, setPreview] = useState<Row[] | null>(null);
   const [mode, setMode] = useState<"insert" | "upsert">("upsert");
   const [lastSize, setLastSize] = useState<string | null>(null);
+  const [allRows, setAllRows] = useState<Row[] | null>(null);
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const [rowQ, setRowQ] = useState("");
 
   function changeDataset(k: string) {
     setDsKey(k);
     setCols(DATASETS.find((d) => d.key === k)!.columns);
     setPreview(null);
+    setAllRows(null);
+    setPicked(new Set());
+    setRowQ("");
+  }
+
+  async function loadRows() {
+    setBusy(true);
+    try {
+      const rows = await ds.load();
+      setAllRows(rows);
+      setPicked(new Set(rows.map((_, i) => i)));
+      toast.success(`โหลดข้อมูล ${rows.length} รายการ — เลือกรายการที่ต้องการส่งออกได้`);
+    } catch (e: any) {
+      toast.error("โหลดข้อมูลไม่สำเร็จ: " + e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function togglePick(i: number) {
+    setPicked((s) => {
+      const n = new Set(s);
+      if (n.has(i)) n.delete(i); else n.add(i);
+      return n;
+    });
   }
   function toggleCol(c: string) {
     setCols((v) => (v.includes(c) ? v.filter((x) => x !== c) : [...v, c]));
   }
 
   async function rowsForExport() {
-    const all = await ds.load();
-    return all.map((r) => Object.fromEntries(cols.map((c) => [c, r[c] ?? ""])));
+    const all = allRows ?? (await ds.load());
+    const chosen = allRows ? all.filter((_, i) => picked.has(i)) : all;
+    if (!chosen.length) throw new Error("ยังไม่ได้เลือกรายการ");
+    return chosen.map((r) => Object.fromEntries(cols.map((c) => [c, r[c] ?? ""])));
   }
 
   async function exportFile(kind: "xlsx" | "csv") {
@@ -360,7 +422,7 @@ export function ImportExportTab() {
           : "text/csv;charset=utf-8",
       });
       setLastSize(formatBytes(blob.size));
-      await shareOrDownload(blob, `${ds.key}-${new Date().toISOString().slice(0, 10)}.${kind}`);
+      downloadBlob(blob, `${ds.key}-${new Date().toISOString().slice(0, 10)}.${kind}`);
       toast.success(`ส่งออก ${kind.toUpperCase()} แล้ว (${formatBytes(blob.size)})`);
     } catch (e: any) {
       toast.error("ส่งออกไม่สำเร็จ: " + e.message);
@@ -372,35 +434,15 @@ export function ImportExportTab() {
   async function exportPdf() {
     if (cols.length === 0) return toast.error("เลือกคอลัมน์อย่างน้อย 1 ช่อง");
     setBusy(true);
-    const host = document.createElement("div");
     try {
       const rows = await rowsForExport();
-      host.style.cssText =
-        "position:fixed;left:-10000px;top:0;width:1000px;background:#fff;color:#111;padding:16px;font-family:sans-serif;";
-      host.innerHTML = `
-        <h2 style="font-size:18px;margin:0 0 8px">${ds.label} (${rows.length} รายการ)</h2>
-        <table style="width:100%;border-collapse:collapse;font-size:11px">
-          <thead><tr>${cols
-            .map((c) => `<th style="border:1px solid #ccc;padding:4px;background:#eee;text-align:left">${c}</th>`)
-            .join("")}</tr></thead>
-          <tbody>${rows
-            .map(
-              (r) =>
-                `<tr>${cols
-                  .map((c) => `<td style="border:1px solid #ddd;padding:4px">${String(r[c] ?? "")}</td>`)
-                  .join("")}</tr>`,
-            )
-            .join("")}</tbody>
-        </table>`;
-      document.body.appendChild(host);
-      const blob = await elementToPdfBlob(host);
+      const blob = await tableToPdfBlob(ds.label, cols, rows, LABELS);
       setLastSize(formatBytes(blob.size));
       await shareOrDownload(blob, `${ds.key}-${new Date().toISOString().slice(0, 10)}.pdf`);
       toast.success(`ส่งออก PDF แล้ว (${formatBytes(blob.size)})`);
     } catch (e: any) {
       toast.error("ส่งออก PDF ไม่สำเร็จ: " + e.message);
     } finally {
-      host.remove();
       setBusy(false);
     }
   }
@@ -476,14 +518,54 @@ export function ImportExportTab() {
           </div>
           <div>
             <Label>คอลัมน์ที่ต้องการส่งออก</Label>
+            <div className="mb-1 flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setCols(ds.columns)}>เลือกทั้งหมด</Button>
+              <Button size="sm" variant="ghost" onClick={() => setCols([])}>ล้าง</Button>
+            </div>
             <div className="mt-1 flex flex-wrap gap-3 rounded border p-3">
               {ds.columns.map((c) => (
                 <label key={c} className="flex items-center gap-1.5 text-sm">
                   <Checkbox checked={cols.includes(c)} onCheckedChange={() => toggleCol(c)} />
-                  {c}
+                  {LABELS[c] ?? c}
                 </label>
               ))}
             </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline" onClick={loadRows} disabled={busy}>
+                โหลดรายการเพื่อเลือกข้อมูล
+              </Button>
+              {allRows && (
+                <>
+                  <Input
+                    className="h-8 max-w-52"
+                    placeholder="ค้นหาในรายการ…"
+                    value={rowQ}
+                    onChange={(e) => setRowQ(e.target.value)}
+                  />
+                  <Button size="sm" variant="ghost" onClick={() => setPicked(new Set(allRows.map((_, i) => i)))}>เลือกทั้งหมด</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setPicked(new Set())}>ล้าง</Button>
+                  <Badge variant="secondary">เลือกแล้ว {picked.size}/{allRows.length}</Badge>
+                </>
+              )}
+            </div>
+            {allRows && (
+              <div className="max-h-64 overflow-auto rounded border">
+                {allRows.map((r, i) => {
+                  const text = ds.columns.map((c) => String(r[c] ?? "")).join(" ").toLowerCase();
+                  if (rowQ && !text.includes(rowQ.toLowerCase())) return null;
+                  return (
+                    <label key={i} className="flex items-center gap-2 border-b px-2 py-1 text-xs last:border-b-0">
+                      <Checkbox checked={picked.has(i)} onCheckedChange={() => togglePick(i)} />
+                      <span className="truncate">
+                        {ds.columns.slice(0, 4).map((c) => String(r[c] ?? "")).filter(Boolean).join(" • ")}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
