@@ -572,6 +572,7 @@ function MachinesTab() {
     address_line: "",
     district: "",
     province: "",
+    seller: "",
     note: "",
   };
   const [form, setForm] = useState(empty);
@@ -616,6 +617,7 @@ function MachinesTab() {
       address_line: u.address_line ?? "",
       district: u.district ?? "",
       province: u.province ?? "",
+      seller: u.seller ?? "",
       note: u.note ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -677,6 +679,7 @@ function MachinesTab() {
         address_line: form.address_line.trim() || null,
         district: form.district.trim() || null,
         province: form.province.trim() || null,
+        seller: form.seller.trim() || null,
         note: form.note || null,
       };
 
@@ -795,6 +798,20 @@ function MachinesTab() {
                 {THAI_PROVINCES.map((p) => <option key={p} value={p} />)}
               </datalist>
             </div>
+            <div>
+              <Label>ผู้ขาย</Label>
+              <Input
+                list="seller-options"
+                value={form.seller}
+                onChange={(e) => setForm({ ...form, seller: e.target.value })}
+                placeholder="ชื่อพนักงาน/ร้านที่ขายเครื่องนี้"
+              />
+              <datalist id="seller-options">
+                {Array.from(new Set(units.map((u) => u.seller).filter(Boolean))).map((s: any) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+            </div>
             <div className="sm:col-span-2">
               <Label>หมายเหตุ</Label>
               <Textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
@@ -838,7 +855,7 @@ function MachinesTab() {
               .filter((u) => {
                 const kw = q.trim().toLowerCase();
                 if (!kw) return true;
-                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""}`
+                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${u.seller ?? ""}`
                   .toLowerCase().includes(kw);
               })
               .map((u) => (
@@ -853,6 +870,9 @@ function MachinesTab() {
                       <div className="text-xs text-muted-foreground">
                         📍 {[u.site_name, u.address_line, u.district, u.province].filter(Boolean).join(" • ")}
                       </div>
+                    )}
+                    {u.seller && (
+                      <div className="text-xs text-muted-foreground">ผู้ขาย: {u.seller}</div>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2">
