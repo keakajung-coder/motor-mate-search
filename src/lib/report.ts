@@ -155,9 +155,9 @@ export async function tableToPdfBlob(
 ): Promise<Blob> {
   const { default: jsPDF } = await import("jspdf");
 
-  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape", compress: true });
-  const pageW = pdf.internal.pageSize.getWidth();
-  const pageH = pdf.internal.pageSize.getHeight();
+  const probe = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape", compress: true });
+  const pageW = probe.internal.pageSize.getWidth();
+  const pageH = probe.internal.pageSize.getHeight();
   const margin = 8;
   const usableW = pageW - margin * 2;
   const usableH = pageH - margin * 2;
