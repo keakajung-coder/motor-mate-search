@@ -1,0 +1,1 @@
+ALTER TABLE public.machine_units ADD COLUMN IF NOT EXISTS seller text;
