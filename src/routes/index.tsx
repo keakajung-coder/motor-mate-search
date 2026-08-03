@@ -762,6 +762,7 @@ function MachineCard({
                 value={[(unit as any).address_line, (unit as any).district, (unit as any).province].filter(Boolean).join(" • ")}
               />
             )}
+            {(unit as any).seller && <Info label="ผู้ขาย" value={(unit as any).seller} />}
           </div>
 
           <div>
