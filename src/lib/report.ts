@@ -143,6 +143,113 @@ export async function elementToPdfBlob(el: HTMLElement): Promise<Blob> {
   return last!;
 }
 
+/**
+ * สร้าง PDF ตาราง โดยวาดด้วย Canvas (รองรับฟอนต์ไทยของเครื่องแน่นอน)
+ * แบ่งหน้าอัตโนมัติ และบีบ JPEG จนไฟล์ไม่เกิน 1 MB
+ */
+export async function tableToPdfBlob(
+  title: string,
+  columns: string[],
+  rows: Array<Record<string, any>>,
+  headerLabels?: Record<string, string>,
+): Promise<Blob> {
+  const { default: jsPDF } = await import("jspdf");
+
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape", compress: true });
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const margin = 8;
+  const usableW = pageW - margin * 2;
+  const usableH = pageH - margin * 2;
+
+  // canvas layout (px)
+  const scale = 2;
+  const cw = 1400;
+  const pad = 8;
+  const fs = 20;
+  const rowH = 34;
+  const headH = 40;
+  const titleH = 46;
+
+  const cellW = Math.floor((cw - pad * 2) / Math.max(1, columns.length));
+  const rowsPerPage = Math.max(
+    1,
+    Math.floor(((usableH / usableW) * cw - titleH - headH - pad * 2) / rowH),
+  );
+  const pages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+
+  const clip = (ctx: CanvasRenderingContext2D, text: string, w: number) => {
+    let t = text;
+    if (ctx.measureText(t).width <= w) return t;
+    while (t.length > 1 && ctx.measureText(t + "…").width > w) t = t.slice(0, -1);
+    return t + "…";
+  };
+
+  let quality = 0.85;
+  let blob: Blob | null = null;
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape", compress: true });
+    for (let p = 0; p < pages; p++) {
+      const pageRows = rows.slice(p * rowsPerPage, (p + 1) * rowsPerPage);
+      const ch = titleH + headH + pageRows.length * rowH + pad * 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = cw * scale;
+      canvas.height = ch * scale;
+      const ctx = canvas.getContext("2d")!;
+      ctx.scale(scale, scale);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.textBaseline = "middle";
+
+      ctx.fillStyle = "#111111";
+      ctx.font = `bold 26px "Sarabun", "Noto Sans Thai", system-ui, sans-serif`;
+      ctx.fillText(`${title} (${rows.length} รายการ) — หน้า ${p + 1}/${pages}`, pad, pad + titleH / 2);
+
+      // header
+      let y = pad + titleH;
+      ctx.fillStyle = "#eeeeee";
+      ctx.fillRect(pad, y, cellW * columns.length, headH);
+      ctx.font = `bold ${fs}px "Sarabun", "Noto Sans Thai", system-ui, sans-serif`;
+      ctx.strokeStyle = "#bbbbbb";
+      ctx.lineWidth = 1;
+      columns.forEach((c, i) => {
+        const x = pad + i * cellW;
+        ctx.strokeRect(x, y, cellW, headH);
+        ctx.fillStyle = "#111111";
+        ctx.fillText(clip(ctx, headerLabels?.[c] ?? c, cellW - 10), x + 5, y + headH / 2);
+      });
+
+      // rows
+      ctx.font = `${fs}px "Sarabun", "Noto Sans Thai", system-ui, sans-serif`;
+      pageRows.forEach((r, ri) => {
+        const ry = y + headH + ri * rowH;
+        if (ri % 2 === 1) {
+          ctx.fillStyle = "#f7f7f7";
+          ctx.fillRect(pad, ry, cellW * columns.length, rowH);
+        }
+        columns.forEach((c, i) => {
+          const x = pad + i * cellW;
+          ctx.strokeRect(x, ry, cellW, rowH);
+          ctx.fillStyle = "#222222";
+          ctx.fillText(clip(ctx, String(r[c] ?? ""), cellW - 10), x + 5, ry + rowH / 2);
+        });
+      });
+
+      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+      if (p > 0) doc.addPage();
+      const imgW = usableW;
+      const imgH = Math.min(usableH, (ch * imgW) / cw);
+      doc.addImage(dataUrl, "JPEG", margin, margin, imgW, imgH, undefined, "FAST");
+    }
+    blob = doc.output("blob");
+    if (blob.size <= MAX_BYTES) return blob;
+    quality -= 0.2;
+    if (quality < 0.3) break;
+  }
+  return blob!;
+}
+
 /** แชร์ไฟล์ (มือถือ) หรือดาวน์โหลด (เดสก์ท็อป) */
 export async function shareOrDownload(blob: Blob, filename: string, title?: string) {
   const file = new File([blob], filename, { type: blob.type });
