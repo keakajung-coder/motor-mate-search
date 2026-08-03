@@ -639,7 +639,8 @@ function SnView() {
           `${mp.products?.name ?? ""} ${mp.products?.part_number ?? ""} ${mp.products?.categories?.name ?? ""}`
         )
         .join(" ");
-      return `${u.serial_number} ${brand} ${model} ${cust} ${phone} ${parts}`
+      const loc = `${(u as any).site_name ?? ""} ${(u as any).district ?? ""} ${(u as any).province ?? ""} ${(u as any).seller ?? ""}`;
+      return `${u.serial_number} ${brand} ${model} ${cust} ${phone} ${parts} ${loc}`
         .toLowerCase()
         .includes(kw);
     }).sort((a, b) => a.serial_number.localeCompare(b.serial_number, "th"));
@@ -762,6 +763,7 @@ function MachineCard({
                 value={[(unit as any).address_line, (unit as any).district, (unit as any).province].filter(Boolean).join(" • ")}
               />
             )}
+            {(unit as any).seller && <Info label="ผู้ขาย" value={(unit as any).seller} />}
           </div>
 
           <div>

@@ -214,6 +214,7 @@ export type Database = {
           model_id: string | null
           note: string | null
           province: string | null
+          seller: string | null
           serial_number: string
           site_name: string | null
           updated_at: string | null
@@ -229,6 +230,7 @@ export type Database = {
           model_id?: string | null
           note?: string | null
           province?: string | null
+          seller?: string | null
           serial_number: string
           site_name?: string | null
           updated_at?: string | null
@@ -244,6 +246,7 @@ export type Database = {
           model_id?: string | null
           note?: string | null
           province?: string | null
+          seller?: string | null
           serial_number?: string
           site_name?: string | null
           updated_at?: string | null
