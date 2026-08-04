@@ -628,10 +628,19 @@ function SnView() {
   }, []);
 
 
+  const sellers = useMemo(
+    () =>
+      Array.from(
+        new Set(units.map((u) => ((u as any).seller ?? "").trim()).filter(Boolean)),
+      ).sort((a, b) => a.localeCompare(b, "th")),
+    [units],
+  );
+
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
-    if (!kw) return units;
     return units.filter((u) => {
+      if (seller && ((u as any).seller ?? "").trim() !== seller) return false;
+      if (!kw) return true;
       const brand = u.compressor_models?.brands?.name ?? "";
       const model = u.compressor_models?.name ?? "";
       const cust = u.customers?.name ?? "";
@@ -646,7 +655,7 @@ function SnView() {
         .toLowerCase()
         .includes(kw);
     }).sort((a, b) => a.serial_number.localeCompare(b.serial_number, "th"));
-  }, [units, q]);
+  }, [units, q, seller]);
 
 
   useEffect(() => {
