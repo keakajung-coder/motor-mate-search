@@ -595,6 +595,7 @@ function SnView() {
   const [loading, setLoading] = useState(true);
   const [units, setUnits] = useState<MachineResult[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [seller, setSeller] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
