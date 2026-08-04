@@ -110,15 +110,22 @@ function HomePage() {
 function ShareAppButton() {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
+  const [installEvt, setInstallEvt] = useState<any>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setUrl(`${window.location.origin}/`);
     }
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallEvt(e);
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", onPrompt);
   }, []);
 
   const shareToLine = () => {
-    const text = `ระบบค้นหาอะไหล่ปั๊มลม\n${url}`;
+    const text = `ระบบค้นหาอะไหล่ปั๊มลม — ค้นหาอะไหล่ด้วย S/N หรือรุ่นเครื่อง\n${url}`;
     const lineShare = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
     window.open(lineShare, "_blank");
   };
@@ -126,7 +133,11 @@ function ShareAppButton() {
   const nativeShare = async () => {
     try {
       if (navigator.share) {
-        await navigator.share({ title: "ระบบค้นหาอะไหล่ปั๊มลม", url });
+        await navigator.share({
+          title: "ระบบค้นหาอะไหล่ปั๊มลม",
+          text: "ค้นหาอะไหล่ปั๊มลมด้วย S/N หรือรุ่นเครื่อง",
+          url,
+        });
       } else {
         await navigator.clipboard.writeText(url);
         toast.success("คัดลอกลิงก์แล้ว");
@@ -143,6 +154,27 @@ function ShareAppButton() {
     } catch {
       toast.error("คัดลอกไม่สำเร็จ");
     }
+  };
+
+  const saveQr = () => {
+    const canvas = document.querySelector<HTMLCanvasElement>("#share-app-qr canvas");
+    if (!canvas) return toast.error("ยังสร้าง QR ไม่สำเร็จ");
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "qr-ระบบค้นหาอะไหล่.png";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast.success("บันทึกรูป QR แล้ว");
+    }, "image/png");
+  };
+
+  const installApp = async () => {
+    if (!installEvt) return;
+    installEvt.prompt();
+    await installEvt.userChoice;
+    setInstallEvt(null);
   };
 
   return (
