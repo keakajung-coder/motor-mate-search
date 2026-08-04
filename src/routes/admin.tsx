@@ -580,6 +580,7 @@ function MachinesTab() {
   const [selected, setSelected] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [sellerFilter, setSellerFilter] = useState<string | null>(null);
+  const [sellerQ, setSellerQ] = useState("");
 
   const dupUnit = units.find(
     (u) =>
