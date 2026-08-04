@@ -637,6 +637,7 @@ type MachineResult = {
 
 function SnView() {
   const [q, setQ] = useState("");
+  const [sellerQ, setSellerQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [units, setUnits] = useState<MachineResult[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -681,10 +682,19 @@ function SnView() {
     [units],
   );
 
+  const visibleSellers = useMemo(() => {
+    const kw = sellerQ.trim().toLowerCase();
+    if (!kw) return sellers;
+    return sellers.filter((s) => s.toLowerCase().includes(kw));
+  }, [sellers, sellerQ]);
+
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
+    const sellerKw = sellerQ.trim().toLowerCase();
     return units.filter((u) => {
-      if (seller && ((u as any).seller ?? "").trim() !== seller) return false;
+      const unitSeller = ((u as any).seller ?? "").trim();
+      if (seller && unitSeller !== seller) return false;
+      if (sellerKw && !unitSeller.toLowerCase().includes(sellerKw)) return false;
       if (!kw) return true;
       const brand = u.compressor_models?.brands?.name ?? "";
       const model = u.compressor_models?.name ?? "";
@@ -695,12 +705,12 @@ function SnView() {
           `${mp.products?.name ?? ""} ${mp.products?.part_number ?? ""} ${mp.products?.categories?.name ?? ""}`
         )
         .join(" ");
-      const loc = `${(u as any).site_name ?? ""} ${(u as any).district ?? ""} ${(u as any).province ?? ""} ${(u as any).seller ?? ""}`;
+      const loc = `${(u as any).site_name ?? ""} ${(u as any).district ?? ""} ${(u as any).province ?? ""} ${unitSeller}`;
       return `${u.serial_number} ${brand} ${model} ${cust} ${phone} ${parts} ${loc}`
         .toLowerCase()
         .includes(kw);
     }).sort((a, b) => a.serial_number.localeCompare(b.serial_number, "th"));
-  }, [units, q, seller]);
+  }, [units, q, seller, sellerQ]);
 
 
   useEffect(() => {
