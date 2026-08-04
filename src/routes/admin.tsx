@@ -580,6 +580,7 @@ function MachinesTab() {
   const [selected, setSelected] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [sellerFilter, setSellerFilter] = useState<string | null>(null);
+  const [sellerQ, setSellerQ] = useState("");
 
   const dupUnit = units.find(
     (u) =>
@@ -855,37 +856,54 @@ function MachinesTab() {
             const sellers = Array.from(
               new Set(units.map((u) => (u.seller ?? "").trim()).filter(Boolean)),
             ).sort((a: any, b: any) => a.localeCompare(b, "th"));
+            const visibleSellers = sellerQ.trim()
+              ? sellers.filter((s: any) => s.toLowerCase().includes(sellerQ.trim().toLowerCase()))
+              : sellers;
             if (!sellers.length) return null;
             return (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-muted-foreground">ผู้ขาย:</span>
-                <Button
-                  size="sm"
-                  variant={sellerFilter === null ? "default" : "outline"}
-                  onClick={() => setSellerFilter(null)}
-                >
-                  ทั้งหมด
-                </Button>
-                {sellers.map((s: any) => (
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="ค้นหาด้วยชื่อผู้ขาย"
+                    value={sellerQ}
+                    onChange={(e) => setSellerQ(e.target.value)}
+                    className="h-10 pl-10 text-base"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-muted-foreground">ผู้ขาย:</span>
                   <Button
-                    key={s}
                     size="sm"
-                    variant={sellerFilter === s ? "default" : "outline"}
-                    onClick={() => setSellerFilter(s)}
+                    variant={sellerFilter === null ? "default" : "outline"}
+                    onClick={() => setSellerFilter(null)}
                   >
-                    {s}
+                    ทั้งหมด
                   </Button>
-                ))}
+                  {visibleSellers.map((s: any) => (
+                    <Button
+                      key={s}
+                      size="sm"
+                      variant={sellerFilter === s ? "default" : "outline"}
+                      onClick={() => setSellerFilter(s)}
+                    >
+                      {s}
+                    </Button>
+                  ))}
+                </div>
               </div>
             );
           })()}
           <ul className="divide-y rounded border">
             {units
               .filter((u) => {
-                if (sellerFilter && (u.seller ?? "").trim() !== sellerFilter) return false;
+                const unitSeller = (u.seller ?? "").trim();
+                if (sellerFilter && unitSeller !== sellerFilter) return false;
+                const sellerKw = sellerQ.trim().toLowerCase();
+                if (sellerKw && !unitSeller.toLowerCase().includes(sellerKw)) return false;
                 const kw = q.trim().toLowerCase();
                 if (!kw) return true;
-                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${u.seller ?? ""}`
+                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller}`
                   .toLowerCase().includes(kw);
               })
               .map((u) => (
