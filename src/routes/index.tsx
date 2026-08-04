@@ -747,16 +747,27 @@ function SnView() {
       </div>
 
       {sellers.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">ผู้ขาย:</span>
-          <FilterChip active={seller === null} onClick={() => setSeller(null)}>
-            ทั้งหมด
-          </FilterChip>
-          {sellers.map((s) => (
-            <FilterChip key={s} active={seller === s} onClick={() => setSeller(s)}>
-              {s}
+        <div className="space-y-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="ค้นหาด้วยชื่อผู้ขาย"
+              value={sellerQ}
+              onChange={(e) => setSellerQ(e.target.value)}
+              className="h-10 pl-10 text-base"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">ผู้ขาย:</span>
+            <FilterChip active={seller === null} onClick={() => setSeller(null)}>
+              ทั้งหมด
             </FilterChip>
-          ))}
+            {visibleSellers.map((s) => (
+              <FilterChip key={s} active={seller === s} onClick={() => setSeller(s)}>
+                {s}
+              </FilterChip>
+            ))}
+          </div>
         </div>
       )}
 
