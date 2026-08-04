@@ -603,6 +603,7 @@ function SnView() {
       .from("machine_units")
       .select(
         `id, serial_number, install_date, daily_hours, note,
+         site_name, address_line, district, province, seller,
          customers ( id, name, phone ),
          compressor_models ( id, name, brands ( id, name ) ),
          machine_parts (
