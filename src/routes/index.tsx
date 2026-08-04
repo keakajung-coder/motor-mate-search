@@ -691,6 +691,20 @@ function SnView() {
         </Button>
       </div>
 
+      {sellers.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">ผู้ขาย:</span>
+          <FilterChip active={seller === null} onClick={() => setSeller(null)}>
+            ทั้งหมด
+          </FilterChip>
+          {sellers.map((s) => (
+            <FilterChip key={s} active={seller === s} onClick={() => setSeller(s)}>
+              {s}
+            </FilterChip>
+          ))}
+        </div>
+      )}
+
 
       {loading ? (
         <div className="flex justify-center py-10">
