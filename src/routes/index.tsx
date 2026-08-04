@@ -110,15 +110,22 @@ function HomePage() {
 function ShareAppButton() {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
+  const [installEvt, setInstallEvt] = useState<any>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setUrl(`${window.location.origin}/`);
     }
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallEvt(e);
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", onPrompt);
   }, []);
 
   const shareToLine = () => {
-    const text = `ระบบค้นหาอะไหล่ปั๊มลม\n${url}`;
+    const text = `ระบบค้นหาอะไหล่ปั๊มลม — ค้นหาอะไหล่ด้วย S/N หรือรุ่นเครื่อง\n${url}`;
     const lineShare = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
     window.open(lineShare, "_blank");
   };
@@ -126,7 +133,11 @@ function ShareAppButton() {
   const nativeShare = async () => {
     try {
       if (navigator.share) {
-        await navigator.share({ title: "ระบบค้นหาอะไหล่ปั๊มลม", url });
+        await navigator.share({
+          title: "ระบบค้นหาอะไหล่ปั๊มลม",
+          text: "ค้นหาอะไหล่ปั๊มลมด้วย S/N หรือรุ่นเครื่อง",
+          url,
+        });
       } else {
         await navigator.clipboard.writeText(url);
         toast.success("คัดลอกลิงก์แล้ว");
@@ -145,6 +156,27 @@ function ShareAppButton() {
     }
   };
 
+  const saveQr = () => {
+    const canvas = document.querySelector<HTMLCanvasElement>("#share-app-qr canvas");
+    if (!canvas) return toast.error("ยังสร้าง QR ไม่สำเร็จ");
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "qr-ระบบค้นหาอะไหล่.png";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast.success("บันทึกรูป QR แล้ว");
+    }, "image/png");
+  };
+
+  const installApp = async () => {
+    if (!installEvt) return;
+    installEvt.prompt();
+    await installEvt.userChoice;
+    setInstallEvt(null);
+  };
+
   return (
     <>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
@@ -161,11 +193,24 @@ function ShareAppButton() {
           </DialogHeader>
           <div className="flex flex-col items-center gap-3 py-2">
             {url && (
-              <div className="rounded-lg bg-white p-4">
+              <div id="share-app-qr" className="rounded-lg bg-white p-4">
                 <QRCodeCanvas value={url} size={220} includeMargin />
               </div>
             )}
             <div className="break-all text-center text-xs text-muted-foreground">{url}</div>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button variant="outline" size="sm" onClick={saveQr}>
+                บันทึกรูป QR
+              </Button>
+              {installEvt && (
+                <Button variant="outline" size="sm" onClick={installApp}>
+                  ติดตั้งลงเครื่อง
+                </Button>
+              )}
+            </div>
+            <p className="text-center text-xs text-muted-foreground">
+              เปิดลิงก์บนมือถือ แล้วเลือก “เพิ่มลงหน้าจอโฮม” เพื่อใช้งานเหมือนแอป
+            </p>
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button variant="outline" onClick={copyLink} className="w-full sm:w-auto">
@@ -595,6 +640,7 @@ function SnView() {
   const [loading, setLoading] = useState(true);
   const [units, setUnits] = useState<MachineResult[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [seller, setSeller] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -602,6 +648,7 @@ function SnView() {
       .from("machine_units")
       .select(
         `id, serial_number, install_date, daily_hours, note,
+         site_name, address_line, district, province, seller,
          customers ( id, name, phone ),
          compressor_models ( id, name, brands ( id, name ) ),
          machine_parts (
@@ -626,10 +673,19 @@ function SnView() {
   }, []);
 
 
+  const sellers = useMemo(
+    () =>
+      Array.from(
+        new Set(units.map((u) => ((u as any).seller ?? "").trim()).filter(Boolean)),
+      ).sort((a, b) => a.localeCompare(b, "th")),
+    [units],
+  );
+
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
-    if (!kw) return units;
     return units.filter((u) => {
+      if (seller && ((u as any).seller ?? "").trim() !== seller) return false;
+      if (!kw) return true;
       const brand = u.compressor_models?.brands?.name ?? "";
       const model = u.compressor_models?.name ?? "";
       const cust = u.customers?.name ?? "";
@@ -644,7 +700,7 @@ function SnView() {
         .toLowerCase()
         .includes(kw);
     }).sort((a, b) => a.serial_number.localeCompare(b.serial_number, "th"));
-  }, [units, q]);
+  }, [units, q, seller]);
 
 
   useEffect(() => {
@@ -679,6 +735,20 @@ function SnView() {
           <Search className="mr-1 h-4 w-4" /> ค้นหา
         </Button>
       </div>
+
+      {sellers.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">ผู้ขาย:</span>
+          <FilterChip active={seller === null} onClick={() => setSeller(null)}>
+            ทั้งหมด
+          </FilterChip>
+          {sellers.map((s) => (
+            <FilterChip key={s} active={seller === s} onClick={() => setSeller(s)}>
+              {s}
+            </FilterChip>
+          ))}
+        </div>
+      )}
 
 
       {loading ? (
