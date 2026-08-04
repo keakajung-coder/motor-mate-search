@@ -193,11 +193,24 @@ function ShareAppButton() {
           </DialogHeader>
           <div className="flex flex-col items-center gap-3 py-2">
             {url && (
-              <div className="rounded-lg bg-white p-4">
+              <div id="share-app-qr" className="rounded-lg bg-white p-4">
                 <QRCodeCanvas value={url} size={220} includeMargin />
               </div>
             )}
             <div className="break-all text-center text-xs text-muted-foreground">{url}</div>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button variant="outline" size="sm" onClick={saveQr}>
+                บันทึกรูป QR
+              </Button>
+              {installEvt && (
+                <Button variant="outline" size="sm" onClick={installApp}>
+                  ติดตั้งลงเครื่อง
+                </Button>
+              )}
+            </div>
+            <p className="text-center text-xs text-muted-foreground">
+              เปิดลิงก์บนมือถือ แล้วเลือก “เพิ่มลงหน้าจอโฮม” เพื่อใช้งานเหมือนแอป
+            </p>
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button variant="outline" onClick={copyLink} className="w-full sm:w-auto">
