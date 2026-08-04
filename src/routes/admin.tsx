@@ -850,10 +850,39 @@ function MachinesTab() {
       <Card>
         <CardHeader><CardTitle>รายการเครื่อง</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <SearchBox value={q} onChange={setQ} placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด" />
+          <SearchBox value={q} onChange={setQ} placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด / ผู้ขาย" />
+          {(() => {
+            const sellers = Array.from(
+              new Set(units.map((u) => (u.seller ?? "").trim()).filter(Boolean)),
+            ).sort((a: any, b: any) => a.localeCompare(b, "th"));
+            if (!sellers.length) return null;
+            return (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">ผู้ขาย:</span>
+                <Button
+                  size="sm"
+                  variant={sellerFilter === null ? "default" : "outline"}
+                  onClick={() => setSellerFilter(null)}
+                >
+                  ทั้งหมด
+                </Button>
+                {sellers.map((s: any) => (
+                  <Button
+                    key={s}
+                    size="sm"
+                    variant={sellerFilter === s ? "default" : "outline"}
+                    onClick={() => setSellerFilter(s)}
+                  >
+                    {s}
+                  </Button>
+                ))}
+              </div>
+            );
+          })()}
           <ul className="divide-y rounded border">
             {units
               .filter((u) => {
+                if (sellerFilter && (u.seller ?? "").trim() !== sellerFilter) return false;
                 const kw = q.trim().toLowerCase();
                 if (!kw) return true;
                 return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${u.seller ?? ""}`
