@@ -1,13 +1,25 @@
 {
   "name": "ระบบค้นหาอะไหล่ปั๊มลม",
   "short_name": "อะไหล่ปั๊มลม",
-  "description": "ค้นหาอะไหล่ปั๊มลมด้วย S/N เครื่อง",
+  "description": "ค้นหาอะไหล่ปั๊มลมด้วย S/N เครื่อง รุ่น หรือรหัสอะไหล่",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#faf8f3",
   "theme_color": "#faf8f3",
   "lang": "th",
+  "orientation": "portrait",
   "icons": [
-    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" }
-  ]
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["utilities", "business"],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }
