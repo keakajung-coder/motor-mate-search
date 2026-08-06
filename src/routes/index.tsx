@@ -111,11 +111,12 @@ function ShareAppButton() {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [installEvt, setInstallEvt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setUrl(`${window.location.origin}/`);
-    }
+    if (typeof window === "undefined") return;
+    setUrl(`${window.location.origin}/`);
+    setIsStandalone(window.matchMedia("(display-mode: standalone)").matches || (window as any).standalone === true);
     const onPrompt = (e: Event) => {
       e.preventDefault();
       setInstallEvt(e);
@@ -126,8 +127,16 @@ function ShareAppButton() {
 
   const shareToLine = () => {
     const text = `ระบบค้นหาอะไหล่ปั๊มลม — ค้นหาอะไหล่ด้วย S/N หรือรุ่นเครื่อง\n${url}`;
-    const lineShare = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
-    window.open(lineShare, "_blank");
+    // Try native LINE app first, fallback to web
+    const lineApp = `line://msg/text/${encodeURIComponent(text)}`;
+    const lineWeb = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+    const now = Date.now();
+    window.location.href = lineApp;
+    setTimeout(() => {
+      if (Date.now() - now < 1500) {
+        window.open(lineWeb, "_blank");
+      }
+    }, 800);
   };
 
   const nativeShare = async () => {
@@ -173,44 +182,48 @@ function ShareAppButton() {
   const installApp = async () => {
     if (!installEvt) return;
     installEvt.prompt();
-    await installEvt.userChoice;
+    const { outcome } = await installEvt.userChoice;
+    if (outcome === "accepted") toast.success("ติดตั้งแอปแล้ว");
     setInstallEvt(null);
   };
 
   return (
     <>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <QrCode className="mr-1 h-4 w-4" /> QR / แชร์แอป
+        <QrCode className="mr-1 h-4 w-4" /> แชร์แอป
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>เปิดแอปโดยไม่ต้องเข้าเว็บไซต์</DialogTitle>
+            <DialogTitle>แชร์แอปให้ผู้อื่นใช้งาน</DialogTitle>
             <DialogDescription>
-              สแกน QR ด้วยกล้องในแอป LINE / กล้องมือถือ เพื่อเปิดระบบค้นหาได้ทันที
-              หรือกดแชร์ลิงก์ไปยัง LINE / แอปอื่น
+              ผู้รับสามารถกดเปิดแล้วค้นหาข้อมูลได้ทันที ไม่ต้องพิมพ์ URL
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col items-center gap-3 py-2">
+          <div className="flex flex-col items-center gap-4 py-2">
             {url && (
-              <div id="share-app-qr" className="rounded-lg bg-white p-4">
-                <QRCodeCanvas value={url} size={220} includeMargin />
+              <div id="share-app-qr" className="rounded-xl border-4 border-white bg-white p-3 shadow-sm">
+                <QRCodeCanvas value={url} size={240} includeMargin />
               </div>
             )}
-            <div className="break-all text-center text-xs text-muted-foreground">{url}</div>
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="w-full rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">วิธีใช้งาน</p>
+              <ol className="mt-1 list-inside list-decimal space-y-0.5">
+                <li>สแกน QR ด้วยกล้องในแอป LINE หรือกล้องมือถือ</li>
+                <li>กดเปิดลิงก์ที่ขึ้นมา</li>
+                <li>กด “เพิ่มลงหน้าจอโฮม” เพื่อใช้เหมือนแอป</li>
+              </ol>
+            </div>
+            <div className="flex w-full flex-wrap justify-center gap-2">
               <Button variant="outline" size="sm" onClick={saveQr}>
                 บันทึกรูป QR
               </Button>
-              {installEvt && (
-                <Button variant="outline" size="sm" onClick={installApp}>
+              {installEvt && !isStandalone && (
+                <Button variant="default" size="sm" onClick={installApp}>
                   ติดตั้งลงเครื่อง
                 </Button>
               )}
             </div>
-            <p className="text-center text-xs text-muted-foreground">
-              เปิดลิงก์บนมือถือ แล้วเลือก “เพิ่มลงหน้าจอโฮม” เพื่อใช้งานเหมือนแอป
-            </p>
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button variant="outline" onClick={copyLink} className="w-full sm:w-auto">
