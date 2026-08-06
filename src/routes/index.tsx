@@ -87,8 +87,9 @@ function HomePage() {
           <ThemePicker />
           <ShareAppButton />
         </div>
-
       </header>
+
+      <InstallPromptCard />
 
       <Tabs defaultValue="sn" className="w-full">
         <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex">
@@ -102,8 +103,74 @@ function HomePage() {
           <CatalogView />
         </TabsContent>
       </Tabs>
-
     </div>
+  );
+}
+
+function InstallPromptCard() {
+  const [installEvt, setInstallEvt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setIsStandalone(window.matchMedia("(display-mode: standalone)").matches || (window as any).standalone === true);
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallEvt(e);
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", onPrompt);
+  }, []);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("install_card_dismissed");
+    if (saved) setDismissed(true);
+  }, []);
+
+  const installApp = async () => {
+    if (!installEvt) return;
+    installEvt.prompt();
+    const { outcome } = await installEvt.userChoice;
+    if (outcome === "accepted") toast.success("ติดตั้งแอปแล้ว");
+    setInstallEvt(null);
+  };
+
+  const dismiss = () => {
+    localStorage.setItem("install_card_dismissed", "1");
+    setDismissed(true);
+  };
+
+  if (dismissed || isStandalone) return null;
+
+  return (
+    <Card className="border-primary/20 bg-primary/5">
+      <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 font-semibold text-primary">
+            <Download className="h-5 w-5" />
+            ใช้งานเหมือนแอปบนมือถือ
+          </div>
+          <p className="text-sm text-muted-foreground">
+            ติดตั้งลงหน้าจอโฮมเพื่อเปิดค้นหาได้ทันที ไม่ต้องเปิดเว็บไซต์ทุกครั้ง
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {installEvt ? (
+            <Button size="sm" onClick={installApp}>
+              <Download className="mr-1 h-4 w-4" /> ติดตั้งแอป
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" onClick={() => toast.info("iOS: กดแชร์ → เพิ่มลงหน้าจอโฮม\nAndroid: เมนู ⋮ → เพิ่มลงหน้าจอโฮม")}>
+              <Smartphone className="mr-1 h-4 w-4" /> วิธีติดตั้ง
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={dismiss}>
+            ซ่อน
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
