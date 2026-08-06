@@ -27,6 +27,8 @@ import {
   Printer,
   Share2,
   QrCode,
+  Download,
+  Smartphone,
 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
