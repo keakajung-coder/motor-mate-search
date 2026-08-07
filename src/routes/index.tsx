@@ -865,6 +865,28 @@ function SnView() {
         </div>
       )}
 
+      {units.length > 0 && (
+        <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
+          <div className="text-sm font-semibold">
+            สถานะเครื่อง (ทั้งหมด {units.length} เครื่อง)
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterChip active={statusFilter === null} onClick={() => setStatusFilter(null)}>
+              ทั้งหมด ({units.length})
+            </FilterChip>
+            {statusCounts.map(([s, n]) => (
+              <FilterChip
+                key={s}
+                active={statusFilter === s}
+                onClick={() => setStatusFilter(statusFilter === s ? null : s)}
+              >
+                {s} ({n})
+              </FilterChip>
+            ))}
+          </div>
+        </div>
+      )}
+
 
       {loading ? (
         <div className="flex justify-center py-10">
