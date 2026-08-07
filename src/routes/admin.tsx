@@ -940,6 +940,28 @@ function MachinesTab() {
               </div>
             );
           })()}
+          <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
+            <div className="text-sm font-semibold">สรุปจำนวนเครื่องตามสถานะ (ทั้งหมด {units.length} เครื่อง)</div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={statusFilter === null ? "default" : "outline"}
+                onClick={() => setStatusFilter(null)}
+              >
+                ทั้งหมด ({units.length})
+              </Button>
+              {statusCounts.map(([s, n]) => (
+                <Button
+                  key={s}
+                  size="sm"
+                  variant={statusFilter === s ? "default" : "outline"}
+                  onClick={() => setStatusFilter(statusFilter === s ? null : s)}
+                >
+                  {s} ({n})
+                </Button>
+              ))}
+            </div>
+          </div>
           <ul className="divide-y rounded border">
             {units
               .filter((u) => {
@@ -947,16 +969,24 @@ function MachinesTab() {
                 if (sellerFilter && unitSeller !== sellerFilter) return false;
                 const sellerKw = sellerQ.trim().toLowerCase();
                 if (sellerKw && !unitSeller.toLowerCase().includes(sellerKw)) return false;
+                if (statusFilter && ((u.status ?? "").trim() || "ไม่ระบุสถานะ") !== statusFilter) return false;
                 const kw = q.trim().toLowerCase();
                 if (!kw) return true;
-                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller}`
+                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller} ${u.status ?? ""}`
                   .toLowerCase().includes(kw);
               })
               .map((u) => (
               <li key={u.id} className="px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="font-medium">{u.serial_number}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{u.serial_number}</span>
+                      {u.status && (
+                        <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                          {u.status}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.name ?? "-"}
                     </div>
