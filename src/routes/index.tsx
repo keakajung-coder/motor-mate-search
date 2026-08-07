@@ -1098,19 +1098,156 @@ function groupByCategory(parts: MachinePart[]) {
   return Array.from(map.values()).sort((a, b) => a.sort - b.sort);
 }
 
-async function printMachine(unitId: string, serial: string) {
-  const el = document.getElementById(`print-${unitId}`);
-  if (!el) return;
-  toast.loading("กำลังสร้างไฟล์ PDF...", { id: "pdf" });
-  try {
-    const { elementToPdfBlob, shareOrDownload } = await import("@/lib/report");
-    const blob = await elementToPdfBlob(el);
-    const res = await shareOrDownload(blob, `machine-${serial}.pdf`);
-    toast.success(res === "shared" ? "ส่งออก PDF แล้ว" : "ดาวน์โหลด PDF แล้ว", { id: "pdf" });
-  } catch (err) {
-    console.error(err);
-    toast.error("สร้าง PDF ไม่สำเร็จ", { id: "pdf" });
+function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }) {
+  const [open, setOpen] = useState(false);
+  const [pages, setPages] = useState(1);
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
+  const [busy, setBusy] = useState(false);
+  const [url, setUrl] = useState<string | null>(null);
+  const [blob, setBlob] = useState<Blob | null>(null);
+  const [size, setSize] = useState<string>("");
+
+  async function build(p = pages, o = orientation) {
+    const el = document.getElementById(`print-${unitId}`);
+    if (!el) return;
+    setBusy(true);
+    try {
+      const { elementToPdfBlobPaged, formatBytes } = await import("@/lib/report");
+      const b = await elementToPdfBlobPaged(el, p, { orientation: o });
+      setBlob(b);
+      setSize(formatBytes(b.size));
+      setUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(b);
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("สร้าง PDF ไม่สำเร็จ");
+    } finally {
+      setBusy(false);
+    }
   }
+
+  useEffect(() => {
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [url]);
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          setOpen(true);
+          setTimeout(() => build(), 150);
+        }}
+      >
+        <Printer className="mr-1 h-4 w-4" /> พรีวิว / พิมพ์ PDF
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>พรีวิว PDF — {serial}</DialogTitle>
+            <DialogDescription>
+              กำหนดจำนวนหน้ากระดาษที่ต้องการ ระบบจะย่อเนื้อหาให้พอดีตามจำนวนหน้า
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-wrap items-end gap-2">
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">จำนวนหน้ากระดาษ</label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={pages}
+                onChange={(e) => setPages(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+                className="h-9 w-24"
+              />
+            </div>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4].map((n) => (
+                <Button
+                  key={n}
+                  size="sm"
+                  variant={pages === n ? "default" : "outline"}
+                  onClick={() => { setPages(n); build(n, orientation); }}
+                >
+                  {n} หน้า
+                </Button>
+              ))}
+            </div>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={orientation === "portrait" ? "default" : "outline"}
+                onClick={() => { setOrientation("portrait"); build(pages, "portrait"); }}
+              >
+                แนวตั้ง
+              </Button>
+              <Button
+                size="sm"
+                variant={orientation === "landscape" ? "default" : "outline"}
+                onClick={() => { setOrientation("landscape"); build(pages, "landscape"); }}
+              >
+                แนวนอน
+              </Button>
+            </div>
+            <Button size="sm" onClick={() => build()} disabled={busy}>
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+              อัปเดตพรีวิว
+            </Button>
+          </div>
+
+          <div className="h-[55vh] overflow-hidden rounded border bg-muted">
+            {busy ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : url ? (
+              <iframe src={url} title="pdf-preview" className="h-full w-full" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                ยังไม่มีพรีวิว
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex-wrap gap-2 sm:justify-between">
+            <span className="text-xs text-muted-foreground">
+              {size ? `ขนาดไฟล์: ${size} • ${pages} หน้า` : ""}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                disabled={!blob}
+                onClick={async () => {
+                  if (!blob) return;
+                  const { downloadBlob } = await import("@/lib/report");
+                  downloadBlob(blob, `machine-${serial}.pdf`);
+                }}
+              >
+                <Download className="mr-1 h-4 w-4" /> ดาวน์โหลด
+              </Button>
+              <Button
+                disabled={!blob}
+                onClick={async () => {
+                  if (!blob) return;
+                  const { shareOrDownload } = await import("@/lib/report");
+                  await shareOrDownload(blob, `machine-${serial}.pdf`, `ข้อมูลเครื่อง ${serial}`);
+                }}
+              >
+                <Share2 className="mr-1 h-4 w-4" /> แชร์
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 
