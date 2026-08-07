@@ -143,6 +143,91 @@ export async function elementToPdfBlob(el: HTMLElement): Promise<Blob> {
   return last!;
 }
 
+/** สถานะเครื่องมาตรฐาน (พิมพ์เพิ่มเองได้) */
+export const MACHINE_STATUSES = [
+  "อยู่ในประกัน",
+  "คอนแทรค",
+  "ซื้ออะไหล่เปลี่ยนเอง",
+  "เรียกเป็นครั้ง",
+  "หลุดคอนแทรค",
+  "ไม่ได้ใช้เครื่องแล้ว",
+  "อื่นๆ",
+];
+
+/**
+ * แปลง element เป็น PDF โดยกำหนดจำนวนหน้ากระดาษได้
+ * ถ้าเนื้อหายาวกว่าจำนวนหน้าที่กำหนด จะย่อขนาดให้พอดี
+ */
+export async function elementToPdfBlobPaged(
+  el: HTMLElement,
+  pages: number,
+  opts?: { orientation?: "portrait" | "landscape" },
+): Promise<Blob> {
+  const [{ toJpeg }, { default: jsPDF }] = await Promise.all([
+    import("html-to-image"),
+    import("jspdf"),
+  ]);
+
+  const steps: Array<{ pixelRatio: number; quality: number }> = [
+    { pixelRatio: 2, quality: 0.82 },
+    { pixelRatio: 1.5, quality: 0.7 },
+    { pixelRatio: 1.2, quality: 0.6 },
+    { pixelRatio: 1, quality: 0.5 },
+    { pixelRatio: 0.85, quality: 0.4 },
+  ];
+
+  let last: Blob | null = null;
+  for (const step of steps) {
+    const dataUrl = await toJpeg(el, {
+      backgroundColor: "#ffffff",
+      cacheBust: true,
+      pixelRatio: step.pixelRatio,
+      quality: step.quality,
+    });
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = dataUrl;
+    });
+
+    const pdf = new jsPDF({
+      unit: "mm",
+      format: "a4",
+      orientation: opts?.orientation ?? "portrait",
+      compress: true,
+    });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 8;
+    const usableW = pageW - margin * 2;
+    const usableH = pageH - margin * 2;
+
+    let imgW = usableW;
+    let imgH = (img.height * imgW) / img.width;
+
+    const wanted = Math.max(1, Math.round(pages));
+    const capacity = usableH * wanted;
+    if (imgH > capacity) {
+      const k = capacity / imgH;
+      imgH *= k;
+      imgW *= k;
+    }
+
+    const total = Math.max(1, Math.ceil(imgH / usableH - 0.001));
+    for (let p = 0; p < total; p++) {
+      if (p > 0) pdf.addPage();
+      pdf.addImage(dataUrl, "JPEG", margin, margin - p * usableH, imgW, imgH, undefined, "FAST");
+    }
+    // เติมหน้าว่างให้ครบตามจำนวนที่ผู้ใช้กำหนด
+    for (let p = total; p < wanted; p++) pdf.addPage();
+
+    last = pdf.output("blob");
+    if (last.size <= MAX_BYTES) return last;
+  }
+  return last!;
+}
+
 /**
  * สร้าง PDF ตาราง โดยวาดด้วย Canvas (รองรับฟอนต์ไทยของเครื่องแน่นอน)
  * แบ่งหน้าอัตโนมัติ และบีบ JPEG จนไฟล์ไม่เกิน 1 MB
