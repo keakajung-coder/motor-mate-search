@@ -771,12 +771,23 @@ function SnView() {
     return sellers.filter((s) => s.toLowerCase().includes(kw));
   }, [sellers, sellerQ]);
 
+  const statusCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const u of units) {
+      const s = ((u as any).status ?? "").trim() || "ไม่ระบุสถานะ";
+      map.set(s, (map.get(s) ?? 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [units]);
+
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
     const sellerKw = sellerQ.trim().toLowerCase();
     return units.filter((u) => {
       const unitSeller = ((u as any).seller ?? "").trim();
+      const unitStatus = ((u as any).status ?? "").trim() || "ไม่ระบุสถานะ";
       if (seller && unitSeller !== seller) return false;
+      if (statusFilter && unitStatus !== statusFilter) return false;
       if (sellerKw && !unitSeller.toLowerCase().includes(sellerKw)) return false;
       if (!kw) return true;
       const brand = u.compressor_models?.brands?.name ?? "";
@@ -788,12 +799,12 @@ function SnView() {
           `${mp.products?.name ?? ""} ${mp.products?.part_number ?? ""} ${mp.products?.categories?.name ?? ""}`
         )
         .join(" ");
-      const loc = `${(u as any).site_name ?? ""} ${(u as any).district ?? ""} ${(u as any).province ?? ""} ${unitSeller}`;
+      const loc = `${(u as any).site_name ?? ""} ${(u as any).district ?? ""} ${(u as any).province ?? ""} ${unitSeller} ${unitStatus}`;
       return `${u.serial_number} ${brand} ${model} ${cust} ${phone} ${parts} ${loc}`
         .toLowerCase()
         .includes(kw);
     }).sort((a, b) => a.serial_number.localeCompare(b.serial_number, "th"));
-  }, [units, q, seller, sellerQ]);
+  }, [units, q, seller, sellerQ, statusFilter]);
 
 
   useEffect(() => {
