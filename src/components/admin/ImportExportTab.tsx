@@ -106,7 +106,7 @@ const DATASETS: Dataset[] = [
     label: "เครื่อง (S/N)",
     columns: [
       "serial_number", "customer", "brand", "model", "pump_type",
-      "install_date", "daily_hours", "site_name", "address_line", "district", "province", "seller", "note",
+      "install_date", "daily_hours", "site_name", "address_line", "district", "province", "seller", "status", "note",
     ],
     matchKey: "serial_number",
     load: async () => {
