@@ -936,7 +936,12 @@ function MachineCard({
         className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
       >
         <div className="min-w-0">
-          <div className="font-semibold">{unit.serial_number}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold">{unit.serial_number}</span>
+            {(unit as any).status && (
+              <Badge variant="secondary">{(unit as any).status}</Badge>
+            )}
+          </div>
           <div className="truncate text-xs text-muted-foreground">
             {model} • {unit.customers?.name ?? "-"} • อะไหล่ {unit.machine_parts?.length ?? 0} รายการ
           </div>
@@ -946,15 +951,14 @@ function MachineCard({
       {open && (
         <CardContent id={`print-${unit.id}`} className="space-y-4 border-t pt-4">
           <div className="no-print flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => printMachine(unit.id, unit.serial_number)}>
-              <Printer className="mr-1 h-4 w-4" /> พรีวิว / พิมพ์ PDF
-            </Button>
+            <PdfPreviewButton unitId={unit.id} serial={unit.serial_number} />
             <Button size="sm" variant="outline" onClick={() => shareMachine(unit)}>
               <Share2 className="mr-1 h-4 w-4" /> ส่งออก / แชร์
             </Button>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Info label="S/N" value={unit.serial_number} />
+            <Info label="สถานะเครื่อง" value={(unit as any).status ?? "-"} />
             <Info label="รุ่นเครื่อง" value={model} />
             <Info label="ลูกค้า" value={unit.customers?.name ?? "-"} />
             <Info label="เบอร์โทร" value={unit.customers?.phone ?? "-"} />
