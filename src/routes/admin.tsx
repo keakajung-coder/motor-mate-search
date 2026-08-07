@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle } from "lucide-react";
 import { ImportExportTab } from "@/components/admin/ImportExportTab";
-import { THAI_PROVINCES, computeUsage, formatDate } from "@/lib/report";
+import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate } from "@/lib/report";
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 
@@ -573,6 +573,7 @@ function MachinesTab() {
     district: "",
     province: "",
     seller: "",
+    status: "",
     note: "",
   };
   const [form, setForm] = useState(empty);
@@ -581,6 +582,16 @@ function MachinesTab() {
   const [q, setQ] = useState("");
   const [sellerFilter, setSellerFilter] = useState<string | null>(null);
   const [sellerQ, setSellerQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  const statusCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const u of units) {
+      const s = (u.status ?? "").trim() || "ไม่ระบุสถานะ";
+      map.set(s, (map.get(s) ?? 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [units]);
 
   const dupUnit = units.find(
     (u) =>
@@ -620,6 +631,7 @@ function MachinesTab() {
       district: u.district ?? "",
       province: u.province ?? "",
       seller: u.seller ?? "",
+      status: u.status ?? "",
       note: u.note ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -682,6 +694,7 @@ function MachinesTab() {
         district: form.district.trim() || null,
         province: form.province.trim() || null,
         seller: form.seller.trim() || null,
+        status: form.status.trim() || null,
         note: form.note || null,
       };
 
@@ -814,6 +827,39 @@ function MachinesTab() {
                 ))}
               </datalist>
             </div>
+            <div>
+              <Label>สถานะเครื่อง (เลือกหรือพิมพ์เพิ่ม)</Label>
+              <Input
+                list="status-options"
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                placeholder="เช่น อยู่ในประกัน / คอนแทรค"
+              />
+              <datalist id="status-options">
+                {Array.from(
+                  new Set([
+                    ...MACHINE_STATUSES,
+                    ...units.map((u) => (u.status ?? "").trim()).filter(Boolean),
+                  ]),
+                ).map((s: any) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {MACHINE_STATUSES.map((s: string) => (
+                  <Button
+                    key={s}
+                    type="button"
+                    size="sm"
+                    variant={form.status === s ? "default" : "outline"}
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setForm({ ...form, status: s })}
+                  >
+                    {s}
+                  </Button>
+                ))}
+              </div>
+            </div>
             <div className="sm:col-span-2">
               <Label>หมายเหตุ</Label>
               <Textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
@@ -894,6 +940,28 @@ function MachinesTab() {
               </div>
             );
           })()}
+          <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
+            <div className="text-sm font-semibold">สรุปจำนวนเครื่องตามสถานะ (ทั้งหมด {units.length} เครื่อง)</div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={statusFilter === null ? "default" : "outline"}
+                onClick={() => setStatusFilter(null)}
+              >
+                ทั้งหมด ({units.length})
+              </Button>
+              {statusCounts.map(([s, n]) => (
+                <Button
+                  key={s}
+                  size="sm"
+                  variant={statusFilter === s ? "default" : "outline"}
+                  onClick={() => setStatusFilter(statusFilter === s ? null : s)}
+                >
+                  {s} ({n})
+                </Button>
+              ))}
+            </div>
+          </div>
           <ul className="divide-y rounded border">
             {units
               .filter((u) => {
@@ -901,16 +969,24 @@ function MachinesTab() {
                 if (sellerFilter && unitSeller !== sellerFilter) return false;
                 const sellerKw = sellerQ.trim().toLowerCase();
                 if (sellerKw && !unitSeller.toLowerCase().includes(sellerKw)) return false;
+                if (statusFilter && ((u.status ?? "").trim() || "ไม่ระบุสถานะ") !== statusFilter) return false;
                 const kw = q.trim().toLowerCase();
                 if (!kw) return true;
-                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller}`
+                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller} ${u.status ?? ""}`
                   .toLowerCase().includes(kw);
               })
               .map((u) => (
               <li key={u.id} className="px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="font-medium">{u.serial_number}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{u.serial_number}</span>
+                      {u.status && (
+                        <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                          {u.status}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.name ?? "-"}
                     </div>

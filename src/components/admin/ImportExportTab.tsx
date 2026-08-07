@@ -30,6 +30,7 @@ const LABELS: Record<string, string> = {
   district: "อำเภอ/เขต",
   province: "จังหวัด",
   seller: "ผู้ขาย",
+  status: "สถานะเครื่อง",
   note: "หมายเหตุ",
   name: "ชื่อ",
   phone: "เบอร์โทร",
@@ -105,7 +106,7 @@ const DATASETS: Dataset[] = [
     label: "เครื่อง (S/N)",
     columns: [
       "serial_number", "customer", "brand", "model", "pump_type",
-      "install_date", "daily_hours", "site_name", "address_line", "district", "province", "seller", "note",
+      "install_date", "daily_hours", "site_name", "address_line", "district", "province", "seller", "status", "note",
     ],
     matchKey: "serial_number",
     load: async () => {
@@ -126,6 +127,7 @@ const DATASETS: Dataset[] = [
         district: u.district ?? "",
         province: u.province ?? "",
         seller: u.seller ?? "",
+        status: u.status ?? "",
         note: u.note ?? "",
       }));
     },
@@ -143,6 +145,7 @@ const DATASETS: Dataset[] = [
         district: str(row.district) || null,
         province: str(row.province) || null,
         seller: str(row.seller) || null,
+        status: str(row.status) || null,
         note: str(row.note) || null,
       };
       const { data: exist } = await supabase

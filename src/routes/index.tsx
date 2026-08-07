@@ -724,6 +724,7 @@ function SnView() {
   const [units, setUnits] = useState<MachineResult[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [seller, setSeller] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -731,7 +732,7 @@ function SnView() {
       .from("machine_units")
       .select(
         `id, serial_number, install_date, daily_hours, note,
-         site_name, address_line, district, province, seller,
+         site_name, address_line, district, province, seller, status,
          customers ( id, name, phone ),
          compressor_models ( id, name, brands ( id, name ) ),
          machine_parts (
@@ -770,12 +771,23 @@ function SnView() {
     return sellers.filter((s) => s.toLowerCase().includes(kw));
   }, [sellers, sellerQ]);
 
+  const statusCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const u of units) {
+      const s = ((u as any).status ?? "").trim() || "ไม่ระบุสถานะ";
+      map.set(s, (map.get(s) ?? 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [units]);
+
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
     const sellerKw = sellerQ.trim().toLowerCase();
     return units.filter((u) => {
       const unitSeller = ((u as any).seller ?? "").trim();
+      const unitStatus = ((u as any).status ?? "").trim() || "ไม่ระบุสถานะ";
       if (seller && unitSeller !== seller) return false;
+      if (statusFilter && unitStatus !== statusFilter) return false;
       if (sellerKw && !unitSeller.toLowerCase().includes(sellerKw)) return false;
       if (!kw) return true;
       const brand = u.compressor_models?.brands?.name ?? "";
@@ -787,12 +799,12 @@ function SnView() {
           `${mp.products?.name ?? ""} ${mp.products?.part_number ?? ""} ${mp.products?.categories?.name ?? ""}`
         )
         .join(" ");
-      const loc = `${(u as any).site_name ?? ""} ${(u as any).district ?? ""} ${(u as any).province ?? ""} ${unitSeller}`;
+      const loc = `${(u as any).site_name ?? ""} ${(u as any).district ?? ""} ${(u as any).province ?? ""} ${unitSeller} ${unitStatus}`;
       return `${u.serial_number} ${brand} ${model} ${cust} ${phone} ${parts} ${loc}`
         .toLowerCase()
         .includes(kw);
     }).sort((a, b) => a.serial_number.localeCompare(b.serial_number, "th"));
-  }, [units, q, seller, sellerQ]);
+  }, [units, q, seller, sellerQ, statusFilter]);
 
 
   useEffect(() => {
@@ -853,6 +865,28 @@ function SnView() {
         </div>
       )}
 
+      {units.length > 0 && (
+        <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
+          <div className="text-sm font-semibold">
+            สถานะเครื่อง (ทั้งหมด {units.length} เครื่อง)
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterChip active={statusFilter === null} onClick={() => setStatusFilter(null)}>
+              ทั้งหมด ({units.length})
+            </FilterChip>
+            {statusCounts.map(([s, n]) => (
+              <FilterChip
+                key={s}
+                active={statusFilter === s}
+                onClick={() => setStatusFilter(statusFilter === s ? null : s)}
+              >
+                {s} ({n})
+              </FilterChip>
+            ))}
+          </div>
+        </div>
+      )}
+
 
       {loading ? (
         <div className="flex justify-center py-10">
@@ -902,7 +936,12 @@ function MachineCard({
         className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
       >
         <div className="min-w-0">
-          <div className="font-semibold">{unit.serial_number}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold">{unit.serial_number}</span>
+            {(unit as any).status && (
+              <Badge variant="secondary">{(unit as any).status}</Badge>
+            )}
+          </div>
           <div className="truncate text-xs text-muted-foreground">
             {model} • {unit.customers?.name ?? "-"} • อะไหล่ {unit.machine_parts?.length ?? 0} รายการ
           </div>
@@ -912,15 +951,14 @@ function MachineCard({
       {open && (
         <CardContent id={`print-${unit.id}`} className="space-y-4 border-t pt-4">
           <div className="no-print flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => printMachine(unit.id, unit.serial_number)}>
-              <Printer className="mr-1 h-4 w-4" /> พรีวิว / พิมพ์ PDF
-            </Button>
+            <PdfPreviewButton unitId={unit.id} serial={unit.serial_number} />
             <Button size="sm" variant="outline" onClick={() => shareMachine(unit)}>
               <Share2 className="mr-1 h-4 w-4" /> ส่งออก / แชร์
             </Button>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Info label="S/N" value={unit.serial_number} />
+            <Info label="สถานะเครื่อง" value={(unit as any).status ?? "-"} />
             <Info label="รุ่นเครื่อง" value={model} />
             <Info label="ลูกค้า" value={unit.customers?.name ?? "-"} />
             <Info label="เบอร์โทร" value={unit.customers?.phone ?? "-"} />
@@ -1060,19 +1098,156 @@ function groupByCategory(parts: MachinePart[]) {
   return Array.from(map.values()).sort((a, b) => a.sort - b.sort);
 }
 
-async function printMachine(unitId: string, serial: string) {
-  const el = document.getElementById(`print-${unitId}`);
-  if (!el) return;
-  toast.loading("กำลังสร้างไฟล์ PDF...", { id: "pdf" });
-  try {
-    const { elementToPdfBlob, shareOrDownload } = await import("@/lib/report");
-    const blob = await elementToPdfBlob(el);
-    const res = await shareOrDownload(blob, `machine-${serial}.pdf`);
-    toast.success(res === "shared" ? "ส่งออก PDF แล้ว" : "ดาวน์โหลด PDF แล้ว", { id: "pdf" });
-  } catch (err) {
-    console.error(err);
-    toast.error("สร้าง PDF ไม่สำเร็จ", { id: "pdf" });
+function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }) {
+  const [open, setOpen] = useState(false);
+  const [pages, setPages] = useState(1);
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
+  const [busy, setBusy] = useState(false);
+  const [url, setUrl] = useState<string | null>(null);
+  const [blob, setBlob] = useState<Blob | null>(null);
+  const [size, setSize] = useState<string>("");
+
+  async function build(p = pages, o = orientation) {
+    const el = document.getElementById(`print-${unitId}`);
+    if (!el) return;
+    setBusy(true);
+    try {
+      const { elementToPdfBlobPaged, formatBytes } = await import("@/lib/report");
+      const b = await elementToPdfBlobPaged(el, p, { orientation: o });
+      setBlob(b);
+      setSize(formatBytes(b.size));
+      setUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(b);
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("สร้าง PDF ไม่สำเร็จ");
+    } finally {
+      setBusy(false);
+    }
   }
+
+  useEffect(() => {
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [url]);
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          setOpen(true);
+          setTimeout(() => build(), 150);
+        }}
+      >
+        <Printer className="mr-1 h-4 w-4" /> พรีวิว / พิมพ์ PDF
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>พรีวิว PDF — {serial}</DialogTitle>
+            <DialogDescription>
+              กำหนดจำนวนหน้ากระดาษที่ต้องการ ระบบจะย่อเนื้อหาให้พอดีตามจำนวนหน้า
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-wrap items-end gap-2">
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">จำนวนหน้ากระดาษ</label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={pages}
+                onChange={(e) => setPages(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+                className="h-9 w-24"
+              />
+            </div>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4].map((n) => (
+                <Button
+                  key={n}
+                  size="sm"
+                  variant={pages === n ? "default" : "outline"}
+                  onClick={() => { setPages(n); build(n, orientation); }}
+                >
+                  {n} หน้า
+                </Button>
+              ))}
+            </div>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={orientation === "portrait" ? "default" : "outline"}
+                onClick={() => { setOrientation("portrait"); build(pages, "portrait"); }}
+              >
+                แนวตั้ง
+              </Button>
+              <Button
+                size="sm"
+                variant={orientation === "landscape" ? "default" : "outline"}
+                onClick={() => { setOrientation("landscape"); build(pages, "landscape"); }}
+              >
+                แนวนอน
+              </Button>
+            </div>
+            <Button size="sm" onClick={() => build()} disabled={busy}>
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+              อัปเดตพรีวิว
+            </Button>
+          </div>
+
+          <div className="h-[55vh] overflow-hidden rounded border bg-muted">
+            {busy ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : url ? (
+              <iframe src={url} title="pdf-preview" className="h-full w-full" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                ยังไม่มีพรีวิว
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex-wrap gap-2 sm:justify-between">
+            <span className="text-xs text-muted-foreground">
+              {size ? `ขนาดไฟล์: ${size} • ${pages} หน้า` : ""}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                disabled={!blob}
+                onClick={async () => {
+                  if (!blob) return;
+                  const { downloadBlob } = await import("@/lib/report");
+                  downloadBlob(blob, `machine-${serial}.pdf`);
+                }}
+              >
+                <Download className="mr-1 h-4 w-4" /> ดาวน์โหลด
+              </Button>
+              <Button
+                disabled={!blob}
+                onClick={async () => {
+                  if (!blob) return;
+                  const { shareOrDownload } = await import("@/lib/report");
+                  await shareOrDownload(blob, `machine-${serial}.pdf`, `ข้อมูลเครื่อง ${serial}`);
+                }}
+              >
+                <Share2 className="mr-1 h-4 w-4" /> แชร์
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 
