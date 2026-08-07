@@ -621,6 +621,7 @@ function MachinesTab() {
       district: u.district ?? "",
       province: u.province ?? "",
       seller: u.seller ?? "",
+      status: u.status ?? "",
       note: u.note ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
