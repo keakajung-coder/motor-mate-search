@@ -30,6 +30,7 @@ const LABELS: Record<string, string> = {
   district: "อำเภอ/เขต",
   province: "จังหวัด",
   seller: "ผู้ขาย",
+  status: "สถานะเครื่อง",
   note: "หมายเหตุ",
   name: "ชื่อ",
   phone: "เบอร์โทร",
