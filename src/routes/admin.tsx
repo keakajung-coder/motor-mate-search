@@ -684,6 +684,7 @@ function MachinesTab() {
         district: form.district.trim() || null,
         province: form.province.trim() || null,
         seller: form.seller.trim() || null,
+        status: form.status.trim() || null,
         note: form.note || null,
       };
 
