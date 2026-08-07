@@ -145,6 +145,7 @@ const DATASETS: Dataset[] = [
         district: str(row.district) || null,
         province: str(row.province) || null,
         seller: str(row.seller) || null,
+        status: str(row.status) || null,
         note: str(row.note) || null,
       };
       const { data: exist } = await supabase
