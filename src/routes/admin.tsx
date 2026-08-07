@@ -836,7 +836,7 @@ function MachinesTab() {
                 ))}
               </datalist>
               <div className="mt-1 flex flex-wrap gap-1">
-                {MACHINE_STATUSES.map((s) => (
+                {MACHINE_STATUSES.map((s: string) => (
                   <Button
                     key={s}
                     type="button"
