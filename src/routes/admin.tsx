@@ -582,6 +582,16 @@ function MachinesTab() {
   const [q, setQ] = useState("");
   const [sellerFilter, setSellerFilter] = useState<string | null>(null);
   const [sellerQ, setSellerQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  const statusCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const u of units) {
+      const s = (u.status ?? "").trim() || "ไม่ระบุสถานะ";
+      map.set(s, (map.get(s) ?? 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [units]);
 
   const dupUnit = units.find(
     (u) =>
