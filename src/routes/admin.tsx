@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle } from "lucide-react";
 import { ImportExportTab } from "@/components/admin/ImportExportTab";
-import { THAI_PROVINCES, computeUsage, formatDate } from "@/lib/report";
+import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate } from "@/lib/report";
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 
