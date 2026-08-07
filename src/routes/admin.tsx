@@ -817,6 +817,39 @@ function MachinesTab() {
                 ))}
               </datalist>
             </div>
+            <div>
+              <Label>สถานะเครื่อง (เลือกหรือพิมพ์เพิ่ม)</Label>
+              <Input
+                list="status-options"
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                placeholder="เช่น อยู่ในประกัน / คอนแทรค"
+              />
+              <datalist id="status-options">
+                {Array.from(
+                  new Set([
+                    ...MACHINE_STATUSES,
+                    ...units.map((u) => (u.status ?? "").trim()).filter(Boolean),
+                  ]),
+                ).map((s: any) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {MACHINE_STATUSES.map((s) => (
+                  <Button
+                    key={s}
+                    type="button"
+                    size="sm"
+                    variant={form.status === s ? "default" : "outline"}
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setForm({ ...form, status: s })}
+                  >
+                    {s}
+                  </Button>
+                ))}
+              </div>
+            </div>
             <div className="sm:col-span-2">
               <Label>หมายเหตุ</Label>
               <Textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
