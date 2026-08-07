@@ -573,6 +573,7 @@ function MachinesTab() {
     district: "",
     province: "",
     seller: "",
+    status: "",
     note: "",
   };
   const [form, setForm] = useState(empty);
