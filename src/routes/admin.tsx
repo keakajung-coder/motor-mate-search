@@ -884,7 +884,25 @@ function MachinesTab() {
               <Button size="sm" variant="outline" onClick={() => startEdit(dupUnit)}>ไปแก้ไขรายการเดิม</Button>
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={formHistory.undo}
+              disabled={!formHistory.canUndo}
+              title="ย้อนกลับการแก้ไข"
+            >
+              <Undo2 className="mr-1 h-4 w-4" /> ย้อนกลับ
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={formHistory.redo}
+              disabled={!formHistory.canRedo}
+              title="ทำซ้ำการแก้ไข"
+            >
+              <Redo2 className="mr-1 h-4 w-4" /> ต่อไป
+            </Button>
             <Button onClick={save} disabled={saving || !!dupUnit}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
               {form.id ? "บันทึก" : "เพิ่มเครื่อง"}
