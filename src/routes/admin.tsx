@@ -16,8 +16,12 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle, Undo2, Redo2 } from "lucide-react";
 import { ImportExportTab } from "@/components/admin/ImportExportTab";
+import { OptionListManager } from "@/components/admin/OptionListManager";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { useUndoable } from "@/hooks/use-undoable";
+import { loadOptionList } from "@/lib/option-lists";
 import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate } from "@/lib/report";
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
@@ -47,6 +51,7 @@ function AdminPage() {
           <TabsTrigger value="products">สินค้า/อะไหล่</TabsTrigger>
           <TabsTrigger value="brands">ยี่ห้อ</TabsTrigger>
           <TabsTrigger value="models">รุ่นเครื่อง</TabsTrigger>
+          <TabsTrigger value="lists">ผู้ขาย / สถานะ</TabsTrigger>
           <TabsTrigger value="io">นำเข้า / ส่งออก</TabsTrigger>
         </TabsList>
         <TabsContent value="machines"><MachinesTab /></TabsContent>
@@ -54,6 +59,12 @@ function AdminPage() {
         <TabsContent value="products"><ProductsTab /></TabsContent>
         <TabsContent value="brands"><BrandsTab /></TabsContent>
         <TabsContent value="models"><ModelsTab /></TabsContent>
+        <TabsContent value="lists">
+          <div className="grid gap-4 md:grid-cols-2">
+            <OptionListManager listKey="sellers" column="seller" title="ผู้ขาย" />
+            <OptionListManager listKey="statuses" column="status" title="สถานะเครื่อง" presets={MACHINE_STATUSES} />
+          </div>
+        </TabsContent>
         <TabsContent value="io"><ImportExportTab /></TabsContent>
       </Tabs>
     </div>
@@ -90,7 +101,7 @@ function BrandsTab() {
     load();
   }
   async function del(id: string) {
-    if (!confirm("ลบยี่ห้อนี้?")) return;
+    
     const { error } = await supabase.from("brands").delete().eq("id", id);
     if (error) return toast.error(error.message);
     if (editId === id) { setEditId(null); setName(""); }
@@ -120,7 +131,7 @@ function BrandsTab() {
               <span>{b.name}</span>
               <div className="flex gap-1">
                 <Button size="sm" variant="ghost" onClick={() => { setEditId(b.id); setName(b.name); }}><Pencil className="h-4 w-4" /></Button>
-                <Button size="sm" variant="ghost" onClick={() => del(b.id)}><Trash2 className="h-4 w-4" /></Button>
+                <ConfirmButton title={`ลบยี่ห้อ "${b.name}"?`} onConfirm={() => del(b.id)}><Trash2 className="h-4 w-4" /></ConfirmButton>
               </div>
             </li>
           ))}
@@ -167,7 +178,7 @@ function ModelsTab() {
     setEditId(m.id); setName(m.name); setBrandId(m.brand_id); setPumpType(m.pump_type ?? "");
   }
   async function del(id: string) {
-    if (!confirm("ลบรุ่นนี้?")) return;
+    
     await supabase.from("compressor_models").delete().eq("id", id);
     if (editId === id) reset();
     load();
@@ -208,7 +219,7 @@ function ModelsTab() {
               </div>
               <div className="flex gap-1">
                 <Button size="sm" variant="ghost" onClick={() => startEdit(m)}><Pencil className="h-4 w-4" /></Button>
-                <Button size="sm" variant="ghost" onClick={() => del(m.id)}><Trash2 className="h-4 w-4" /></Button>
+                <ConfirmButton title={`ลบรุ่น "${m.name}"?`} onConfirm={() => del(m.id)}><Trash2 className="h-4 w-4" /></ConfirmButton>
               </div>
             </li>
           ))}
@@ -271,7 +282,7 @@ function CustomersTab() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   async function del(id: string) {
-    if (!confirm("ลบลูกค้านี้?")) return;
+    
     await supabase.from("customers").delete().eq("id", id);
     if (form.id === id) setForm(emptyForm);
     load();
@@ -328,7 +339,7 @@ function CustomersTab() {
                   </div>
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" onClick={() => startEdit(c)}><Pencil className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => del(c.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <ConfirmButton title={`ลบลูกค้า "${c.name}"?`} onConfirm={() => del(c.id)}><Trash2 className="h-4 w-4" /></ConfirmButton>
                   </div>
                 </div>
                 {machines.length > 0 && (
@@ -426,7 +437,7 @@ function ProductsTab() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   async function del(id: string) {
-    if (!confirm("ลบสินค้านี้?")) return;
+    
     await supabase.from("products").delete().eq("id", id);
     if (form.id === id) setForm(empty);
     load();
@@ -528,7 +539,7 @@ function ProductsTab() {
                   </div>
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" onClick={() => startEdit(p)}><Pencil className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => del(p.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <ConfirmButton title={`ลบสินค้า "${p.name}"?`} onConfirm={() => del(p.id)}><Trash2 className="h-4 w-4" /></ConfirmButton>
                   </div>
                 </div>
                 {machines.length > 0 && (
@@ -576,13 +587,21 @@ function MachinesTab() {
     status: "",
     note: "",
   };
-  const [form, setForm] = useState(empty);
+  const formHistory = useUndoable(empty);
+  const form = formHistory.value;
+  const setForm = formHistory.set;
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [sellerFilter, setSellerFilter] = useState<string | null>(null);
   const [sellerQ, setSellerQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [customSellers, setCustomSellers] = useState<string[]>([]);
+  const [customStatuses, setCustomStatuses] = useState<string[]>([]);
+  useEffect(() => {
+    loadOptionList("sellers").then(setCustomSellers);
+    loadOptionList("statuses").then(setCustomStatuses);
+  }, []);
 
   const statusCounts = useMemo(() => {
     const map = new Map<string, number>();
@@ -614,10 +633,10 @@ function MachinesTab() {
   }
   useEffect(() => { load(); }, []);
 
-  function resetForm() { setForm(empty); }
+  function resetForm() { formHistory.reset(empty); }
 
   function startEdit(u: any) {
-    setForm({
+    formHistory.reset({
       id: u.id,
       serial_number: u.serial_number ?? "",
       customer_name: u.customers?.name ?? "",
@@ -715,7 +734,7 @@ function MachinesTab() {
     }
   }
   async function del(id: string) {
-    if (!confirm("ลบเครื่องนี้?")) return;
+    
     await supabase.from("machine_units").delete().eq("id", id);
     if (selected === id) setSelected(null);
     if (form.id === id) resetForm();
@@ -822,7 +841,9 @@ function MachinesTab() {
                 placeholder="ชื่อพนักงาน/ร้านที่ขายเครื่องนี้"
               />
               <datalist id="seller-options">
-                {Array.from(new Set(units.map((u) => u.seller).filter(Boolean))).map((s: any) => (
+                {Array.from(
+                  new Set([...customSellers, ...units.map((u) => u.seller).filter(Boolean)]),
+                ).map((s: any) => (
                   <option key={s} value={s} />
                 ))}
               </datalist>
@@ -839,6 +860,7 @@ function MachinesTab() {
                 {Array.from(
                   new Set([
                     ...MACHINE_STATUSES,
+                    ...customStatuses,
                     ...units.map((u) => (u.status ?? "").trim()).filter(Boolean),
                   ]),
                 ).map((s: any) => (
@@ -872,7 +894,25 @@ function MachinesTab() {
               <Button size="sm" variant="outline" onClick={() => startEdit(dupUnit)}>ไปแก้ไขรายการเดิม</Button>
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={formHistory.undo}
+              disabled={!formHistory.canUndo}
+              title="ย้อนกลับการแก้ไข"
+            >
+              <Undo2 className="mr-1 h-4 w-4" /> ย้อนกลับ
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={formHistory.redo}
+              disabled={!formHistory.canRedo}
+              title="ทำซ้ำการแก้ไข"
+            >
+              <Redo2 className="mr-1 h-4 w-4" /> ต่อไป
+            </Button>
             <Button onClick={save} disabled={saving || !!dupUnit}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
               {form.id ? "บันทึก" : "เพิ่มเครื่อง"}
@@ -1004,7 +1044,7 @@ function MachinesTab() {
                     <Button size="sm" variant="outline" onClick={() => setSelected(selected === u.id ? null : u.id)}>
                       {selected === u.id ? "ปิด" : "จัดการอะไหล่"}
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => del(u.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <ConfirmButton title={`ลบเครื่อง S/N "${u.serial_number}"?`} description="ข้อมูลอะไหล่ของเครื่องนี้จะถูกลบด้วย" onConfirm={() => del(u.id)}><Trash2 className="h-4 w-4" /></ConfirmButton>
                   </div>
                 </div>
                 {selected === u.id && (
@@ -1190,7 +1230,7 @@ function MachinePartsEditor({
                   />
                 </div>
               </div>
-              <Button size="sm" variant="ghost" onClick={() => del(mp.id)}><Trash2 className="h-4 w-4" /></Button>
+              <ConfirmButton title={`ลบอะไหล่ "${mp.products?.name ?? ""}" ออกจากเครื่องนี้?`} onConfirm={() => del(mp.id)}><Trash2 className="h-4 w-4" /></ConfirmButton>
             </div>
             <div className="grid gap-2 sm:grid-cols-4">
               <div>
