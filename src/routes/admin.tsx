@@ -586,7 +586,9 @@ function MachinesTab() {
     status: "",
     note: "",
   };
-  const [form, setForm] = useState(empty);
+  const formHistory = useUndoable(empty);
+  const form = formHistory.value;
+  const setForm = formHistory.set;
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -624,10 +626,10 @@ function MachinesTab() {
   }
   useEffect(() => { load(); }, []);
 
-  function resetForm() { setForm(empty); }
+  function resetForm() { formHistory.reset(empty); }
 
   function startEdit(u: any) {
-    setForm({
+    formHistory.reset({
       id: u.id,
       serial_number: u.serial_number ?? "",
       customer_name: u.customers?.name ?? "",
