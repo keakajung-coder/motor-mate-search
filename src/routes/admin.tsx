@@ -100,7 +100,7 @@ function BrandsTab() {
     load();
   }
   async function del(id: string) {
-    async function delBrand(id: string) {
+    
     const { error } = await supabase.from("brands").delete().eq("id", id);
     if (error) return toast.error(error.message);
     if (editId === id) { setEditId(null); setName(""); }
