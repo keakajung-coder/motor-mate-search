@@ -21,6 +21,7 @@ import { ImportExportTab } from "@/components/admin/ImportExportTab";
 import { OptionListManager } from "@/components/admin/OptionListManager";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { useUndoable } from "@/hooks/use-undoable";
+import { loadOptionList } from "@/lib/option-lists";
 import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate } from "@/lib/report";
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
