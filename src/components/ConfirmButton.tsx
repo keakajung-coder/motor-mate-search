@@ -23,7 +23,7 @@ export function ConfirmButton({
   variant = "ghost",
   className,
 }: {
-  onConfirm: () => void | Promise<void>;
+  onConfirm: () => unknown | Promise<unknown>;
   title?: string;
   description?: string;
   confirmText?: string;
