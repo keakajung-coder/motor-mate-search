@@ -595,6 +595,12 @@ function MachinesTab() {
   const [sellerFilter, setSellerFilter] = useState<string | null>(null);
   const [sellerQ, setSellerQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [customSellers, setCustomSellers] = useState<string[]>([]);
+  const [customStatuses, setCustomStatuses] = useState<string[]>([]);
+  useEffect(() => {
+    loadOptionList("sellers").then(setCustomSellers);
+    loadOptionList("statuses").then(setCustomStatuses);
+  }, []);
 
   const statusCounts = useMemo(() => {
     const map = new Map<string, number>();
@@ -834,7 +840,9 @@ function MachinesTab() {
                 placeholder="ชื่อพนักงาน/ร้านที่ขายเครื่องนี้"
               />
               <datalist id="seller-options">
-                {Array.from(new Set(units.map((u) => u.seller).filter(Boolean))).map((s: any) => (
+                {Array.from(
+                  new Set([...customSellers, ...units.map((u) => u.seller).filter(Boolean)]),
+                ).map((s: any) => (
                   <option key={s} value={s} />
                 ))}
               </datalist>
@@ -851,6 +859,7 @@ function MachinesTab() {
                 {Array.from(
                   new Set([
                     ...MACHINE_STATUSES,
+                    ...customStatuses,
                     ...units.map((u) => (u.status ?? "").trim()).filter(Boolean),
                   ]),
                 ).map((s: any) => (
