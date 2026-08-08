@@ -1007,14 +1007,33 @@ function MachineCard({
 }
 
 function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | null }) {
+  const [lastChanged, setLastChanged] = useState<string | null>(mp.last_changed_at);
+  const [savingDate, setSavingDate] = useState(false);
+
+  async function saveDate(value: string | null) {
+    setSavingDate(true);
+    const prev = lastChanged;
+    setLastChanged(value);
+    const { error } = await supabase
+      .from("machine_parts")
+      .update({ last_changed_at: value })
+      .eq("id", mp.id);
+    setSavingDate(false);
+    if (error) {
+      setLastChanged(prev);
+      return toast.error("บันทึกวันที่ไม่สำเร็จ: " + error.message);
+    }
+    toast.success("อัปเดตวันที่เปลี่ยนอะไหล่แล้ว");
+  }
+
   const interval = mp.service_interval_hours ?? mp.products?.service_interval_hours ?? null;
-  const nextChange = computeNextChange(mp.last_changed_at, interval, dailyHours);
+  const nextChange = computeNextChange(lastChanged, interval, dailyHours);
   const usedHours =
     mp.hours_used != null && mp.hours_used > 0
       ? mp.hours_used
-      : mp.last_changed_at && dailyHours && dailyHours > 0
+      : lastChanged && dailyHours && dailyHours > 0
         ? Math.round(
-            Math.max(0, Math.floor((Date.now() - new Date(mp.last_changed_at).getTime()) / 86400000)) * dailyHours,
+            Math.max(0, Math.floor((Date.now() - new Date(lastChanged).getTime()) / 86400000)) * dailyHours,
           )
         : null;
   const remaining = usedHours != null && interval ? interval - usedHours : null;
@@ -1055,16 +1074,34 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
           )}
         </div>
         <div className="mt-1 grid gap-1 text-xs sm:grid-cols-2">
-          <div className="flex items-center gap-1 rounded bg-muted/50 px-2 py-1">
-            <CalendarClock className="h-3 w-3 text-muted-foreground" />
+          <div className="no-print flex items-center gap-1 rounded bg-muted/50 px-2 py-1">
+            <CalendarClock className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <span className="shrink-0 text-muted-foreground">เปลี่ยนล่าสุด:</span>
+            <input
+              type="date"
+              value={lastChanged ?? ""}
+              onChange={(e) => saveDate(e.target.value || null)}
+              disabled={savingDate}
+              className="h-7 min-w-0 flex-1 rounded border bg-background px-1 text-xs"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs"
+              disabled={savingDate}
+              onClick={() => saveDate(new Date().toISOString().slice(0, 10))}
+            >
+              วันนี้
+            </Button>
+          </div>
+          <div className="hidden items-center gap-1 rounded bg-muted/50 px-2 py-1 print:flex">
             <span className="text-muted-foreground">เปลี่ยนล่าสุด:</span>
-            <span className="font-medium">{formatDate(mp.last_changed_at)}</span>
+            <span className="font-medium">{formatDate(lastChanged)}</span>
           </div>
           <div className="flex items-center gap-1 rounded bg-primary/10 px-2 py-1">
             <CalendarClock className="h-3 w-3 text-primary" />
             <span className="text-muted-foreground">ครั้งถัดไป:</span>
             <span className="font-medium text-primary">{formatDate(nextChange)}</span>
-
           </div>
         </div>
       </div>
