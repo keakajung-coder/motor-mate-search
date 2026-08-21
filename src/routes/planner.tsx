@@ -821,7 +821,7 @@ function MonthGrid({
                     }
                     title={apptSummary(a)}
                   >
-                    {compact ? apptShort(a) : apptSummary(a)}
+                    {apptShort(a)}
                   </button>
                 ))}
                 {list.length > max && (
