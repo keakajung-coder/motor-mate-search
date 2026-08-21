@@ -1235,7 +1235,7 @@ function AppointmentDialog({
         <div className="grid gap-3 sm:grid-cols-2">
           <F label="ชื่อลูกค้า *">
             <Combobox
-              disabled={!canEdit}
+              disabled={locked}
               value={form.customer_name ?? ""}
               onChange={pickCustomer}
               options={dir.customers.map((c) => ({
@@ -1248,7 +1248,7 @@ function AppointmentDialog({
           </F>
           <F label="หมายเลขเครื่อง (S/N)">
             <Combobox
-              disabled={!canEdit}
+              disabled={locked}
               value={form.serial_number ?? ""}
               onChange={pickSerial}
               options={dir.machines.map((m) => ({
@@ -1261,7 +1261,7 @@ function AppointmentDialog({
           </F>
           <F label="ที่อยู่">
             <ComboCell
-              disabled={!canEdit}
+              disabled={locked}
               value={form.customer_address ?? ""}
               onChange={(v) => set("customer_address", v)}
               options={addressOptions}
@@ -1269,11 +1269,11 @@ function AppointmentDialog({
             />
           </F>
           <F label="ผู้ติดต่อ">
-            <Input disabled={!canEdit} value={form.contact_name ?? ""} onChange={(e) => set("contact_name", e.target.value)} />
+            <Input disabled={locked} value={form.contact_name ?? ""} onChange={(e) => set("contact_name", e.target.value)} />
           </F>
           <F label="เบอร์โทร">
             <ComboCell
-              disabled={!canEdit}
+              disabled={locked}
               value={form.contact_phone ?? ""}
               onChange={(v) => set("contact_phone", v)}
               options={phoneOptions}
@@ -1282,7 +1282,7 @@ function AppointmentDialog({
           </F>
           <F label="เครื่อง (ยี่ห้อ/รุ่น)">
             <ComboCell
-              disabled={!canEdit}
+              disabled={locked}
               value={form.machine_label ?? ""}
               onChange={(v) => set("machine_label", v)}
               options={Array.from(new Set(dir.machines.map((m) => m.label).filter(Boolean)))}
@@ -1291,7 +1291,7 @@ function AppointmentDialog({
           </F>
           <F label="ประเภทเซอร์วิส">
             <ComboCell
-              disabled={!canEdit}
+              disabled={locked}
               value={form.service_type ?? ""}
               onChange={(v) => set("service_type", v)}
               options={SERVICE_TYPES}
@@ -1300,15 +1300,15 @@ function AppointmentDialog({
           </F>
           <div className="grid grid-cols-2 gap-3">
             <F label="วันที่">
-              <Input disabled={!canEdit} type="date" value={form.visit_date} onChange={(e) => set("visit_date", e.target.value)} />
+              <Input disabled={locked} type="date" value={form.visit_date} onChange={(e) => set("visit_date", e.target.value)} />
             </F>
             <F label="เวลา">
-              <Input disabled={!canEdit} type="time" value={form.visit_time ?? ""} onChange={(e) => set("visit_time", e.target.value)} />
+              <Input disabled={locked} type="time" value={form.visit_time ?? ""} onChange={(e) => set("visit_time", e.target.value)} />
             </F>
           </div>
           <F label="พนักงานเซอร์วิส (เลือกได้หลายคน)">
             <MultiCombobox
-              disabled={!canEdit}
+              disabled={locked}
               values={splitNames(form.staff_name)}
               onChange={(list) => set("staff_name", joinNames(list))}
               options={dir.staff}
@@ -1318,7 +1318,7 @@ function AppointmentDialog({
           </F>
           <F label="ทะเบียนรถ">
             <ComboCell
-              disabled={!canEdit}
+              disabled={locked}
               value={form.vehicle_plate ?? ""}
               onChange={(v) => set("vehicle_plate", v)}
               options={dir.vehicles}
@@ -1327,7 +1327,7 @@ function AppointmentDialog({
           </F>
           <div className="sm:col-span-2">
             <F label="รายละเอียดงาน / บันทึกให้ช่าง">
-              <Textarea disabled={!canEdit} rows={3} value={form.job_detail ?? ""} onChange={(e) => set("job_detail", e.target.value)} />
+              <Textarea disabled={locked} rows={3} value={form.job_detail ?? ""} onChange={(e) => set("job_detail", e.target.value)} />
             </F>
           </div>
         </div>
