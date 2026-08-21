@@ -660,7 +660,7 @@ function MonthGrid({
                     onPick(a);
                   }}
                   className={
-                    "block w-full truncate rounded px-1 py-0.5 text-left " +
+                    "block w-full whitespace-normal break-words rounded px-1 py-0.5 text-left leading-tight " +
                     (a.status === "closed"
                       ? a.result === "not_ok"
                         ? "bg-red-100 text-red-700 border border-red-200"
