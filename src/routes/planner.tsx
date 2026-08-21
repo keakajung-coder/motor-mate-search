@@ -669,14 +669,12 @@ function MonthGrid({
                         ? "bg-red-50 text-red-600 border border-red-200"
                         : "bg-amber-100 text-amber-800 border border-amber-200")
                   }
-                  title={[a.customer_name, a.service_type, a.job_detail].filter(Boolean).join(" - ")}
+                  title={apptSummary(a)}
                 >
-                  {[a.customer_name || "ไม่ระบุลูกค้า", a.service_type || a.job_detail]
-                    .filter(Boolean)
-                    .join(" - ")}
+                  {apptSummary(a)}
                 </button>
               ))}
-              {list.length > 3 && <p className="px-1 text-[10px] text-muted-foreground">+{list.length - 3} งาน</p>}
+              {list.length > 4 && <p className="px-1 text-[10px] text-muted-foreground">+{list.length - 4} งาน</p>}
             </div>
           </div>
         );
