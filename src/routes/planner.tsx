@@ -1334,11 +1334,28 @@ function AppointmentDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2">
+          {canEdit && form.id && (
+            <ConfirmButton
+              variant="destructive"
+              size="default"
+              className="sm:mr-auto"
+              title="ลบรายการนัดหมายนี้?"
+              description="ระบบจะลบนัดหมายนี้ออกจากปฏิทินและฐานข้อมูลทันที และไม่สามารถย้อนกลับได้"
+              onConfirm={remove}
+            >
+              <Trash2 className="mr-1 h-4 w-4" /> ลบนัดหมายนี้
+            </ConfirmButton>
+          )}
           <Button variant="outline" onClick={onClose}>
             ปิด
           </Button>
-          {canEdit && (
+          {canEdit && !editMode && (
+            <Button onClick={() => setEditMode(true)}>
+              <Pencil className="mr-1 h-4 w-4" /> แก้ไขข้อมูลนัดหมาย
+            </Button>
+          )}
+          {canEdit && editMode && (
             <Button onClick={save} disabled={saving}>
               {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} บันทึก
             </Button>
