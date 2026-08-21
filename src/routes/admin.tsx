@@ -20,6 +20,9 @@ import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle, Undo2, Redo2, Loc
 import { ImportExportTab } from "@/components/admin/ImportExportTab";
 import { OptionListManager } from "@/components/admin/OptionListManager";
 import { StaffVehiclesTab } from "@/components/admin/StaffVehiclesTab";
+import { SellerTransfer } from "@/components/admin/SellerTransfer";
+import { refreshDirectory } from "@/lib/directory";
+
 import { PasscodeSettings } from "@/components/admin/PasscodeSettings";
 import { BackupRestore } from "@/components/admin/BackupRestore";
 import { AdminLockButton } from "@/components/AccessGate";
