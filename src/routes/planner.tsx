@@ -149,12 +149,12 @@ function PlannerPage() {
   }, [load]);
 
   const staffNames = useMemo(
-    () => Array.from(new Set(appts.map((a) => a.staff_name).filter(Boolean) as string[])).sort(),
+    () => Array.from(new Set(appts.flatMap((a) => splitNames(a.staff_name)))).sort(),
     [appts]
   );
 
   const visible = useMemo(
-    () => (staffFilter ? appts.filter((a) => a.staff_name === staffFilter) : appts),
+    () => (staffFilter ? appts.filter((a) => splitNames(a.staff_name).includes(staffFilter)) : appts),
     [appts, staffFilter]
   );
 
