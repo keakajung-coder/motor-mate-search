@@ -158,12 +158,6 @@ function PlannerPage() {
         </div>
       </header>
 
-      <StatsPanel appts={appts} pending={orders.length} />
-
-      <PartsAlertPanel />
-
-      {isAdmin && <PendingOrders orders={orders} reload={load} />}
-
       <Card>
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -183,11 +177,19 @@ function PlannerPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {(["month", "week", "day"] as const).map((v) => (
-              <Button key={v} size="sm" variant={view === v ? "default" : "outline"} onClick={() => setView(v)}>
-                {v === "month" ? "รายเดือน" : v === "week" ? "รายสัปดาห์" : "รายวัน"}
-              </Button>
-            ))}
+            <div className="grid flex-1 grid-cols-3 gap-1 sm:flex sm:flex-none">
+              {(["month", "week", "day"] as const).map((v) => (
+                <Button
+                  key={v}
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  variant={view === v ? "default" : "outline"}
+                  onClick={() => setView(v)}
+                >
+                  {v === "month" ? "รายเดือน" : v === "week" ? "รายสัปดาห์" : "รายวัน"}
+                </Button>
+              ))}
+            </div>
             <select
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               value={staffFilter}
@@ -202,6 +204,7 @@ function PlannerPage() {
             </select>
           </div>
         </CardHeader>
+
         <CardContent>
           {loading ? (
             <div className="flex justify-center py-10">
