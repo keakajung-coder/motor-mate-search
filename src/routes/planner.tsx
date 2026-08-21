@@ -32,7 +32,7 @@ import {
 import { useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog } from "@/components/WorkOrderDialog";
-import { computeUsage, formatDate } from "@/lib/report";
+import { computeUsage, formatDate, isMachineComplete } from "@/lib/report";
 
 export const Route = createFileRoute("/planner")({
   head: () => ({
@@ -279,15 +279,15 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
   useEffect(() => {
     (async () => {
       const [m, p] = await Promise.all([
-        supabase.from("machine_units").select("id, data_complete"),
+        supabase.from("machine_units").select("id, serial_number, model_id, customer_id, install_date, daily_hours, seller, status"),
         supabase.from("products").select("id", { count: "exact", head: true }),
       ]);
-      const rows = (m.data ?? []) as { id: string; data_complete: boolean }[];
+      const rows = (m.data ?? []) as any[];
       setCounts({
         machines: rows.length,
         parts: p.count ?? 0,
-        complete: rows.filter((r) => r.data_complete).length,
-        incomplete: rows.filter((r) => !r.data_complete).length,
+        complete: rows.filter((r) => isMachineComplete(r)).length,
+        incomplete: rows.filter((r) => !isMachineComplete(r)).length,
       });
     })();
   }, []);
