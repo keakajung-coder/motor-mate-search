@@ -27,6 +27,7 @@ import {
   ChevronRight,
   ClipboardList,
   Loader2,
+  Pencil,
   Phone,
   Trash2,
   XCircle,
