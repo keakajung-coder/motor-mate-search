@@ -77,39 +77,51 @@ type Product = {
 };
 
 function HomePage() {
+  const [q, setQ] = useState("");
+  const [tab, setTab] = useState("sn");
+
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            ระบบค้นหาอะไหล่ปั๊มลม
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            ค้นหาอะไหล่ด้วยรหัส ชื่อ หรือรุ่น พร้อมกรองตามหมวดหมู่และเช็กสต็อกคงเหลือ
-          </p>
+    <div className="space-y-5">
+      {/* ===== แถวบนสุด: ค้นหา + ปุ่มหลัก ===== */}
+      <div className="sticky top-0 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-card sm:px-4 sm:shadow-sm">
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="relative min-w-0">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-6 w-6 -translate-y-1/2 text-primary" />
+            <Input
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value);
+                setTab("sn");
+              }}
+              placeholder="ค้นหา S/N, รุ่น, ยี่ห้อ, ลูกค้า หรืออะไหล่"
+              className="h-14 rounded-xl pl-13 text-base"
+            />
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <WorkOrderDialog />
+            <AdminLockButton />
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <WorkOrderDialog />
-          <Button asChild variant="outline" className="h-11">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline" size="sm">
             <Link to="/planner">
-              <CalendarDays className="mr-1 h-4 w-4" /> เปิดปฏิทินแพลนเนอร์
+              <CalendarDays className="mr-1 h-4 w-4" /> ปฏิทินแพลนเนอร์
             </Link>
           </Button>
-
           <ThemePicker />
           <ShareAppButton />
         </div>
-      </header>
+      </div>
 
       <InstallPromptCard />
 
-      <Tabs defaultValue="sn" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex">
-          <TabsTrigger value="sn">ค้นด้วย S/N เครื่อง</TabsTrigger>
-          <TabsTrigger value="catalog">คลังอะไหล่</TabsTrigger>
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
+        <TabsList className="grid h-12 w-full grid-cols-2 sm:w-auto sm:inline-flex">
+          <TabsTrigger value="sn" className="text-sm">ค้นด้วย S/N เครื่อง</TabsTrigger>
+          <TabsTrigger value="catalog" className="text-sm">คลังอะไหล่</TabsTrigger>
         </TabsList>
         <TabsContent value="sn" className="mt-4">
-          <SnView />
+          <SnView q={q} setQ={setQ} />
         </TabsContent>
         <TabsContent value="catalog" className="mt-4">
           <CatalogView />
@@ -118,6 +130,7 @@ function HomePage() {
     </div>
   );
 }
+
 
 function InstallPromptCard() {
   const [installEvt, setInstallEvt] = useState<any>(null);
