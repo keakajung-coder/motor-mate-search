@@ -86,6 +86,7 @@ function HomePage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <WorkOrderDialog />
           <ThemePicker />
           <ShareAppButton />
         </div>
