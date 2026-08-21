@@ -35,6 +35,7 @@ import { useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog } from "@/components/WorkOrderDialog";
 import { Combobox } from "@/components/ui/combobox";
+import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { ensureDirectoryEntries, useDirectory } from "@/lib/directory";
 import { computeUsage, formatDate, isMachineComplete } from "@/lib/report";
 
@@ -148,12 +149,12 @@ function PlannerPage() {
   }, [load]);
 
   const staffNames = useMemo(
-    () => Array.from(new Set(appts.map((a) => a.staff_name).filter(Boolean) as string[])).sort(),
+    () => Array.from(new Set(appts.flatMap((a) => splitNames(a.staff_name)))).sort(),
     [appts]
   );
 
   const visible = useMemo(
-    () => (staffFilter ? appts.filter((a) => a.staff_name === staffFilter) : appts),
+    () => (staffFilter ? appts.filter((a) => splitNames(a.staff_name).includes(staffFilter)) : appts),
     [appts, staffFilter]
   );
 
@@ -564,11 +565,12 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
                 defaultValue={o.visit_time ?? ""}
                 onChange={(e) => patch(o.id, "visit_time", e.target.value)}
               />
-              <ComboCell
-                value={edit[o.id]?.staff_name ?? o.staff_name ?? ""}
-                onChange={(v) => patch(o.id, "staff_name", v)}
+              <MultiCombobox
+                values={splitNames(edit[o.id]?.staff_name ?? o.staff_name ?? "")}
+                onChange={(list) => patch(o.id, "staff_name", joinNames(list))}
                 options={staff}
-                placeholder="เลือกช่าง"
+                placeholder="เลือกช่าง (หลายคนได้)"
+                searchPlaceholder="ค้นหาช่าง..."
               />
               <ComboCell
                 value={edit[o.id]?.vehicle_plate ?? o.vehicle_plate ?? ""}
@@ -603,6 +605,18 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
 }
 
 // ---------- Calendar views ----------
+/** ข้อความสรุปบนบล็อกปฏิทิน: [ลูกค้า] - [งานที่ไปทำ] - [ทะเบียนรถ] */
+function apptSummary(a: Appointment) {
+  return [
+    a.customer_name || "ไม่ระบุลูกค้า",
+    a.service_type || a.job_detail || "-",
+    a.vehicle_plate || "ยังไม่ระบุรถ",
+    splitNames(a.staff_name).join(", "),
+  ]
+    .filter(Boolean)
+    .join(" - ");
+}
+
 function MonthGrid({
   cursor,
   appts,
@@ -650,7 +664,7 @@ function MonthGrid({
           >
             <div className="mb-1 text-right">{d.getDate()}</div>
             <div className="space-y-1">
-              {list.slice(0, 3).map((a) => (
+              {list.slice(0, 4).map((a) => (
                 <button
                   key={a.id}
                   onClick={(e) => {
@@ -658,7 +672,7 @@ function MonthGrid({
                     onPick(a);
                   }}
                   className={
-                    "block w-full truncate rounded px-1 py-0.5 text-left " +
+                    "block w-full whitespace-normal break-words rounded px-1 py-0.5 text-left leading-tight " +
                     (a.status === "closed"
                       ? a.result === "not_ok"
                         ? "bg-red-100 text-red-700 border border-red-200"
@@ -667,14 +681,12 @@ function MonthGrid({
                         ? "bg-red-50 text-red-600 border border-red-200"
                         : "bg-amber-100 text-amber-800 border border-amber-200")
                   }
-                  title={[a.customer_name, a.service_type, a.job_detail].filter(Boolean).join(" - ")}
+                  title={apptSummary(a)}
                 >
-                  {[a.customer_name || "ไม่ระบุลูกค้า", a.service_type || a.job_detail]
-                    .filter(Boolean)
-                    .join(" - ")}
+                  {apptSummary(a)}
                 </button>
               ))}
-              {list.length > 3 && <p className="px-1 text-[10px] text-muted-foreground">+{list.length - 3} งาน</p>}
+              {list.length > 4 && <p className="px-1 text-[10px] text-muted-foreground">+{list.length - 4} งาน</p>}
             </div>
           </div>
         );
@@ -733,7 +745,7 @@ function DayList({
                       {[a.serial_number, a.machine_label, a.service_type].filter(Boolean).join(" · ")}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      ช่าง: {a.staff_name || "-"} · รถ: {a.vehicle_plate || "-"}
+                      ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {a.vehicle_plate || "-"}
                     </p>
                     {a.job_detail && <p className="mt-1 text-sm">{a.job_detail}</p>}
                     {a.status === "closed" && a.close_note && (
@@ -997,13 +1009,14 @@ function AppointmentDialog({
               <Input disabled={!canEdit} type="time" value={form.visit_time ?? ""} onChange={(e) => set("visit_time", e.target.value)} />
             </F>
           </div>
-          <F label="พนักงานเซอร์วิส">
-            <ComboCell
+          <F label="พนักงานเซอร์วิส (เลือกได้หลายคน)">
+            <MultiCombobox
               disabled={!canEdit}
-              value={form.staff_name ?? ""}
-              onChange={(v) => set("staff_name", v)}
+              values={splitNames(form.staff_name)}
+              onChange={(list) => set("staff_name", joinNames(list))}
               options={dir.staff}
-              placeholder="เลือกช่าง"
+              placeholder="เลือกช่าง (ติ๊กได้หลายคน)"
+              searchPlaceholder="ค้นหาช่าง..."
             />
           </F>
           <F label="ทะเบียนรถ">

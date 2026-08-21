@@ -82,7 +82,10 @@ export async function ensureDirectoryEntries(input: {
   const eq = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
   const customer = norm(input.customer_name);
   const serial = norm(input.serial_number);
-  const staffName = norm(input.staff_name);
+  const staffNames = norm(input.staff_name)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const plate = norm(input.vehicle_plate);
   let changed = false;
   let customerId: string | null = null;
@@ -116,9 +119,11 @@ export async function ensureDirectoryEntries(input: {
       }
     }
 
-    if (staffName && !cache.staff.some((s) => eq(s, staffName))) {
-      await supabase.from("service_staff").insert({ name: staffName });
-      changed = true;
+    for (const staffName of staffNames) {
+      if (!cache.staff.some((s) => eq(s, staffName))) {
+        await supabase.from("service_staff").insert({ name: staffName });
+        changed = true;
+      }
     }
 
     if (plate && !cache.vehicles.some((v) => eq(v, plate))) {

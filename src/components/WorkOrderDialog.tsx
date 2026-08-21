@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
+import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
 import {
   Dialog,
   DialogContent,
@@ -228,12 +229,13 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
                 <Input type="time" value={form.visit_time} onChange={(e) => set("visit_time", e.target.value)} />
               </Field>
             </div>
-            <Field label="พนักงานเซอร์วิสที่ต้องการ">
-              <Combobox
-                value={form.staff_name}
-                onChange={(v) => set("staff_name", v)}
-                options={dir.staff.map((s) => ({ value: s }))}
-                placeholder="เลือกช่าง"
+            <Field label="พนักงานเซอร์วิสที่ต้องการ (เลือกได้หลายคน)">
+              <MultiCombobox
+                values={splitNames(form.staff_name)}
+                onChange={(list) => set("staff_name", joinNames(list))}
+                options={dir.staff}
+                placeholder="เลือกช่าง (ติ๊กได้หลายคน)"
+                searchPlaceholder="ค้นหาช่าง..."
               />
             </Field>
             <Field label="ทะเบียนรถที่ใช้เดินทาง">
