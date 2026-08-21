@@ -91,11 +91,15 @@ function AdminPage() {
         <TabsContent value="models"><ModelsTab /></TabsContent>
         <TabsContent value="staff"><StaffVehiclesTab /></TabsContent>
         <TabsContent value="lists">
-          <div className="grid gap-4 md:grid-cols-2">
-            <OptionListManager listKey="sellers" column="seller" title="ผู้ขาย" />
-            <OptionListManager listKey="statuses" column="status" title="สถานะเครื่อง" presets={MACHINE_STATUSES} />
+          <div className="space-y-4">
+            <SellerTransfer />
+            <div className="grid gap-4 md:grid-cols-2">
+              <OptionListManager listKey="sellers" column="seller" title="ผู้ขาย" />
+              <OptionListManager listKey="statuses" column="status" title="สถานะเครื่อง" presets={MACHINE_STATUSES} />
+            </div>
           </div>
         </TabsContent>
+
         <TabsContent value="io"><ImportExportTab /></TabsContent>
         <TabsContent value="security">
           <div className="grid gap-4 md:grid-cols-2">
