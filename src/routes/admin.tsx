@@ -728,7 +728,7 @@ function MachinesTab() {
     return data.id;
   }
 
-  async function save() {
+  async function save(addAnother = false) {
     if (!form.serial_number.trim()) return toast.error("กรอก S/N");
     if (dupUnit) return toast.error(`S/N นี้มีอยู่แล้ว (${dupUnit.customers?.name ?? "ไม่ระบุลูกค้า"})`);
     setSaving(true);
@@ -759,15 +759,58 @@ function MachinesTab() {
       } else {
         const { data, error } = await supabase.from("machine_units").insert(payload).select("id").single();
         if (error) return toast.error(error.message);
-        toast.success("เพิ่มเครื่องแล้ว — เพิ่มอะไหล่ได้เลย");
-        // keep form open in edit mode so user can add parts inline
-        setForm((f) => ({ ...f, id: data.id }));
+        if (addAnother) {
+          toast.success("บันทึกแล้ว — กรอกเครื่องถัดไปได้เลย");
+          setForm((f) => ({ ...f, id: "", serial_number: "", note: "", site_name: "" }));
+        } else {
+          toast.success("เพิ่มเครื่องแล้ว — เพิ่มอะไหล่ได้เลย");
+          // keep form open in edit mode so user can add parts inline
+          setForm((f) => ({ ...f, id: data.id }));
+        }
       }
       load();
     } finally {
       setSaving(false);
     }
   }
+  async function duplicateUnit(u: any) {
+    const serial = window.prompt(`คัดลอกเครื่อง ${u.serial_number} — กรอก S/N ใหม่`, `${u.serial_number}-copy`);
+    if (!serial?.trim()) return;
+    if (units.some((x) => x.serial_number?.trim().toLowerCase() === serial.trim().toLowerCase())) {
+      return toast.error("S/N นี้มีอยู่แล้ว");
+    }
+    const { data: created, error } = await supabase
+      .from("machine_units")
+      .insert({
+        serial_number: serial.trim(),
+        model_id: u.model_id,
+        customer_id: u.customer_id,
+        install_date: u.install_date,
+        daily_hours: u.daily_hours,
+        site_name: u.site_name,
+        address_line: u.address_line,
+        district: u.district,
+        province: u.province,
+        seller: u.seller,
+        status: u.status,
+        note: u.note,
+      })
+      .select("id")
+      .single();
+    if (error || !created) return toast.error(error?.message ?? "คัดลอกไม่สำเร็จ");
+    const { data: parts } = await supabase
+      .from("machine_parts")
+      .select("product_id, quantity, note, service_interval_hours")
+      .eq("machine_unit_id", u.id);
+    if (parts?.length) {
+      await supabase
+        .from("machine_parts")
+        .insert(parts.map((p) => ({ ...p, machine_unit_id: created.id, hours_used: 0, last_changed_at: null })));
+    }
+    toast.success(`คัดลอกเป็น ${serial.trim()} พร้อมอะไหล่ ${parts?.length ?? 0} รายการ`);
+    load();
+  }
+
   async function del(id: string) {
     
     await supabase.from("machine_units").delete().eq("id", id);
@@ -948,10 +991,15 @@ function MachinesTab() {
             >
               <Redo2 className="mr-1 h-4 w-4" /> ต่อไป
             </Button>
-            <Button onClick={save} disabled={saving || !!dupUnit}>
+            <Button onClick={() => save()} disabled={saving || !!dupUnit}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
               {form.id ? "บันทึก" : "เพิ่มเครื่อง"}
             </Button>
+            {!form.id && (
+              <Button variant="secondary" onClick={() => save(true)} disabled={saving || !!dupUnit}>
+                บันทึกและเพิ่มต่อ
+              </Button>
+            )}
             {form.id && (
               <Button variant="outline" onClick={resetForm}>ล้างฟอร์ม / เพิ่มเครื่องใหม่</Button>
             )}
@@ -1099,6 +1147,7 @@ function MachinesTab() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => startEdit(u)}>แก้ไข</Button>
+                    <Button size="sm" variant="outline" onClick={() => duplicateUnit(u)}>คัดลอก</Button>
                     <Button size="sm" variant="outline" onClick={() => setSelected(selected === u.id ? null : u.id)}>
                       {selected === u.id ? "ปิด" : "จัดการอะไหล่"}
                     </Button>
