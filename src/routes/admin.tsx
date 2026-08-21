@@ -20,6 +20,9 @@ import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle, Undo2, Redo2, Loc
 import { ImportExportTab } from "@/components/admin/ImportExportTab";
 import { OptionListManager } from "@/components/admin/OptionListManager";
 import { StaffVehiclesTab } from "@/components/admin/StaffVehiclesTab";
+import { SellerTransfer } from "@/components/admin/SellerTransfer";
+import { refreshDirectory } from "@/lib/directory";
+
 import { PasscodeSettings } from "@/components/admin/PasscodeSettings";
 import { BackupRestore } from "@/components/admin/BackupRestore";
 import { AdminLockButton } from "@/components/AccessGate";
@@ -88,11 +91,15 @@ function AdminPage() {
         <TabsContent value="models"><ModelsTab /></TabsContent>
         <TabsContent value="staff"><StaffVehiclesTab /></TabsContent>
         <TabsContent value="lists">
-          <div className="grid gap-4 md:grid-cols-2">
-            <OptionListManager listKey="sellers" column="seller" title="ผู้ขาย" />
-            <OptionListManager listKey="statuses" column="status" title="สถานะเครื่อง" presets={MACHINE_STATUSES} />
+          <div className="space-y-4">
+            <SellerTransfer />
+            <div className="grid gap-4 md:grid-cols-2">
+              <OptionListManager listKey="sellers" column="seller" title="ผู้ขาย" />
+              <OptionListManager listKey="statuses" column="status" title="สถานะเครื่อง" presets={MACHINE_STATUSES} />
+            </div>
           </div>
         </TabsContent>
+
         <TabsContent value="io"><ImportExportTab /></TabsContent>
         <TabsContent value="security">
           <div className="grid gap-4 md:grid-cols-2">
@@ -307,6 +314,8 @@ function CustomersTab() {
     setForm(emptyForm);
     toast.success(form.id ? "บันทึกแล้ว" : "เพิ่มลูกค้าแล้ว");
     load();
+    refreshDirectory();
+
   }
   function startEdit(c: any) {
     setForm({
@@ -769,6 +778,8 @@ function MachinesTab() {
         }
       }
       load();
+      refreshDirectory();
+
     } finally {
       setSaving(false);
     }

@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ClipboardPlus, Loader2 } from "lucide-react";
+import { refreshDirectory, useDirectory } from "@/lib/directory";
 
 export const SERVICE_TYPES = [
   "เช็กระยะ (PM)",
@@ -55,34 +57,14 @@ export const emptyDraft = (): WorkOrderDraft => ({
   vehicle_plate: "",
 });
 
+/** ตัวเลือกบริการ (ช่าง / รถ / S/N) — ดึงจากข้อมูลกลางที่อัปเดตอัตโนมัติ */
 export function useServiceOptions() {
-  const [staff, setStaff] = useState<string[]>([]);
-  const [vehicles, setVehicles] = useState<string[]>([]);
-  const [serials, setSerials] = useState<{ serial: string; label: string; customer: string }[]>([]);
-
-  useEffect(() => {
-    (async () => {
-      const [s, v, m] = await Promise.all([
-        supabase.from("service_staff").select("name").order("name"),
-        supabase.from("vehicles").select("plate").order("plate"),
-        supabase
-          .from("machine_units")
-          .select("serial_number, customers ( name ), compressor_models ( name, brands ( name ) )")
-          .order("serial_number"),
-      ]);
-      setStaff((s.data ?? []).map((r) => r.name));
-      setVehicles((v.data ?? []).map((r) => r.plate));
-      setSerials(
-        (m.data ?? []).map((r: any) => ({
-          serial: r.serial_number,
-          label: [r.compressor_models?.brands?.name, r.compressor_models?.name].filter(Boolean).join(" "),
-          customer: r.customers?.name ?? "",
-        }))
-      );
-    })();
-  }, []);
-
-  return { staff, vehicles, serials };
+  const { staff, vehicles, machines } = useDirectory();
+  return {
+    staff,
+    vehicles,
+    serials: machines.map((m) => ({ serial: m.serial, label: m.label, customer: m.customer })),
+  };
 }
 
 /** ฟอร์มใบสั่งงาน (ใช้ได้ทุกคน) */
@@ -90,22 +72,51 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<WorkOrderDraft>(emptyDraft());
-  const { staff, vehicles, serials } = useServiceOptions();
+  const dir = useDirectory();
 
   const set = (k: keyof WorkOrderDraft, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  const onSerialChange = (v: string) => {
-    const hit = serials.find((s) => s.serial.toLowerCase() === v.trim().toLowerCase());
+  const pickCustomer = (name: string) => {
+    const c = dir.customers.find((x) => x.name === name);
+    const m = dir.machines.find((x) => x.customer === name);
     setForm((f) => ({
       ...f,
-      serial_number: v,
-      machine_label: hit?.label || f.machine_label,
-      customer_name: hit?.customer || f.customer_name,
+      customer_name: name,
+      customer_address: c?.address || m?.address || f.customer_address,
+      contact_phone: c?.phone || m?.phone || f.contact_phone,
     }));
   };
 
+  const pickSerial = (serial: string) => {
+    const hit = dir.machines.find((m) => m.serial === serial);
+    setForm((f) => ({
+      ...f,
+      serial_number: serial,
+      machine_label: hit?.label || f.machine_label,
+      customer_name: hit?.customer || f.customer_name,
+      customer_address: hit?.address || f.customer_address,
+      contact_phone: hit?.phone || f.contact_phone,
+    }));
+  };
+
+  const customerOptions = dir.customers.map((c) => ({
+    value: c.name,
+    hint: [c.phone, c.address].filter(Boolean).join(" · "),
+  }));
+  const serialOptions = dir.machines.map((m) => ({
+    value: m.serial,
+    hint: [m.customer, m.label].filter(Boolean).join(" · "),
+  }));
+  const machineLabels = Array.from(new Set(dir.machines.map((m) => m.label).filter(Boolean))).map((l) => ({ value: l }));
+  const addressOptions = Array.from(
+    new Set([...dir.customers.map((c) => c.address), ...dir.machines.map((m) => m.address)].filter(Boolean)),
+  ).map((a) => ({ value: a }));
+  const phoneOptions = Array.from(
+    new Set([...dir.customers.map((c) => c.phone), ...dir.machines.map((m) => m.phone)].filter(Boolean)),
+  ).map((p) => ({ value: p }));
+
   const submit = async () => {
-    if (!form.customer_name.trim()) return toast.error("กรุณากรอกชื่อลูกค้า");
+    if (!form.customer_name.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     if (!form.job_detail.trim()) return toast.error("กรุณากรอกรายละเอียดงาน");
     setSaving(true);
     const { error } = await supabase.from("work_orders").insert({
@@ -128,6 +139,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
     toast.success("ส่งใบสั่งงานแล้ว รอแอดมินอนุมัติ");
     setForm(emptyDraft());
     setOpen(false);
+    refreshDirectory();
     onCreated?.();
   };
 
@@ -140,56 +152,65 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>ใบสั่งงานใหม่</DialogTitle>
-            <DialogDescription>กรอกรายละเอียดงานบริการ ระบบจะส่งให้แอดมินตรวจสอบก่อนขึ้นปฏิทิน</DialogDescription>
+            <DialogDescription>เลือกข้อมูลจากรายการที่มีในระบบ ระบบจะส่งให้แอดมินตรวจสอบก่อนขึ้นปฏิทิน</DialogDescription>
           </DialogHeader>
-
-          <datalist id="wo-serials">
-            {serials.map((s) => (
-              <option key={s.serial} value={s.serial}>
-                {s.customer} {s.label}
-              </option>
-            ))}
-          </datalist>
-          <datalist id="wo-staff">
-            {staff.map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
-          <datalist id="wo-vehicles">
-            {vehicles.map((v) => (
-              <option key={v} value={v} />
-            ))}
-          </datalist>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="ชื่อลูกค้า *">
-              <Input value={form.customer_name} onChange={(e) => set("customer_name", e.target.value)} />
+              <Combobox
+                value={form.customer_name}
+                onChange={pickCustomer}
+                options={customerOptions}
+                placeholder="เลือกลูกค้า"
+                searchPlaceholder="ค้นหาลูกค้า..."
+              />
+            </Field>
+            <Field label="หมายเลขเครื่อง (S/N)">
+              <Combobox
+                value={form.serial_number}
+                onChange={pickSerial}
+                options={serialOptions}
+                placeholder="เลือก S/N"
+                searchPlaceholder="ค้นหา S/N..."
+              />
             </Field>
             <Field label="ที่อยู่ลูกค้า">
-              <Input value={form.customer_address} onChange={(e) => set("customer_address", e.target.value)} />
+              <Combobox
+                value={form.customer_address}
+                onChange={(v) => set("customer_address", v)}
+                options={addressOptions}
+                allowCustom
+                placeholder="เลือก / พิมพ์ที่อยู่"
+              />
             </Field>
             <Field label="ชื่อผู้ติดต่อ">
               <Input value={form.contact_name} onChange={(e) => set("contact_name", e.target.value)} />
             </Field>
             <Field label="เบอร์โทรผู้ติดต่อ">
-              <Input inputMode="tel" value={form.contact_phone} onChange={(e) => set("contact_phone", e.target.value)} />
-            </Field>
-            <Field label="หมายเลขเครื่อง (S/N)">
-              <Input list="wo-serials" value={form.serial_number} onChange={(e) => onSerialChange(e.target.value)} />
+              <Combobox
+                value={form.contact_phone}
+                onChange={(v) => set("contact_phone", v)}
+                options={phoneOptions}
+                allowCustom
+                placeholder="เลือก / พิมพ์เบอร์โทร"
+              />
             </Field>
             <Field label="เครื่องที่จะเข้าไปทำ (ยี่ห้อ/รุ่น)">
-              <Input value={form.machine_label} onChange={(e) => set("machine_label", e.target.value)} />
+              <Combobox
+                value={form.machine_label}
+                onChange={(v) => set("machine_label", v)}
+                options={machineLabels}
+                allowCustom
+                placeholder="เลือกยี่ห้อ/รุ่น"
+              />
             </Field>
             <Field label="ประเภทเซอร์วิส">
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              <Combobox
                 value={form.service_type}
-                onChange={(e) => set("service_type", e.target.value)}
-              >
-                {SERVICE_TYPES.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-              </select>
+                onChange={(v) => set("service_type", v)}
+                options={SERVICE_TYPES.map((t) => ({ value: t }))}
+                placeholder="เลือกประเภทงาน"
+              />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="วันที่เข้าบริการ">
@@ -200,10 +221,20 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
               </Field>
             </div>
             <Field label="พนักงานเซอร์วิสที่ต้องการ">
-              <Input list="wo-staff" value={form.staff_name} onChange={(e) => set("staff_name", e.target.value)} />
+              <Combobox
+                value={form.staff_name}
+                onChange={(v) => set("staff_name", v)}
+                options={dir.staff.map((s) => ({ value: s }))}
+                placeholder="เลือกช่าง"
+              />
             </Field>
             <Field label="ทะเบียนรถที่ใช้เดินทาง">
-              <Input list="wo-vehicles" value={form.vehicle_plate} onChange={(e) => set("vehicle_plate", e.target.value)} />
+              <Combobox
+                value={form.vehicle_plate}
+                onChange={(v) => set("vehicle_plate", v)}
+                options={dir.vehicles.map((v) => ({ value: v }))}
+                placeholder="เลือกทะเบียนรถ"
+              />
             </Field>
             <div className="sm:col-span-2">
               <Field label="งานที่ทำ / รายละเอียดปัญหา *">

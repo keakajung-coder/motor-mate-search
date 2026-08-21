@@ -34,7 +34,10 @@ import {
 import { useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog } from "@/components/WorkOrderDialog";
+import { Combobox } from "@/components/ui/combobox";
+import { useDirectory } from "@/lib/directory";
 import { computeUsage, formatDate, isMachineComplete } from "@/lib/report";
+
 
 export const Route = createFileRoute("/planner")({
   head: () => ({
@@ -241,8 +244,14 @@ function PlannerPage() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : view === "month" ? (
-            <MonthGrid cursor={cursor} appts={visible} onPick={(a) => setEditing(a)} />
+            <MonthGrid
+              cursor={cursor}
+              appts={visible}
+              onPick={(a) => setEditing(a)}
+              onPickDate={isAdmin ? (d) => setEditing(newAppointment(d)) : undefined}
+            />
           ) : (
+
             <DayList
               days={
                 view === "week"
@@ -555,18 +564,19 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
                 defaultValue={o.visit_time ?? ""}
                 onChange={(e) => patch(o.id, "visit_time", e.target.value)}
               />
-              <Input
-                list="po-staff"
-                placeholder="ช่าง"
-                defaultValue={o.staff_name ?? ""}
-                onChange={(e) => patch(o.id, "staff_name", e.target.value)}
+              <ComboCell
+                value={edit[o.id]?.staff_name ?? o.staff_name ?? ""}
+                onChange={(v) => patch(o.id, "staff_name", v)}
+                options={staff}
+                placeholder="เลือกช่าง"
               />
-              <Input
-                list="po-vehicles"
-                placeholder="ทะเบียนรถ"
-                defaultValue={o.vehicle_plate ?? ""}
-                onChange={(e) => patch(o.id, "vehicle_plate", e.target.value)}
+              <ComboCell
+                value={edit[o.id]?.vehicle_plate ?? o.vehicle_plate ?? ""}
+                onChange={(v) => patch(o.id, "vehicle_plate", v)}
+                options={vehicles}
+                placeholder="เลือกทะเบียนรถ"
               />
+
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={() => approve(o)} disabled={busy === o.id}>
@@ -585,16 +595,8 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
             </div>
           </div>
         ))}
-        <datalist id="po-staff">
-          {staff.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
-        <datalist id="po-vehicles">
-          {vehicles.map((v) => (
-            <option key={v} value={v} />
-          ))}
-        </datalist>
+
+
       </CardContent>
     </Card>
   );
@@ -605,10 +607,12 @@ function MonthGrid({
   cursor,
   appts,
   onPick,
+  onPickDate,
 }: {
   cursor: Date;
   appts: Appointment[];
   onPick: (a: Appointment) => void;
+  onPickDate?: (date: string) => void;
 }) {
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
   const start = startOfWeek(first);
@@ -621,6 +625,7 @@ function MonthGrid({
       <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-amber-300" /> รอนัดหมาย</span>
       <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-red-400" /> งานซ่อมด่วน</span>
       <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-emerald-400" /> ปิดงานแล้ว</span>
+      {onPickDate && <span className="ml-auto">แตะช่องวันที่เพื่อเพิ่มงานด่วน</span>}
     </div>
     <div className="grid grid-cols-7 gap-1 text-xs">
       {TH_DOW.map((d) => (
@@ -635,8 +640,10 @@ function MonthGrid({
         return (
           <div
             key={key}
+            onClick={() => onPickDate?.(key)}
             className={
               "min-h-24 rounded-xl border bg-card p-1.5 " +
+              (onPickDate ? "cursor-pointer hover:border-primary/60 hover:bg-accent/40 " : "") +
               (dim ? "bg-muted/30 text-muted-foreground " : "") +
               (key === today ? "border-primary" : "")
             }
@@ -646,7 +653,10 @@ function MonthGrid({
               {list.slice(0, 3).map((a) => (
                 <button
                   key={a.id}
-                  onClick={() => onPick(a)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPick(a);
+                  }}
                   className={
                     "block w-full truncate rounded px-1 py-0.5 text-left " +
                     (a.status === "closed"
@@ -657,8 +667,11 @@ function MonthGrid({
                         ? "bg-red-50 text-red-600 border border-red-200"
                         : "bg-amber-100 text-amber-800 border border-amber-200")
                   }
+                  title={[a.customer_name, a.service_type, a.job_detail].filter(Boolean).join(" - ")}
                 >
-                  {a.visit_time?.slice(0, 5)} {a.customer_name}
+                  {[a.customer_name || "ไม่ระบุลูกค้า", a.service_type || a.job_detail]
+                    .filter(Boolean)
+                    .join(" - ")}
                 </button>
               ))}
               {list.length > 3 && <p className="px-1 text-[10px] text-muted-foreground">+{list.length - 3} งาน</p>}
@@ -670,6 +683,7 @@ function MonthGrid({
     </div>
   );
 }
+
 
 function DayList({
   days,
@@ -769,7 +783,32 @@ function DayList({
   );
 }
 
-// ---------- Appointment editor ----------
+// ---------- Small combobox cell ----------
+function ComboCell({
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <Combobox
+      value={value}
+      onChange={onChange}
+      options={options.map((o) => ({ value: o }))}
+      placeholder={placeholder}
+      disabled={disabled}
+    />
+  );
+}
+
+// ---------- Appointment editor / detail ----------
 function AppointmentDialog({
   value,
   canEdit,
@@ -783,11 +822,33 @@ function AppointmentDialog({
 }) {
   const [form, setForm] = useState<Appointment>(value);
   const [saving, setSaving] = useState(false);
-  const { staff, vehicles, serials } = useServiceOptions();
+  const dir = useDirectory();
   const set = (k: keyof Appointment, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
+  const pickCustomer = (name: string) => {
+    const c = dir.customers.find((x) => x.name === name);
+    const m = dir.machines.find((x) => x.customer === name);
+    setForm((f) => ({
+      ...f,
+      customer_name: name,
+      customer_address: c?.address || m?.address || f.customer_address,
+      contact_phone: c?.phone || m?.phone || f.contact_phone,
+    }));
+  };
+  const pickSerial = (serial: string) => {
+    const hit = dir.machines.find((m) => m.serial === serial);
+    setForm((f) => ({
+      ...f,
+      serial_number: serial,
+      machine_label: hit?.label || f.machine_label,
+      customer_name: hit?.customer || f.customer_name,
+      customer_address: hit?.address || f.customer_address,
+      contact_phone: hit?.phone || f.contact_phone,
+    }));
+  };
+
   const save = async () => {
-    if (!form.customer_name?.trim()) return toast.error("กรุณากรอกชื่อลูกค้า");
+    if (!form.customer_name?.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     setSaving(true);
     const { data: unit } = await supabase
       .from("machine_units")
@@ -819,51 +880,106 @@ function AppointmentDialog({
     onSaved();
   };
 
+  const addressOptions = Array.from(
+    new Set([...dir.customers.map((c) => c.address), ...dir.machines.map((m) => m.address)].filter(Boolean)),
+  );
+  const phoneOptions = Array.from(
+    new Set([...dir.customers.map((c) => c.phone), ...dir.machines.map((m) => m.phone)].filter(Boolean)),
+  );
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{form.id ? "รายละเอียดนัดหมาย" : "เพิ่มนัดหมายลงปฏิทิน"}</DialogTitle>
           <DialogDescription>
-            {canEdit ? "แก้ไขวันเวลา ช่าง และรถเพื่อหลบงานชนกันได้" : "ดูรายละเอียดงานนัดหมาย"}
+            {canEdit ? "เลือกลูกค้า/เครื่องจากฐานข้อมูล ระบบจะเติมที่อยู่และเบอร์โทรให้อัตโนมัติ" : "ดูรายละเอียดงานนัดหมาย"}
           </DialogDescription>
         </DialogHeader>
 
+        {form.id && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/40 p-3 text-sm">
+            <Badge variant="secondary">{STATUS_LABEL[form.status] ?? form.status}</Badge>
+            <span>{formatDate(form.visit_date)} {form.visit_time?.slice(0, 5)}</span>
+            {form.result && (
+              <Badge className={form.result === "not_ok" ? "bg-destructive text-destructive-foreground" : "bg-emerald-600 text-white"}>
+                {form.result === "not_ok" ? "ไม่เรียบร้อย" : "เรียบร้อย"}
+              </Badge>
+            )}
+            {form.contact_phone && (
+              <a href={`tel:${form.contact_phone}`} className="inline-flex items-center gap-1 text-primary">
+                <Phone className="h-3.5 w-3.5" /> {form.contact_phone}
+              </a>
+            )}
+            {form.close_note && <span className="w-full text-xs text-muted-foreground">สรุปงาน: {form.close_note}</span>}
+          </div>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2">
           <F label="ชื่อลูกค้า *">
-            <Input disabled={!canEdit} value={form.customer_name ?? ""} onChange={(e) => set("customer_name", e.target.value)} />
+            <Combobox
+              disabled={!canEdit}
+              value={form.customer_name ?? ""}
+              onChange={pickCustomer}
+              options={dir.customers.map((c) => ({
+                value: c.name,
+                hint: [c.phone, c.address].filter(Boolean).join(" · "),
+              }))}
+              placeholder="เลือกลูกค้า"
+              searchPlaceholder="ค้นหาลูกค้า..."
+            />
+          </F>
+          <F label="หมายเลขเครื่อง (S/N)">
+            <Combobox
+              disabled={!canEdit}
+              value={form.serial_number ?? ""}
+              onChange={pickSerial}
+              options={dir.machines.map((m) => ({
+                value: m.serial,
+                hint: [m.customer, m.label].filter(Boolean).join(" · "),
+              }))}
+              placeholder="เลือก S/N"
+              searchPlaceholder="ค้นหา S/N..."
+            />
           </F>
           <F label="ที่อยู่">
-            <Input disabled={!canEdit} value={form.customer_address ?? ""} onChange={(e) => set("customer_address", e.target.value)} />
+            <ComboCell
+              disabled={!canEdit}
+              value={form.customer_address ?? ""}
+              onChange={(v) => set("customer_address", v)}
+              options={addressOptions}
+              placeholder="เลือกที่อยู่"
+            />
           </F>
           <F label="ผู้ติดต่อ">
             <Input disabled={!canEdit} value={form.contact_name ?? ""} onChange={(e) => set("contact_name", e.target.value)} />
           </F>
           <F label="เบอร์โทร">
-            <Input disabled={!canEdit} value={form.contact_phone ?? ""} onChange={(e) => set("contact_phone", e.target.value)} />
-          </F>
-          <F label="หมายเลขเครื่อง (S/N)">
-            <Input
+            <ComboCell
               disabled={!canEdit}
-              list="ap-serials"
-              value={form.serial_number ?? ""}
-              onChange={(e) => set("serial_number", e.target.value)}
+              value={form.contact_phone ?? ""}
+              onChange={(v) => set("contact_phone", v)}
+              options={phoneOptions}
+              placeholder="เลือกเบอร์โทร"
             />
           </F>
           <F label="เครื่อง (ยี่ห้อ/รุ่น)">
-            <Input disabled={!canEdit} value={form.machine_label ?? ""} onChange={(e) => set("machine_label", e.target.value)} />
+            <ComboCell
+              disabled={!canEdit}
+              value={form.machine_label ?? ""}
+              onChange={(v) => set("machine_label", v)}
+              options={Array.from(new Set(dir.machines.map((m) => m.label).filter(Boolean)))}
+              placeholder="เลือกยี่ห้อ/รุ่น"
+            />
           </F>
           <F label="ประเภทเซอร์วิส">
-            <select
+            <ComboCell
               disabled={!canEdit}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               value={form.service_type ?? ""}
-              onChange={(e) => set("service_type", e.target.value)}
-            >
-              {SERVICE_TYPES.map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </select>
+              onChange={(v) => set("service_type", v)}
+              options={SERVICE_TYPES}
+              placeholder="เลือกประเภทงาน"
+            />
           </F>
           <div className="grid grid-cols-2 gap-3">
             <F label="วันที่">
@@ -874,35 +990,29 @@ function AppointmentDialog({
             </F>
           </div>
           <F label="พนักงานเซอร์วิส">
-            <Input disabled={!canEdit} list="ap-staff" value={form.staff_name ?? ""} onChange={(e) => set("staff_name", e.target.value)} />
+            <ComboCell
+              disabled={!canEdit}
+              value={form.staff_name ?? ""}
+              onChange={(v) => set("staff_name", v)}
+              options={dir.staff}
+              placeholder="เลือกช่าง"
+            />
           </F>
           <F label="ทะเบียนรถ">
-            <Input disabled={!canEdit} list="ap-vehicles" value={form.vehicle_plate ?? ""} onChange={(e) => set("vehicle_plate", e.target.value)} />
+            <ComboCell
+              disabled={!canEdit}
+              value={form.vehicle_plate ?? ""}
+              onChange={(v) => set("vehicle_plate", v)}
+              options={dir.vehicles}
+              placeholder="เลือกทะเบียนรถ"
+            />
           </F>
           <div className="sm:col-span-2">
-            <F label="รายละเอียดงาน">
+            <F label="รายละเอียดงาน / บันทึกให้ช่าง">
               <Textarea disabled={!canEdit} rows={3} value={form.job_detail ?? ""} onChange={(e) => set("job_detail", e.target.value)} />
             </F>
           </div>
         </div>
-
-        <datalist id="ap-serials">
-          {serials.map((s) => (
-            <option key={s.serial} value={s.serial}>
-              {s.customer}
-            </option>
-          ))}
-        </datalist>
-        <datalist id="ap-staff">
-          {staff.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
-        <datalist id="ap-vehicles">
-          {vehicles.map((v) => (
-            <option key={v} value={v} />
-          ))}
-        </datalist>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
@@ -918,6 +1028,7 @@ function AppointmentDialog({
     </Dialog>
   );
 }
+
 
 // ---------- Close job ----------
 function CloseJobDialog({
