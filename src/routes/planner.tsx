@@ -652,7 +652,7 @@ function MonthGrid({
           >
             <div className="mb-1 text-right">{d.getDate()}</div>
             <div className="space-y-1">
-              {list.slice(0, 3).map((a) => (
+              {list.slice(0, 4).map((a) => (
                 <button
                   key={a.id}
                   onClick={(e) => {
