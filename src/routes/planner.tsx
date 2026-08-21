@@ -241,8 +241,14 @@ function PlannerPage() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : view === "month" ? (
-            <MonthGrid cursor={cursor} appts={visible} onPick={(a) => setEditing(a)} />
+            <MonthGrid
+              cursor={cursor}
+              appts={visible}
+              onPick={(a) => setEditing(a)}
+              onPickDate={isAdmin ? (d) => setEditing(newAppointment(d)) : undefined}
+            />
           ) : (
+
             <DayList
               days={
                 view === "week"
@@ -555,18 +561,19 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
                 defaultValue={o.visit_time ?? ""}
                 onChange={(e) => patch(o.id, "visit_time", e.target.value)}
               />
-              <Input
-                list="po-staff"
-                placeholder="ช่าง"
-                defaultValue={o.staff_name ?? ""}
-                onChange={(e) => patch(o.id, "staff_name", e.target.value)}
+              <ComboCell
+                value={edit[o.id]?.staff_name ?? o.staff_name ?? ""}
+                onChange={(v) => patch(o.id, "staff_name", v)}
+                options={staff}
+                placeholder="เลือกช่าง"
               />
-              <Input
-                list="po-vehicles"
-                placeholder="ทะเบียนรถ"
-                defaultValue={o.vehicle_plate ?? ""}
-                onChange={(e) => patch(o.id, "vehicle_plate", e.target.value)}
+              <ComboCell
+                value={edit[o.id]?.vehicle_plate ?? o.vehicle_plate ?? ""}
+                onChange={(v) => patch(o.id, "vehicle_plate", v)}
+                options={vehicles}
+                placeholder="เลือกทะเบียนรถ"
               />
+
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={() => approve(o)} disabled={busy === o.id}>
