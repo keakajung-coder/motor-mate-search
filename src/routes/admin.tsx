@@ -1035,6 +1035,18 @@ function MachinesTab() {
                 </Button>
               ))}
             </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-xs text-muted-foreground">ความครบถ้วนข้อมูล:</span>
+              <Button size="sm" variant={completeFilter === "all" ? "default" : "outline"} onClick={() => setCompleteFilter("all")}>
+                ทั้งหมด
+              </Button>
+              <Button size="sm" variant={completeFilter === "yes" ? "default" : "outline"} onClick={() => setCompleteFilter("yes")}>
+                ครบถ้วน ({units.filter((u) => isMachineComplete(u)).length})
+              </Button>
+              <Button size="sm" variant={completeFilter === "no" ? "default" : "outline"} onClick={() => setCompleteFilter("no")}>
+                ยังไม่ครบ ({units.filter((u) => !isMachineComplete(u)).length})
+              </Button>
+            </div>
           </div>
           <ul className="divide-y rounded border">
             {units
@@ -1044,6 +1056,7 @@ function MachinesTab() {
                 const sellerKw = sellerQ.trim().toLowerCase();
                 if (sellerKw && !unitSeller.toLowerCase().includes(sellerKw)) return false;
                 if (statusFilter && ((u.status ?? "").trim() || "ไม่ระบุสถานะ") !== statusFilter) return false;
+                if (completeFilter !== "all" && isMachineComplete(u) !== (completeFilter === "yes")) return false;
                 const kw = q.trim().toLowerCase();
                 if (!kw) return true;
                 return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller} ${u.status ?? ""}`
@@ -1060,6 +1073,16 @@ function MachinesTab() {
                           {u.status}
                         </span>
                       )}
+                      <span
+                        className={
+                          "rounded-full px-2 py-0.5 text-[11px] " +
+                          (isMachineComplete(u)
+                            ? "bg-emerald-500/15 text-emerald-700"
+                            : "bg-orange-500/15 text-orange-700")
+                        }
+                      >
+                        {isMachineComplete(u) ? "ลงข้อมูลครบถ้วน" : "ยังลงข้อมูลไม่ครบ"}
+                      </span>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.name ?? "-"}
