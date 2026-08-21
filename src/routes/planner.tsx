@@ -186,6 +186,8 @@ function PlannerPage() {
         </div>
       </header>
 
+      <StatsPanel appts={appts} pending={orders.length} />
+
       <Card>
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -262,10 +264,6 @@ function PlannerPage() {
           <PendingOrders orders={orders} reload={load} />
         </FoldSection>
       )}
-
-      <FoldSection title="สรุปสถิติงาน">
-        <StatsPanel appts={appts} pending={orders.length} />
-      </FoldSection>
 
       <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
         <PartsAlertPanel />
