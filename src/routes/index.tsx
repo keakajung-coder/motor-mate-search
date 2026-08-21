@@ -449,6 +449,17 @@ function CatalogView() {
     });
   }, [products, q, selectedCat]);
 
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  useEffect(() => {
+    setPage(1);
+  }, [q, selectedCat]);
+  const pageItems = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page]
+  );
+
   return (
     <div className="space-y-5">
       <div className="flex gap-2">
