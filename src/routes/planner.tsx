@@ -1124,11 +1124,13 @@ function AppointmentDialog({
   canEdit,
   onClose,
   onSaved,
+  onDeleted,
 }: {
   value: Appointment;
   canEdit: boolean;
   onClose: () => void;
   onSaved: () => void;
+  onDeleted?: () => void;
 }) {
   const [form, setForm] = useState<Appointment>(value);
   const [editMode, setEditMode] = useState(!value.id);
