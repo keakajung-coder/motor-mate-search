@@ -961,6 +961,16 @@ function MachineCard({
   onToggle: () => void;
 }) {
   const grouped = groupByCategory(unit.machine_parts ?? []);
+  const [logs, setLogs] = useState<any[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from("maintenance_logs")
+      .select("id, done_date, service_type, job_detail, result, note")
+      .eq("machine_unit_id", unit.id)
+      .order("done_date", { ascending: false })
+      .then(({ data }) => setLogs(data ?? []));
+  }, [open, unit.id]);
   const model = unit.compressor_models
     ? `${unit.compressor_models.brands?.name ?? ""} ${unit.compressor_models.name}`.trim()
     : "-";
@@ -1012,6 +1022,23 @@ function MachineCard({
             )}
             {(unit as any).seller && <Info label="ผู้ขาย" value={(unit as any).seller} />}
           </div>
+
+          {logs.length > 0 && (
+            <div className="space-y-2 rounded-lg border p-3">
+              <p className="text-sm font-semibold">ประวัติซ่อมบำรุงย้อนหลัง ({logs.length})</p>
+              {logs.map((l) => (
+                <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span>
+                    {formatDate(l.done_date)} · {l.service_type ?? "-"} · {l.job_detail ?? ""}
+                    {l.note ? ` (${l.note})` : ""}
+                  </span>
+                  <Badge variant={l.result === "not_ok" ? "destructive" : "secondary"}>
+                    {l.result === "not_ok" ? "ไม่เรียบร้อย" : "เรียบร้อย"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div>
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
