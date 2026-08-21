@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,10 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkOrderDialog } from "@/components/WorkOrderDialog";
 import {
+  CalendarDays,
   Search,
   Loader2,
+
   Package,
   MapPin,
   Clock,
@@ -88,6 +90,12 @@ function HomePage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <WorkOrderDialog />
+          <Button asChild variant="outline" className="h-11">
+            <Link to="/planner">
+              <CalendarDays className="mr-1 h-4 w-4" /> เปิดปฏิทินแพลนเนอร์
+            </Link>
+          </Button>
+
           <ThemePicker />
           <ShareAppButton />
         </div>

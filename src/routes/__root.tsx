@@ -12,7 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
-import { Wrench } from "lucide-react";
+import { Wrench, CalendarDays } from "lucide-react";
 import { AccessProvider } from "@/lib/access";
 import { AccessGate, AdminLockButton } from "@/components/AccessGate";
 
@@ -125,10 +125,12 @@ function NavBar() {
           </Link>
           <Link
             to="/planner"
-            className="rounded-md px-3 py-2 hover:bg-accent [&.active]:bg-accent [&.active]:font-medium"
+            className="flex items-center gap-1 rounded-md px-3 py-2 hover:bg-accent [&.active]:bg-accent [&.active]:font-medium"
           >
-            ปฏิทินงาน
+            <CalendarDays className="h-4 w-4" />
+            ปฏิทิน / แพลนเนอร์
           </Link>
+
           <Link
             to="/admin"
             className="rounded-md px-3 py-2 hover:bg-accent [&.active]:bg-accent [&.active]:font-medium"

@@ -22,6 +22,8 @@ import {
   CalendarPlus,
   CheckCircle2,
   ChevronLeft,
+  ChevronDown,
+
   ChevronRight,
   ClipboardList,
   Loader2,
@@ -91,7 +93,33 @@ const TH_MONTHS = [
 ];
 const TH_DOW = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
 
+function FoldSection({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-lg border bg-card">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-semibold hover:bg-accent/50"
+      >
+        {title}
+        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="border-t p-3">{children}</div>}
+    </div>
+  );
+}
+
 function PlannerPage() {
+
   const { isAdmin } = useAccess();
   const [appts, setAppts] = useState<Appointment[]>([]);
   const [orders, setOrders] = useState<WorkOrder[]>([]);
@@ -158,12 +186,6 @@ function PlannerPage() {
         </div>
       </header>
 
-      <StatsPanel appts={appts} pending={orders.length} />
-
-      <PartsAlertPanel />
-
-      {isAdmin && <PendingOrders orders={orders} reload={load} />}
-
       <Card>
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -183,11 +205,19 @@ function PlannerPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {(["month", "week", "day"] as const).map((v) => (
-              <Button key={v} size="sm" variant={view === v ? "default" : "outline"} onClick={() => setView(v)}>
-                {v === "month" ? "รายเดือน" : v === "week" ? "รายสัปดาห์" : "รายวัน"}
-              </Button>
-            ))}
+            <div className="grid flex-1 grid-cols-3 gap-1 sm:flex sm:flex-none">
+              {(["month", "week", "day"] as const).map((v) => (
+                <Button
+                  key={v}
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  variant={view === v ? "default" : "outline"}
+                  onClick={() => setView(v)}
+                >
+                  {v === "month" ? "รายเดือน" : v === "week" ? "รายสัปดาห์" : "รายวัน"}
+                </Button>
+              ))}
+            </div>
             <select
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               value={staffFilter}
@@ -202,6 +232,7 @@ function PlannerPage() {
             </select>
           </div>
         </CardHeader>
+
         <CardContent>
           {loading ? (
             <div className="flex justify-center py-10">
@@ -225,6 +256,22 @@ function PlannerPage() {
           )}
         </CardContent>
       </Card>
+
+      {isAdmin && (
+        <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} defaultOpen={orders.length > 0}>
+          <PendingOrders orders={orders} reload={load} />
+        </FoldSection>
+      )}
+
+      <FoldSection title="สรุปสถิติงาน">
+        <StatsPanel appts={appts} pending={orders.length} />
+      </FoldSection>
+
+      <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
+        <PartsAlertPanel />
+      </FoldSection>
+
+
 
       {editing && (
         <AppointmentDialog
