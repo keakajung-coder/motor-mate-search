@@ -617,16 +617,65 @@ function apptSummary(a: Appointment) {
     .join(" - ");
 }
 
+/** สรุปแบบสั้น เมื่อช่องวันที่มีงานเยอะ: [ลูกค้า] - [ทะเบียนรถ] */
+function apptShort(a: Appointment) {
+  return [a.customer_name || "ไม่ระบุลูกค้า", a.vehicle_plate || "ไม่ระบุรถ"].join(" - ");
+}
+
+/** สีบล็อกแยกตามทะเบียนรถ (พาสเทล) */
+const VEHICLE_COLORS = [
+  "bg-emerald-100 text-emerald-900 border-emerald-300",
+  "bg-sky-100 text-sky-900 border-sky-300",
+  "bg-amber-100 text-amber-900 border-amber-300",
+  "bg-violet-100 text-violet-900 border-violet-300",
+  "bg-rose-100 text-rose-900 border-rose-300",
+  "bg-teal-100 text-teal-900 border-teal-300",
+  "bg-orange-100 text-orange-900 border-orange-300",
+  "bg-indigo-100 text-indigo-900 border-indigo-300",
+  "bg-lime-100 text-lime-900 border-lime-300",
+  "bg-cyan-100 text-cyan-900 border-cyan-300",
+];
+function vehicleColor(plate?: string | null) {
+  const p = (plate ?? "").trim();
+  if (!p) return "bg-slate-100 text-slate-700 border-slate-300";
+  let h = 0;
+  for (let i = 0; i < p.length; i++) h = (h * 31 + p.charCodeAt(i)) >>> 0;
+  return VEHICLE_COLORS[h % VEHICLE_COLORS.length];
+}
+/** เส้นขอบซ้ายบอกสถานะงาน (ยังคงรหัสสีสถานะไว้) */
+function statusEdge(a: Appointment) {
+  if (a.status === "closed") return a.result === "not_ok" ? "border-l-4 border-l-red-500" : "border-l-4 border-l-emerald-600";
+  if (a.status === "in_progress") return "border-l-4 border-l-red-400";
+  return "border-l-4 border-l-amber-400";
+}
+
+function VehicleLegend({ appts }: { appts: Appointment[] }) {
+  const plates = Array.from(new Set(appts.map((a) => (a.vehicle_plate ?? "").trim()).filter(Boolean))).sort();
+  if (plates.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+      <span>รถ:</span>
+      {plates.map((p) => (
+        <span key={p} className={"rounded-full border px-2 py-0.5 " + vehicleColor(p)}>
+          {p}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function MonthGrid({
   cursor,
   appts,
   onPick,
   onPickDate,
+  onPickDay,
 }: {
   cursor: Date;
   appts: Appointment[];
   onPick: (a: Appointment) => void;
   onPickDate?: (date: string) => void;
+  onPickDay: (date: string) => void;
 }) {
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
   const start = startOfWeek(first);
@@ -635,66 +684,237 @@ function MonthGrid({
 
   return (
     <div className="space-y-2">
-    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-      <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-amber-300" /> รอนัดหมาย</span>
-      <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-red-400" /> งานซ่อมด่วน</span>
-      <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-emerald-400" /> ปิดงานแล้ว</span>
-      {onPickDate && <span className="ml-auto">แตะช่องวันที่เพื่อเพิ่มงานด่วน</span>}
-    </div>
-    <div className="grid grid-cols-7 gap-1 text-xs">
-      {TH_DOW.map((d) => (
-        <div key={d} className="py-1 text-center font-medium text-muted-foreground">
-          {d}
-        </div>
-      ))}
-      {days.map((d) => {
-        const key = iso(d);
-        const list = appts.filter((a) => a.visit_date === key);
-        const dim = d.getMonth() !== cursor.getMonth();
-        return (
-          <div
-            key={key}
-            onClick={() => onPickDate?.(key)}
-            className={
-              "min-h-24 rounded-xl border bg-card p-1.5 " +
-              (onPickDate ? "cursor-pointer hover:border-primary/60 hover:bg-accent/40 " : "") +
-              (dim ? "bg-muted/30 text-muted-foreground " : "") +
-              (key === today ? "border-primary" : "")
-            }
-          >
-            <div className="mb-1 text-right">{d.getDate()}</div>
-            <div className="space-y-1">
-              {list.slice(0, 4).map((a) => (
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm border-l-4 border-l-amber-400 bg-muted" /> รอนัดหมาย</span>
+        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm border-l-4 border-l-red-400 bg-muted" /> งานซ่อมด่วน</span>
+        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm border-l-4 border-l-emerald-600 bg-muted" /> ปิดงานแล้ว</span>
+        <span className="ml-auto">แตะวันที่เพื่อดูคิวทั้งวัน{onPickDate ? " · แตะช่องว่างเพื่อเพิ่มงานด่วน" : ""}</span>
+      </div>
+      <VehicleLegend appts={appts} />
+      <div className="grid grid-cols-7 gap-1 text-xs">
+        {TH_DOW.map((d) => (
+          <div key={d} className="py-1 text-center font-medium text-muted-foreground">
+            {d}
+          </div>
+        ))}
+        {days.map((d) => {
+          const key = iso(d);
+          const list = appts
+            .filter((a) => a.visit_date === key)
+            .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
+          const dim = d.getMonth() !== cursor.getMonth();
+          const compact = list.length > 2;
+          const max = compact ? 4 : 2;
+          return (
+            <div
+              key={key}
+              onClick={() => onPickDate?.(key)}
+              className={
+                "min-h-24 rounded-xl border bg-card p-1.5 " +
+                (onPickDate ? "cursor-pointer hover:border-primary/60 hover:bg-accent/40 " : "") +
+                (dim ? "bg-muted/30 text-muted-foreground " : "") +
+                (key === today ? "border-primary" : "")
+              }
+            >
+              <div className="mb-1 flex items-center justify-between">
+                {list.length > 0 && <span className="text-[10px] text-muted-foreground">{list.length} งาน</span>}
                 <button
-                  key={a.id}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onPick(a);
+                    onPickDay(key);
                   }}
-                  className={
-                    "block w-full whitespace-normal break-words rounded px-1 py-0.5 text-left leading-tight " +
-                    (a.status === "closed"
-                      ? a.result === "not_ok"
-                        ? "bg-red-100 text-red-700 border border-red-200"
-                        : "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                      : a.status === "in_progress"
-                        ? "bg-red-50 text-red-600 border border-red-200"
-                        : "bg-amber-100 text-amber-800 border border-amber-200")
-                  }
-                  title={apptSummary(a)}
+                  className="ml-auto rounded px-1 font-medium hover:bg-accent"
                 >
-                  {apptSummary(a)}
+                  {d.getDate()}
                 </button>
-              ))}
-              {list.length > 4 && <p className="px-1 text-[10px] text-muted-foreground">+{list.length - 4} งาน</p>}
+              </div>
+              <div className="space-y-1">
+                {list.slice(0, max).map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPick(a);
+                    }}
+                    className={
+                      "block w-full whitespace-normal break-words rounded border px-1 py-0.5 text-left leading-tight " +
+                      vehicleColor(a.vehicle_plate) +
+                      " " +
+                      statusEdge(a)
+                    }
+                    title={apptSummary(a)}
+                  >
+                    {compact ? apptShort(a) : apptSummary(a)}
+                  </button>
+                ))}
+                {list.length > max && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPickDay(key);
+                    }}
+                    className="w-full rounded px-1 text-left text-[10px] text-primary underline"
+                  >
+                    +{list.length - max} งาน · ดูทั้งหมด
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
+
+/** ตารางเวลาแบบ Grid สำหรับมุมมองรายสัปดาห์ / รายวัน */
+function TimeGrid({
+  days,
+  appts,
+  onPick,
+  onPickSlot,
+}: {
+  days: string[];
+  appts: Appointment[];
+  onPick: (a: Appointment) => void;
+  onPickSlot?: (date: string, time: string) => void;
+}) {
+  const hours = Array.from({ length: 13 }, (_, i) => i + 7); // 07:00 - 19:00
+  const today = iso(new Date());
+  const hourOf = (a: Appointment) => {
+    const h = Number((a.visit_time ?? "").slice(0, 2));
+    if (Number.isNaN(h)) return hours[0];
+    return Math.min(Math.max(h, hours[0]), hours[hours.length - 1]);
+  };
+
+  return (
+    <div className="space-y-2">
+      <VehicleLegend appts={appts} />
+      <div className="overflow-x-auto">
+        <div className="min-w-[560px]">
+          <div
+            className="grid gap-px rounded-t-xl bg-border text-xs"
+            style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0,1fr))` }}
+          >
+            <div className="bg-card p-2" />
+            {days.map((d) => (
+              <div
+                key={d}
+                className={"bg-card p-2 text-center font-medium " + (d === today ? "text-primary" : "")}
+              >
+                {formatDate(d)}
+              </div>
+            ))}
+          </div>
+          <div
+            className="grid gap-px rounded-b-xl bg-border text-xs"
+            style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0,1fr))` }}
+          >
+            {hours.map((h) => (
+              <div key={h} className="contents">
+                <div className="bg-muted/40 p-2 text-right text-[11px] text-muted-foreground">
+                  {String(h).padStart(2, "0")}:00
+                </div>
+                {days.map((d) => {
+                  const list = appts
+                    .filter((a) => a.visit_date === d && hourOf(a) === h)
+                    .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
+                  return (
+                    <div
+                      key={d + h}
+                      onClick={() => onPickSlot?.(d, `${String(h).padStart(2, "0")}:00`)}
+                      className={
+                        "min-h-12 space-y-1 bg-card p-1 " +
+                        (onPickSlot ? "cursor-pointer hover:bg-accent/40" : "")
+                      }
+                    >
+                      {list.map((a) => (
+                        <button
+                          key={a.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPick(a);
+                          }}
+                          className={
+                            "block w-full whitespace-normal break-words rounded border px-1.5 py-1 text-left leading-tight " +
+                            vehicleColor(a.vehicle_plate) +
+                            " " +
+                            statusEdge(a)
+                          }
+                          title={apptSummary(a)}
+                        >
+                          <span className="font-medium">{a.visit_time?.slice(0, 5)}</span> {apptSummary(a)}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Modal รายการนัดหมายทั้งหมดของวันนั้น */
+function DayDetailDialog({
+  date,
+  appts,
+  onClose,
+  onPick,
+}: {
+  date: string;
+  appts: Appointment[];
+  onClose: () => void;
+  onPick: (a: Appointment) => void;
+}) {
+  const list = appts
+    .filter((a) => a.visit_date === date)
+    .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>คิวงานวันที่ {formatDate(date)}</DialogTitle>
+          <DialogDescription>ทั้งหมด {list.length} งาน · แตะรายการเพื่อดูรายละเอียดเชิงลึก</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          {list.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีนัดหมายในวันนี้</p>}
+          {list.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => onPick(a)}
+              className={
+                "block w-full rounded-xl border p-3 text-left " + vehicleColor(a.vehicle_plate) + " " + statusEdge(a)
+              }
+            >
+              <p className="font-medium">
+                {a.visit_time?.slice(0, 5) || "-"} · {a.customer_name || "ไม่ระบุลูกค้า"}
+              </p>
+              <p className="text-xs opacity-80">
+                {[a.service_type, a.serial_number, a.machine_label].filter(Boolean).join(" · ") || "-"}
+              </p>
+              <p className="text-xs opacity-80">
+                ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {a.vehicle_plate || "-"} ·{" "}
+                {STATUS_LABEL[a.status] ?? a.status}
+              </p>
+              {a.customer_address && <p className="text-xs opacity-80">{a.customer_address}</p>}
+              {a.job_detail && <p className="mt-1 text-sm">{a.job_detail}</p>}
+            </button>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            ปิด
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 
 function DayList({
