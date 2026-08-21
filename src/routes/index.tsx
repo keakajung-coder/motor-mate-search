@@ -33,6 +33,7 @@ import {
   QrCode,
   Download,
   Smartphone,
+  ChevronDown,
 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
@@ -986,20 +987,23 @@ function MachineCard({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        className="flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-4 text-left transition-colors hover:bg-accent/40"
       >
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold">{unit.serial_number}</span>
+            <span className="text-lg font-semibold tracking-tight">{unit.serial_number}</span>
             {(unit as any).status && (
               <Badge variant="secondary">{(unit as any).status}</Badge>
             )}
           </div>
-          <div className="truncate text-xs text-muted-foreground">
+          <div className="truncate text-sm text-muted-foreground">
             {model} • {unit.customers?.name ?? "-"} • อะไหล่ {unit.machine_parts?.length ?? 0} รายการ
           </div>
         </div>
-        <Badge variant="outline">{open ? "ซ่อน" : "ดูข้อมูล"}</Badge>
+        <Badge variant="outline" className="shrink-0 gap-1 rounded-full px-3 py-1.5 text-sm">
+          {open ? "ซ่อน" : "ดูอะไหล่"}
+          <ChevronDown className={"h-4 w-4 transition-transform " + (open ? "rotate-180" : "")} />
+        </Badge>
       </button>
       {open && (
         <CardContent id={`print-${unit.id}`} className="space-y-4 border-t pt-4">
