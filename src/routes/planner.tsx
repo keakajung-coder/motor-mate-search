@@ -781,8 +781,7 @@ function MonthGrid({
             .filter((a) => a.visit_date === key)
             .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
           const dim = d.getMonth() !== cursor.getMonth();
-          const compact = list.length > 2;
-          const max = compact ? 4 : 2;
+          const max = 3;
           return (
             <div
               key={key}
