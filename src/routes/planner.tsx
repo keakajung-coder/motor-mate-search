@@ -133,6 +133,8 @@ function PlannerPage() {
   const [staffFilter, setStaffFilter] = useState("");
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
+  const [dayDetail, setDayDetail] = useState<string | null>(null);
+
 
   const load = useCallback(async () => {
     const [a, w] = await Promise.all([
