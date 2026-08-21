@@ -119,9 +119,11 @@ export async function ensureDirectoryEntries(input: {
       }
     }
 
-    if (staffName && !cache.staff.some((s) => eq(s, staffName))) {
-      await supabase.from("service_staff").insert({ name: staffName });
-      changed = true;
+    for (const staffName of staffNames) {
+      if (!cache.staff.some((s) => eq(s, staffName))) {
+        await supabase.from("service_staff").insert({ name: staffName });
+        changed = true;
+      }
     }
 
     if (plate && !cache.vehicles.some((v) => eq(v, plate))) {
