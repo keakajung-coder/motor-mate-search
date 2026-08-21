@@ -1130,7 +1130,9 @@ function AppointmentDialog({
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<Appointment>(value);
+  const [editMode, setEditMode] = useState(!value.id);
   const [saving, setSaving] = useState(false);
+  const locked = !canEdit || !editMode;
   const dir = useDirectory();
   const set = (k: keyof Appointment, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
