@@ -16,13 +16,18 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle, Undo2, Redo2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle, Undo2, Redo2, Lock } from "lucide-react";
 import { ImportExportTab } from "@/components/admin/ImportExportTab";
 import { OptionListManager } from "@/components/admin/OptionListManager";
+import { StaffVehiclesTab } from "@/components/admin/StaffVehiclesTab";
+import { PasscodeSettings } from "@/components/admin/PasscodeSettings";
+import { BackupRestore } from "@/components/admin/BackupRestore";
+import { AdminLockButton } from "@/components/AccessGate";
+import { useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { useUndoable } from "@/hooks/use-undoable";
 import { loadOptionList } from "@/lib/option-lists";
-import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate } from "@/lib/report";
+import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate, isMachineComplete } from "@/lib/report";
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 
@@ -41,6 +46,26 @@ function SearchBox({ value, onChange, placeholder }: { value: string; onChange: 
 }
 
 function AdminPage() {
+  const { isAdmin } = useAccess();
+
+  if (!isAdmin) {
+    return (
+      <Card className="mx-auto max-w-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Lock className="h-4 w-4" /> ต้องปลดล็อกโหมดแอดมิน
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            กดไอคอนกุญแจที่มุมขวาบนของหน้าจอ แล้วกรอกรหัสแอดมินเพื่อเข้าจัดการข้อมูล
+          </p>
+          <AdminLockButton />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">จัดการข้อมูล</h1>
@@ -51,14 +76,17 @@ function AdminPage() {
           <TabsTrigger value="products">สินค้า/อะไหล่</TabsTrigger>
           <TabsTrigger value="brands">ยี่ห้อ</TabsTrigger>
           <TabsTrigger value="models">รุ่นเครื่อง</TabsTrigger>
+          <TabsTrigger value="staff">ช่าง / รถ</TabsTrigger>
           <TabsTrigger value="lists">ผู้ขาย / สถานะ</TabsTrigger>
           <TabsTrigger value="io">นำเข้า / ส่งออก</TabsTrigger>
+          <TabsTrigger value="security">ความปลอดภัย</TabsTrigger>
         </TabsList>
         <TabsContent value="machines"><MachinesTab /></TabsContent>
         <TabsContent value="customers"><CustomersTab /></TabsContent>
         <TabsContent value="products"><ProductsTab /></TabsContent>
         <TabsContent value="brands"><BrandsTab /></TabsContent>
         <TabsContent value="models"><ModelsTab /></TabsContent>
+        <TabsContent value="staff"><StaffVehiclesTab /></TabsContent>
         <TabsContent value="lists">
           <div className="grid gap-4 md:grid-cols-2">
             <OptionListManager listKey="sellers" column="seller" title="ผู้ขาย" />
@@ -66,6 +94,12 @@ function AdminPage() {
           </div>
         </TabsContent>
         <TabsContent value="io"><ImportExportTab /></TabsContent>
+        <TabsContent value="security">
+          <div className="grid gap-4 md:grid-cols-2">
+            <PasscodeSettings />
+            <BackupRestore />
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -598,6 +632,7 @@ function MachinesTab() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [customSellers, setCustomSellers] = useState<string[]>([]);
   const [customStatuses, setCustomStatuses] = useState<string[]>([]);
+  const [completeFilter, setCompleteFilter] = useState<"all" | "yes" | "no">("all");
   useEffect(() => {
     loadOptionList("sellers").then(setCustomSellers);
     loadOptionList("statuses").then(setCustomStatuses);
@@ -1001,6 +1036,18 @@ function MachinesTab() {
                 </Button>
               ))}
             </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-xs text-muted-foreground">ความครบถ้วนข้อมูล:</span>
+              <Button size="sm" variant={completeFilter === "all" ? "default" : "outline"} onClick={() => setCompleteFilter("all")}>
+                ทั้งหมด
+              </Button>
+              <Button size="sm" variant={completeFilter === "yes" ? "default" : "outline"} onClick={() => setCompleteFilter("yes")}>
+                ครบถ้วน ({units.filter((u) => isMachineComplete(u)).length})
+              </Button>
+              <Button size="sm" variant={completeFilter === "no" ? "default" : "outline"} onClick={() => setCompleteFilter("no")}>
+                ยังไม่ครบ ({units.filter((u) => !isMachineComplete(u)).length})
+              </Button>
+            </div>
           </div>
           <ul className="divide-y rounded border">
             {units
@@ -1010,6 +1057,7 @@ function MachinesTab() {
                 const sellerKw = sellerQ.trim().toLowerCase();
                 if (sellerKw && !unitSeller.toLowerCase().includes(sellerKw)) return false;
                 if (statusFilter && ((u.status ?? "").trim() || "ไม่ระบุสถานะ") !== statusFilter) return false;
+                if (completeFilter !== "all" && isMachineComplete(u) !== (completeFilter === "yes")) return false;
                 const kw = q.trim().toLowerCase();
                 if (!kw) return true;
                 return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller} ${u.status ?? ""}`
@@ -1026,6 +1074,16 @@ function MachinesTab() {
                           {u.status}
                         </span>
                       )}
+                      <span
+                        className={
+                          "rounded-full px-2 py-0.5 text-[11px] " +
+                          (isMachineComplete(u)
+                            ? "bg-emerald-500/15 text-emerald-700"
+                            : "bg-orange-500/15 text-orange-700")
+                        }
+                      >
+                        {isMachineComplete(u) ? "ลงข้อมูลครบถ้วน" : "ยังลงข้อมูลไม่ครบ"}
+                      </span>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.name ?? "-"}

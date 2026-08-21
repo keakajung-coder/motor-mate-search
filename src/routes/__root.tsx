@@ -13,6 +13,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { Wrench } from "lucide-react";
+import { AccessProvider } from "@/lib/access";
+import { AccessGate, AdminLockButton } from "@/components/AccessGate";
 
 function NotFoundComponent() {
   return (
@@ -108,10 +110,10 @@ function RootShell({ children }: { children: ReactNode }) {
 function NavBar() {
   return (
     <header className="border-b bg-card">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3">
         <Link to="/" className="flex items-center gap-2 font-semibold">
           <Wrench className="h-5 w-5 text-primary" />
-          <span>อะไหล่ปั๊มลม</span>
+          <span className="hidden sm:inline">อะไหล่ปั๊มลม</span>
         </Link>
         <nav className="flex items-center gap-1 text-sm">
           <Link
@@ -122,11 +124,18 @@ function NavBar() {
             ค้นหา
           </Link>
           <Link
+            to="/planner"
+            className="rounded-md px-3 py-2 hover:bg-accent [&.active]:bg-accent [&.active]:font-medium"
+          >
+            ปฏิทินงาน
+          </Link>
+          <Link
             to="/admin"
             className="rounded-md px-3 py-2 hover:bg-accent [&.active]:bg-accent [&.active]:font-medium"
           >
             จัดการข้อมูล
           </Link>
+          <AdminLockButton />
         </nav>
       </div>
     </header>
@@ -138,12 +147,16 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-background">
-        <NavBar />
-        <main className="mx-auto max-w-6xl px-4 py-6">
-          <Outlet />
-        </main>
-      </div>
+      <AccessProvider>
+        <AccessGate>
+          <div className="min-h-screen bg-background">
+            <NavBar />
+            <main className="mx-auto max-w-6xl px-4 py-6">
+              <Outlet />
+            </main>
+          </div>
+        </AccessGate>
+      </AccessProvider>
       <Toaster />
     </QueryClientProvider>
   );

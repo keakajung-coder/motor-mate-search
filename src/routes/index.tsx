@@ -14,6 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { WorkOrderDialog } from "@/components/WorkOrderDialog";
 import {
   Search,
   Loader2,
@@ -86,6 +87,7 @@ function HomePage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <WorkOrderDialog />
           <ThemePicker />
           <ShareAppButton />
         </div>
@@ -449,6 +451,17 @@ function CatalogView() {
     });
   }, [products, q, selectedCat]);
 
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  useEffect(() => {
+    setPage(1);
+  }, [q, selectedCat]);
+  const pageItems = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page]
+  );
+
   return (
     <div className="space-y-5">
       <div className="flex gap-2">
@@ -493,11 +506,34 @@ function CatalogView() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((p) => (
-            <ProductCard key={p.id} product={p} onOpen={() => setSelected(p)} />
-          ))}
-        </div>
+        <>
+          <p className="text-xs text-muted-foreground">
+            พบ {filtered.length} รายการ · แสดงหน้า {page} จาก {totalPages} (หน้าละ {PAGE_SIZE} รายการ)
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {pageItems.map((p) => (
+              <ProductCard key={p.id} product={p} onOpen={() => setSelected(p)} />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((n) => n - 1)}>
+                ก่อนหน้า
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {page} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((n) => n + 1)}
+              >
+                ถัดไป
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       <ProductModal

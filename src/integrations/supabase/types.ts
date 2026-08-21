@@ -38,6 +38,93 @@ export type Database = {
         }
         Relationships: []
       }
+      appointments: {
+        Row: {
+          close_note: string | null
+          closed_at: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          customer_address: string | null
+          customer_name: string | null
+          id: string
+          job_detail: string | null
+          machine_label: string | null
+          machine_unit_id: string | null
+          result: string | null
+          serial_number: string | null
+          service_type: string | null
+          staff_name: string | null
+          status: string
+          updated_at: string
+          vehicle_plate: string | null
+          visit_date: string
+          visit_time: string | null
+          work_order_id: string | null
+        }
+        Insert: {
+          close_note?: string | null
+          closed_at?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          customer_address?: string | null
+          customer_name?: string | null
+          id?: string
+          job_detail?: string | null
+          machine_label?: string | null
+          machine_unit_id?: string | null
+          result?: string | null
+          serial_number?: string | null
+          service_type?: string | null
+          staff_name?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_plate?: string | null
+          visit_date: string
+          visit_time?: string | null
+          work_order_id?: string | null
+        }
+        Update: {
+          close_note?: string | null
+          closed_at?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          customer_address?: string | null
+          customer_name?: string | null
+          id?: string
+          job_detail?: string | null
+          machine_label?: string | null
+          machine_unit_id?: string | null
+          result?: string | null
+          serial_number?: string | null
+          service_type?: string | null
+          staff_name?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_plate?: string | null
+          visit_date?: string
+          visit_time?: string | null
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_machine_unit_id_fkey"
+            columns: ["machine_unit_id"]
+            isOneToOne: false
+            referencedRelation: "machine_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brands: {
         Row: {
           created_at: string | null
@@ -208,6 +295,7 @@ export type Database = {
           created_at: string | null
           customer_id: string | null
           daily_hours: number | null
+          data_complete: boolean
           district: string | null
           id: string
           install_date: string | null
@@ -225,6 +313,7 @@ export type Database = {
           created_at?: string | null
           customer_id?: string | null
           daily_hours?: number | null
+          data_complete?: boolean
           district?: string | null
           id?: string
           install_date?: string | null
@@ -242,6 +331,7 @@ export type Database = {
           created_at?: string | null
           customer_id?: string | null
           daily_hours?: number | null
+          data_complete?: boolean
           district?: string | null
           id?: string
           install_date?: string | null
@@ -267,6 +357,63 @@ export type Database = {
             columns: ["model_id"]
             isOneToOne: false
             referencedRelation: "compressor_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_logs: {
+        Row: {
+          appointment_id: string | null
+          created_at: string
+          done_date: string
+          id: string
+          job_detail: string | null
+          machine_unit_id: string | null
+          note: string | null
+          result: string | null
+          serial_number: string | null
+          service_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_at?: string
+          done_date?: string
+          id?: string
+          job_detail?: string | null
+          machine_unit_id?: string | null
+          note?: string | null
+          result?: string | null
+          serial_number?: string | null
+          service_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          created_at?: string
+          done_date?: string
+          id?: string
+          job_detail?: string | null
+          machine_unit_id?: string | null
+          note?: string | null
+          result?: string | null
+          serial_number?: string | null
+          service_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_logs_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_logs_machine_unit_id_fkey"
+            columns: ["machine_unit_id"]
+            isOneToOne: false
+            referencedRelation: "machine_units"
             referencedColumns: ["id"]
           },
         ]
@@ -343,6 +490,144 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      security_settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      service_staff: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          note: string | null
+          plate: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          note?: string | null
+          plate: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          note?: string | null
+          plate?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      work_orders: {
+        Row: {
+          admin_note: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          customer_address: string | null
+          customer_name: string
+          id: string
+          job_detail: string | null
+          machine_label: string | null
+          serial_number: string | null
+          service_type: string | null
+          staff_name: string | null
+          status: string
+          updated_at: string
+          vehicle_plate: string | null
+          visit_date: string | null
+          visit_time: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          customer_address?: string | null
+          customer_name: string
+          id?: string
+          job_detail?: string | null
+          machine_label?: string | null
+          serial_number?: string | null
+          service_type?: string | null
+          staff_name?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_plate?: string | null
+          visit_date?: string | null
+          visit_time?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          customer_address?: string | null
+          customer_name?: string
+          id?: string
+          job_detail?: string | null
+          machine_label?: string | null
+          serial_number?: string | null
+          service_type?: string | null
+          staff_name?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_plate?: string | null
+          visit_date?: string | null
+          visit_time?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
