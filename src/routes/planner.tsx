@@ -229,6 +229,22 @@ function PlannerPage() {
         </CardContent>
       </Card>
 
+      {isAdmin && (
+        <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} defaultOpen={orders.length > 0}>
+          <PendingOrders orders={orders} reload={load} />
+        </FoldSection>
+      )}
+
+      <FoldSection title="สรุปสถิติงาน">
+        <StatsPanel appts={appts} pending={orders.length} />
+      </FoldSection>
+
+      <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
+        <PartsAlertPanel />
+      </FoldSection>
+
+
+
       {editing && (
         <AppointmentDialog
           value={editing}
