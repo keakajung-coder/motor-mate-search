@@ -352,19 +352,27 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       {items.map((i) => (
-        <Card key={i.label}>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">{i.label}</p>
-            <p
-              className={
-                "text-2xl font-bold " +
-                (i.tone === "ok" ? "text-emerald-600" : i.tone === "warn" ? "text-orange-600" : "")
-              }
-            >
-              {i.value}
-            </p>
-          </CardContent>
-        </Card>
+        <div
+          key={i.label}
+          className={
+            "rounded-2xl border p-4 text-center shadow-sm " +
+            (i.tone === "ok"
+              ? "border-emerald-200 bg-emerald-50"
+              : i.tone === "warn"
+                ? "border-orange-200 bg-orange-50"
+                : "border-border bg-card")
+          }
+        >
+          <p
+            className={
+              "text-3xl font-bold leading-tight " +
+              (i.tone === "ok" ? "text-emerald-600" : i.tone === "warn" ? "text-orange-600" : "text-foreground")
+            }
+          >
+            {i.value}
+          </p>
+          <p className="mt-1 text-xs leading-snug text-muted-foreground">{i.label}</p>
+        </div>
       ))}
     </div>
   );
@@ -610,6 +618,12 @@ function MonthGrid({
   const today = iso(new Date());
 
   return (
+    <div className="space-y-2">
+    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+      <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-amber-300" /> รอนัดหมาย</span>
+      <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-red-400" /> งานซ่อมด่วน</span>
+      <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-emerald-400" /> ปิดงานแล้ว</span>
+    </div>
     <div className="grid grid-cols-7 gap-1 text-xs">
       {TH_DOW.map((d) => (
         <div key={d} className="py-1 text-center font-medium text-muted-foreground">
@@ -624,7 +638,7 @@ function MonthGrid({
           <div
             key={key}
             className={
-              "min-h-20 rounded-md border p-1 " +
+              "min-h-24 rounded-xl border bg-card p-1.5 " +
               (dim ? "bg-muted/30 text-muted-foreground " : "") +
               (key === today ? "border-primary" : "")
             }
@@ -639,11 +653,11 @@ function MonthGrid({
                     "block w-full truncate rounded px-1 py-0.5 text-left " +
                     (a.status === "closed"
                       ? a.result === "not_ok"
-                        ? "bg-destructive/15 text-destructive"
-                        : "bg-emerald-500/15 text-emerald-700"
+                        ? "bg-red-100 text-red-700 border border-red-200"
+                        : "bg-emerald-100 text-emerald-800 border border-emerald-200"
                       : a.status === "in_progress"
-                        ? "bg-amber-500/20 text-amber-800"
-                        : "bg-primary/15 text-primary")
+                        ? "bg-red-50 text-red-600 border border-red-200"
+                        : "bg-amber-100 text-amber-800 border border-amber-200")
                   }
                 >
                   {a.visit_time?.slice(0, 5)} {a.customer_name}
@@ -654,6 +668,7 @@ function MonthGrid({
           </div>
         );
       })}
+    </div>
     </div>
   );
 }
