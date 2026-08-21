@@ -997,13 +997,14 @@ function AppointmentDialog({
               <Input disabled={!canEdit} type="time" value={form.visit_time ?? ""} onChange={(e) => set("visit_time", e.target.value)} />
             </F>
           </div>
-          <F label="พนักงานเซอร์วิส">
-            <ComboCell
+          <F label="พนักงานเซอร์วิส (เลือกได้หลายคน)">
+            <MultiCombobox
               disabled={!canEdit}
-              value={form.staff_name ?? ""}
-              onChange={(v) => set("staff_name", v)}
+              values={splitNames(form.staff_name)}
+              onChange={(list) => set("staff_name", joinNames(list))}
               options={dir.staff}
-              placeholder="เลือกช่าง"
+              placeholder="เลือกช่าง (ติ๊กได้หลายคน)"
+              searchPlaceholder="ค้นหาช่าง..."
             />
           </F>
           <F label="ทะเบียนรถ">
