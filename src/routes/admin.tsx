@@ -41,6 +41,26 @@ function SearchBox({ value, onChange, placeholder }: { value: string; onChange: 
 }
 
 function AdminPage() {
+  const { isAdmin } = useAccess();
+
+  if (!isAdmin) {
+    return (
+      <Card className="mx-auto max-w-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Lock className="h-4 w-4" /> ต้องปลดล็อกโหมดแอดมิน
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            กดไอคอนกุญแจที่มุมขวาบนของหน้าจอ แล้วกรอกรหัสแอดมินเพื่อเข้าจัดการข้อมูล
+          </p>
+          <AdminLockButton />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">จัดการข้อมูล</h1>
@@ -51,14 +71,17 @@ function AdminPage() {
           <TabsTrigger value="products">สินค้า/อะไหล่</TabsTrigger>
           <TabsTrigger value="brands">ยี่ห้อ</TabsTrigger>
           <TabsTrigger value="models">รุ่นเครื่อง</TabsTrigger>
+          <TabsTrigger value="staff">ช่าง / รถ</TabsTrigger>
           <TabsTrigger value="lists">ผู้ขาย / สถานะ</TabsTrigger>
           <TabsTrigger value="io">นำเข้า / ส่งออก</TabsTrigger>
+          <TabsTrigger value="security">ความปลอดภัย</TabsTrigger>
         </TabsList>
         <TabsContent value="machines"><MachinesTab /></TabsContent>
         <TabsContent value="customers"><CustomersTab /></TabsContent>
         <TabsContent value="products"><ProductsTab /></TabsContent>
         <TabsContent value="brands"><BrandsTab /></TabsContent>
         <TabsContent value="models"><ModelsTab /></TabsContent>
+        <TabsContent value="staff"><StaffVehiclesTab /></TabsContent>
         <TabsContent value="lists">
           <div className="grid gap-4 md:grid-cols-2">
             <OptionListManager listKey="sellers" column="seller" title="ผู้ขาย" />
@@ -66,6 +89,12 @@ function AdminPage() {
           </div>
         </TabsContent>
         <TabsContent value="io"><ImportExportTab /></TabsContent>
+        <TabsContent value="security">
+          <div className="grid gap-4 md:grid-cols-2">
+            <PasscodeSettings />
+            <BackupRestore />
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
