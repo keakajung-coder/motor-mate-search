@@ -314,6 +314,8 @@ function CustomersTab() {
     setForm(emptyForm);
     toast.success(form.id ? "บันทึกแล้ว" : "เพิ่มลูกค้าแล้ว");
     load();
+    refreshDirectory();
+
   }
   function startEdit(c: any) {
     setForm({
@@ -776,6 +778,8 @@ function MachinesTab() {
         }
       }
       load();
+      refreshDirectory();
+
     } finally {
       setSaving(false);
     }
