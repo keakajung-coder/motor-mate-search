@@ -605,10 +605,12 @@ function MonthGrid({
   cursor,
   appts,
   onPick,
+  onPickDate,
 }: {
   cursor: Date;
   appts: Appointment[];
   onPick: (a: Appointment) => void;
+  onPickDate?: (date: string) => void;
 }) {
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
   const start = startOfWeek(first);
@@ -621,6 +623,7 @@ function MonthGrid({
       <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-amber-300" /> รอนัดหมาย</span>
       <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-red-400" /> งานซ่อมด่วน</span>
       <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-emerald-400" /> ปิดงานแล้ว</span>
+      {onPickDate && <span className="ml-auto">แตะช่องวันที่เพื่อเพิ่มงานด่วน</span>}
     </div>
     <div className="grid grid-cols-7 gap-1 text-xs">
       {TH_DOW.map((d) => (
@@ -635,8 +638,10 @@ function MonthGrid({
         return (
           <div
             key={key}
+            onClick={() => onPickDate?.(key)}
             className={
               "min-h-24 rounded-xl border bg-card p-1.5 " +
+              (onPickDate ? "cursor-pointer hover:border-primary/60 hover:bg-accent/40 " : "") +
               (dim ? "bg-muted/30 text-muted-foreground " : "") +
               (key === today ? "border-primary" : "")
             }
@@ -646,7 +651,10 @@ function MonthGrid({
               {list.slice(0, 3).map((a) => (
                 <button
                   key={a.id}
-                  onClick={() => onPick(a)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPick(a);
+                  }}
                   className={
                     "block w-full truncate rounded px-1 py-0.5 text-left " +
                     (a.status === "closed"
@@ -657,8 +665,11 @@ function MonthGrid({
                         ? "bg-red-50 text-red-600 border border-red-200"
                         : "bg-amber-100 text-amber-800 border border-amber-200")
                   }
+                  title={[a.customer_name, a.service_type, a.job_detail].filter(Boolean).join(" - ")}
                 >
-                  {a.visit_time?.slice(0, 5)} {a.customer_name}
+                  {[a.customer_name || "ไม่ระบุลูกค้า", a.service_type || a.job_detail]
+                    .filter(Boolean)
+                    .join(" - ")}
                 </button>
               ))}
               {list.length > 3 && <p className="px-1 text-[10px] text-muted-foreground">+{list.length - 3} งาน</p>}
@@ -670,6 +681,7 @@ function MonthGrid({
     </div>
   );
 }
+
 
 function DayList({
   days,
