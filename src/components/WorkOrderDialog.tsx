@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ClipboardPlus, Loader2 } from "lucide-react";
-import { refreshDirectory, useDirectory } from "@/lib/directory";
+import { ensureDirectoryEntries, refreshDirectory, useDirectory } from "@/lib/directory";
 
 export const SERVICE_TYPES = [
   "เช็กระยะ (PM)",
@@ -119,6 +119,14 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
     if (!form.customer_name.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     if (!form.job_detail.trim()) return toast.error("กรุณากรอกรายละเอียดงาน");
     setSaving(true);
+    await ensureDirectoryEntries({
+      customer_name: form.customer_name,
+      customer_address: form.customer_address,
+      contact_phone: form.contact_phone,
+      serial_number: form.serial_number,
+      staff_name: form.staff_name,
+      vehicle_plate: form.vehicle_plate,
+    });
     const { error } = await supabase.from("work_orders").insert({
       customer_name: form.customer_name.trim(),
       customer_address: form.customer_address.trim() || null,

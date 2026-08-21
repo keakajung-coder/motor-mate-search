@@ -833,6 +833,157 @@ function MachinesTab() {
   return (
     <div className="space-y-4">
       <Card>
+        <CardHeader><CardTitle>รายการเครื่อง</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <SearchBox value={q} onChange={setQ} placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด / ผู้ขาย" />
+          {(() => {
+            const sellers = Array.from(
+              new Set(units.map((u) => (u.seller ?? "").trim()).filter(Boolean)),
+            ).sort((a: any, b: any) => a.localeCompare(b, "th"));
+            const visibleSellers = sellerQ.trim()
+              ? sellers.filter((s: any) => s.toLowerCase().includes(sellerQ.trim().toLowerCase()))
+              : sellers;
+            if (!sellers.length) return null;
+            return (
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="ค้นหาด้วยชื่อผู้ขาย"
+                    value={sellerQ}
+                    onChange={(e) => setSellerQ(e.target.value)}
+                    className="h-10 pl-10 text-base"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-muted-foreground">ผู้ขาย:</span>
+                  <Button
+                    size="sm"
+                    variant={sellerFilter === null ? "default" : "outline"}
+                    onClick={() => setSellerFilter(null)}
+                  >
+                    ทั้งหมด
+                  </Button>
+                  {visibleSellers.map((s: any) => (
+                    <Button
+                      key={s}
+                      size="sm"
+                      variant={sellerFilter === s ? "default" : "outline"}
+                      onClick={() => setSellerFilter(s)}
+                    >
+                      {s}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+          <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
+            <div className="text-sm font-semibold">สรุปจำนวนเครื่องตามสถานะ (ทั้งหมด {units.length} เครื่อง)</div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={statusFilter === null ? "default" : "outline"}
+                onClick={() => setStatusFilter(null)}
+              >
+                ทั้งหมด ({units.length})
+              </Button>
+              {statusCounts.map(([s, n]) => (
+                <Button
+                  key={s}
+                  size="sm"
+                  variant={statusFilter === s ? "default" : "outline"}
+                  onClick={() => setStatusFilter(statusFilter === s ? null : s)}
+                >
+                  {s} ({n})
+                </Button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-xs text-muted-foreground">ความครบถ้วนข้อมูล:</span>
+              <Button size="sm" variant={completeFilter === "all" ? "default" : "outline"} onClick={() => setCompleteFilter("all")}>
+                ทั้งหมด
+              </Button>
+              <Button size="sm" variant={completeFilter === "yes" ? "default" : "outline"} onClick={() => setCompleteFilter("yes")}>
+                ครบถ้วน ({units.filter((u) => isMachineComplete(u)).length})
+              </Button>
+              <Button size="sm" variant={completeFilter === "no" ? "default" : "outline"} onClick={() => setCompleteFilter("no")}>
+                ยังไม่ครบ ({units.filter((u) => !isMachineComplete(u)).length})
+              </Button>
+            </div>
+          </div>
+          <ul className="divide-y rounded border">
+            {units
+              .filter((u) => {
+                const unitSeller = (u.seller ?? "").trim();
+                if (sellerFilter && unitSeller !== sellerFilter) return false;
+                const sellerKw = sellerQ.trim().toLowerCase();
+                if (sellerKw && !unitSeller.toLowerCase().includes(sellerKw)) return false;
+                if (statusFilter && ((u.status ?? "").trim() || "ไม่ระบุสถานะ") !== statusFilter) return false;
+                if (completeFilter !== "all" && isMachineComplete(u) !== (completeFilter === "yes")) return false;
+                const kw = q.trim().toLowerCase();
+                if (!kw) return true;
+                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller} ${u.status ?? ""}`
+                  .toLowerCase().includes(kw);
+              })
+              .map((u) => (
+              <li key={u.id} className="px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{u.serial_number}</span>
+                      {u.status && (
+                        <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                          {u.status}
+                        </span>
+                      )}
+                      <span
+                        className={
+                          "rounded-full px-2 py-0.5 text-[11px] " +
+                          (isMachineComplete(u)
+                            ? "bg-emerald-500/15 text-emerald-700"
+                            : "bg-orange-500/15 text-orange-700")
+                        }
+                      >
+                        {isMachineComplete(u) ? "ลงข้อมูลครบถ้วน" : "ยังลงข้อมูลไม่ครบ"}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.name ?? "-"}
+                    </div>
+                    {(u.site_name || u.district || u.province) && (
+                      <div className="text-xs text-muted-foreground">
+                        📍 {[u.site_name, u.address_line, u.district, u.province].filter(Boolean).join(" • ")}
+                      </div>
+                    )}
+                    {u.seller && (
+                      <div className="text-xs text-muted-foreground">ผู้ขาย: {u.seller}</div>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => startEdit(u)}>แก้ไข</Button>
+                    <Button size="sm" variant="outline" onClick={() => duplicateUnit(u)}>คัดลอก</Button>
+                    <Button size="sm" variant="outline" onClick={() => setSelected(selected === u.id ? null : u.id)}>
+                      {selected === u.id ? "ปิด" : "จัดการอะไหล่"}
+                    </Button>
+                    <ConfirmButton title={`ลบเครื่อง S/N "${u.serial_number}"?`} description="ข้อมูลอะไหล่ของเครื่องนี้จะถูกลบด้วย" onConfirm={() => del(u.id)}><Trash2 className="h-4 w-4" /></ConfirmButton>
+                  </div>
+                </div>
+                {selected === u.id && (
+                  <MachinePartsEditor
+                    machineId={u.id}
+                    dailyHours={u.daily_hours ?? null}
+                    installDate={u.install_date ?? null}
+                  />
+                )}
+              </li>
+            ))}
+            {units.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
+          </ul>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader>
           <CardTitle>{form.id ? "แก้ไขเครื่อง" : "เพิ่มเครื่อง (S/N)"}</CardTitle>
         </CardHeader>
@@ -1025,157 +1176,6 @@ function MachinesTab() {
               />
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle>รายการเครื่อง</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <SearchBox value={q} onChange={setQ} placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด / ผู้ขาย" />
-          {(() => {
-            const sellers = Array.from(
-              new Set(units.map((u) => (u.seller ?? "").trim()).filter(Boolean)),
-            ).sort((a: any, b: any) => a.localeCompare(b, "th"));
-            const visibleSellers = sellerQ.trim()
-              ? sellers.filter((s: any) => s.toLowerCase().includes(sellerQ.trim().toLowerCase()))
-              : sellers;
-            if (!sellers.length) return null;
-            return (
-              <div className="space-y-2">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="ค้นหาด้วยชื่อผู้ขาย"
-                    value={sellerQ}
-                    onChange={(e) => setSellerQ(e.target.value)}
-                    className="h-10 pl-10 text-base"
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-muted-foreground">ผู้ขาย:</span>
-                  <Button
-                    size="sm"
-                    variant={sellerFilter === null ? "default" : "outline"}
-                    onClick={() => setSellerFilter(null)}
-                  >
-                    ทั้งหมด
-                  </Button>
-                  {visibleSellers.map((s: any) => (
-                    <Button
-                      key={s}
-                      size="sm"
-                      variant={sellerFilter === s ? "default" : "outline"}
-                      onClick={() => setSellerFilter(s)}
-                    >
-                      {s}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-          <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
-            <div className="text-sm font-semibold">สรุปจำนวนเครื่องตามสถานะ (ทั้งหมด {units.length} เครื่อง)</div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant={statusFilter === null ? "default" : "outline"}
-                onClick={() => setStatusFilter(null)}
-              >
-                ทั้งหมด ({units.length})
-              </Button>
-              {statusCounts.map(([s, n]) => (
-                <Button
-                  key={s}
-                  size="sm"
-                  variant={statusFilter === s ? "default" : "outline"}
-                  onClick={() => setStatusFilter(statusFilter === s ? null : s)}
-                >
-                  {s} ({n})
-                </Button>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-xs text-muted-foreground">ความครบถ้วนข้อมูล:</span>
-              <Button size="sm" variant={completeFilter === "all" ? "default" : "outline"} onClick={() => setCompleteFilter("all")}>
-                ทั้งหมด
-              </Button>
-              <Button size="sm" variant={completeFilter === "yes" ? "default" : "outline"} onClick={() => setCompleteFilter("yes")}>
-                ครบถ้วน ({units.filter((u) => isMachineComplete(u)).length})
-              </Button>
-              <Button size="sm" variant={completeFilter === "no" ? "default" : "outline"} onClick={() => setCompleteFilter("no")}>
-                ยังไม่ครบ ({units.filter((u) => !isMachineComplete(u)).length})
-              </Button>
-            </div>
-          </div>
-          <ul className="divide-y rounded border">
-            {units
-              .filter((u) => {
-                const unitSeller = (u.seller ?? "").trim();
-                if (sellerFilter && unitSeller !== sellerFilter) return false;
-                const sellerKw = sellerQ.trim().toLowerCase();
-                if (sellerKw && !unitSeller.toLowerCase().includes(sellerKw)) return false;
-                if (statusFilter && ((u.status ?? "").trim() || "ไม่ระบุสถานะ") !== statusFilter) return false;
-                if (completeFilter !== "all" && isMachineComplete(u) !== (completeFilter === "yes")) return false;
-                const kw = q.trim().toLowerCase();
-                if (!kw) return true;
-                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller} ${u.status ?? ""}`
-                  .toLowerCase().includes(kw);
-              })
-              .map((u) => (
-              <li key={u.id} className="px-3 py-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{u.serial_number}</span>
-                      {u.status && (
-                        <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
-                          {u.status}
-                        </span>
-                      )}
-                      <span
-                        className={
-                          "rounded-full px-2 py-0.5 text-[11px] " +
-                          (isMachineComplete(u)
-                            ? "bg-emerald-500/15 text-emerald-700"
-                            : "bg-orange-500/15 text-orange-700")
-                        }
-                      >
-                        {isMachineComplete(u) ? "ลงข้อมูลครบถ้วน" : "ยังลงข้อมูลไม่ครบ"}
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.name ?? "-"}
-                    </div>
-                    {(u.site_name || u.district || u.province) && (
-                      <div className="text-xs text-muted-foreground">
-                        📍 {[u.site_name, u.address_line, u.district, u.province].filter(Boolean).join(" • ")}
-                      </div>
-                    )}
-                    {u.seller && (
-                      <div className="text-xs text-muted-foreground">ผู้ขาย: {u.seller}</div>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => startEdit(u)}>แก้ไข</Button>
-                    <Button size="sm" variant="outline" onClick={() => duplicateUnit(u)}>คัดลอก</Button>
-                    <Button size="sm" variant="outline" onClick={() => setSelected(selected === u.id ? null : u.id)}>
-                      {selected === u.id ? "ปิด" : "จัดการอะไหล่"}
-                    </Button>
-                    <ConfirmButton title={`ลบเครื่อง S/N "${u.serial_number}"?`} description="ข้อมูลอะไหล่ของเครื่องนี้จะถูกลบด้วย" onConfirm={() => del(u.id)}><Trash2 className="h-4 w-4" /></ConfirmButton>
-                  </div>
-                </div>
-                {selected === u.id && (
-                  <MachinePartsEditor
-                    machineId={u.id}
-                    dailyHours={u.daily_hours ?? null}
-                    installDate={u.install_date ?? null}
-                  />
-                )}
-              </li>
-            ))}
-            {units.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
-          </ul>
         </CardContent>
       </Card>
     </div>
