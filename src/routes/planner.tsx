@@ -250,23 +250,38 @@ function PlannerPage() {
               appts={visible}
               onPick={(a) => setEditing(a)}
               onPickDate={isAdmin ? (d) => setEditing(newAppointment(d)) : undefined}
+              onPickDay={(d) => setDayDetail(d)}
             />
           ) : (
-
-            <DayList
-              days={
-                view === "week"
-                  ? Array.from({ length: 7 }, (_, i) => iso(addDays(startOfWeek(cursor), i)))
-                  : [iso(cursor)]
-              }
-              appts={visible}
-              isAdmin={isAdmin}
-              onEdit={setEditing}
-              onClose={setClosing}
-              reload={load}
-            />
+            <div className="space-y-5">
+              <TimeGrid
+                days={
+                  view === "week"
+                    ? Array.from({ length: 7 }, (_, i) => iso(addDays(startOfWeek(cursor), i)))
+                    : [iso(cursor)]
+                }
+                appts={visible}
+                onPick={(a) => setEditing(a)}
+                onPickSlot={
+                  isAdmin
+                    ? (d, t) => setEditing({ ...newAppointment(d), visit_time: t })
+                    : undefined
+                }
+              />
+              {view === "day" && (
+                <DayList
+                  days={[iso(cursor)]}
+                  appts={visible}
+                  isAdmin={isAdmin}
+                  onEdit={setEditing}
+                  onClose={setClosing}
+                  reload={load}
+                />
+              )}
+            </div>
           )}
         </CardContent>
+
       </Card>
 
       {isAdmin && (
