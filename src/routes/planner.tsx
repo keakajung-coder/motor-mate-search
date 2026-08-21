@@ -156,9 +156,19 @@ function PlannerPage() {
     [appts]
   );
 
+  const vehiclePlates = useMemo(
+    () => Array.from(new Set(appts.map((a) => (a.vehicle_plate ?? "").trim()).filter(Boolean))).sort(),
+    [appts]
+  );
+
   const visible = useMemo(
-    () => (staffFilter ? appts.filter((a) => splitNames(a.staff_name).includes(staffFilter)) : appts),
-    [appts, staffFilter]
+    () =>
+      appts.filter(
+        (a) =>
+          (!staffFilter || splitNames(a.staff_name).includes(staffFilter)) &&
+          (!vehicleFilter || (a.vehicle_plate ?? "").trim() === vehicleFilter)
+      ),
+    [appts, staffFilter, vehicleFilter]
   );
 
   const shift = (dir: number) => {
