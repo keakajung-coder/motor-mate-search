@@ -296,7 +296,17 @@ function PlannerPage() {
         <PartsAlertPanel />
       </FoldSection>
 
-
+      {dayDetail && (
+        <DayDetailDialog
+          date={dayDetail}
+          appts={visible}
+          onClose={() => setDayDetail(null)}
+          onPick={(a) => {
+            setDayDetail(null);
+            setEditing(a);
+          }}
+        />
+      )}
 
       {editing && (
         <AppointmentDialog
