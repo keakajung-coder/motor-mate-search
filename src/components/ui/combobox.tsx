@@ -21,7 +21,7 @@ export function Combobox({
   options,
   placeholder = "เลือก...",
   searchPlaceholder = "ค้นหา...",
-  allowCustom = false,
+  allowCustom = true,
   disabled = false,
   className,
 }: {
@@ -72,7 +72,7 @@ export function Combobox({
                     setQuery("");
                   }}
                 >
-                  ใช้ค่าใหม่ “{q}”
+                  <span className="font-medium text-primary">+ เพิ่มข้อมูลใหม่: “{q}”</span>
                 </CommandItem>
               )}
               {value && (
