@@ -27,7 +27,7 @@ import { useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { useUndoable } from "@/hooks/use-undoable";
 import { loadOptionList } from "@/lib/option-lists";
-import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate } from "@/lib/report";
+import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate, isMachineComplete } from "@/lib/report";
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 
