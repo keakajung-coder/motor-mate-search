@@ -34,7 +34,10 @@ import {
 import { useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog } from "@/components/WorkOrderDialog";
+import { Combobox } from "@/components/ui/combobox";
+import { useDirectory } from "@/lib/directory";
 import { computeUsage, formatDate, isMachineComplete } from "@/lib/report";
+
 
 export const Route = createFileRoute("/planner")({
   head: () => ({
