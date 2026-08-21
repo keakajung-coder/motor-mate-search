@@ -632,6 +632,7 @@ function MachinesTab() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [customSellers, setCustomSellers] = useState<string[]>([]);
   const [customStatuses, setCustomStatuses] = useState<string[]>([]);
+  const [completeFilter, setCompleteFilter] = useState<"all" | "yes" | "no">("all");
   useEffect(() => {
     loadOptionList("sellers").then(setCustomSellers);
     loadOptionList("statuses").then(setCustomStatuses);
