@@ -91,7 +91,33 @@ const TH_MONTHS = [
 ];
 const TH_DOW = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
 
+function FoldSection({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-lg border bg-card">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-semibold hover:bg-accent/50"
+      >
+        {title}
+        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="border-t p-3">{children}</div>}
+    </div>
+  );
+}
+
 function PlannerPage() {
+
   const { isAdmin } = useAccess();
   const [appts, setAppts] = useState<Appointment[]>([]);
   const [orders, setOrders] = useState<WorkOrder[]>([]);
