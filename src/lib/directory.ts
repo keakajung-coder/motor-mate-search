@@ -82,7 +82,10 @@ export async function ensureDirectoryEntries(input: {
   const eq = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
   const customer = norm(input.customer_name);
   const serial = norm(input.serial_number);
-  const staffName = norm(input.staff_name);
+  const staffNames = norm(input.staff_name)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const plate = norm(input.vehicle_plate);
   let changed = false;
   let customerId: string | null = null;
