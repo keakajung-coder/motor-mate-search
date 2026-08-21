@@ -237,6 +237,22 @@ function PlannerPage() {
                 </Button>
               ))}
             </div>
+            <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <input
+                type="date"
+                aria-label="ค้นหาวันที่"
+                className="h-9 bg-transparent text-sm outline-none"
+                value={iso(cursor)}
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  const [y, m, d] = e.target.value.split("-").map(Number);
+                  setCursor(new Date(y, m - 1, d));
+                  setView("day");
+                  setDayDetail(e.target.value);
+                }}
+              />
+            </div>
             <select
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               value={staffFilter}
@@ -249,6 +265,30 @@ function PlannerPage() {
                 </option>
               ))}
             </select>
+            <select
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={vehicleFilter}
+              onChange={(e) => setVehicleFilter(e.target.value)}
+            >
+              <option value="">รถทุกคัน</option>
+              {vehiclePlates.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+            {(staffFilter || vehicleFilter) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setStaffFilter("");
+                  setVehicleFilter("");
+                }}
+              >
+                ล้างตัวกรอง
+              </Button>
+            )}
           </div>
         </CardHeader>
 
