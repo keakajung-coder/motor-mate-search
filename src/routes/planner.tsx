@@ -850,6 +850,14 @@ function AppointmentDialog({
   const save = async () => {
     if (!form.customer_name?.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     setSaving(true);
+    await ensureDirectoryEntries({
+      customer_name: form.customer_name,
+      customer_address: form.customer_address,
+      contact_phone: form.contact_phone,
+      serial_number: form.serial_number,
+      staff_name: form.staff_name,
+      vehicle_plate: form.vehicle_plate,
+    });
     const { data: unit } = await supabase
       .from("machine_units")
       .select("id")
