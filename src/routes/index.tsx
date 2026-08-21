@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkOrderDialog } from "@/components/WorkOrderDialog";
+import { AdminLockButton } from "@/components/AccessGate";
 import {
   CalendarDays,
   Search,
@@ -774,8 +775,7 @@ type MachineResult = {
   machine_parts: MachinePart[];
 };
 
-function SnView() {
-  const [q, setQ] = useState("");
+function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
   const [sellerQ, setSellerQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [units, setUnits] = useState<MachineResult[]>([]);
