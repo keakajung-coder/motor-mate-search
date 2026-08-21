@@ -12,7 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
-import { Wrench } from "lucide-react";
+import { Wrench, CalendarDays } from "lucide-react";
 import { AccessProvider } from "@/lib/access";
 import { AccessGate, AdminLockButton } from "@/components/AccessGate";
 
