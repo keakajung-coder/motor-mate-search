@@ -605,6 +605,18 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
 }
 
 // ---------- Calendar views ----------
+/** ข้อความสรุปบนบล็อกปฏิทิน: [ลูกค้า] - [งานที่ไปทำ] - [ทะเบียนรถ] */
+function apptSummary(a: Appointment) {
+  return [
+    a.customer_name || "ไม่ระบุลูกค้า",
+    a.service_type || a.job_detail || "-",
+    a.vehicle_plate || "ยังไม่ระบุรถ",
+    splitNames(a.staff_name).join(", "),
+  ]
+    .filter(Boolean)
+    .join(" - ");
+}
+
 function MonthGrid({
   cursor,
   appts,
