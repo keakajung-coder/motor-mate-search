@@ -1202,6 +1202,16 @@ function AppointmentDialog({
     onSaved();
   };
 
+  const remove = async () => {
+    if (!form.id) return;
+    const { error } = await supabase.from("appointments").delete().eq("id", form.id);
+    if (error) return toast.error(error.message);
+    toast.success("ลบนัดหมายแล้ว");
+    (onDeleted ?? onSaved)();
+  };
+
+
+
   const addressOptions = Array.from(
     new Set([...dir.customers.map((c) => c.address), ...dir.machines.map((m) => m.address)].filter(Boolean)),
   );
