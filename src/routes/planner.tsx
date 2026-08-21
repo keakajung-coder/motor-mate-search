@@ -592,16 +592,8 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
             </div>
           </div>
         ))}
-        <datalist id="po-staff">
-          {staff.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
-        <datalist id="po-vehicles">
-          {vehicles.map((v) => (
-            <option key={v} value={v} />
-          ))}
-        </datalist>
+
+
       </CardContent>
     </Card>
   );
