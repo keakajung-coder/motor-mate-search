@@ -361,3 +361,24 @@ export const THAI_PROVINCES = [
   "สมุทรสาคร","สระแก้ว","สระบุรี","สิงห์บุรี","สุโขทัย","สุพรรณบุรี","สุราษฎร์ธานี","สุรินทร์","หนองคาย","หนองบัวลำภู",
   "อ่างทอง","อำนาจเจริญ","อุดรธานี","อุตรดิตถ์","อุทัยธานี","อุบลราชธานี","กรุงเทพมหานคร",
 ];
+
+/** ตรวจว่าเครื่องลงข้อมูลครบถ้วนหรือยัง */
+export function isMachineComplete(u: {
+  serial_number?: string | null;
+  model_id?: string | null;
+  customer_id?: string | null;
+  install_date?: string | null;
+  daily_hours?: number | null;
+  seller?: string | null;
+  status?: string | null;
+}): boolean {
+  return Boolean(
+    u.serial_number?.trim() &&
+      u.model_id &&
+      u.customer_id &&
+      u.install_date &&
+      u.daily_hours != null &&
+      (u.seller ?? "").trim() &&
+      (u.status ?? "").trim()
+  );
+}
