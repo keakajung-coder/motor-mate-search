@@ -16,9 +16,14 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle, Undo2, Redo2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle, Undo2, Redo2, Lock } from "lucide-react";
 import { ImportExportTab } from "@/components/admin/ImportExportTab";
 import { OptionListManager } from "@/components/admin/OptionListManager";
+import { StaffVehiclesTab } from "@/components/admin/StaffVehiclesTab";
+import { PasscodeSettings } from "@/components/admin/PasscodeSettings";
+import { BackupRestore } from "@/components/admin/BackupRestore";
+import { AdminLockButton } from "@/components/AccessGate";
+import { useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { useUndoable } from "@/hooks/use-undoable";
 import { loadOptionList } from "@/lib/option-lists";
