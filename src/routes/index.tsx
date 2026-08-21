@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkOrderDialog } from "@/components/WorkOrderDialog";
-import { AdminLockButton } from "@/components/AccessGate";
 import {
   CalendarDays,
   Search,
@@ -486,17 +485,417 @@ function CatalogView() {
 
   return (
     <div className="space-y-5">
-      <datalist id="sn-search-options">
-        {units.map((u) => {
-          const label = [
-            u.serial_number,
-            u.compressor_models?.brands?.name,
-            u.compressor_models?.name,
-            u.customers?.name,
-          ].filter(Boolean).join(" • ");
-          return <option key={u.id} value={u.serial_number}>{label}</option>;
-        })}
-      </datalist>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="ค้นหาด้วยรหัสอะไหล่ ชื่อ หรือรุ่นปั๊มลม"
+            className="h-12 pl-10 text-base"
+          />
+        </div>
+        <Button className="h-12 px-5" onClick={() => setQ((v) => v.trim())}>
+          <Search className="mr-1 h-4 w-4" /> ค้นหา
+        </Button>
+      </div>
+
+
+      <div className="flex flex-wrap gap-2">
+        <FilterChip active={selectedCat === null} onClick={() => setSelectedCat(null)}>
+          ทั้งหมด
+        </FilterChip>
+        {categories.map((c) => (
+          <FilterChip
+            key={c.id}
+            active={selectedCat === c.id}
+            onClick={() => setSelectedCat(c.id)}
+          >
+            {c.name}
+          </FilterChip>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            ไม่พบอะไหล่ที่ตรงกับเงื่อนไข
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            พบ {filtered.length} รายการ · แสดงหน้า {page} จาก {totalPages} (หน้าละ {PAGE_SIZE} รายการ)
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {pageItems.map((p) => (
+              <ProductCard key={p.id} product={p} onOpen={() => setSelected(p)} />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((n) => n - 1)}>
+                ก่อนหน้า
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {page} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((n) => n + 1)}
+              >
+                ถัดไป
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+
+      <ProductModal
+        product={selected}
+        onClose={() => setSelected(null)}
+        lineUrl={lineUrl}
+        contact={contact}
+      />
+    </div>
+  );
+}
+
+function FilterChip({
+  children,
+  active,
+  onClick,
+}: {
+  children: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        "rounded-full border px-3 py-1.5 text-sm transition-colors " +
+        (active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground hover:bg-accent")
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+function ProductCard({ product, onOpen }: { product: Product; onOpen: () => void }) {
+  const stock = product.stock_quantity ?? 0;
+  const inStock = stock > 0;
+  const model = product.compressor_models
+    ? `${product.compressor_models.brands?.name ?? ""} ${product.compressor_models.name}`.trim()
+    : null;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group flex h-full flex-col overflow-hidden rounded-xl border bg-card text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+    >
+      <div className="aspect-square w-full overflow-hidden bg-muted">
+        {product.image_url ? (
+          <img
+            src={product.image_url}
+            alt={product.name}
+            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Package className="h-10 w-10 text-muted-foreground/50" />
+          </div>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate font-semibold">{product.name}</h3>
+            <p className="truncate text-xs text-muted-foreground">
+              Part# {product.part_number}
+            </p>
+          </div>
+          <Badge variant={inStock ? "default" : "secondary"} className="shrink-0">
+            {inStock ? `มี ${stock}` : "หมด"}
+          </Badge>
+        </div>
+        {product.categories && (
+          <div className="text-xs text-muted-foreground">{product.categories.name}</div>
+        )}
+        {model && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Wrench className="h-3 w-3" /> {model}
+          </div>
+        )}
+        {product.storage_location && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <MapPin className="h-3 w-3" /> ชั้น {product.storage_location}
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function ProductModal({
+  product,
+  onClose,
+  lineUrl,
+  contact,
+}: {
+  product: Product | null;
+  onClose: () => void;
+  lineUrl: string;
+  contact: string;
+}) {
+  return (
+    <Dialog open={!!product} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        {product && (
+          <>
+            <DialogHeader>
+              <DialogTitle>{product.name}</DialogTitle>
+              <DialogDescription>Part# {product.part_number}</DialogDescription>
+            </DialogHeader>
+            {product.image_url && (
+              <img
+                src={product.image_url}
+                alt={product.name}
+                className="w-full rounded-lg object-cover"
+              />
+            )}
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <Info
+                label="สถานะ"
+                value={(product.stock_quantity ?? 0) > 0 ? `มีสินค้า (${product.stock_quantity})` : "สินค้าหมด"}
+              />
+              <Info label="หมวดหมู่" value={product.categories?.name ?? "-"} />
+              <Info
+                label="ตำแหน่งจัดเก็บ"
+                value={product.storage_location ? `ชั้น ${product.storage_location}` : "-"}
+              />
+              <Info
+                label="ราคา"
+                value={product.price != null ? `฿${Number(product.price).toLocaleString()}` : "-"}
+              />
+              <Info
+                label="รุ่นที่รองรับ"
+                value={
+                  product.compressor_models
+                    ? `${product.compressor_models.brands?.name ?? ""} ${product.compressor_models.name}`.trim()
+                    : "-"
+                }
+              />
+              <Info
+                label="รอบเปลี่ยน (ชม.)"
+                value={
+                  product.service_interval_hours ? `${product.service_interval_hours} ชม.` : "-"
+                }
+              />
+            </div>
+            {product.description && (
+              <div className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
+                {product.description}
+              </div>
+            )}
+            <DialogFooter className="gap-2 sm:justify-start">
+              <Button asChild>
+                <a href={lineUrl} target="_blank" rel="noreferrer">
+                  <MessageCircle className="mr-2 h-4 w-4" /> ส่งข้อมูลเข้า LINE
+                </a>
+              </Button>
+              {contact && (
+                <Button variant="outline" asChild>
+                  <a href={`tel:${contact}`}>
+                    <Phone className="mr-2 h-4 w-4" /> ติดต่อฝ่ายจัดซื้อ
+                  </a>
+                </Button>
+              )}
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-card/50 p-2.5">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-0.5 font-medium">{value}</div>
+    </div>
+  );
+}
+
+/* ---------------- S/N View ---------------- */
+
+type MachinePart = {
+  id: string;
+  quantity: number;
+  note: string | null;
+  hours_used: number | null;
+  last_changed_at: string | null;
+  service_interval_hours: number | null;
+  products: {
+    id: string;
+    name: string;
+    part_number: string;
+    price: number | null;
+    image_url: string | null;
+    storage_location: string | null;
+    service_interval_hours: number | null;
+    stock_quantity: number | null;
+    categories: { id: string; name: string; sort_order: number | null } | null;
+  } | null;
+};
+
+type MachineResult = {
+  id: string;
+  serial_number: string;
+  install_date: string | null;
+  daily_hours: number | null;
+  note: string | null;
+  customers: { id: string; name: string; phone: string | null } | null;
+  compressor_models:
+    | { id: string; name: string; brands: { id: string; name: string } | null }
+    | null;
+  machine_parts: MachinePart[];
+};
+
+function SnView() {
+  const [q, setQ] = useState("");
+  const [sellerQ, setSellerQ] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [units, setUnits] = useState<MachineResult[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [seller, setSeller] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("machine_units")
+      .select(
+        `id, serial_number, install_date, daily_hours, note,
+         site_name, address_line, district, province, seller, status,
+         customers ( id, name, phone ),
+         compressor_models ( id, name, brands ( id, name ) ),
+         machine_parts (
+           id, quantity, note, hours_used, last_changed_at, service_interval_hours,
+           products (
+             id, name, part_number, price, image_url, storage_location,
+             service_interval_hours, stock_quantity,
+             categories ( id, name, sort_order )
+           )
+         )`
+      )
+      .order("serial_number");
+    setLoading(false);
+    if (error) return toast.error("โหลดข้อมูลผิดพลาด: " + error.message);
+    setUnits((data as unknown as MachineResult[]) ?? []);
+  }
+  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const sn = sp.get("sn");
+    if (sn) setQ(sn);
+  }, []);
+
+
+  const sellers = useMemo(
+    () =>
+      Array.from(
+        new Set(units.map((u) => ((u as any).seller ?? "").trim()).filter(Boolean)),
+      ).sort((a, b) => a.localeCompare(b, "th")),
+    [units],
+  );
+
+  const visibleSellers = useMemo(() => {
+    const kw = sellerQ.trim().toLowerCase();
+    if (!kw) return sellers;
+    return sellers.filter((s) => s.toLowerCase().includes(kw));
+  }, [sellers, sellerQ]);
+
+  const statusCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const u of units) {
+      const s = ((u as any).status ?? "").trim() || "ไม่ระบุสถานะ";
+      map.set(s, (map.get(s) ?? 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [units]);
+
+  const filtered = useMemo(() => {
+    const kw = q.trim().toLowerCase();
+    const sellerKw = sellerQ.trim().toLowerCase();
+    return units.filter((u) => {
+      const unitSeller = ((u as any).seller ?? "").trim();
+      const unitStatus = ((u as any).status ?? "").trim() || "ไม่ระบุสถานะ";
+      if (seller && unitSeller !== seller) return false;
+      if (statusFilter && unitStatus !== statusFilter) return false;
+      if (sellerKw && !unitSeller.toLowerCase().includes(sellerKw)) return false;
+      if (!kw) return true;
+      const brand = u.compressor_models?.brands?.name ?? "";
+      const model = u.compressor_models?.name ?? "";
+      const cust = u.customers?.name ?? "";
+      const phone = u.customers?.phone ?? "";
+      const parts = (u.machine_parts ?? [])
+        .map((mp) =>
+          `${mp.products?.name ?? ""} ${mp.products?.part_number ?? ""} ${mp.products?.categories?.name ?? ""}`
+        )
+        .join(" ");
+      const loc = `${(u as any).site_name ?? ""} ${(u as any).district ?? ""} ${(u as any).province ?? ""} ${unitSeller} ${unitStatus}`;
+      return `${u.serial_number} ${brand} ${model} ${cust} ${phone} ${parts} ${loc}`
+        .toLowerCase()
+        .includes(kw);
+    }).sort((a, b) => a.serial_number.localeCompare(b.serial_number, "th"));
+  }, [units, q, seller, sellerQ, statusFilter]);
+
+
+  useEffect(() => {
+    if (filtered.length === 1) setOpenId(filtered[0].id);
+  }, [filtered]);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            list="sn-search-options"
+            placeholder="ค้นหาด้วย S/N, รุ่น, ยี่ห้อ, ชื่อลูกค้า หรือชื่ออะไหล่"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="h-12 pl-10 text-base"
+          />
+          <datalist id="sn-search-options">
+            {units.map((u) => {
+              const label = [
+                u.serial_number,
+                u.compressor_models?.brands?.name,
+                u.compressor_models?.name,
+                u.customers?.name,
+              ].filter(Boolean).join(" • ");
+              return <option key={u.id} value={u.serial_number}>{label}</option>;
+            })}
+          </datalist>
+        </div>
+        <Button className="h-12 px-5" onClick={() => setQ((v) => v.trim())}>
+          <Search className="mr-1 h-4 w-4" /> ค้นหา
+        </Button>
+      </div>
 
       {sellers.length > 0 && (
         <div className="space-y-2">
