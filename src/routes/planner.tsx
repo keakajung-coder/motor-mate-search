@@ -745,7 +745,7 @@ function DayList({
                       {[a.serial_number, a.machine_label, a.service_type].filter(Boolean).join(" · ")}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      ช่าง: {a.staff_name || "-"} · รถ: {a.vehicle_plate || "-"}
+                      ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {a.vehicle_plate || "-"}
                     </p>
                     {a.job_detail && <p className="mt-1 text-sm">{a.job_detail}</p>}
                     {a.status === "closed" && a.close_note && (
