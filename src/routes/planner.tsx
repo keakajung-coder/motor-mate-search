@@ -27,6 +27,7 @@ import {
   ChevronRight,
   ClipboardList,
   Loader2,
+  Pencil,
   Phone,
   Trash2,
   XCircle,
@@ -131,6 +132,7 @@ function PlannerPage() {
   const [view, setView] = useState<"month" | "week" | "day">("month");
   const [cursor, setCursor] = useState(new Date());
   const [staffFilter, setStaffFilter] = useState("");
+  const [vehicleFilter, setVehicleFilter] = useState("");
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [dayDetail, setDayDetail] = useState<string | null>(null);
@@ -155,9 +157,19 @@ function PlannerPage() {
     [appts]
   );
 
+  const vehiclePlates = useMemo(
+    () => Array.from(new Set(appts.map((a) => (a.vehicle_plate ?? "").trim()).filter(Boolean))).sort(),
+    [appts]
+  );
+
   const visible = useMemo(
-    () => (staffFilter ? appts.filter((a) => splitNames(a.staff_name).includes(staffFilter)) : appts),
-    [appts, staffFilter]
+    () =>
+      appts.filter(
+        (a) =>
+          (!staffFilter || splitNames(a.staff_name).includes(staffFilter)) &&
+          (!vehicleFilter || (a.vehicle_plate ?? "").trim() === vehicleFilter)
+      ),
+    [appts, staffFilter, vehicleFilter]
   );
 
   const shift = (dir: number) => {
@@ -226,6 +238,22 @@ function PlannerPage() {
                 </Button>
               ))}
             </div>
+            <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <input
+                type="date"
+                aria-label="ค้นหาวันที่"
+                className="h-9 bg-transparent text-sm outline-none"
+                value={iso(cursor)}
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  const [y, m, d] = e.target.value.split("-").map(Number);
+                  setCursor(new Date(y, m - 1, d));
+                  setView("day");
+                  setDayDetail(e.target.value);
+                }}
+              />
+            </div>
             <select
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               value={staffFilter}
@@ -238,6 +266,30 @@ function PlannerPage() {
                 </option>
               ))}
             </select>
+            <select
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={vehicleFilter}
+              onChange={(e) => setVehicleFilter(e.target.value)}
+            >
+              <option value="">รถทุกคัน</option>
+              {vehiclePlates.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+            {(staffFilter || vehicleFilter) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setStaffFilter("");
+                  setVehicleFilter("");
+                }}
+              >
+                ล้างตัวกรอง
+              </Button>
+            )}
           </div>
         </CardHeader>
 
@@ -730,8 +782,7 @@ function MonthGrid({
             .filter((a) => a.visit_date === key)
             .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
           const dim = d.getMonth() !== cursor.getMonth();
-          const compact = list.length > 2;
-          const max = compact ? 4 : 2;
+          const max = 3;
           return (
             <div
               key={key}
@@ -771,7 +822,7 @@ function MonthGrid({
                     }
                     title={apptSummary(a)}
                   >
-                    {compact ? apptShort(a) : apptSummary(a)}
+                    {apptShort(a)}
                   </button>
                 ))}
                 {list.length > max && (
@@ -1073,14 +1124,18 @@ function AppointmentDialog({
   canEdit,
   onClose,
   onSaved,
+  onDeleted,
 }: {
   value: Appointment;
   canEdit: boolean;
   onClose: () => void;
   onSaved: () => void;
+  onDeleted?: () => void;
 }) {
   const [form, setForm] = useState<Appointment>(value);
+  const [editMode, setEditMode] = useState(!value.id);
   const [saving, setSaving] = useState(false);
+  const locked = !canEdit || !editMode;
   const dir = useDirectory();
   const set = (k: keyof Appointment, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -1147,6 +1202,16 @@ function AppointmentDialog({
     onSaved();
   };
 
+  const remove = async () => {
+    if (!form.id) return;
+    const { error } = await supabase.from("appointments").delete().eq("id", form.id);
+    if (error) return toast.error(error.message);
+    toast.success("ลบนัดหมายแล้ว");
+    (onDeleted ?? onSaved)();
+  };
+
+
+
   const addressOptions = Array.from(
     new Set([...dir.customers.map((c) => c.address), ...dir.machines.map((m) => m.address)].filter(Boolean)),
   );
@@ -1185,7 +1250,7 @@ function AppointmentDialog({
         <div className="grid gap-3 sm:grid-cols-2">
           <F label="ชื่อลูกค้า *">
             <Combobox
-              disabled={!canEdit}
+              disabled={locked}
               value={form.customer_name ?? ""}
               onChange={pickCustomer}
               options={dir.customers.map((c) => ({
@@ -1198,7 +1263,7 @@ function AppointmentDialog({
           </F>
           <F label="หมายเลขเครื่อง (S/N)">
             <Combobox
-              disabled={!canEdit}
+              disabled={locked}
               value={form.serial_number ?? ""}
               onChange={pickSerial}
               options={dir.machines.map((m) => ({
@@ -1211,7 +1276,7 @@ function AppointmentDialog({
           </F>
           <F label="ที่อยู่">
             <ComboCell
-              disabled={!canEdit}
+              disabled={locked}
               value={form.customer_address ?? ""}
               onChange={(v) => set("customer_address", v)}
               options={addressOptions}
@@ -1219,11 +1284,11 @@ function AppointmentDialog({
             />
           </F>
           <F label="ผู้ติดต่อ">
-            <Input disabled={!canEdit} value={form.contact_name ?? ""} onChange={(e) => set("contact_name", e.target.value)} />
+            <Input disabled={locked} value={form.contact_name ?? ""} onChange={(e) => set("contact_name", e.target.value)} />
           </F>
           <F label="เบอร์โทร">
             <ComboCell
-              disabled={!canEdit}
+              disabled={locked}
               value={form.contact_phone ?? ""}
               onChange={(v) => set("contact_phone", v)}
               options={phoneOptions}
@@ -1232,7 +1297,7 @@ function AppointmentDialog({
           </F>
           <F label="เครื่อง (ยี่ห้อ/รุ่น)">
             <ComboCell
-              disabled={!canEdit}
+              disabled={locked}
               value={form.machine_label ?? ""}
               onChange={(v) => set("machine_label", v)}
               options={Array.from(new Set(dir.machines.map((m) => m.label).filter(Boolean)))}
@@ -1241,7 +1306,7 @@ function AppointmentDialog({
           </F>
           <F label="ประเภทเซอร์วิส">
             <ComboCell
-              disabled={!canEdit}
+              disabled={locked}
               value={form.service_type ?? ""}
               onChange={(v) => set("service_type", v)}
               options={SERVICE_TYPES}
@@ -1250,15 +1315,15 @@ function AppointmentDialog({
           </F>
           <div className="grid grid-cols-2 gap-3">
             <F label="วันที่">
-              <Input disabled={!canEdit} type="date" value={form.visit_date} onChange={(e) => set("visit_date", e.target.value)} />
+              <Input disabled={locked} type="date" value={form.visit_date} onChange={(e) => set("visit_date", e.target.value)} />
             </F>
             <F label="เวลา">
-              <Input disabled={!canEdit} type="time" value={form.visit_time ?? ""} onChange={(e) => set("visit_time", e.target.value)} />
+              <Input disabled={locked} type="time" value={form.visit_time ?? ""} onChange={(e) => set("visit_time", e.target.value)} />
             </F>
           </div>
           <F label="พนักงานเซอร์วิส (เลือกได้หลายคน)">
             <MultiCombobox
-              disabled={!canEdit}
+              disabled={locked}
               values={splitNames(form.staff_name)}
               onChange={(list) => set("staff_name", joinNames(list))}
               options={dir.staff}
@@ -1268,7 +1333,7 @@ function AppointmentDialog({
           </F>
           <F label="ทะเบียนรถ">
             <ComboCell
-              disabled={!canEdit}
+              disabled={locked}
               value={form.vehicle_plate ?? ""}
               onChange={(v) => set("vehicle_plate", v)}
               options={dir.vehicles}
@@ -1277,16 +1342,33 @@ function AppointmentDialog({
           </F>
           <div className="sm:col-span-2">
             <F label="รายละเอียดงาน / บันทึกให้ช่าง">
-              <Textarea disabled={!canEdit} rows={3} value={form.job_detail ?? ""} onChange={(e) => set("job_detail", e.target.value)} />
+              <Textarea disabled={locked} rows={3} value={form.job_detail ?? ""} onChange={(e) => set("job_detail", e.target.value)} />
             </F>
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2">
+          {canEdit && form.id && (
+            <ConfirmButton
+              variant="destructive"
+              size="default"
+              className="sm:mr-auto"
+              title="ลบรายการนัดหมายนี้?"
+              description="ระบบจะลบนัดหมายนี้ออกจากปฏิทินและฐานข้อมูลทันที และไม่สามารถย้อนกลับได้"
+              onConfirm={remove}
+            >
+              <Trash2 className="mr-1 h-4 w-4" /> ลบนัดหมายนี้
+            </ConfirmButton>
+          )}
           <Button variant="outline" onClick={onClose}>
             ปิด
           </Button>
-          {canEdit && (
+          {canEdit && !editMode && (
+            <Button onClick={() => setEditMode(true)}>
+              <Pencil className="mr-1 h-4 w-4" /> แก้ไขข้อมูลนัดหมาย
+            </Button>
+          )}
+          {canEdit && editMode && (
             <Button onClick={save} disabled={saving}>
               {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} บันทึก
             </Button>
