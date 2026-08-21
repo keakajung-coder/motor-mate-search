@@ -565,11 +565,12 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
                 defaultValue={o.visit_time ?? ""}
                 onChange={(e) => patch(o.id, "visit_time", e.target.value)}
               />
-              <ComboCell
-                value={edit[o.id]?.staff_name ?? o.staff_name ?? ""}
-                onChange={(v) => patch(o.id, "staff_name", v)}
+              <MultiCombobox
+                values={splitNames(edit[o.id]?.staff_name ?? o.staff_name ?? "")}
+                onChange={(list) => patch(o.id, "staff_name", joinNames(list))}
                 options={staff}
-                placeholder="เลือกช่าง"
+                placeholder="เลือกช่าง (หลายคนได้)"
+                searchPlaceholder="ค้นหาช่าง..."
               />
               <ComboCell
                 value={edit[o.id]?.vehicle_plate ?? o.vehicle_plate ?? ""}
