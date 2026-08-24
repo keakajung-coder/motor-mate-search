@@ -374,6 +374,39 @@ const DATASETS: Dataset[] = [
       return id ? "inserted" : "skipped";
     },
   },
+  {
+    key: "appointments",
+    label: "นัดหมายบนปฏิทิน",
+    columns: [
+      "visit_date", "visit_time", "customer_name", "customer_address", "contact_name", "contact_phone",
+      "machine_label", "serial_number", "service_type", "job_detail", "staff_name", "vehicle_plate",
+      "status", "result", "close_note",
+    ],
+    load: async () => {
+      const { data } = await supabase.from("appointments").select("*").order("visit_date");
+      return (data ?? []).map((a: any) => ({
+        visit_date: a.visit_date ?? "",
+        visit_time: a.visit_time ?? "",
+        customer_name: a.customer_name ?? "",
+        customer_address: a.customer_address ?? "",
+        contact_name: a.contact_name ?? "",
+        contact_phone: a.contact_phone ?? "",
+        machine_label: a.machine_label ?? "",
+        serial_number: a.serial_number ?? "",
+        service_type: a.service_type ?? "",
+        job_detail: a.job_detail ?? "",
+        staff_name: a.staff_name ?? "",
+        vehicle_plate: a.vehicle_plate ?? "",
+        status:
+          a.status === "scheduled" ? "รอนัดหมาย"
+          : a.status === "in_progress" ? "กำลังดำเนินการ"
+          : a.status === "closed" ? "ปิดงาน"
+          : (a.status ?? ""),
+        result: a.result === "ok" ? "เรียบร้อย" : a.result === "not_ok" ? "ไม่เรียบร้อย" : "",
+        close_note: a.close_note ?? "",
+      }));
+    },
+  },
 ];
 
 export function ImportExportTab() {
@@ -387,6 +420,8 @@ export function ImportExportTab() {
   const [allRows, setAllRows] = useState<Row[] | null>(null);
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [rowQ, setRowQ] = useState("");
+  const [sortCol, setSortCol] = useState("");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   function changeDataset(k: string) {
     setDsKey(k);
@@ -395,12 +430,25 @@ export function ImportExportTab() {
     setAllRows(null);
     setPicked(new Set());
     setRowQ("");
+    setSortCol("");
+    setSortDir("asc");
+  }
+
+  /** สลับการเรียง — เรียงทั้งหน้าจอและไฟล์ส่งออกให้ตรงกัน */
+  function applySort(col: string, dir: "asc" | "desc") {
+    setSortCol(col);
+    setSortDir(dir);
+    if (allRows && col) {
+      const sorted = sortRows(allRows, col, dir);
+      setAllRows(sorted);
+      setPicked(new Set(sorted.map((_, i) => i)));
+    }
   }
 
   async function loadRows() {
     setBusy(true);
     try {
-      const rows = await ds.load();
+      const rows = sortRows(await ds.load(), sortCol, sortDir);
       setAllRows(rows);
       setPicked(new Set(rows.map((_, i) => i)));
       toast.success(`โหลดข้อมูล ${rows.length} รายการ — เลือกรายการที่ต้องการส่งออกได้`);
