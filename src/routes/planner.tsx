@@ -911,9 +911,10 @@ function TimeGrid({
             {days.map((d) => (
               <div
                 key={d}
-                className={"bg-card p-2 text-center font-medium " + (d === today ? "text-primary" : "")}
+                className={"bg-card p-2 text-center " + (d === today ? "text-primary" : "")}
               >
-                {formatDate(d)}
+                <p className="text-sm font-bold">วัน{TH_DOW_FULL[new Date(d + "T00:00:00").getDay()]}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(d)}</p>
               </div>
             ))}
           </div>
@@ -1060,9 +1061,7 @@ function DayList({
   return (
     <div className="space-y-4">
       {days.map((d) => {
-        const list = appts
-          .filter((a) => a.visit_date === d)
-          .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
+        const list = sortApptList(appts.filter((a) => a.visit_date === d), sortBy);
         return (
           <div key={d} className="space-y-2">
             <p className="text-sm font-semibold">{formatDate(d)}</p>
