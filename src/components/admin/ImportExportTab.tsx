@@ -581,15 +581,39 @@ export function ImportExportTab() {
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" />เลือกข้อมูล</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="max-w-xs">
-            <Label>ตารางข้อมูล</Label>
-            <Select value={dsKey} onValueChange={changeDataset}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {DATASETS.map((d) => <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="max-w-xs flex-1">
+              <Label>ตารางข้อมูล</Label>
+              <Select value={dsKey} onValueChange={changeDataset}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DATASETS.map((d) => <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-52">
+              <Label>เรียงลำดับข้อมูล (Sort by)</Label>
+              <Select value={sortCol} onValueChange={(v) => applySort(v, sortDir)}>
+                <SelectTrigger><SelectValue placeholder="ค่าเริ่มต้นของตาราง" /></SelectTrigger>
+                <SelectContent>
+                  {ds.columns.map((c) => (
+                    <SelectItem key={c} value={c}>{LABELS[c] ?? c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => sortCol && applySort(sortCol, sortDir === "asc" ? "desc" : "asc")}
+              disabled={!sortCol}
+            >
+              {sortDir === "asc" ? "↑ น้อยไปมาก / เก่าไปใหม่" : "↓ มากไปน้อย / ใหม่ไปเก่า"}
+            </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            ลำดับที่เลือกจะถูกนำไปเรียงแถวในไฟล์ Excel / CSV / PDF ที่ส่งออกให้ตรงกับหน้าจอ
+          </p>
           <div>
             <Label>คอลัมน์ที่ต้องการส่งออก</Label>
             <div className="mb-1 flex gap-2">
