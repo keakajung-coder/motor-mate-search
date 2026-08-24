@@ -46,7 +46,30 @@ const LABELS: Record<string, string> = {
   last_changed_at: "เปลี่ยนล่าสุด",
   quantity: "จำนวน",
   description: "รายละเอียด",
+  visit_date: "วันนัด",
+  visit_time: "เวลานัด",
+  customer_name: "ลูกค้า",
+  customer_address: "ที่อยู่ลูกค้า",
+  contact_name: "ผู้ติดต่อ",
+  contact_phone: "เบอร์โทรผู้ติดต่อ",
+  machine_label: "เครื่อง (ยี่ห้อ/รุ่น)",
+  service_type: "ประเภทงาน",
+  job_detail: "รายละเอียดงาน",
+  staff_name: "ช่าง/พนักงานเซอร์วิส",
+  vehicle_plate: "ทะเบียนรถ",
+  result: "ผลปิดงาน",
+  close_note: "สรุปการปิดงาน",
 };
+
+/** เรียงแถวตามคอลัมน์ที่เลือก (รองรับภาษาไทย) */
+function sortRows(rows: Row[], col: string, dir: "asc" | "desc"): Row[] {
+  if (!col) return rows;
+  return [...rows].sort((a, b) => {
+    const x = String(a[col] ?? "");
+    const y = String(b[col] ?? "");
+    return dir === "asc" ? x.localeCompare(y, "th") : y.localeCompare(x, "th");
+  });
+}
 
 type Row = Record<string, any>;
 
