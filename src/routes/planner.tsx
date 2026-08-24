@@ -97,6 +97,25 @@ const TH_MONTHS = [
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
 const TH_DOW = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
+const TH_DOW_FULL = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+
+/** เรียงลำดับรายการนัดหมายตามตัวเลือกของผู้ใช้ */
+function sortApptList(list: Appointment[], sortBy: string): Appointment[] {
+  const arr = [...list];
+  const th = (a?: string | null, b?: string | null) => (a ?? "").localeCompare(b ?? "", "th");
+  const time = (a: Appointment, b: Appointment) => (a.visit_time ?? "").localeCompare(b.visit_time ?? "");
+  switch (sortBy) {
+    case "date-desc":
+      return arr.sort((a, b) =>
+        (b.visit_date + (b.visit_time ?? "")).localeCompare(a.visit_date + (a.visit_time ?? "")));
+    case "customer":
+      return arr.sort((a, b) => th(a.customer_name, b.customer_name) || time(a, b));
+    case "staff":
+      return arr.sort((a, b) => th(a.staff_name, b.staff_name) || time(a, b));
+    default:
+      return arr.sort(time);
+  }
+}
 
 function FoldSection({
   title,
@@ -133,6 +152,7 @@ function PlannerPage() {
   const [cursor, setCursor] = useState(new Date());
   const [staffFilter, setStaffFilter] = useState("");
   const [vehicleFilter, setVehicleFilter] = useState("");
+  const [sortBy, setSortBy] = useState("date-asc");
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [dayDetail, setDayDetail] = useState<string | null>(null);
@@ -278,6 +298,17 @@ function PlannerPage() {
                 </option>
               ))}
             </select>
+            <select
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              aria-label="เรียงลำดับข้อมูล"
+            >
+              <option value="date-asc">เรียง: วันที่ เก่า → ใหม่</option>
+              <option value="date-desc">เรียง: วันที่ ใหม่ → เก่า</option>
+              <option value="customer">เรียง: ชื่อลูกค้า ก-ฮ</option>
+              <option value="staff">เรียง: ชื่อช่าง ก-ฮ</option>
+            </select>
             {(staffFilter || vehicleFilter) && (
               <Button
                 size="sm"
@@ -327,6 +358,7 @@ function PlannerPage() {
                   days={[iso(cursor)]}
                   appts={visible}
                   isAdmin={isAdmin}
+                  sortBy={sortBy}
                   onEdit={setEditing}
                   onClose={setClosing}
                   reload={load}
@@ -352,6 +384,7 @@ function PlannerPage() {
         <DayDetailDialog
           date={dayDetail}
           appts={visible}
+          sortBy={sortBy}
           onClose={() => setDayDetail(null)}
           onPick={(a) => {
             setDayDetail(null);
@@ -878,9 +911,10 @@ function TimeGrid({
             {days.map((d) => (
               <div
                 key={d}
-                className={"bg-card p-2 text-center font-medium " + (d === today ? "text-primary" : "")}
+                className={"bg-card p-2 text-center " + (d === today ? "text-primary" : "")}
               >
-                {formatDate(d)}
+                <p className="text-sm font-bold">วัน{TH_DOW_FULL[new Date(d + "T00:00:00").getDay()]}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(d)}</p>
               </div>
             ))}
           </div>
@@ -940,17 +974,17 @@ function TimeGrid({
 function DayDetailDialog({
   date,
   appts,
+  sortBy = "date-asc",
   onClose,
   onPick,
 }: {
   date: string;
   appts: Appointment[];
+  sortBy?: string;
   onClose: () => void;
   onPick: (a: Appointment) => void;
 }) {
-  const list = appts
-    .filter((a) => a.visit_date === date)
-    .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
+  const list = sortApptList(appts.filter((a) => a.visit_date === date), sortBy);
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
@@ -999,6 +1033,7 @@ function DayList({
   days,
   appts,
   isAdmin,
+  sortBy = "date-asc",
   onEdit,
   onClose,
   reload,
@@ -1006,6 +1041,7 @@ function DayList({
   days: string[];
   appts: Appointment[];
   isAdmin: boolean;
+  sortBy?: string;
   onEdit: (a: Appointment) => void;
   onClose: (a: Appointment) => void;
   reload: () => void;
@@ -1025,9 +1061,7 @@ function DayList({
   return (
     <div className="space-y-4">
       {days.map((d) => {
-        const list = appts
-          .filter((a) => a.visit_date === d)
-          .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
+        const list = sortApptList(appts.filter((a) => a.visit_date === d), sortBy);
         return (
           <div key={d} className="space-y-2">
             <p className="text-sm font-semibold">{formatDate(d)}</p>
@@ -1142,12 +1176,20 @@ function AppointmentDialog({
   const pickCustomer = (name: string) => {
     const c = dir.customers.find((x) => x.name === name);
     const m = dir.machines.find((x) => x.customer === name);
-    setForm((f) => ({
-      ...f,
-      customer_name: name,
-      customer_address: c?.address || m?.address || f.customer_address,
-      contact_phone: c?.phone || m?.phone || f.contact_phone,
-    }));
+    setForm((f) => {
+      // ถ้า S/N ที่เลือกไว้ไม่ได้เป็นของลูกค้ารายใหม่ ให้ล้างออก (ลิงก์ข้อมูลต้องตรงกัน)
+      const owner = f.serial_number
+        ? dir.machines.find((x) => x.serial === f.serial_number)?.customer
+        : undefined;
+      const keepSerial = !f.serial_number || !owner || owner === name;
+      return {
+        ...f,
+        customer_name: name,
+        serial_number: keepSerial ? f.serial_number : "",
+        customer_address: c?.address || m?.address || f.customer_address,
+        contact_phone: c?.phone || m?.phone || f.contact_phone,
+      };
+    });
   };
   const pickSerial = (serial: string) => {
     const hit = dir.machines.find((m) => m.serial === serial);
@@ -1261,16 +1303,18 @@ function AppointmentDialog({
               searchPlaceholder="ค้นหาลูกค้า..."
             />
           </F>
-          <F label="หมายเลขเครื่อง (S/N)">
+          <F label={form.customer_name ? `หมายเลขเครื่อง (S/N) — เฉพาะของ ${form.customer_name}` : "หมายเลขเครื่อง (S/N)"}>
             <Combobox
               disabled={locked}
               value={form.serial_number ?? ""}
               onChange={pickSerial}
-              options={dir.machines.map((m) => ({
-                value: m.serial,
-                hint: [m.customer, m.label].filter(Boolean).join(" · "),
-              }))}
-              placeholder="เลือก S/N"
+              options={dir.machines
+                .filter((m) => !form.customer_name || m.customer === form.customer_name)
+                .map((m) => ({
+                  value: m.serial,
+                  hint: [m.customer, m.label].filter(Boolean).join(" · "),
+                }))}
+              placeholder={form.customer_name ? "เลือก S/N ของลูกค้ารายนี้" : "เลือก S/N"}
               searchPlaceholder="ค้นหา S/N..."
             />
           </F>

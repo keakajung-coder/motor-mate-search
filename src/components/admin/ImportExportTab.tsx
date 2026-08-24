@@ -46,7 +46,30 @@ const LABELS: Record<string, string> = {
   last_changed_at: "เปลี่ยนล่าสุด",
   quantity: "จำนวน",
   description: "รายละเอียด",
+  visit_date: "วันนัด",
+  visit_time: "เวลานัด",
+  customer_name: "ลูกค้า",
+  customer_address: "ที่อยู่ลูกค้า",
+  contact_name: "ผู้ติดต่อ",
+  contact_phone: "เบอร์โทรผู้ติดต่อ",
+  machine_label: "เครื่อง (ยี่ห้อ/รุ่น)",
+  service_type: "ประเภทงาน",
+  job_detail: "รายละเอียดงาน",
+  staff_name: "ช่าง/พนักงานเซอร์วิส",
+  vehicle_plate: "ทะเบียนรถ",
+  result: "ผลปิดงาน",
+  close_note: "สรุปการปิดงาน",
 };
+
+/** เรียงแถวตามคอลัมน์ที่เลือก (รองรับภาษาไทย) */
+function sortRows(rows: Row[], col: string, dir: "asc" | "desc"): Row[] {
+  if (!col) return rows;
+  return [...rows].sort((a, b) => {
+    const x = String(a[col] ?? "");
+    const y = String(b[col] ?? "");
+    return dir === "asc" ? x.localeCompare(y, "th") : y.localeCompare(x, "th");
+  });
+}
 
 type Row = Record<string, any>;
 
@@ -351,6 +374,39 @@ const DATASETS: Dataset[] = [
       return id ? "inserted" : "skipped";
     },
   },
+  {
+    key: "appointments",
+    label: "นัดหมายบนปฏิทิน",
+    columns: [
+      "visit_date", "visit_time", "customer_name", "customer_address", "contact_name", "contact_phone",
+      "machine_label", "serial_number", "service_type", "job_detail", "staff_name", "vehicle_plate",
+      "status", "result", "close_note",
+    ],
+    load: async () => {
+      const { data } = await supabase.from("appointments").select("*").order("visit_date");
+      return (data ?? []).map((a: any) => ({
+        visit_date: a.visit_date ?? "",
+        visit_time: a.visit_time ?? "",
+        customer_name: a.customer_name ?? "",
+        customer_address: a.customer_address ?? "",
+        contact_name: a.contact_name ?? "",
+        contact_phone: a.contact_phone ?? "",
+        machine_label: a.machine_label ?? "",
+        serial_number: a.serial_number ?? "",
+        service_type: a.service_type ?? "",
+        job_detail: a.job_detail ?? "",
+        staff_name: a.staff_name ?? "",
+        vehicle_plate: a.vehicle_plate ?? "",
+        status:
+          a.status === "scheduled" ? "รอนัดหมาย"
+          : a.status === "in_progress" ? "กำลังดำเนินการ"
+          : a.status === "closed" ? "ปิดงาน"
+          : (a.status ?? ""),
+        result: a.result === "ok" ? "เรียบร้อย" : a.result === "not_ok" ? "ไม่เรียบร้อย" : "",
+        close_note: a.close_note ?? "",
+      }));
+    },
+  },
 ];
 
 export function ImportExportTab() {
@@ -364,6 +420,8 @@ export function ImportExportTab() {
   const [allRows, setAllRows] = useState<Row[] | null>(null);
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [rowQ, setRowQ] = useState("");
+  const [sortCol, setSortCol] = useState("");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   function changeDataset(k: string) {
     setDsKey(k);
@@ -372,12 +430,25 @@ export function ImportExportTab() {
     setAllRows(null);
     setPicked(new Set());
     setRowQ("");
+    setSortCol("");
+    setSortDir("asc");
+  }
+
+  /** สลับการเรียง — เรียงทั้งหน้าจอและไฟล์ส่งออกให้ตรงกัน */
+  function applySort(col: string, dir: "asc" | "desc") {
+    setSortCol(col);
+    setSortDir(dir);
+    if (allRows && col) {
+      const sorted = sortRows(allRows, col, dir);
+      setAllRows(sorted);
+      setPicked(new Set(sorted.map((_, i) => i)));
+    }
   }
 
   async function loadRows() {
     setBusy(true);
     try {
-      const rows = await ds.load();
+      const rows = sortRows(await ds.load(), sortCol, sortDir);
       setAllRows(rows);
       setPicked(new Set(rows.map((_, i) => i)));
       toast.success(`โหลดข้อมูล ${rows.length} รายการ — เลือกรายการที่ต้องการส่งออกได้`);
@@ -400,7 +471,7 @@ export function ImportExportTab() {
   }
 
   async function rowsForExport() {
-    const all = allRows ?? (await ds.load());
+    const all = sortRows(allRows ?? (await ds.load()), sortCol, sortDir);
     const chosen = allRows ? all.filter((_, i) => picked.has(i)) : all;
     if (!chosen.length) throw new Error("ยังไม่ได้เลือกรายการ");
     return chosen.map((r) => Object.fromEntries(cols.map((c) => [c, r[c] ?? ""])));
@@ -510,15 +581,39 @@ export function ImportExportTab() {
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" />เลือกข้อมูล</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="max-w-xs">
-            <Label>ตารางข้อมูล</Label>
-            <Select value={dsKey} onValueChange={changeDataset}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {DATASETS.map((d) => <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="max-w-xs flex-1">
+              <Label>ตารางข้อมูล</Label>
+              <Select value={dsKey} onValueChange={changeDataset}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DATASETS.map((d) => <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-52">
+              <Label>เรียงลำดับข้อมูล (Sort by)</Label>
+              <Select value={sortCol} onValueChange={(v) => applySort(v, sortDir)}>
+                <SelectTrigger><SelectValue placeholder="ค่าเริ่มต้นของตาราง" /></SelectTrigger>
+                <SelectContent>
+                  {ds.columns.map((c) => (
+                    <SelectItem key={c} value={c}>{LABELS[c] ?? c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => sortCol && applySort(sortCol, sortDir === "asc" ? "desc" : "asc")}
+              disabled={!sortCol}
+            >
+              {sortDir === "asc" ? "↑ น้อยไปมาก / เก่าไปใหม่" : "↓ มากไปน้อย / ใหม่ไปเก่า"}
+            </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            ลำดับที่เลือกจะถูกนำไปเรียงแถวในไฟล์ Excel / CSV / PDF ที่ส่งออกให้ตรงกับหน้าจอ
+          </p>
           <div>
             <Label>คอลัมน์ที่ต้องการส่งออก</Label>
             <div className="mb-1 flex gap-2">
