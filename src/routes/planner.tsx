@@ -97,6 +97,25 @@ const TH_MONTHS = [
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
 const TH_DOW = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
+const TH_DOW_FULL = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+
+/** เรียงลำดับรายการนัดหมายตามตัวเลือกของผู้ใช้ */
+function sortApptList(list: Appointment[], sortBy: string): Appointment[] {
+  const arr = [...list];
+  const th = (a?: string | null, b?: string | null) => (a ?? "").localeCompare(b ?? "", "th");
+  const time = (a: Appointment, b: Appointment) => (a.visit_time ?? "").localeCompare(b.visit_time ?? "");
+  switch (sortBy) {
+    case "date-desc":
+      return arr.sort((a, b) =>
+        (b.visit_date + (b.visit_time ?? "")).localeCompare(a.visit_date + (a.visit_time ?? "")));
+    case "customer":
+      return arr.sort((a, b) => th(a.customer_name, b.customer_name) || time(a, b));
+    case "staff":
+      return arr.sort((a, b) => th(a.staff_name, b.staff_name) || time(a, b));
+    default:
+      return arr.sort(time);
+  }
+}
 
 function FoldSection({
   title,
@@ -133,6 +152,7 @@ function PlannerPage() {
   const [cursor, setCursor] = useState(new Date());
   const [staffFilter, setStaffFilter] = useState("");
   const [vehicleFilter, setVehicleFilter] = useState("");
+  const [sortBy, setSortBy] = useState("date-asc");
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [dayDetail, setDayDetail] = useState<string | null>(null);
