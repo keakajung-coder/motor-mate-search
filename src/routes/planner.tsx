@@ -1032,6 +1032,7 @@ function DayList({
   days,
   appts,
   isAdmin,
+  sortBy = "date-asc",
   onEdit,
   onClose,
   reload,
@@ -1039,6 +1040,7 @@ function DayList({
   days: string[];
   appts: Appointment[];
   isAdmin: boolean;
+  sortBy?: string;
   onEdit: (a: Appointment) => void;
   onClose: (a: Appointment) => void;
   reload: () => void;
