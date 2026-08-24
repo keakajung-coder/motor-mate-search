@@ -298,6 +298,17 @@ function PlannerPage() {
                 </option>
               ))}
             </select>
+            <select
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              aria-label="เรียงลำดับข้อมูล"
+            >
+              <option value="date-asc">เรียง: วันที่ เก่า → ใหม่</option>
+              <option value="date-desc">เรียง: วันที่ ใหม่ → เก่า</option>
+              <option value="customer">เรียง: ชื่อลูกค้า ก-ฮ</option>
+              <option value="staff">เรียง: ชื่อช่าง ก-ฮ</option>
+            </select>
             {(staffFilter || vehicleFilter) && (
               <Button
                 size="sm"
@@ -372,6 +383,7 @@ function PlannerPage() {
         <DayDetailDialog
           date={dayDetail}
           appts={visible}
+          sortBy={sortBy}
           onClose={() => setDayDetail(null)}
           onPick={(a) => {
             setDayDetail(null);
