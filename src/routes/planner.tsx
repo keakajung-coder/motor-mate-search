@@ -1176,12 +1176,20 @@ function AppointmentDialog({
   const pickCustomer = (name: string) => {
     const c = dir.customers.find((x) => x.name === name);
     const m = dir.machines.find((x) => x.customer === name);
-    setForm((f) => ({
-      ...f,
-      customer_name: name,
-      customer_address: c?.address || m?.address || f.customer_address,
-      contact_phone: c?.phone || m?.phone || f.contact_phone,
-    }));
+    setForm((f) => {
+      // ถ้า S/N ที่เลือกไว้ไม่ได้เป็นของลูกค้ารายใหม่ ให้ล้างออก (ลิงก์ข้อมูลต้องตรงกัน)
+      const owner = f.serial_number
+        ? dir.machines.find((x) => x.serial === f.serial_number)?.customer
+        : undefined;
+      const keepSerial = !f.serial_number || !owner || owner === name;
+      return {
+        ...f,
+        customer_name: name,
+        serial_number: keepSerial ? f.serial_number : "",
+        customer_address: c?.address || m?.address || f.customer_address,
+        contact_phone: c?.phone || m?.phone || f.contact_phone,
+      };
+    });
   };
   const pickSerial = (serial: string) => {
     const hit = dir.machines.find((m) => m.serial === serial);
