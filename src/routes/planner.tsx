@@ -358,6 +358,7 @@ function PlannerPage() {
                   days={[iso(cursor)]}
                   appts={visible}
                   isAdmin={isAdmin}
+                  sortBy={sortBy}
                   onEdit={setEditing}
                   onClose={setClosing}
                   reload={load}
@@ -972,17 +973,17 @@ function TimeGrid({
 function DayDetailDialog({
   date,
   appts,
+  sortBy = "date-asc",
   onClose,
   onPick,
 }: {
   date: string;
   appts: Appointment[];
+  sortBy?: string;
   onClose: () => void;
   onPick: (a: Appointment) => void;
 }) {
-  const list = appts
-    .filter((a) => a.visit_date === date)
-    .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
+  const list = sortApptList(appts.filter((a) => a.visit_date === date), sortBy);
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
