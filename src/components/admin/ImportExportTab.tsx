@@ -471,7 +471,7 @@ export function ImportExportTab() {
   }
 
   async function rowsForExport() {
-    const all = allRows ?? (await ds.load());
+    const all = sortRows(allRows ?? (await ds.load()), sortCol, sortDir);
     const chosen = allRows ? all.filter((_, i) => picked.has(i)) : all;
     if (!chosen.length) throw new Error("ยังไม่ได้เลือกรายการ");
     return chosen.map((r) => Object.fromEntries(cols.map((c) => [c, r[c] ?? ""])));
