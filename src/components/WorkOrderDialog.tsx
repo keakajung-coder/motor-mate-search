@@ -80,12 +80,20 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
   const pickCustomer = (name: string) => {
     const c = dir.customers.find((x) => x.name === name);
     const m = dir.machines.find((x) => x.customer === name);
-    setForm((f) => ({
-      ...f,
-      customer_name: name,
-      customer_address: c?.address || m?.address || f.customer_address,
-      contact_phone: c?.phone || m?.phone || f.contact_phone,
-    }));
+    setForm((f) => {
+      // ล้าง S/N ถ้าเครื่องที่เลือกไว้ไม่ได้เป็นของลูกค้ารายใหม่
+      const owner = f.serial_number
+        ? dir.machines.find((x) => x.serial === f.serial_number)?.customer
+        : undefined;
+      const keepSerial = !f.serial_number || !owner || owner === name;
+      return {
+        ...f,
+        customer_name: name,
+        serial_number: keepSerial ? f.serial_number : "",
+        customer_address: c?.address || m?.address || f.customer_address,
+        contact_phone: c?.phone || m?.phone || f.contact_phone,
+      };
+    });
   };
 
   const pickSerial = (serial: string) => {
@@ -104,10 +112,12 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
     value: c.name,
     hint: [c.phone, c.address].filter(Boolean).join(" · "),
   }));
-  const serialOptions = dir.machines.map((m) => ({
-    value: m.serial,
-    hint: [m.customer, m.label].filter(Boolean).join(" · "),
-  }));
+  const serialOptions = dir.machines
+    .filter((m) => !form.customer_name || m.customer === form.customer_name)
+    .map((m) => ({
+      value: m.serial,
+      hint: [m.customer, m.label].filter(Boolean).join(" · "),
+    }));
   const machineLabels = Array.from(new Set(dir.machines.map((m) => m.label).filter(Boolean))).map((l) => ({ value: l }));
   const addressOptions = Array.from(
     new Set([...dir.customers.map((c) => c.address), ...dir.machines.map((m) => m.address)].filter(Boolean)),
