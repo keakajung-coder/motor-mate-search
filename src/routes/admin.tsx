@@ -74,12 +74,6 @@ function AdminPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">จัดการข้อมูล</h1>
-      <CollapsibleSection
-        title="🔔 แจ้งเตือนอะไหล่ครบกำหนดเปลี่ยนใน 30 วัน"
-        subtitle="กดดูรายการ พร้อมปุ่มลัดแก้ไขอะไหล่ / ดึงเข้าตารางแพลนเนอร์"
-      >
-        <PartsAlertPanel withActions />
-      </CollapsibleSection>
       <Tabs defaultValue="machines">
         <TabsList className="flex-wrap">
           <TabsTrigger value="machines">S/N (หมายเลขเครื่อง)</TabsTrigger>
