@@ -681,7 +681,7 @@ const VEHICLE_COLORS = [
   "bg-cyan-100 text-cyan-900 border-cyan-300",
 ];
 function vehicleColor(plate?: string | null) {
-  const p = (plate ?? "").trim();
+  const p = (plate ?? "").split(",")[0]?.trim() ?? "";
   if (!p) return "bg-slate-100 text-slate-700 border-slate-300";
   let h = 0;
   for (let i = 0; i < p.length; i++) h = (h * 31 + p.charCodeAt(i)) >>> 0;
