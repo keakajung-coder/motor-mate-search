@@ -868,7 +868,11 @@ function MachinesTab() {
               : sellers;
             if (!sellers.length) return null;
             return (
-              <div className="space-y-2">
+              <CollapsibleSection
+                title="กลุ่มข้อมูลเซลผู้ขาย"
+                subtitle={sellerFilter ? `กำลังกรอง: ${sellerFilter}` : `ทั้งหมด ${sellers.length} ราย`}
+              >
+
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
