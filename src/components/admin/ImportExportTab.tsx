@@ -486,18 +486,16 @@ export function ImportExportTab() {
       const ws = XLSX.utils.json_to_sheet(rows, { header: cols });
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, ds.label.slice(0, 30));
-      const out =
+      const blob =
         kind === "xlsx"
-          ? XLSX.write(wb, { bookType: "xlsx", type: "array" })
-          : new TextEncoder().encode("\uFEFF" + XLSX.utils.sheet_to_csv(ws));
-      const blob = new Blob([out], {
-        type: kind === "xlsx"
-          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          : "text/csv;charset=utf-8",
-      });
+          ? xlsxBlob(XLSX.write(wb, { bookType: "xlsx", type: "array" }))
+          : new Blob([withBom(XLSX.utils.sheet_to_csv(ws))], { type: "text/csv;charset=utf-8" });
       setLastSize(formatBytes(blob.size));
-      downloadBlob(blob, `${ds.key}-${new Date().toISOString().slice(0, 10)}.${kind}`);
-      toast.success(`ส่งออก ${kind.toUpperCase()} แล้ว (${formatBytes(blob.size)})`);
+      const how = await saveFile(blob, `${ds.key}-${new Date().toISOString().slice(0, 10)}.${kind}`);
+      toast.success(
+        `ส่งออก ${kind.toUpperCase()} แล้ว (${formatBytes(blob.size)})` +
+          (how === "shared" ? " — เลือก “บันทึกลงไฟล์” เพื่อเก็บไว้ใน iPad" : ""),
+      );
     } catch (e: any) {
       toast.error("ส่งออกไม่สำเร็จ: " + e.message);
     } finally {
@@ -529,11 +527,9 @@ export function ImportExportTab() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "template");
     const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    downloadBlob(
-      new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
-      `template-${ds.key}.xlsx`,
-    );
+    await saveFile(xlsxBlob(out), `template-${ds.key}.xlsx`);
   }
+
 
   async function pickFile(file: File) {
     setBusy(true);
