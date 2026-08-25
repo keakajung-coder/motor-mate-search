@@ -944,6 +944,8 @@ function MachinesTab() {
               </Button>
             </div>
           </div>
+          </CollapsibleSection>
+
           <ul className="divide-y rounded border">
             {units
               .filter((u) => {
