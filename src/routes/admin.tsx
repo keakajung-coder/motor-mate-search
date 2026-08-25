@@ -32,6 +32,7 @@ import { useUndoable } from "@/hooks/use-undoable";
 import { loadOptionList } from "@/lib/option-lists";
 import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate, isMachineComplete } from "@/lib/report";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { SmartSearchBox } from "@/components/SmartSearchBox";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
