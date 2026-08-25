@@ -133,14 +133,18 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
     if (!form.customer_name.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     if (!form.job_detail.trim()) return toast.error("กรุณากรอกรายละเอียดงาน");
     setSaving(true);
+    const serials = splitNames(form.serial_number);
+    const plates = splitNames(form.vehicle_plate);
     await ensureDirectoryEntries({
       customer_name: form.customer_name,
       customer_address: form.customer_address,
       contact_phone: form.contact_phone,
-      serial_number: form.serial_number,
+      serial_number: serials[0] ?? "",
       staff_name: form.staff_name,
-      vehicle_plate: form.vehicle_plate,
+      vehicle_plate: plates[0] ?? "",
     });
+    for (const s of serials.slice(1)) await ensureDirectoryEntries({ customer_name: form.customer_name, serial_number: s });
+    for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
     const { error } = await supabase.from("work_orders").insert({
       customer_name: form.customer_name.trim(),
       customer_address: form.customer_address.trim() || null,
