@@ -1227,6 +1227,17 @@ function AppointmentDialog({
           </div>
         )}
 
+        {form.id && (
+          <div className="space-y-2 rounded-xl border p-3 text-sm">
+            <BadgeRow label="เครื่อง (S/N)" items={splitNames(form.serial_number)} />
+            <BadgeRow label="ประเภทงาน" items={splitNames(form.service_type)} />
+            <BadgeRow label="ทะเบียนรถ" items={splitNames(form.vehicle_plate)} />
+            <BadgeRow label="ช่างที่เข้างาน" items={splitNames(form.staff_name)} />
+          </div>
+        )}
+
+
+
         <div className="grid gap-3 sm:grid-cols-2">
           <F label="ชื่อลูกค้า *">
             <Combobox
