@@ -881,7 +881,8 @@ function TimeGrid({
                 {days.map((d) => {
                   const list = appts
                     .filter((a) => a.visit_date === d && hourOf(a) === h)
-                    .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
+                    .sort(byVehicleThenTime);
+
                   return (
                     <div
                       key={d + h}
