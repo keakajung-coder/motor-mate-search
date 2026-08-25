@@ -485,7 +485,7 @@ export function ImportExportTab() {
       const rows = await rowsForExport();
       const ws = XLSX.utils.json_to_sheet(rows, { header: cols });
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, ds.label.slice(0, 30));
+      XLSX.utils.book_append_sheet(wb, ws, safeSheetName(ds.label, ds.key));
       const blob =
         kind === "xlsx"
           ? xlsxBlob(XLSX.write(wb, { bookType: "xlsx", type: "array" }))
