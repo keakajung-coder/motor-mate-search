@@ -250,7 +250,9 @@ function PlannerPage() {
         </div>
       </header>
 
-      <StatsPanel appts={appts} pending={orders.length} />
+      <FoldSection title="แผงสถิติภาพรวม">
+        <StatsPanel appts={appts} pending={orders.length} />
+      </FoldSection>
 
       <Card>
         <CardHeader className="gap-3">
@@ -397,7 +399,7 @@ function PlannerPage() {
       </Card>
 
       {isAdmin && (
-        <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} defaultOpen={orders.length > 0}>
+        <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} >
           <PendingOrders orders={orders} reload={load} />
         </FoldSection>
       )}
