@@ -115,8 +115,6 @@ function HomePage() {
         </div>
       </div>
 
-      <InstallPromptCard />
-
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="grid h-12 w-full grid-cols-2 sm:w-auto sm:inline-flex">
           <TabsTrigger value="sn" className="text-sm">ค้นด้วย S/N เครื่อง</TabsTrigger>
@@ -129,6 +127,9 @@ function HomePage() {
           <CatalogView />
         </TabsContent>
       </Tabs>
+
+      <InstallPromptCard />
+
     </div>
   );
 }
