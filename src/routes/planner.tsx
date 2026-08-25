@@ -777,18 +777,19 @@ function MonthGrid({
                 (key === today ? "border-primary" : "")
               }
             >
-              <div className="mb-1 flex items-center justify-between">
+              <div className="mb-1 flex items-center justify-between gap-1">
                 {list.length > 0 && <span className="text-[10px] text-muted-foreground">{list.length} งาน</span>}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onPickDay(key);
                   }}
-                  className="ml-auto rounded px-1 font-medium hover:bg-accent"
+                  className="ml-auto rounded px-1 text-[10px] font-semibold leading-tight hover:bg-accent sm:text-[11px]"
                 >
-                  {d.getDate()}
+                  {thaiCellDate(d)}
                 </button>
               </div>
+
               <div className="space-y-0.5">
                 {list.slice(0, max).map((a) => (
                   <button
