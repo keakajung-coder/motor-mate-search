@@ -1312,13 +1312,14 @@ function AppointmentDialog({
               searchPlaceholder="ค้นหาช่าง..."
             />
           </F>
-          <F label="ทะเบียนรถ">
-            <ComboCell
+          <F label="ทะเบียนรถ (เลือกได้หลายคัน)">
+            <MultiCombobox
               disabled={locked}
-              value={form.vehicle_plate ?? ""}
-              onChange={(v) => set("vehicle_plate", v)}
+              values={splitNames(form.vehicle_plate)}
+              onChange={(list) => set("vehicle_plate", joinNames(list))}
               options={dir.vehicles}
-              placeholder="เลือกทะเบียนรถ"
+              placeholder="ติ๊กเลือกทะเบียนรถ"
+              searchPlaceholder="ค้นหาทะเบียนรถ..."
             />
           </F>
           <div className="sm:col-span-2">
