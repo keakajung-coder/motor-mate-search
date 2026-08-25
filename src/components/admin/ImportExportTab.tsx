@@ -525,7 +525,7 @@ export function ImportExportTab() {
       header: ds.columns,
     });
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "template");
+    XLSX.utils.book_append_sheet(wb, ws, safeSheetName("template"));
     const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     await saveFile(xlsxBlob(out), `template-${ds.key}.xlsx`);
   }
