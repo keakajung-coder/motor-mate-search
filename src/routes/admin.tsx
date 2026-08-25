@@ -839,11 +839,26 @@ function MachinesTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader><CardTitle>รายการเครื่อง</CardTitle></CardHeader>
+    <div className="flex flex-col gap-4">
+      {/* แถวที่ 1 — ช่องค้นหาเต็มความกว้าง */}
+      <div className="order-1 w-full">
+        <SearchBox value={q} onChange={setQ} placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด / ผู้ขาย" />
+      </div>
+
+      {/* แถวที่ 3 — แจ้งเตือนอายุอะไหล่ 30 วัน */}
+      <CollapsibleSection
+        className="order-3"
+        title="🔔 แจ้งเตือนอะไหล่ครบกำหนดเปลี่ยนใน 30 วัน"
+        subtitle="พร้อมปุ่มลัดแก้ไขอะไหล่ / ดึงเข้าตารางแพลนเนอร์"
+      >
+        <PartsAlertPanel withActions />
+      </CollapsibleSection>
+
+      {/* แถวสุดท้าย — ตารางข้อมูลเครื่องจักรทั้งหมด */}
+      <Card className="order-4">
+        <CardHeader><CardTitle>ข้อมูลเครื่องจักรทั้งหมด</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <SearchBox value={q} onChange={setQ} placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด / ผู้ขาย" />
+
           {(() => {
             const sellers = Array.from(
               new Set(units.map((u) => (u.seller ?? "").trim()).filter(Boolean)),
