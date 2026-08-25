@@ -168,7 +168,19 @@ function BrandsTab() {
             <AlertTriangle className="h-4 w-4" /> ชื่อยี่ห้อนี้มีอยู่แล้ว
           </p>
         )}
-        <SearchBox value={q} onChange={setQ} placeholder="ค้นหายี่ห้อ" />
+        <SmartSearchBox
+          value={q}
+          onChange={setQ}
+          placeholder="ค้นหายี่ห้อ"
+          suggestions={items.map((b) => ({
+            id: b.id,
+            label: b.name,
+            onSelect: () => { setEditId(b.id); setName(b.name); setQ(""); },
+          }))}
+          onCreate={(t) => { setEditId(null); setName(t); setQ(""); }}
+          createLabel="เพิ่มยี่ห้อใหม่"
+        />
+        <CollapsibleSection title="กลุ่มข้อมูลยี่ห้อ" subtitle={`ทั้งหมด ${filtered.length} ยี่ห้อ`}>
         <ul className="divide-y rounded border">
           {filtered.map((b) => (
             <li key={b.id} className="flex items-center justify-between px-3 py-2">
@@ -181,6 +193,7 @@ function BrandsTab() {
           ))}
           {filtered.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
         </ul>
+        </CollapsibleSection>
       </CardContent>
     </Card>
   );
