@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Download, Upload, FileSpreadsheet, Loader2 } from "lucide-react";
-import { downloadBlob, formatBytes, shareOrDownload, tableToPdfBlob } from "@/lib/report";
+import { downloadBlob, formatBytes, saveFile, shareOrDownload, tableToPdfBlob, withBom, xlsxBlob } from "@/lib/report";
 
 const LABELS: Record<string, string> = {
   serial_number: "S/N",
