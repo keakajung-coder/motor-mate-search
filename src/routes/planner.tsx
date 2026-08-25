@@ -42,11 +42,14 @@ import { computeUsage, formatDate, isMachineComplete } from "@/lib/report";
 
 
 export const Route = createFileRoute("/planner")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    sn: typeof search.sn === "string" ? search.sn : undefined,
-    customer: typeof search.customer === "string" ? search.customer : undefined,
-    job: typeof search.job === "string" ? search.job : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { sn?: string; customer?: string; job?: string } => {
+    const out: { sn?: string; customer?: string; job?: string } = {};
+    if (typeof search.sn === "string") out.sn = search.sn;
+    if (typeof search.customer === "string") out.customer = search.customer;
+    if (typeof search.job === "string") out.job = search.job;
+    return out;
+  },
+
   head: () => ({
     meta: [
       { title: "ปฏิทินนัดหมายบริการ - อะไหล่ปั๊มลม" },
