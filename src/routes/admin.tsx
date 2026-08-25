@@ -902,10 +902,15 @@ function MachinesTab() {
                     </Button>
                   ))}
                 </div>
-              </div>
+              </CollapsibleSection>
             );
           })()}
+          <CollapsibleSection
+            title="กลุ่มข้อมูลป้ายสถานะและความครบถ้วน"
+            subtitle={`ทั้งหมด ${units.length} เครื่อง`}
+          >
           <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
+
             <div className="text-sm font-semibold">สรุปจำนวนเครื่องตามสถานะ (ทั้งหมด {units.length} เครื่อง)</div>
             <div className="flex flex-wrap gap-2">
               <Button
