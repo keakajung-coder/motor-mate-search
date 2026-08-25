@@ -1285,13 +1285,14 @@ function AppointmentDialog({
               placeholder="เลือกยี่ห้อ/รุ่น"
             />
           </F>
-          <F label="ประเภทเซอร์วิส">
-            <ComboCell
+          <F label="ประเภทเซอร์วิส (เลือกได้หลายงาน)">
+            <MultiCombobox
               disabled={locked}
-              value={form.service_type ?? ""}
-              onChange={(v) => set("service_type", v)}
+              values={splitNames(form.service_type)}
+              onChange={(list) => set("service_type", joinNames(list))}
               options={SERVICE_TYPES}
-              placeholder="เลือกประเภทงาน"
+              placeholder="ติ๊กเลือกประเภทงาน"
+              searchPlaceholder="ค้นหาประเภทงาน..."
             />
           </F>
           <div className="grid grid-cols-2 gap-3">
