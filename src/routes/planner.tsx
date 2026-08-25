@@ -205,7 +205,7 @@ function PlannerPage() {
   );
 
   const vehiclePlates = useMemo(
-    () => Array.from(new Set(appts.map((a) => (a.vehicle_plate ?? "").trim()).filter(Boolean))).sort(),
+    () => Array.from(new Set(appts.flatMap((a) => splitNames(a.vehicle_plate)))).sort(),
     [appts]
   );
 
@@ -214,7 +214,7 @@ function PlannerPage() {
       appts.filter(
         (a) =>
           (!staffFilter || splitNames(a.staff_name).includes(staffFilter)) &&
-          (!vehicleFilter || (a.vehicle_plate ?? "").trim() === vehicleFilter)
+          (!vehicleFilter || splitNames(a.vehicle_plate).includes(vehicleFilter))
       ),
     [appts, staffFilter, vehicleFilter]
   );
@@ -681,7 +681,7 @@ const VEHICLE_COLORS = [
   "bg-cyan-100 text-cyan-900 border-cyan-300",
 ];
 function vehicleColor(plate?: string | null) {
-  const p = (plate ?? "").trim();
+  const p = (plate ?? "").split(",")[0]?.trim() ?? "";
   if (!p) return "bg-slate-100 text-slate-700 border-slate-300";
   let h = 0;
   for (let i = 0; i < p.length; i++) h = (h * 31 + p.charCodeAt(i)) >>> 0;
@@ -695,7 +695,7 @@ function statusEdge(a: Appointment) {
 }
 
 function VehicleLegend({ appts }: { appts: Appointment[] }) {
-  const plates = Array.from(new Set(appts.map((a) => (a.vehicle_plate ?? "").trim()).filter(Boolean))).sort();
+  const plates = Array.from(new Set(appts.flatMap((a) => splitNames(a.vehicle_plate)))).sort();
   if (plates.length === 0) return null;
   return (
     <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
@@ -748,13 +748,13 @@ function MonthGrid({
             .filter((a) => a.visit_date === key)
             .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
           const dim = d.getMonth() !== cursor.getMonth();
-          const max = 3;
+          const max = 6;
           return (
             <div
               key={key}
               onClick={() => onPickDate?.(key)}
               className={
-                "min-h-24 rounded-xl border bg-card p-1.5 " +
+                "flex min-h-32 flex-col rounded-xl border bg-card p-1.5 sm:min-h-40 md:min-h-48 " +
                 (onPickDate ? "cursor-pointer hover:border-primary/60 hover:bg-accent/40 " : "") +
                 (dim ? "bg-muted/30 text-muted-foreground " : "") +
                 (key === today ? "border-primary" : "")
@@ -772,7 +772,7 @@ function MonthGrid({
                   {d.getDate()}
                 </button>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {list.slice(0, max).map((a) => (
                   <button
                     key={a.id}
@@ -781,7 +781,7 @@ function MonthGrid({
                       onPick(a);
                     }}
                     className={
-                      "block w-full whitespace-normal break-words rounded border px-1 py-0.5 text-left leading-tight " +
+                      "block w-full whitespace-normal break-words rounded border px-1 py-0.5 text-left text-[10px] leading-snug " +
                       vehicleColor(a.vehicle_plate) +
                       " " +
                       statusEdge(a)
@@ -938,11 +938,10 @@ function DayDetailDialog({
               <p className="font-medium">
                 {a.visit_time?.slice(0, 5) || "-"} · {a.customer_name || "ไม่ระบุลูกค้า"}
               </p>
+              <p className="text-xs opacity-80">เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}{a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}</p>
+              <p className="text-xs opacity-80">ประเภทงาน: {splitNames(a.service_type).join(" / ") || "-"}</p>
               <p className="text-xs opacity-80">
-                {[a.service_type, a.serial_number, a.machine_label].filter(Boolean).join(" · ") || "-"}
-              </p>
-              <p className="text-xs opacity-80">
-                ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {a.vehicle_plate || "-"} ·{" "}
+                ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {splitNames(a.vehicle_plate).join(" / ") || "-"} ·{" "}
                 {STATUS_LABEL[a.status] ?? a.status}
               </p>
               {a.customer_address && <p className="text-xs opacity-80">{a.customer_address}</p>}
@@ -1110,47 +1109,53 @@ function AppointmentDialog({
     const c = dir.customers.find((x) => x.name === name);
     const m = dir.machines.find((x) => x.customer === name);
     setForm((f) => {
-      // ถ้า S/N ที่เลือกไว้ไม่ได้เป็นของลูกค้ารายใหม่ ให้ล้างออก (ลิงก์ข้อมูลต้องตรงกัน)
-      const owner = f.serial_number
-        ? dir.machines.find((x) => x.serial === f.serial_number)?.customer
-        : undefined;
-      const keepSerial = !f.serial_number || !owner || owner === name;
+      // เก็บเฉพาะ S/N ที่เป็นของลูกค้ารายใหม่ (ลิงก์ข้อมูลต้องตรงกัน)
+      const kept = splitNames(f.serial_number).filter((s) => {
+        const owner = dir.machines.find((x) => x.serial === s)?.customer;
+        return !owner || owner === name;
+      });
       return {
         ...f,
         customer_name: name,
-        serial_number: keepSerial ? f.serial_number : "",
+        serial_number: joinNames(kept),
         customer_address: c?.address || m?.address || f.customer_address,
         contact_phone: c?.phone || m?.phone || f.contact_phone,
       };
     });
   };
-  const pickSerial = (serial: string) => {
-    const hit = dir.machines.find((m) => m.serial === serial);
+  /** เลือก S/N ได้หลายเครื่อง — เติมรุ่น/ลูกค้า/ที่อยู่/เบอร์โทรอัตโนมัติ */
+  const pickSerials = (serials: string[]) => {
+    const hits = serials.map((s) => dir.machines.find((m) => m.serial === s)).filter(Boolean) as typeof dir.machines;
+    const first = hits[0];
     setForm((f) => ({
       ...f,
-      serial_number: serial,
-      machine_label: hit?.label || f.machine_label,
-      customer_name: hit?.customer || f.customer_name,
-      customer_address: hit?.address || f.customer_address,
-      contact_phone: hit?.phone || f.contact_phone,
+      serial_number: joinNames(serials),
+      machine_label: joinNames(Array.from(new Set(hits.map((h) => h.label).filter(Boolean)))) || f.machine_label,
+      customer_name: first?.customer || f.customer_name,
+      customer_address: first?.address || f.customer_address,
+      contact_phone: first?.phone || f.contact_phone,
     }));
   };
 
   const save = async () => {
     if (!form.customer_name?.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     setSaving(true);
+    const serials = splitNames(form.serial_number);
+    const plates = splitNames(form.vehicle_plate);
     await ensureDirectoryEntries({
       customer_name: form.customer_name,
       customer_address: form.customer_address,
       contact_phone: form.contact_phone,
-      serial_number: form.serial_number,
+      serial_number: serials[0] ?? "",
       staff_name: form.staff_name,
-      vehicle_plate: form.vehicle_plate,
+      vehicle_plate: plates[0] ?? "",
     });
+    for (const s of serials.slice(1)) await ensureDirectoryEntries({ customer_name: form.customer_name, serial_number: s });
+    for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
     const { data: unit } = await supabase
       .from("machine_units")
       .select("id")
-      .eq("serial_number", form.serial_number ?? "")
+      .eq("serial_number", serials[0] ?? "")
       .maybeSingle();
     const payload = {
       customer_name: form.customer_name,
@@ -1222,6 +1227,17 @@ function AppointmentDialog({
           </div>
         )}
 
+        {form.id && (
+          <div className="space-y-2 rounded-xl border p-3 text-sm">
+            <BadgeRow label="เครื่อง (S/N)" items={splitNames(form.serial_number)} />
+            <BadgeRow label="ประเภทงาน" items={splitNames(form.service_type)} />
+            <BadgeRow label="ทะเบียนรถ" items={splitNames(form.vehicle_plate)} />
+            <BadgeRow label="ช่างที่เข้างาน" items={splitNames(form.staff_name)} />
+          </div>
+        )}
+
+
+
         <div className="grid gap-3 sm:grid-cols-2">
           <F label="ชื่อลูกค้า *">
             <Combobox
@@ -1236,18 +1252,16 @@ function AppointmentDialog({
               searchPlaceholder="ค้นหาลูกค้า..."
             />
           </F>
-          <F label={form.customer_name ? `หมายเลขเครื่อง (S/N) — เฉพาะของ ${form.customer_name}` : "หมายเลขเครื่อง (S/N)"}>
-            <Combobox
+          <F label={form.customer_name ? `หมายเลขเครื่อง (S/N) — เฉพาะของ ${form.customer_name} (เลือกได้หลายเครื่อง)` : "หมายเลขเครื่อง (S/N) (เลือกได้หลายเครื่อง)"}>
+            <MultiCombobox
               disabled={locked}
-              value={form.serial_number ?? ""}
-              onChange={pickSerial}
+              values={splitNames(form.serial_number)}
+              onChange={pickSerials}
               options={dir.machines
                 .filter((m) => !form.customer_name || m.customer === form.customer_name)
-                .map((m) => ({
-                  value: m.serial,
-                  hint: [m.customer, m.label].filter(Boolean).join(" · "),
-                }))}
-              placeholder={form.customer_name ? "เลือก S/N ของลูกค้ารายนี้" : "เลือก S/N"}
+                .map((m) => m.serial)
+                .filter(Boolean)}
+              placeholder={form.customer_name ? "ติ๊กเลือก S/N ของลูกค้ารายนี้" : "ติ๊กเลือก S/N"}
               searchPlaceholder="ค้นหา S/N..."
             />
           </F>
@@ -1281,13 +1295,14 @@ function AppointmentDialog({
               placeholder="เลือกยี่ห้อ/รุ่น"
             />
           </F>
-          <F label="ประเภทเซอร์วิส">
-            <ComboCell
+          <F label="ประเภทเซอร์วิส (เลือกได้หลายงาน)">
+            <MultiCombobox
               disabled={locked}
-              value={form.service_type ?? ""}
-              onChange={(v) => set("service_type", v)}
+              values={splitNames(form.service_type)}
+              onChange={(list) => set("service_type", joinNames(list))}
               options={SERVICE_TYPES}
-              placeholder="เลือกประเภทงาน"
+              placeholder="ติ๊กเลือกประเภทงาน"
+              searchPlaceholder="ค้นหาประเภทงาน..."
             />
           </F>
           <div className="grid grid-cols-2 gap-3">
@@ -1308,13 +1323,14 @@ function AppointmentDialog({
               searchPlaceholder="ค้นหาช่าง..."
             />
           </F>
-          <F label="ทะเบียนรถ">
-            <ComboCell
+          <F label="ทะเบียนรถ (เลือกได้หลายคัน)">
+            <MultiCombobox
               disabled={locked}
-              value={form.vehicle_plate ?? ""}
-              onChange={(v) => set("vehicle_plate", v)}
+              values={splitNames(form.vehicle_plate)}
+              onChange={(list) => set("vehicle_plate", joinNames(list))}
               options={dir.vehicles}
-              placeholder="เลือกทะเบียนรถ"
+              placeholder="ติ๊กเลือกทะเบียนรถ"
+              searchPlaceholder="ค้นหาทะเบียนรถ..."
             />
           </F>
           <div className="sm:col-span-2">
@@ -1464,6 +1480,24 @@ function F({ label, children }: { label: string; children: React.ReactNode }) {
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
       {children}
+    </div>
+  );
+}
+
+/** แผงแสดงรายการหลายค่าในหน้าต่างรายละเอียด */
+function BadgeRow({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="text-xs text-muted-foreground">{label}:</span>
+      {items.length === 0 ? (
+        <span className="text-xs text-muted-foreground">-</span>
+      ) : (
+        items.map((t) => (
+          <Badge key={t} variant="secondary">
+            {t}
+          </Badge>
+        ))
+      )}
     </div>
   );
 }
