@@ -387,6 +387,36 @@ function PlannerPage() {
               <option value="customer">เรียง: ชื่อลูกค้า ก-ฮ</option>
               <option value="staff">เรียง: ชื่อช่าง ก-ฮ</option>
             </select>
+            {view === "month" && (
+              <>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={exporting !== ""}
+                  onClick={() => exportMonth("image")}
+                >
+                  {exporting === "image" ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="mr-1 h-4 w-4" />
+                  )}
+                  📸 บันทึกตารางรายเดือน
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={exporting !== ""}
+                  onClick={() => exportMonth("pdf")}
+                >
+                  {exporting === "pdf" ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileDown className="mr-1 h-4 w-4" />
+                  )}
+                  PDF เต็มใบ
+                </Button>
+              </>
+            )}
             {(staffFilter || vehicleFilter) && (
               <Button
                 size="sm"
@@ -408,13 +438,16 @@ function PlannerPage() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : view === "month" ? (
-            <MonthGrid
-              cursor={cursor}
-              appts={visible}
-              onPick={(a) => setEditing(a)}
-              onPickDate={isAdmin ? (d) => setEditing(newAppointment(d)) : undefined}
-              onPickDay={(d) => setDayDetail(d)}
-            />
+            <div ref={monthRef} className="rounded-xl bg-card p-2">
+              <p className="mb-2 text-center text-sm font-bold">ตารางนัดหมายบริการ · {title}</p>
+              <MonthGrid
+                cursor={cursor}
+                appts={visible}
+                onPick={(a) => setEditing(a)}
+                onPickDate={isAdmin ? (d) => setEditing(newAppointment(d)) : undefined}
+                onPickDay={(d) => setDayDetail(d)}
+              />
+            </div>
           ) : (
             <div className="space-y-5">
               <TimeGrid
