@@ -940,7 +940,12 @@ function MachinesTab() {
           </div>
           </CollapsibleSection>
 
+          <CollapsibleSection
+            title="กลุ่มข้อมูลเครื่องจักรทั้งหมด"
+            subtitle={`${units.length} เครื่อง — กดเพื่อกาง/พับรายการ`}
+          >
           <ul className="divide-y rounded border">
+
             {units
               .filter((u) => {
                 const unitSeller = (u.seller ?? "").trim();
