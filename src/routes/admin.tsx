@@ -569,7 +569,25 @@ function ProductsTab() {
           {form.id && <Button variant="outline" onClick={() => setForm(empty)}>ยกเลิก</Button>}
         </div>
 
-        <SearchBox value={q} onChange={setQ} placeholder="ค้นหารหัสอะไหล่ / ชื่อ / หมวด / ตำแหน่งจัดเก็บ" />
+        <SmartSearchBox
+          value={q}
+          onChange={setQ}
+          placeholder="ค้นหารหัสอะไหล่ / ชื่อ / หมวด / ตำแหน่งจัดเก็บ"
+          suggestions={items.map((p) => ({
+            id: p.id,
+            label: `${p.name} (${p.part_number})`,
+            sub: [p.categories?.name, p.brands?.name, p.storage_location].filter(Boolean).join(" • "),
+            onSelect: () => { startEdit(p); setQ(""); },
+          }))}
+          onCreate={(t) => {
+            setForm({ ...empty, name: t, part_number: t });
+            setQ("");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            toast.success(`ส่งคำว่า "${t}" ไปฟอร์มเพิ่มสินค้าใหม่แล้ว`);
+          }}
+          createLabel="เพิ่มอะไหล่ใหม่"
+        />
+        <CollapsibleSection title="กลุ่มข้อมูลสินค้า/อะไหล่" subtitle={`ทั้งหมด ${items.length} รายการ`}>
         <ul className="divide-y rounded border">
           {items
             .filter((p) => {
