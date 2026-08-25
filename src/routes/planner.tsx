@@ -938,11 +938,10 @@ function DayDetailDialog({
               <p className="font-medium">
                 {a.visit_time?.slice(0, 5) || "-"} · {a.customer_name || "ไม่ระบุลูกค้า"}
               </p>
+              <p className="text-xs opacity-80">เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}{a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}</p>
+              <p className="text-xs opacity-80">ประเภทงาน: {splitNames(a.service_type).join(" / ") || "-"}</p>
               <p className="text-xs opacity-80">
-                {[a.service_type, a.serial_number, a.machine_label].filter(Boolean).join(" · ") || "-"}
-              </p>
-              <p className="text-xs opacity-80">
-                ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {a.vehicle_plate || "-"} ·{" "}
+                ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {splitNames(a.vehicle_plate).join(" / ") || "-"} ·{" "}
                 {STATUS_LABEL[a.status] ?? a.status}
               </p>
               {a.customer_address && <p className="text-xs opacity-80">{a.customer_address}</p>}
