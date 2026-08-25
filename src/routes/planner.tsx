@@ -250,6 +250,32 @@ function PlannerPage() {
     } else setCursor(addDays(cursor, dir * (view === "week" ? 7 : 1)));
   };
 
+  const monthName = `${TH_MONTHS[cursor.getMonth()]}-${cursor.getFullYear() + 543}`;
+
+  /** บันทึกตารางรายเดือนเป็นไฟล์ภาพ หรือ PDF เต็มใบ */
+  const exportMonth = async (kind: "image" | "pdf") => {
+    const el = monthRef.current;
+    if (!el) return;
+    setExporting(kind);
+    try {
+      if (kind === "pdf") {
+        const blob = await elementToPdfBlobPaged(el, 1, { orientation: "landscape" });
+        await saveFile(blob, `ตารางงาน-${monthName}.pdf`);
+      } else {
+        const { toJpeg } = await import("html-to-image");
+        const dataUrl = await toJpeg(el, { backgroundColor: "#ffffff", cacheBust: true, pixelRatio: 2, quality: 0.9 });
+        const blob = await (await fetch(dataUrl)).blob();
+        await saveFile(blob, `ตารางงาน-${monthName}.jpg`);
+      }
+      toast.success("บันทึกตารางรายเดือนเรียบร้อย");
+    } catch (e) {
+      toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
+    } finally {
+      setExporting("");
+    }
+  };
+
+
   const title =
     view === "month"
       ? `${TH_MONTHS[cursor.getMonth()]} ${cursor.getFullYear() + 543}`
