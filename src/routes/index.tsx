@@ -782,7 +782,7 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
   const [sellerQ, setSellerQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [units, setUnits] = useState<MachineResult[]>([]);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const [seller, setSeller] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
@@ -868,7 +868,7 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
 
 
   useEffect(() => {
-    if (filtered.length === 1) setOpenId(filtered[0].id);
+    setOpenIds(new Set(filtered.map((u) => u.id)));
   }, [filtered]);
 
   return (
@@ -915,6 +915,7 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
         <CollapsibleSection
           title={`สถานะเครื่อง (ทั้งหมด ${units.length} เครื่อง)`}
           subtitle="กรองรายการตามสถานะเครื่อง"
+          defaultOpen={true}
         >
           <div className="flex flex-wrap items-center gap-2">
             <FilterChip active={statusFilter === null} onClick={() => setStatusFilter(null)}>
@@ -948,15 +949,22 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
         <CollapsibleSection
           title={`รายการเครื่องจักรและอะไหล่ (พบ ${filtered.length} เครื่อง)`}
           subtitle="กดเพื่อกาง/พับรายการทั้งหมด"
-          defaultOpen={filtered.length <= 3}
+          defaultOpen={true}
         >
           <div className="space-y-3">
             {filtered.map((u) => (
               <MachineCard
                 key={u.id}
                 unit={u}
-                open={openId === u.id}
-                onToggle={() => setOpenId(openId === u.id ? null : u.id)}
+                open={openIds.has(u.id)}
+                onToggle={() =>
+                  setOpenIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(u.id)) next.delete(u.id);
+                    else next.add(u.id);
+                    return next;
+                  })
+                }
               />
             ))}
           </div>
@@ -1074,6 +1082,7 @@ function MachineCard({
                     key={g.name}
                     title={g.name}
                     subtitle={`${g.items.length} รายการ`}
+                    defaultOpen={true}
                   >
                     <div className="grid gap-3 sm:grid-cols-2">
                       {g.items.map((mp) => (
