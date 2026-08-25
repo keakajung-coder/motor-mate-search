@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Download, Upload, FileSpreadsheet, Loader2 } from "lucide-react";
-import { downloadBlob, formatBytes, saveFile, shareOrDownload, tableToPdfBlob, withBom, xlsxBlob } from "@/lib/report";
+import { downloadBlob, formatBytes, safeSheetName, saveFile, shareOrDownload, tableToPdfBlob, withBom, xlsxBlob } from "@/lib/report";
 
 const LABELS: Record<string, string> = {
   serial_number: "S/N",
@@ -485,7 +485,7 @@ export function ImportExportTab() {
       const rows = await rowsForExport();
       const ws = XLSX.utils.json_to_sheet(rows, { header: cols });
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, ds.label.slice(0, 30));
+      XLSX.utils.book_append_sheet(wb, ws, safeSheetName(ds.label, ds.key));
       const blob =
         kind === "xlsx"
           ? xlsxBlob(XLSX.write(wb, { bookType: "xlsx", type: "array" }))
@@ -525,7 +525,7 @@ export function ImportExportTab() {
       header: ds.columns,
     });
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "template");
+    XLSX.utils.book_append_sheet(wb, ws, safeSheetName("template"));
     const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     await saveFile(xlsxBlob(out), `template-${ds.key}.xlsx`);
   }

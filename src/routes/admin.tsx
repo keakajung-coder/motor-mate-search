@@ -74,12 +74,6 @@ function AdminPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">จัดการข้อมูล</h1>
-      <CollapsibleSection
-        title="🔔 แจ้งเตือนอะไหล่ครบกำหนดเปลี่ยนใน 30 วัน"
-        subtitle="กดดูรายการ พร้อมปุ่มลัดแก้ไขอะไหล่ / ดึงเข้าตารางแพลนเนอร์"
-      >
-        <PartsAlertPanel withActions />
-      </CollapsibleSection>
       <Tabs defaultValue="machines">
         <TabsList className="flex-wrap">
           <TabsTrigger value="machines">S/N (หมายเลขเครื่อง)</TabsTrigger>
@@ -839,11 +833,26 @@ function MachinesTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader><CardTitle>รายการเครื่อง</CardTitle></CardHeader>
+    <div className="flex flex-col gap-4">
+      {/* แถวที่ 1 — ช่องค้นหาเต็มความกว้าง */}
+      <div className="order-1 w-full">
+        <SearchBox value={q} onChange={setQ} placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด / ผู้ขาย" />
+      </div>
+
+      {/* แถวที่ 3 — แจ้งเตือนอายุอะไหล่ 30 วัน */}
+      <CollapsibleSection
+        className="order-3"
+        title="🔔 แจ้งเตือนอะไหล่ครบกำหนดเปลี่ยนใน 30 วัน"
+        subtitle="พร้อมปุ่มลัดแก้ไขอะไหล่ / ดึงเข้าตารางแพลนเนอร์"
+      >
+        <PartsAlertPanel withActions />
+      </CollapsibleSection>
+
+      {/* แถวสุดท้าย — ตารางข้อมูลเครื่องจักรทั้งหมด */}
+      <Card className="order-4">
+        <CardHeader><CardTitle>ข้อมูลเครื่องจักรทั้งหมด</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <SearchBox value={q} onChange={setQ} placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด / ผู้ขาย" />
+
           {(() => {
             const sellers = Array.from(
               new Set(units.map((u) => (u.seller ?? "").trim()).filter(Boolean)),
@@ -853,7 +862,11 @@ function MachinesTab() {
               : sellers;
             if (!sellers.length) return null;
             return (
-              <div className="space-y-2">
+              <CollapsibleSection
+                title="กลุ่มข้อมูลเซลผู้ขาย"
+                subtitle={sellerFilter ? `กำลังกรอง: ${sellerFilter}` : `ทั้งหมด ${sellers.length} ราย`}
+              >
+
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -883,10 +896,15 @@ function MachinesTab() {
                     </Button>
                   ))}
                 </div>
-              </div>
+              </CollapsibleSection>
             );
           })()}
+          <CollapsibleSection
+            title="กลุ่มข้อมูลป้ายสถานะและความครบถ้วน"
+            subtitle={`ทั้งหมด ${units.length} เครื่อง`}
+          >
           <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
+
             <div className="text-sm font-semibold">สรุปจำนวนเครื่องตามสถานะ (ทั้งหมด {units.length} เครื่อง)</div>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -920,7 +938,14 @@ function MachinesTab() {
               </Button>
             </div>
           </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="กลุ่มข้อมูลเครื่องจักรทั้งหมด"
+            subtitle={`${units.length} เครื่อง — กดเพื่อกาง/พับรายการ`}
+          >
           <ul className="divide-y rounded border">
+
             {units
               .filter((u) => {
                 const unitSeller = (u.seller ?? "").trim();
@@ -988,12 +1013,15 @@ function MachinesTab() {
             ))}
             {units.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
           </ul>
+          </CollapsibleSection>
+
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="order-2">
         <CardHeader>
-          <CardTitle>{form.id ? "แก้ไขเครื่อง" : "เพิ่มเครื่อง (S/N)"}</CardTitle>
+          <CardTitle>{form.id ? "แก้ไขเครื่อง" : "➕ เพิ่มเครื่องจักรใหม่ / ลูกค้าใหม่ (S/N)"}</CardTitle>
+
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-2 sm:grid-cols-2">

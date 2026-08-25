@@ -93,10 +93,21 @@ export function withBom(text: string): Uint8Array {
   return new TextEncoder().encode("\uFEFF" + text);
 }
 
+/** ล้างอักขระที่ Excel ห้ามใช้ในชื่อชีต ( \ / ? * [ ] : ) และจำกัด 31 ตัวอักษร */
+export function safeSheetName(name: string, fallback = "Sheet1") {
+  const clean = (name ?? "")
+    .replace(/[\\/?*[\]:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 31);
+  return clean || fallback;
+}
+
 /** สร้าง Blob ไฟล์ Excel จาก byte array ของ xlsx */
 export function xlsxBlob(data: ArrayBuffer | Uint8Array): Blob {
   return new Blob([data as any], { type: XLSX_MIME });
 }
+
 
 /**
  * บันทึกไฟล์ลงเครื่อง — รองรับ iPad/iOS (ลองใช้แชร์ไฟล์ก่อน แล้วค่อย fallback เป็นลิงก์ดาวน์โหลด)
