@@ -187,12 +187,12 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
                 searchPlaceholder="ค้นหาลูกค้า..."
               />
             </Field>
-            <Field label="หมายเลขเครื่อง (S/N)">
-              <Combobox
-                value={form.serial_number}
-                onChange={pickSerial}
+            <Field label={form.customer_name ? `หมายเลขเครื่อง (S/N) — ของ ${form.customer_name} (เลือกได้หลายเครื่อง)` : "หมายเลขเครื่อง (S/N) (เลือกได้หลายเครื่อง)"}>
+              <MultiCombobox
+                values={splitNames(form.serial_number)}
+                onChange={pickSerials}
                 options={serialOptions}
-                placeholder="เลือก S/N"
+                placeholder="ติ๊กเลือก S/N"
                 searchPlaceholder="ค้นหา S/N..."
               />
             </Field>
