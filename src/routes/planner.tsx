@@ -1141,18 +1141,22 @@ function AppointmentDialog({
   const save = async () => {
     if (!form.customer_name?.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     setSaving(true);
+    const serials = splitNames(form.serial_number);
+    const plates = splitNames(form.vehicle_plate);
     await ensureDirectoryEntries({
       customer_name: form.customer_name,
       customer_address: form.customer_address,
       contact_phone: form.contact_phone,
-      serial_number: form.serial_number,
+      serial_number: serials[0] ?? "",
       staff_name: form.staff_name,
-      vehicle_plate: form.vehicle_plate,
+      vehicle_plate: plates[0] ?? "",
     });
+    for (const s of serials.slice(1)) await ensureDirectoryEntries({ customer_name: form.customer_name, serial_number: s });
+    for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
     const { data: unit } = await supabase
       .from("machine_units")
       .select("id")
-      .eq("serial_number", form.serial_number ?? "")
+      .eq("serial_number", serials[0] ?? "")
       .maybeSingle();
     const payload = {
       customer_name: form.customer_name,
