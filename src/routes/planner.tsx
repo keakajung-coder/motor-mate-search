@@ -205,7 +205,7 @@ function PlannerPage() {
   );
 
   const vehiclePlates = useMemo(
-    () => Array.from(new Set(appts.map((a) => (a.vehicle_plate ?? "").trim()).filter(Boolean))).sort(),
+    () => Array.from(new Set(appts.flatMap((a) => splitNames(a.vehicle_plate)))).sort(),
     [appts]
   );
 
@@ -214,7 +214,7 @@ function PlannerPage() {
       appts.filter(
         (a) =>
           (!staffFilter || splitNames(a.staff_name).includes(staffFilter)) &&
-          (!vehicleFilter || (a.vehicle_plate ?? "").trim() === vehicleFilter)
+          (!vehicleFilter || splitNames(a.vehicle_plate).includes(vehicleFilter))
       ),
     [appts, staffFilter, vehicleFilter]
   );
