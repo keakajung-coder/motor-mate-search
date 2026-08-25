@@ -72,11 +72,56 @@ export function downloadBlob(blob: Blob, filename: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.rel = "noopener";
+  a.target = "_self";
+  a.style.display = "none";
   document.body.appendChild(a);
   a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  // iPad/iOS Safari บางเวอร์ชันไม่รองรับ a.download กับ blob: → เปิดแท็บใหม่แทน
+  const supportsDownload = "download" in HTMLAnchorElement.prototype;
+  if (!supportsDownload) window.open(url, "_blank");
+  setTimeout(() => {
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, 4000);
 }
+
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+/** เติม BOM ให้ไฟล์ข้อความ (CSV) เพื่อให้ภาษาไทยไม่เพี้ยน */
+export function withBom(text: string): Uint8Array {
+  return new TextEncoder().encode("\uFEFF" + text);
+}
+
+/** สร้าง Blob ไฟล์ Excel จาก byte array ของ xlsx */
+export function xlsxBlob(data: ArrayBuffer | Uint8Array): Blob {
+  return new Blob([data as any], { type: XLSX_MIME });
+}
+
+/**
+ * บันทึกไฟล์ลงเครื่อง — รองรับ iPad/iOS (ลองใช้แชร์ไฟล์ก่อน แล้วค่อย fallback เป็นลิงก์ดาวน์โหลด)
+ */
+export async function saveFile(blob: Blob, filename: string) {
+  const isIOS =
+    typeof navigator !== "undefined" &&
+    (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && (navigator as any).maxTouchPoints > 1));
+  if (isIOS) {
+    const file = new File([blob], filename, { type: blob.type });
+    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+    if (nav.canShare?.({ files: [file] })) {
+      try {
+        await nav.share({ files: [file], title: filename });
+        return "shared" as const;
+      } catch {
+        /* ผู้ใช้ยกเลิก → ดาวน์โหลดปกติ */
+      }
+    }
+  }
+  downloadBlob(blob, filename);
+  return "downloaded" as const;
+}
+
 
 export function formatBytes(n: number) {
   if (n < 1024) return `${n} B`;

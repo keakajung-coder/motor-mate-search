@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -115,8 +116,6 @@ function HomePage() {
         </div>
       </div>
 
-      <InstallPromptCard />
-
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="grid h-12 w-full grid-cols-2 sm:w-auto sm:inline-flex">
           <TabsTrigger value="sn" className="text-sm">ค้นด้วย S/N เครื่อง</TabsTrigger>
@@ -129,6 +128,9 @@ function HomePage() {
           <CatalogView />
         </TabsContent>
       </Tabs>
+
+      <InstallPromptCard />
+
     </div>
   );
 }
@@ -910,10 +912,10 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
       )}
 
       {units.length > 0 && (
-        <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
-          <div className="text-sm font-semibold">
-            สถานะเครื่อง (ทั้งหมด {units.length} เครื่อง)
-          </div>
+        <CollapsibleSection
+          title={`สถานะเครื่อง (ทั้งหมด ${units.length} เครื่อง)`}
+          subtitle="กรองรายการตามสถานะเครื่อง"
+        >
           <div className="flex flex-wrap items-center gap-2">
             <FilterChip active={statusFilter === null} onClick={() => setStatusFilter(null)}>
               ทั้งหมด ({units.length})
@@ -928,7 +930,7 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
               </FilterChip>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
 
@@ -943,18 +945,24 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">พบ {filtered.length} เครื่อง</p>
-          {filtered.map((u) => (
-            <MachineCard
-              key={u.id}
-              unit={u}
-              open={openId === u.id}
-              onToggle={() => setOpenId(openId === u.id ? null : u.id)}
-            />
-          ))}
-        </div>
+        <CollapsibleSection
+          title={`รายการเครื่องจักรและอะไหล่ (พบ ${filtered.length} เครื่อง)`}
+          subtitle="กดเพื่อกาง/พับรายการทั้งหมด"
+          defaultOpen={filtered.length <= 3}
+        >
+          <div className="space-y-3">
+            {filtered.map((u) => (
+              <MachineCard
+                key={u.id}
+                unit={u}
+                open={openId === u.id}
+                onToggle={() => setOpenId(openId === u.id ? null : u.id)}
+              />
+            ))}
+          </div>
+        </CollapsibleSection>
       )}
+
     </div>
   );
 }
@@ -1060,18 +1068,22 @@ function MachineCard({
                 ยังไม่มีรายการอะไหล่สำหรับเครื่องนี้
               </p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {grouped.map((g) => (
-                  <div key={g.name}>
-                    <h3 className="mb-2 text-sm font-semibold text-primary">{g.name}</h3>
+                  <CollapsibleSection
+                    key={g.name}
+                    title={g.name}
+                    subtitle={`${g.items.length} รายการ`}
+                  >
                     <div className="grid gap-3 sm:grid-cols-2">
                       {g.items.map((mp) => (
                         <PartRow key={mp.id} mp={mp} dailyHours={unit.daily_hours ?? null} />
                       ))}
                     </div>
-                  </div>
+                  </CollapsibleSection>
                 ))}
               </div>
+
             )}
           </div>
         </CardContent>

@@ -38,10 +38,19 @@ import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog } from "@/components/
 import { Combobox } from "@/components/ui/combobox";
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { ensureDirectoryEntries, useDirectory } from "@/lib/directory";
-import { computeUsage, formatDate, isMachineComplete } from "@/lib/report";
+import { formatDate, isMachineComplete } from "@/lib/report";
+import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 
 
 export const Route = createFileRoute("/planner")({
+  validateSearch: (search: Record<string, unknown>): { sn?: string; customer?: string; job?: string } => {
+    const out: { sn?: string; customer?: string; job?: string } = {};
+    if (typeof search.sn === "string") out.sn = search.sn;
+    if (typeof search.customer === "string") out.customer = search.customer;
+    if (typeof search.job === "string") out.job = search.job;
+    return out;
+  },
+
   head: () => ({
     meta: [
       { title: "ปฏิทินนัดหมายบริการ - อะไหล่ปั๊มลม" },
@@ -54,6 +63,7 @@ export const Route = createFileRoute("/planner")({
   }),
   component: PlannerPage,
 });
+
 
 type Appointment = {
   id: string;
@@ -156,6 +166,23 @@ function PlannerPage() {
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [dayDetail, setDayDetail] = useState<string | null>(null);
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+
+  // เปิดฟอร์มนัดหมายอัตโนมัติเมื่อถูกส่งมาจากแผงแจ้งเตือนอะไหล่ (?sn=&customer=&job=)
+  useEffect(() => {
+    if (!search.sn && !search.customer) return;
+    setEditing({
+      ...newAppointment(iso(new Date())),
+      serial_number: search.sn ?? "",
+      machine_label: search.sn ?? "",
+      customer_name: search.customer ?? "",
+      job_detail: search.job ?? "",
+    });
+    navigate({ search: {}, replace: true });
+  }, [search.sn, search.customer, search.job, navigate]);
+
+
 
 
   const load = useCallback(async () => {
@@ -224,7 +251,9 @@ function PlannerPage() {
         </div>
       </header>
 
-      <StatsPanel appts={appts} pending={orders.length} />
+      <FoldSection title="แผงสถิติภาพรวม">
+        <StatsPanel appts={appts} pending={orders.length} />
+      </FoldSection>
 
       <Card>
         <CardHeader className="gap-3">
@@ -371,13 +400,13 @@ function PlannerPage() {
       </Card>
 
       {isAdmin && (
-        <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} defaultOpen={orders.length > 0}>
+        <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} >
           <PendingOrders orders={orders} reload={load} />
         </FoldSection>
       )}
 
       <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
-        <PartsAlertPanel />
+        <PartsAlertPanel withActions={isAdmin} />
       </FoldSection>
 
       {dayDetail && (
@@ -495,102 +524,6 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
         </div>
       ))}
     </div>
-  );
-}
-
-// ---------- Parts alerts (30 days) ----------
-type AlertRow = {
-  id: string;
-  serial: string;
-  customer: string;
-  phone: string;
-  part: string;
-  nextDate: string;
-  days: number;
-};
-
-export function PartsAlertPanel() {
-  const [rows, setRows] = useState<AlertRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("machine_parts")
-        .select(
-          `id, hours_used, last_changed_at, service_interval_hours,
-           products ( name, part_number, service_interval_hours ),
-           machine_units ( serial_number, daily_hours, install_date, customers ( name, phone ) )`
-        );
-      const today = new Date();
-      const out: AlertRow[] = [];
-      for (const mp of (data ?? []) as any[]) {
-        const unit = mp.machine_units;
-        if (!unit) continue;
-        const usage = computeUsage({
-          lastChanged: mp.last_changed_at,
-          installDate: unit.install_date,
-          intervalHours: mp.service_interval_hours ?? mp.products?.service_interval_hours,
-          dailyHours: unit.daily_hours,
-          manualHours: mp.hours_used,
-        });
-        if (!usage.nextDate) continue;
-        const days = Math.round((new Date(usage.nextDate).getTime() - today.getTime()) / 86400000);
-        if (days > 30) continue;
-        out.push({
-          id: mp.id,
-          serial: unit.serial_number,
-          customer: unit.customers?.name ?? "-",
-          phone: unit.customers?.phone ?? "",
-          part: `${mp.products?.name ?? "อะไหล่"} (${mp.products?.part_number ?? "-"})`,
-          nextDate: usage.nextDate,
-          days,
-        });
-      }
-      out.sort((a, b) => a.days - b.days);
-      setRows(out);
-      setLoading(false);
-    })();
-  }, []);
-
-  if (loading) return null;
-
-  return (
-    <Card className="border-orange-300">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base text-orange-700">
-          <AlertTriangle className="h-4 w-4" /> อะไหล่ครบกำหนดเปลี่ยนใน 30 วัน ({rows.length})
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">ยังไม่มีรายการที่ใกล้ครบกำหนด</p>
-        ) : (
-          <div className="max-h-72 space-y-2 overflow-y-auto">
-            {rows.map((r) => (
-              <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-sm">
-                <div>
-                  <p className="font-medium">
-                    {r.serial} · {r.customer}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{r.part}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={r.days <= 0 ? "destructive" : "secondary"}>
-                    {r.days <= 0 ? `เลยกำหนด ${Math.abs(r.days)} วัน` : `อีก ${r.days} วัน`} · {formatDate(r.nextDate)}
-                  </Badge>
-                  {r.phone && (
-                    <a href={`tel:${r.phone}`} className="inline-flex items-center gap-1 text-xs text-primary">
-                      <Phone className="h-3 w-3" /> โทร
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 
