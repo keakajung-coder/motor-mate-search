@@ -762,9 +762,8 @@ function MonthGrid({
         ))}
         {days.map((d) => {
           const key = iso(d);
-          const list = appts
-            .filter((a) => a.visit_date === key)
-            .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
+          const list = appts.filter((a) => a.visit_date === key).sort(byVehicleThenTime);
+
           const dim = d.getMonth() !== cursor.getMonth();
           const max = 6;
           return (
