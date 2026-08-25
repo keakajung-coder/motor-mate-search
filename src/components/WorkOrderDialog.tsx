@@ -226,12 +226,13 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
                 placeholder="เลือกยี่ห้อ/รุ่น"
               />
             </Field>
-            <Field label="ประเภทเซอร์วิส">
-              <Combobox
-                value={form.service_type}
-                onChange={(v) => set("service_type", v)}
-                options={SERVICE_TYPES.map((t) => ({ value: t }))}
-                placeholder="เลือกประเภทงาน"
+            <Field label="ประเภทเซอร์วิส (เลือกได้หลายงาน)">
+              <MultiCombobox
+                values={splitNames(form.service_type)}
+                onChange={(list) => set("service_type", joinNames(list))}
+                options={SERVICE_TYPES}
+                placeholder="ติ๊กเลือกประเภทงาน"
+                searchPlaceholder="ค้นหาประเภทงาน..."
               />
             </Field>
             <div className="grid grid-cols-2 gap-3">
