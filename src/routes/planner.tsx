@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,8 @@ import {
   ChevronRight,
   ClipboardList,
   Loader2,
+  Camera,
+  FileDown,
   Pencil,
   Phone,
   Trash2,
@@ -38,7 +40,7 @@ import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog } from "@/components/
 import { Combobox } from "@/components/ui/combobox";
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { ensureDirectoryEntries, useDirectory } from "@/lib/directory";
-import { formatDate, isMachineComplete } from "@/lib/report";
+import { elementToPdfBlobPaged, formatDate, isMachineComplete, saveFile } from "@/lib/report";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 
 
@@ -108,6 +110,24 @@ const TH_MONTHS = [
 ];
 const TH_DOW = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
 const TH_DOW_FULL = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+const TH_MONTHS_SHORT = [
+  "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+  "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
+];
+/** หัวข้อวันที่แบบไทยเต็ม เช่น 25 ส.ค. 2569 */
+const thaiCellDate = (d: Date) =>
+  `${d.getDate()} ${TH_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear() + 543}`;
+
+/** จัดกลุ่มบล็อกงานตามเลขทะเบียนรถ แล้วเรียงตามเวลาในกลุ่ม */
+function byVehicleThenTime(a: Appointment, b: Appointment) {
+  const plate = (x: Appointment) => (splitNames(x.vehicle_plate)[0] ?? "zzzz").toLowerCase();
+  return (
+    plate(a).localeCompare(plate(b), "th") ||
+    (a.visit_time ?? "").localeCompare(b.visit_time ?? "")
+  );
+}
+
+
 
 /** เรียงลำดับรายการนัดหมายตามตัวเลือกของผู้ใช้ */
 function sortApptList(list: Appointment[], sortBy: string): Appointment[] {
@@ -166,6 +186,9 @@ function PlannerPage() {
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [dayDetail, setDayDetail] = useState<string | null>(null);
+  const monthRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState<"" | "image" | "pdf">("");
+
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
 
@@ -226,6 +249,32 @@ function PlannerPage() {
       setCursor(d);
     } else setCursor(addDays(cursor, dir * (view === "week" ? 7 : 1)));
   };
+
+  const monthName = `${TH_MONTHS[cursor.getMonth()]}-${cursor.getFullYear() + 543}`;
+
+  /** บันทึกตารางรายเดือนเป็นไฟล์ภาพ หรือ PDF เต็มใบ */
+  const exportMonth = async (kind: "image" | "pdf") => {
+    const el = monthRef.current;
+    if (!el) return;
+    setExporting(kind);
+    try {
+      if (kind === "pdf") {
+        const blob = await elementToPdfBlobPaged(el, 1, { orientation: "landscape" });
+        await saveFile(blob, `ตารางงาน-${monthName}.pdf`);
+      } else {
+        const { toJpeg } = await import("html-to-image");
+        const dataUrl = await toJpeg(el, { backgroundColor: "#ffffff", cacheBust: true, pixelRatio: 2, quality: 0.9 });
+        const blob = await (await fetch(dataUrl)).blob();
+        await saveFile(blob, `ตารางงาน-${monthName}.jpg`);
+      }
+      toast.success("บันทึกตารางรายเดือนเรียบร้อย");
+    } catch (e) {
+      toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
+    } finally {
+      setExporting("");
+    }
+  };
+
 
   const title =
     view === "month"
@@ -338,6 +387,36 @@ function PlannerPage() {
               <option value="customer">เรียง: ชื่อลูกค้า ก-ฮ</option>
               <option value="staff">เรียง: ชื่อช่าง ก-ฮ</option>
             </select>
+            {view === "month" && (
+              <>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={exporting !== ""}
+                  onClick={() => exportMonth("image")}
+                >
+                  {exporting === "image" ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="mr-1 h-4 w-4" />
+                  )}
+                  📸 บันทึกตารางรายเดือน
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={exporting !== ""}
+                  onClick={() => exportMonth("pdf")}
+                >
+                  {exporting === "pdf" ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileDown className="mr-1 h-4 w-4" />
+                  )}
+                  PDF เต็มใบ
+                </Button>
+              </>
+            )}
             {(staffFilter || vehicleFilter) && (
               <Button
                 size="sm"
@@ -359,13 +438,16 @@ function PlannerPage() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : view === "month" ? (
-            <MonthGrid
-              cursor={cursor}
-              appts={visible}
-              onPick={(a) => setEditing(a)}
-              onPickDate={isAdmin ? (d) => setEditing(newAppointment(d)) : undefined}
-              onPickDay={(d) => setDayDetail(d)}
-            />
+            <div ref={monthRef} className="rounded-xl bg-card p-2">
+              <p className="mb-2 text-center text-sm font-bold">ตารางนัดหมายบริการ · {title}</p>
+              <MonthGrid
+                cursor={cursor}
+                appts={visible}
+                onPick={(a) => setEditing(a)}
+                onPickDate={isAdmin ? (d) => setEditing(newAppointment(d)) : undefined}
+                onPickDay={(d) => setDayDetail(d)}
+              />
+            </div>
           ) : (
             <div className="space-y-5">
               <TimeGrid
@@ -744,9 +826,8 @@ function MonthGrid({
         ))}
         {days.map((d) => {
           const key = iso(d);
-          const list = appts
-            .filter((a) => a.visit_date === key)
-            .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
+          const list = appts.filter((a) => a.visit_date === key).sort(byVehicleThenTime);
+
           const dim = d.getMonth() !== cursor.getMonth();
           const max = 6;
           return (
@@ -760,18 +841,19 @@ function MonthGrid({
                 (key === today ? "border-primary" : "")
               }
             >
-              <div className="mb-1 flex items-center justify-between">
+              <div className="mb-1 flex items-center justify-between gap-1">
                 {list.length > 0 && <span className="text-[10px] text-muted-foreground">{list.length} งาน</span>}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onPickDay(key);
                   }}
-                  className="ml-auto rounded px-1 font-medium hover:bg-accent"
+                  className="ml-auto rounded px-1 text-[10px] font-semibold leading-tight hover:bg-accent sm:text-[11px]"
                 >
-                  {d.getDate()}
+                  {thaiCellDate(d)}
                 </button>
               </div>
+
               <div className="space-y-0.5">
                 {list.slice(0, max).map((a) => (
                   <button
@@ -863,7 +945,8 @@ function TimeGrid({
                 {days.map((d) => {
                   const list = appts
                     .filter((a) => a.visit_date === d && hourOf(a) === h)
-                    .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
+                    .sort(byVehicleThenTime);
+
                   return (
                     <div
                       key={d + h}
@@ -917,7 +1000,7 @@ function DayDetailDialog({
   onClose: () => void;
   onPick: (a: Appointment) => void;
 }) {
-  const list = sortApptList(appts.filter((a) => a.visit_date === date), sortBy);
+  const list = sortApptList(appts.filter((a) => a.visit_date === date), sortBy).sort(byVehicleThenTime);
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
