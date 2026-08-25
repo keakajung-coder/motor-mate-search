@@ -936,7 +936,7 @@ function DayDetailDialog({
   onClose: () => void;
   onPick: (a: Appointment) => void;
 }) {
-  const list = sortApptList(appts.filter((a) => a.visit_date === date), sortBy);
+  const list = appts.filter((a) => a.visit_date === date).sort(byVehicleThenTime);
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
