@@ -385,7 +385,25 @@ function CustomersTab() {
           <Button onClick={save}><Plus className="h-4 w-4 mr-1" />{form.id ? "บันทึก" : "เพิ่มลูกค้า"}</Button>
           {form.id && <Button variant="outline" onClick={() => setForm(emptyForm)}>ยกเลิก</Button>}
         </div>
-        <SearchBox value={q} onChange={setQ} placeholder="ค้นหาชื่อลูกค้า / เบอร์ / ที่อยู่" />
+        <SmartSearchBox
+          value={q}
+          onChange={setQ}
+          placeholder="ค้นหาชื่อลูกค้า / เบอร์ / ที่อยู่"
+          suggestions={items.map((c) => ({
+            id: c.id,
+            label: c.name,
+            sub: [c.phone, c.address].filter(Boolean).join(" • "),
+            onSelect: () => { startEdit(c); setQ(""); },
+          }))}
+          onCreate={(t) => {
+            setForm({ ...emptyForm, name: t });
+            setQ("");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            toast.success(`ส่งคำว่า "${t}" ไปฟอร์มเพิ่มลูกค้าใหม่แล้ว`);
+          }}
+          createLabel="เพิ่มลูกค้าใหม่"
+        />
+        <CollapsibleSection title="กลุ่มข้อมูลลูกค้า" subtitle={`ทั้งหมด ${filtered.length} ราย`}>
         <ul className="divide-y rounded border">
           {filtered.map((c) => {
             const machines = machinesByCust[c.id] ?? [];
