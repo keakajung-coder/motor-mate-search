@@ -748,13 +748,13 @@ function MonthGrid({
             .filter((a) => a.visit_date === key)
             .sort((a, b) => (a.visit_time ?? "").localeCompare(b.visit_time ?? ""));
           const dim = d.getMonth() !== cursor.getMonth();
-          const max = 3;
+          const max = 6;
           return (
             <div
               key={key}
               onClick={() => onPickDate?.(key)}
               className={
-                "min-h-24 rounded-xl border bg-card p-1.5 " +
+                "flex min-h-32 flex-col rounded-xl border bg-card p-1.5 sm:min-h-40 md:min-h-48 " +
                 (onPickDate ? "cursor-pointer hover:border-primary/60 hover:bg-accent/40 " : "") +
                 (dim ? "bg-muted/30 text-muted-foreground " : "") +
                 (key === today ? "border-primary" : "")
@@ -772,7 +772,7 @@ function MonthGrid({
                   {d.getDate()}
                 </button>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {list.slice(0, max).map((a) => (
                   <button
                     key={a.id}
@@ -781,7 +781,7 @@ function MonthGrid({
                       onPick(a);
                     }}
                     className={
-                      "block w-full whitespace-normal break-words rounded border px-1 py-0.5 text-left leading-tight " +
+                      "block w-full whitespace-normal break-words rounded border px-1 py-0.5 text-left text-[10px] leading-snug " +
                       vehicleColor(a.vehicle_plate) +
                       " " +
                       statusEdge(a)
@@ -802,6 +802,9 @@ function MonthGrid({
                     +{list.length - max} งาน · ดูทั้งหมด
                   </button>
                 )}
+              </div>
+            </div>
+          );
               </div>
             </div>
           );
