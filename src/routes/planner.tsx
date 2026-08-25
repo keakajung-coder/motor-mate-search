@@ -1483,3 +1483,21 @@ function F({ label, children }: { label: string; children: React.ReactNode }) {
     </div>
   );
 }
+
+/** แผงแสดงรายการหลายค่าในหน้าต่างรายละเอียด */
+function BadgeRow({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="text-xs text-muted-foreground">{label}:</span>
+      {items.length === 0 ? (
+        <span className="text-xs text-muted-foreground">-</span>
+      ) : (
+        items.map((t) => (
+          <Badge key={t} variant="secondary">
+            {t}
+          </Badge>
+        ))
+      )}
+    </div>
+  );
+}
