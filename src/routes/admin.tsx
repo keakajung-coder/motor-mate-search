@@ -267,6 +267,7 @@ function ModelsTab() {
             {editId && <Button variant="outline" onClick={reset}>ยกเลิก</Button>}
           </div>
         </div>
+        <CollapsibleSection title="กลุ่มข้อมูลรุ่นเครื่องจักร" subtitle={`ทั้งหมด ${items.length} รุ่น`}>
         <ul className="divide-y rounded border">
           {items.map((m) => (
             <li key={m.id} className="flex items-center justify-between px-3 py-2">
