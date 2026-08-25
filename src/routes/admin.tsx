@@ -31,6 +31,8 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { useUndoable } from "@/hooks/use-undoable";
 import { loadOptionList } from "@/lib/option-lists";
 import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate, isMachineComplete } from "@/lib/report";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 
@@ -72,6 +74,12 @@ function AdminPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">จัดการข้อมูล</h1>
+      <CollapsibleSection
+        title="🔔 แจ้งเตือนอะไหล่ครบกำหนดเปลี่ยนใน 30 วัน"
+        subtitle="กดดูรายการ พร้อมปุ่มลัดแก้ไขอะไหล่ / ดึงเข้าตารางแพลนเนอร์"
+      >
+        <PartsAlertPanel withActions />
+      </CollapsibleSection>
       <Tabs defaultValue="machines">
         <TabsList className="flex-wrap">
           <TabsTrigger value="machines">S/N (หมายเลขเครื่อง)</TabsTrigger>
