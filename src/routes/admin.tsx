@@ -889,7 +889,7 @@ function MachinesTab() {
   return (
     <div className="flex flex-col gap-4">
       {/* แถวที่ 1 — ช่องค้นหาเต็มความกว้าง */}
-      <div className="order-1 w-full">
+      <div className="order-1 w-full rounded-xl border bg-card p-3 shadow-sm">
         <SmartSearchBox
           value={q}
           onChange={setQ}
@@ -942,35 +942,36 @@ function MachinesTab() {
                 title="กลุ่มข้อมูลเซลผู้ขาย"
                 subtitle={sellerFilter ? `กำลังกรอง: ${sellerFilter}` : `ทั้งหมด ${sellers.length} ราย`}
               >
-
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="ค้นหาด้วยชื่อผู้ขาย"
-                    value={sellerQ}
-                    onChange={(e) => setSellerQ(e.target.value)}
-                    className="h-10 pl-10 text-base"
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-muted-foreground">ผู้ขาย:</span>
-                  <Button
-                    size="sm"
-                    variant={sellerFilter === null ? "default" : "outline"}
-                    onClick={() => setSellerFilter(null)}
-                  >
-                    ทั้งหมด
-                  </Button>
-                  {visibleSellers.map((s: any) => (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="ค้นหาด้วยชื่อผู้ขาย"
+                      value={sellerQ}
+                      onChange={(e) => setSellerQ(e.target.value)}
+                      className="h-10 pl-10 text-base"
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="shrink-0 text-xs text-muted-foreground">ผู้ขาย:</span>
                     <Button
-                      key={s}
                       size="sm"
-                      variant={sellerFilter === s ? "default" : "outline"}
-                      onClick={() => setSellerFilter(s)}
+                      variant={sellerFilter === null ? "default" : "outline"}
+                      onClick={() => setSellerFilter(null)}
                     >
-                      {s}
+                      ทั้งหมด
                     </Button>
-                  ))}
+                    {visibleSellers.map((s: any) => (
+                      <Button
+                        key={s}
+                        size="sm"
+                        variant={sellerFilter === s ? "default" : "outline"}
+                        onClick={() => setSellerFilter(s)}
+                      >
+                        {s}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </CollapsibleSection>
             );
@@ -979,41 +980,46 @@ function MachinesTab() {
             title="กลุ่มข้อมูลป้ายสถานะและความครบถ้วน"
             subtitle={`ทั้งหมด ${units.length} เครื่อง`}
           >
-          <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
-
-            <div className="text-sm font-semibold">สรุปจำนวนเครื่องตามสถานะ (ทั้งหมด {units.length} เครื่อง)</div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant={statusFilter === null ? "default" : "outline"}
-                onClick={() => setStatusFilter(null)}
-              >
-                ทั้งหมด ({units.length})
-              </Button>
-              {statusCounts.map(([s, n]) => (
-                <Button
-                  key={s}
-                  size="sm"
-                  variant={statusFilter === s ? "default" : "outline"}
-                  onClick={() => setStatusFilter(statusFilter === s ? null : s)}
-                >
-                  {s} ({n})
-                </Button>
-              ))}
+            <div className="space-y-3 rounded-lg border bg-muted/40 p-3">
+              <div>
+                <div className="mb-2 text-sm font-semibold">สรุปจำนวนเครื่องตามสถานะ (ทั้งหมด {units.length} เครื่อง)</div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant={statusFilter === null ? "default" : "outline"}
+                    onClick={() => setStatusFilter(null)}
+                  >
+                    ทั้งหมด ({units.length})
+                  </Button>
+                  {statusCounts.map(([s, n]) => (
+                    <Button
+                      key={s}
+                      size="sm"
+                      variant={statusFilter === s ? "default" : "outline"}
+                      onClick={() => setStatusFilter(statusFilter === s ? null : s)}
+                    >
+                      {s} ({n})
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-sm font-semibold">
+                  <span className="shrink-0 text-xs text-muted-foreground">ความครบถ้วนข้อมูล:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant={completeFilter === "all" ? "default" : "outline"} onClick={() => setCompleteFilter("all")}>
+                    ทั้งหมด
+                  </Button>
+                  <Button size="sm" variant={completeFilter === "yes" ? "default" : "outline"} onClick={() => setCompleteFilter("yes")}>
+                    ครบถ้วน ({units.filter((u) => isMachineComplete(u)).length})
+                  </Button>
+                  <Button size="sm" variant={completeFilter === "no" ? "default" : "outline"} onClick={() => setCompleteFilter("no")}>
+                    ยังไม่ครบ ({units.filter((u) => !isMachineComplete(u)).length})
+                  </Button>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-xs text-muted-foreground">ความครบถ้วนข้อมูล:</span>
-              <Button size="sm" variant={completeFilter === "all" ? "default" : "outline"} onClick={() => setCompleteFilter("all")}>
-                ทั้งหมด
-              </Button>
-              <Button size="sm" variant={completeFilter === "yes" ? "default" : "outline"} onClick={() => setCompleteFilter("yes")}>
-                ครบถ้วน ({units.filter((u) => isMachineComplete(u)).length})
-              </Button>
-              <Button size="sm" variant={completeFilter === "no" ? "default" : "outline"} onClick={() => setCompleteFilter("no")}>
-                ยังไม่ครบ ({units.filter((u) => !isMachineComplete(u)).length})
-              </Button>
-            </div>
-          </div>
           </CollapsibleSection>
 
           <CollapsibleSection
