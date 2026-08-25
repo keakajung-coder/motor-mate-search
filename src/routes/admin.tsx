@@ -1013,6 +1013,8 @@ function MachinesTab() {
             ))}
             {units.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
           </ul>
+          </CollapsibleSection>
+
         </CardContent>
       </Card>
 
