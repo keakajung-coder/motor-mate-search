@@ -32,6 +32,7 @@ import { useUndoable } from "@/hooks/use-undoable";
 import { loadOptionList } from "@/lib/option-lists";
 import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate, isMachineComplete } from "@/lib/report";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { SmartSearchBox } from "@/components/SmartSearchBox";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
@@ -167,7 +168,19 @@ function BrandsTab() {
             <AlertTriangle className="h-4 w-4" /> ชื่อยี่ห้อนี้มีอยู่แล้ว
           </p>
         )}
-        <SearchBox value={q} onChange={setQ} placeholder="ค้นหายี่ห้อ" />
+        <SmartSearchBox
+          value={q}
+          onChange={setQ}
+          placeholder="ค้นหายี่ห้อ"
+          suggestions={items.map((b) => ({
+            id: b.id,
+            label: b.name,
+            onSelect: () => { setEditId(b.id); setName(b.name); setQ(""); },
+          }))}
+          onCreate={(t) => { setEditId(null); setName(t); setQ(""); }}
+          createLabel="เพิ่มยี่ห้อใหม่"
+        />
+        <CollapsibleSection title="กลุ่มข้อมูลยี่ห้อ" subtitle={`ทั้งหมด ${filtered.length} ยี่ห้อ`}>
         <ul className="divide-y rounded border">
           {filtered.map((b) => (
             <li key={b.id} className="flex items-center justify-between px-3 py-2">
@@ -180,6 +193,7 @@ function BrandsTab() {
           ))}
           {filtered.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
         </ul>
+        </CollapsibleSection>
       </CardContent>
     </Card>
   );
@@ -253,6 +267,7 @@ function ModelsTab() {
             {editId && <Button variant="outline" onClick={reset}>ยกเลิก</Button>}
           </div>
         </div>
+        <CollapsibleSection title="กลุ่มข้อมูลรุ่นเครื่องจักร" subtitle={`ทั้งหมด ${items.length} รุ่น`}>
         <ul className="divide-y rounded border">
           {items.map((m) => (
             <li key={m.id} className="flex items-center justify-between px-3 py-2">
@@ -268,6 +283,7 @@ function ModelsTab() {
           ))}
           {items.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
         </ul>
+        </CollapsibleSection>
       </CardContent>
     </Card>
   );
@@ -371,7 +387,25 @@ function CustomersTab() {
           <Button onClick={save}><Plus className="h-4 w-4 mr-1" />{form.id ? "บันทึก" : "เพิ่มลูกค้า"}</Button>
           {form.id && <Button variant="outline" onClick={() => setForm(emptyForm)}>ยกเลิก</Button>}
         </div>
-        <SearchBox value={q} onChange={setQ} placeholder="ค้นหาชื่อลูกค้า / เบอร์ / ที่อยู่" />
+        <SmartSearchBox
+          value={q}
+          onChange={setQ}
+          placeholder="ค้นหาชื่อลูกค้า / เบอร์ / ที่อยู่"
+          suggestions={items.map((c) => ({
+            id: c.id,
+            label: c.name,
+            sub: [c.phone, c.address].filter(Boolean).join(" • "),
+            onSelect: () => { startEdit(c); setQ(""); },
+          }))}
+          onCreate={(t) => {
+            setForm({ ...emptyForm, name: t });
+            setQ("");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            toast.success(`ส่งคำว่า "${t}" ไปฟอร์มเพิ่มลูกค้าใหม่แล้ว`);
+          }}
+          createLabel="เพิ่มลูกค้าใหม่"
+        />
+        <CollapsibleSection title="กลุ่มข้อมูลลูกค้า" subtitle={`ทั้งหมด ${filtered.length} ราย`}>
         <ul className="divide-y rounded border">
           {filtered.map((c) => {
             const machines = machinesByCust[c.id] ?? [];
@@ -403,6 +437,7 @@ function CustomersTab() {
           })}
           {filtered.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
         </ul>
+        </CollapsibleSection>
       </CardContent>
     </Card>
   );
@@ -555,7 +590,25 @@ function ProductsTab() {
           {form.id && <Button variant="outline" onClick={() => setForm(empty)}>ยกเลิก</Button>}
         </div>
 
-        <SearchBox value={q} onChange={setQ} placeholder="ค้นหารหัสอะไหล่ / ชื่อ / หมวด / ตำแหน่งจัดเก็บ" />
+        <SmartSearchBox
+          value={q}
+          onChange={setQ}
+          placeholder="ค้นหารหัสอะไหล่ / ชื่อ / หมวด / ตำแหน่งจัดเก็บ"
+          suggestions={items.map((p) => ({
+            id: p.id,
+            label: `${p.name} (${p.part_number})`,
+            sub: [p.categories?.name, p.brands?.name, p.storage_location].filter(Boolean).join(" • "),
+            onSelect: () => { startEdit(p); setQ(""); },
+          }))}
+          onCreate={(t) => {
+            setForm({ ...empty, name: t, part_number: t });
+            setQ("");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            toast.success(`ส่งคำว่า "${t}" ไปฟอร์มเพิ่มสินค้าใหม่แล้ว`);
+          }}
+          createLabel="เพิ่มอะไหล่ใหม่"
+        />
+        <CollapsibleSection title="กลุ่มข้อมูลสินค้า/อะไหล่" subtitle={`ทั้งหมด ${items.length} รายการ`}>
         <ul className="divide-y rounded border">
           {items
             .filter((p) => {
@@ -602,6 +655,7 @@ function ProductsTab() {
           })}
           {items.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูล</li>}
         </ul>
+        </CollapsibleSection>
       </CardContent>
     </Card>
   );
@@ -836,7 +890,29 @@ function MachinesTab() {
     <div className="flex flex-col gap-4">
       {/* แถวที่ 1 — ช่องค้นหาเต็มความกว้าง */}
       <div className="order-1 w-full">
-        <SearchBox value={q} onChange={setQ} placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด / ผู้ขาย" />
+        <SmartSearchBox
+          value={q}
+          onChange={setQ}
+          placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด / ผู้ขาย"
+          suggestions={units.map((u) => ({
+            id: u.id,
+            label: u.serial_number ?? "",
+            sub: [
+              u.customers?.name,
+              u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "",
+              u.province,
+              u.seller,
+            ].filter(Boolean).join(" • "),
+            onSelect: () => { startEdit(u); setQ(""); },
+          }))}
+          onCreate={(t) => {
+            formHistory.reset({ ...empty, serial_number: t });
+            setQ("");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            toast.success(`ส่งคำว่า "${t}" ไปช่อง S/N ในฟอร์มเพิ่มเครื่องใหม่แล้ว`);
+          }}
+          createLabel="เพิ่มเครื่องจักรใหม่"
+        />
       </div>
 
       {/* แถวที่ 3 — แจ้งเตือนอายุอะไหล่ 30 วัน */}
