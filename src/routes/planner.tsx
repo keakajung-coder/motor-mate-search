@@ -108,6 +108,24 @@ const TH_MONTHS = [
 ];
 const TH_DOW = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
 const TH_DOW_FULL = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+const TH_MONTHS_SHORT = [
+  "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+  "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
+];
+/** หัวข้อวันที่แบบไทยเต็ม เช่น 25 ส.ค. 2569 */
+const thaiCellDate = (d: Date) =>
+  `${d.getDate()} ${TH_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear() + 543}`;
+
+/** จัดกลุ่มบล็อกงานตามเลขทะเบียนรถ แล้วเรียงตามเวลาในกลุ่ม */
+function byVehicleThenTime(a: Appointment, b: Appointment) {
+  const plate = (x: Appointment) => (splitNames(x.vehicle_plate)[0] ?? "zzzz").toLowerCase();
+  return (
+    plate(a).localeCompare(plate(b), "th") ||
+    (a.visit_time ?? "").localeCompare(b.visit_time ?? "")
+  );
+}
+
+
 
 /** เรียงลำดับรายการนัดหมายตามตัวเลือกของผู้ใช้ */
 function sortApptList(list: Appointment[], sortBy: string): Appointment[] {
