@@ -1242,18 +1242,16 @@ function AppointmentDialog({
               searchPlaceholder="ค้นหาลูกค้า..."
             />
           </F>
-          <F label={form.customer_name ? `หมายเลขเครื่อง (S/N) — เฉพาะของ ${form.customer_name}` : "หมายเลขเครื่อง (S/N)"}>
-            <Combobox
+          <F label={form.customer_name ? `หมายเลขเครื่อง (S/N) — เฉพาะของ ${form.customer_name} (เลือกได้หลายเครื่อง)` : "หมายเลขเครื่อง (S/N) (เลือกได้หลายเครื่อง)"}>
+            <MultiCombobox
               disabled={locked}
-              value={form.serial_number ?? ""}
-              onChange={pickSerial}
+              values={splitNames(form.serial_number)}
+              onChange={pickSerials}
               options={dir.machines
                 .filter((m) => !form.customer_name || m.customer === form.customer_name)
-                .map((m) => ({
-                  value: m.serial,
-                  hint: [m.customer, m.label].filter(Boolean).join(" · "),
-                }))}
-              placeholder={form.customer_name ? "เลือก S/N ของลูกค้ารายนี้" : "เลือก S/N"}
+                .map((m) => m.serial)
+                .filter(Boolean)}
+              placeholder={form.customer_name ? "ติ๊กเลือก S/N ของลูกค้ารายนี้" : "ติ๊กเลือก S/N"}
               searchPlaceholder="ค้นหา S/N..."
             />
           </F>
