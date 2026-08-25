@@ -695,7 +695,7 @@ function statusEdge(a: Appointment) {
 }
 
 function VehicleLegend({ appts }: { appts: Appointment[] }) {
-  const plates = Array.from(new Set(appts.map((a) => (a.vehicle_plate ?? "").trim()).filter(Boolean))).sort();
+  const plates = Array.from(new Set(appts.flatMap((a) => splitNames(a.vehicle_plate)))).sort();
   if (plates.length === 0) return null;
   return (
     <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
