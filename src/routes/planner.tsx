@@ -1110,29 +1110,31 @@ function AppointmentDialog({
     const c = dir.customers.find((x) => x.name === name);
     const m = dir.machines.find((x) => x.customer === name);
     setForm((f) => {
-      // ถ้า S/N ที่เลือกไว้ไม่ได้เป็นของลูกค้ารายใหม่ ให้ล้างออก (ลิงก์ข้อมูลต้องตรงกัน)
-      const owner = f.serial_number
-        ? dir.machines.find((x) => x.serial === f.serial_number)?.customer
-        : undefined;
-      const keepSerial = !f.serial_number || !owner || owner === name;
+      // เก็บเฉพาะ S/N ที่เป็นของลูกค้ารายใหม่ (ลิงก์ข้อมูลต้องตรงกัน)
+      const kept = splitNames(f.serial_number).filter((s) => {
+        const owner = dir.machines.find((x) => x.serial === s)?.customer;
+        return !owner || owner === name;
+      });
       return {
         ...f,
         customer_name: name,
-        serial_number: keepSerial ? f.serial_number : "",
+        serial_number: joinNames(kept),
         customer_address: c?.address || m?.address || f.customer_address,
         contact_phone: c?.phone || m?.phone || f.contact_phone,
       };
     });
   };
-  const pickSerial = (serial: string) => {
-    const hit = dir.machines.find((m) => m.serial === serial);
+  /** เลือก S/N ได้หลายเครื่อง — เติมรุ่น/ลูกค้า/ที่อยู่/เบอร์โทรอัตโนมัติ */
+  const pickSerials = (serials: string[]) => {
+    const hits = serials.map((s) => dir.machines.find((m) => m.serial === s)).filter(Boolean) as typeof dir.machines;
+    const first = hits[0];
     setForm((f) => ({
       ...f,
-      serial_number: serial,
-      machine_label: hit?.label || f.machine_label,
-      customer_name: hit?.customer || f.customer_name,
-      customer_address: hit?.address || f.customer_address,
-      contact_phone: hit?.phone || f.contact_phone,
+      serial_number: joinNames(serials),
+      machine_label: joinNames(Array.from(new Set(hits.map((h) => h.label).filter(Boolean)))) || f.machine_label,
+      customer_name: first?.customer || f.customer_name,
+      customer_address: first?.address || f.customer_address,
+      contact_phone: first?.phone || f.contact_phone,
     }));
   };
 
