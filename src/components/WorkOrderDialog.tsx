@@ -251,12 +251,13 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
                 searchPlaceholder="ค้นหาช่าง..."
               />
             </Field>
-            <Field label="ทะเบียนรถที่ใช้เดินทาง">
-              <Combobox
-                value={form.vehicle_plate}
-                onChange={(v) => set("vehicle_plate", v)}
-                options={dir.vehicles.map((v) => ({ value: v }))}
-                placeholder="เลือกทะเบียนรถ"
+            <Field label="ทะเบียนรถที่ใช้เดินทาง (เลือกได้หลายคัน)">
+              <MultiCombobox
+                values={splitNames(form.vehicle_plate)}
+                onChange={(list) => set("vehicle_plate", joinNames(list))}
+                options={dir.vehicles}
+                placeholder="ติ๊กเลือกทะเบียนรถ"
+                searchPlaceholder="ค้นหาทะเบียนรถ..."
               />
             </Field>
             <div className="sm:col-span-2">
