@@ -1017,9 +1017,10 @@ function MachinesTab() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="order-2">
         <CardHeader>
-          <CardTitle>{form.id ? "แก้ไขเครื่อง" : "เพิ่มเครื่อง (S/N)"}</CardTitle>
+          <CardTitle>{form.id ? "แก้ไขเครื่อง" : "➕ เพิ่มเครื่องจักรใหม่ / ลูกค้าใหม่ (S/N)"}</CardTitle>
+
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-2 sm:grid-cols-2">
