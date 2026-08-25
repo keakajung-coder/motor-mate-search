@@ -850,7 +850,29 @@ function MachinesTab() {
     <div className="flex flex-col gap-4">
       {/* แถวที่ 1 — ช่องค้นหาเต็มความกว้าง */}
       <div className="order-1 w-full">
-        <SearchBox value={q} onChange={setQ} placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด / ผู้ขาย" />
+        <SmartSearchBox
+          value={q}
+          onChange={setQ}
+          placeholder="ค้นหา S/N / ลูกค้า / รุ่น / จังหวัด / ผู้ขาย"
+          suggestions={units.map((u) => ({
+            id: u.id,
+            label: u.serial_number ?? "",
+            sub: [
+              u.customers?.name,
+              u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "",
+              u.province,
+              u.seller,
+            ].filter(Boolean).join(" • "),
+            onSelect: () => { startEdit(u); setQ(""); },
+          }))}
+          onCreate={(t) => {
+            formHistory.reset({ ...empty, serial_number: t });
+            setQ("");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            toast.success(`ส่งคำว่า "${t}" ไปช่อง S/N ในฟอร์มเพิ่มเครื่องใหม่แล้ว`);
+          }}
+          createLabel="เพิ่มเครื่องจักรใหม่"
+        />
       </div>
 
       {/* แถวที่ 3 — แจ้งเตือนอายุอะไหล่ 30 วัน */}
