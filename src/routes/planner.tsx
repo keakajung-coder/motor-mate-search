@@ -42,6 +42,11 @@ import { computeUsage, formatDate, isMachineComplete } from "@/lib/report";
 
 
 export const Route = createFileRoute("/planner")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    sn: typeof search.sn === "string" ? search.sn : undefined,
+    customer: typeof search.customer === "string" ? search.customer : undefined,
+    job: typeof search.job === "string" ? search.job : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "ปฏิทินนัดหมายบริการ - อะไหล่ปั๊มลม" },
@@ -54,6 +59,7 @@ export const Route = createFileRoute("/planner")({
   }),
   component: PlannerPage,
 });
+
 
 type Appointment = {
   id: string;
