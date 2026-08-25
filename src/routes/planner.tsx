@@ -165,6 +165,23 @@ function PlannerPage() {
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [dayDetail, setDayDetail] = useState<string | null>(null);
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+
+  // เปิดฟอร์มนัดหมายอัตโนมัติเมื่อถูกส่งมาจากแผงแจ้งเตือนอะไหล่ (?sn=&customer=&job=)
+  useEffect(() => {
+    if (!search.sn && !search.customer) return;
+    setEditing({
+      ...newAppointment(iso(new Date())),
+      serial_number: search.sn ?? "",
+      machine_label: search.sn ?? "",
+      customer_name: search.customer ?? "",
+      job_detail: search.job ?? "",
+    });
+    navigate({ search: {}, replace: true });
+  }, [search.sn, search.customer, search.job, navigate]);
+
+
 
 
   const load = useCallback(async () => {
