@@ -1068,18 +1068,22 @@ function MachineCard({
                 ยังไม่มีรายการอะไหล่สำหรับเครื่องนี้
               </p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {grouped.map((g) => (
-                  <div key={g.name}>
-                    <h3 className="mb-2 text-sm font-semibold text-primary">{g.name}</h3>
+                  <CollapsibleSection
+                    key={g.name}
+                    title={g.name}
+                    subtitle={`${g.items.length} รายการ`}
+                  >
                     <div className="grid gap-3 sm:grid-cols-2">
                       {g.items.map((mp) => (
                         <PartRow key={mp.id} mp={mp} dailyHours={unit.daily_hours ?? null} />
                       ))}
                     </div>
-                  </div>
+                  </CollapsibleSection>
                 ))}
               </div>
+
             )}
           </div>
         </CardContent>
