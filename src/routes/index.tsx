@@ -1168,8 +1168,8 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
             </Badge>
           )}
         </div>
-        <div className="mt-1 grid gap-1 text-xs sm:grid-cols-2">
-          <div className="no-print flex items-center gap-1 rounded bg-muted/50 px-2 py-1">
+        <div className="mt-1 flex flex-wrap gap-2 text-xs">
+          <div className="no-print flex flex-1 min-w-[10rem] flex-wrap items-center gap-1 rounded bg-muted/50 px-2 py-1">
             <CalendarClock className="h-3 w-3 shrink-0 text-muted-foreground" />
             <span className="shrink-0 text-muted-foreground">เปลี่ยนล่าสุด:</span>
             <input
@@ -1177,26 +1177,26 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
               value={lastChanged ?? ""}
               onChange={(e) => saveDate(e.target.value || null)}
               disabled={savingDate}
-              className="h-7 min-w-0 flex-1 rounded border bg-background px-1 text-xs"
+              className="h-7 min-w-[7rem] flex-1 rounded border bg-background px-1 text-xs"
             />
             <Button
               size="sm"
               variant="outline"
-              className="h-7 px-2 text-xs"
+              className="h-7 shrink-0 px-2 text-xs"
               disabled={savingDate}
               onClick={() => saveDate(new Date().toISOString().slice(0, 10))}
             >
               วันนี้
             </Button>
           </div>
-          <div className="hidden items-center gap-1 rounded bg-muted/50 px-2 py-1 print:flex">
-            <span className="text-muted-foreground">เปลี่ยนล่าสุด:</span>
-            <span className="font-medium">{formatDate(lastChanged)}</span>
+          <div className="hidden flex-1 min-w-[10rem] flex-wrap items-center gap-1 rounded bg-muted/50 px-2 py-1 print:flex">
+            <span className="shrink-0 text-muted-foreground">เปลี่ยนล่าสุด:</span>
+            <span className="flex-1 font-medium">{formatDate(lastChanged)}</span>
           </div>
-          <div className="flex items-center gap-1 rounded bg-primary/10 px-2 py-1">
-            <CalendarClock className="h-3 w-3 text-primary" />
-            <span className="text-muted-foreground">ครั้งถัดไป:</span>
-            <span className="font-medium text-primary">{formatDate(nextChange)}</span>
+          <div className="flex flex-1 min-w-[10rem] flex-wrap items-center gap-1 rounded bg-primary/10 px-2 py-1">
+            <CalendarClock className="h-3 w-3 shrink-0 text-primary" />
+            <span className="shrink-0 text-muted-foreground">ครั้งถัดไป:</span>
+            <span className="flex-1 font-medium text-primary">{formatDate(nextChange)}</span>
           </div>
         </div>
       </div>
