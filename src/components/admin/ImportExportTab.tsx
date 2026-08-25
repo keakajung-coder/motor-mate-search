@@ -489,7 +489,7 @@ export function ImportExportTab() {
       const blob =
         kind === "xlsx"
           ? xlsxBlob(XLSX.write(wb, { bookType: "xlsx", type: "array" }))
-          : new Blob([withBom(XLSX.utils.sheet_to_csv(ws))], { type: "text/csv;charset=utf-8" });
+          : new Blob([withBom(XLSX.utils.sheet_to_csv(ws)) as BlobPart], { type: "text/csv;charset=utf-8" });
       setLastSize(formatBytes(blob.size));
       const how = await saveFile(blob, `${ds.key}-${new Date().toISOString().slice(0, 10)}.${kind}`);
       toast.success(
