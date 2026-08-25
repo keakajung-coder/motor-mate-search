@@ -186,6 +186,9 @@ function PlannerPage() {
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [dayDetail, setDayDetail] = useState<string | null>(null);
+  const monthRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState<"" | "image" | "pdf">("");
+
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
 
