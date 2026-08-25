@@ -911,10 +911,10 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
       )}
 
       {units.length > 0 && (
-        <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
-          <div className="text-sm font-semibold">
-            สถานะเครื่อง (ทั้งหมด {units.length} เครื่อง)
-          </div>
+        <CollapsibleSection
+          title={`สถานะเครื่อง (ทั้งหมด ${units.length} เครื่อง)`}
+          subtitle="กรองรายการตามสถานะเครื่อง"
+        >
           <div className="flex flex-wrap items-center gap-2">
             <FilterChip active={statusFilter === null} onClick={() => setStatusFilter(null)}>
               ทั้งหมด ({units.length})
@@ -929,7 +929,7 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
               </FilterChip>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
 
@@ -944,18 +944,24 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">พบ {filtered.length} เครื่อง</p>
-          {filtered.map((u) => (
-            <MachineCard
-              key={u.id}
-              unit={u}
-              open={openId === u.id}
-              onToggle={() => setOpenId(openId === u.id ? null : u.id)}
-            />
-          ))}
-        </div>
+        <CollapsibleSection
+          title={`รายการเครื่องจักรและอะไหล่ (พบ ${filtered.length} เครื่อง)`}
+          subtitle="กดเพื่อกาง/พับรายการทั้งหมด"
+          defaultOpen={filtered.length <= 3}
+        >
+          <div className="space-y-3">
+            {filtered.map((u) => (
+              <MachineCard
+                key={u.id}
+                unit={u}
+                open={openId === u.id}
+                onToggle={() => setOpenId(openId === u.id ? null : u.id)}
+              />
+            ))}
+          </div>
+        </CollapsibleSection>
       )}
+
     </div>
   );
 }
