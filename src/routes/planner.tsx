@@ -27,6 +27,8 @@ import {
   ChevronRight,
   ClipboardList,
   Loader2,
+  Camera,
+  FileDown,
   Pencil,
   Phone,
   Trash2,
@@ -38,7 +40,7 @@ import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog } from "@/components/
 import { Combobox } from "@/components/ui/combobox";
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { ensureDirectoryEntries, useDirectory } from "@/lib/directory";
-import { formatDate, isMachineComplete } from "@/lib/report";
+import { elementToPdfBlobPaged, formatDate, isMachineComplete, saveFile } from "@/lib/report";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 
 
