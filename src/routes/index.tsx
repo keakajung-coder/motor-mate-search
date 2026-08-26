@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkOrderDialog } from "@/components/WorkOrderDialog";
+import { TroubleshootPanel } from "@/components/TroubleshootPanel";
 import { AdminLockButton } from "@/components/AccessGate";
 import {
   CalendarDays,
@@ -115,6 +116,8 @@ function HomePage() {
           <ShareAppButton />
         </div>
       </div>
+
+      <TroubleshootPanel />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="grid h-12 w-full grid-cols-2 sm:w-auto sm:inline-flex">

@@ -34,6 +34,7 @@ import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate, isMachineCo
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { SmartSearchBox } from "@/components/SmartSearchBox";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
+import { TroubleshootTab } from "@/components/admin/TroubleshootTab";
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 
@@ -84,6 +85,7 @@ function AdminPage() {
           <TabsTrigger value="models">รุ่นเครื่อง</TabsTrigger>
           <TabsTrigger value="staff">ช่าง / รถ</TabsTrigger>
           <TabsTrigger value="lists">ผู้ขาย / สถานะ</TabsTrigger>
+          <TabsTrigger value="issues">คลังอาการเสีย (AI)</TabsTrigger>
           <TabsTrigger value="io">นำเข้า / ส่งออก</TabsTrigger>
           <TabsTrigger value="security">ความปลอดภัย</TabsTrigger>
         </TabsList>
@@ -103,6 +105,7 @@ function AdminPage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="issues"><TroubleshootTab /></TabsContent>
         <TabsContent value="io"><ImportExportTab /></TabsContent>
         <TabsContent value="security">
           <div className="grid gap-4 md:grid-cols-2">

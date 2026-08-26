@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { toast } from "sonner";
-import { Bot, Check, Loader2, Plus } from "lucide-react";
+import { Bot, Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { useIssues, type Issue } from "@/components/TroubleshootPanel";
 import { draftTroubleshooting } from "@/lib/troubleshoot.functions";
 
@@ -168,7 +168,9 @@ function IssueEditor({ issue, onSaved }: { issue: Issue; onSaved: () => void }) 
         <Button onClick={() => save(true)} disabled={busy}>
           <Check className="mr-1 h-4 w-4" /> อนุมัติและบันทึกเข้าคลัง
         </Button>
-        <ConfirmButton onConfirm={remove} />
+        <ConfirmButton onConfirm={remove} variant="outline">
+          <Trash2 className="mr-1 h-4 w-4" /> ลบ
+        </ConfirmButton>
       </div>
     </div>
   );
