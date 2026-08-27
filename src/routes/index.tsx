@@ -815,13 +815,28 @@ type MachineResult = {
   machine_parts: MachinePart[];
 };
 
-function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
+function SnView({
+  q,
+  setQ,
+  seller,
+  setSeller,
+  statusFilter,
+  setStatusFilter,
+  focusToken,
+}: {
+  q: string;
+  setQ: (v: string) => void;
+  seller: string | null;
+  setSeller: (v: string | null) => void;
+  statusFilter: string | null;
+  setStatusFilter: (v: string | null) => void;
+  focusToken: number;
+}) {
   const [sellerQ, setSellerQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [units, setUnits] = useState<MachineResult[]>([]);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
-  const [seller, setSeller] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
 
   async function load() {
     setLoading(true);
