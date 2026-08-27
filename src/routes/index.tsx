@@ -919,9 +919,22 @@ function SnView({
   }, [units, q, seller, sellerQ, statusFilter]);
 
 
+  // ค่าเริ่มต้น: พับปิดทุกเครื่อง
   useEffect(() => {
-    setOpenIds(new Set(filtered.map((u) => u.id)));
-  }, [filtered]);
+    setOpenIds(new Set());
+  }, [q, seller, statusFilter]);
+
+  // กด "ตกลง" ในป๊อปอัป → กางแถวที่ตรงและเลื่อนหน้าจอไปหา
+  useEffect(() => {
+    if (!focusToken) return;
+    const first = filtered[0];
+    if (!first) return;
+    setOpenIds(new Set([first.id]));
+    setTimeout(() => {
+      document.getElementById(`machine-${first.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+  }, [focusToken, filtered.length]);
+
 
   return (
     <div className="space-y-5">
