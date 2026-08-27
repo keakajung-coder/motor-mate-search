@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkOrderDialog } from "@/components/WorkOrderDialog";
-import { TroubleshootPanel } from "@/components/TroubleshootPanel";
+import { PartsAlertPanel } from "@/components/PartsAlertPanel";
+import { SmartSearchDialog } from "@/components/SmartSearchDialog";
 import { AdminLockButton } from "@/components/AccessGate";
 import {
   CalendarDays,
@@ -83,29 +84,21 @@ type Product = {
 function HomePage() {
   const [q, setQ] = useState("");
   const [tab, setTab] = useState("sn");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [seller, setSeller] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [focusToken, setFocusToken] = useState(0);
 
   return (
-    <div className="space-y-5">
-      {/* ===== แถวบนสุด: ค้นหา + ปุ่มหลัก ===== */}
+    <div className="space-y-5 pb-24">
+      {/* ===== แถวที่ 1: ปุ่มค้นหาทางลัดอัจฉริยะ ===== */}
       <div className="sticky top-0 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-card sm:px-4 sm:shadow-sm">
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-          <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-6 w-6 -translate-y-1/2 text-primary" />
-            <Input
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setTab("sn");
-              }}
-              placeholder="ค้นหา S/N, รุ่น, ยี่ห้อ, ลูกค้า หรืออะไหล่"
-              className="h-14 rounded-xl pl-13 text-base"
-            />
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <WorkOrderDialog />
-            <AdminLockButton />
-          </div>
-        </div>
+        <Button
+          className="h-14 w-full justify-start rounded-xl text-base"
+          onClick={() => setSearchOpen(true)}
+        >
+          <Search className="mr-3 h-6 w-6" /> 🔍 ค้นหาทางลัดอัจฉริยะ (Smart Search Popup)
+        </Button>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Button asChild variant="outline" size="sm">
             <Link to="/planner">
@@ -114,18 +107,39 @@ function HomePage() {
           </Button>
           <ThemePicker />
           <ShareAppButton />
+          <AdminLockButton />
         </div>
       </div>
 
-      <TroubleshootPanel />
+      {/* ===== แถวที่ 2: ปุ่มด่วนเพิ่มเครื่องใหม่ ===== */}
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3">
+        <Button asChild size="sm">
+          <Link to="/admin">
+            <Wrench className="mr-1 h-4 w-4" /> ➕ เพิ่มเครื่องจักรใหม่ / ลูกค้าใหม่
+          </Link>
+        </Button>
+        <span className="text-xs text-muted-foreground">เปิดหน้าจัดการข้อมูลเพื่อบันทึกเครื่องใหม่</span>
+      </div>
 
+      {/* ===== แถวที่ 3: แจ้งเตือนอายุอะไหล่ 30 วัน ===== */}
+      <PartsAlertPanel />
+
+      {/* ===== แถวที่ 4: ตารางข้อมูลทั้งหมด (ยุบแถว) ===== */}
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="grid h-12 w-full grid-cols-2 sm:w-auto sm:inline-flex">
-          <TabsTrigger value="sn" className="text-sm">ค้นด้วย S/N เครื่อง</TabsTrigger>
+          <TabsTrigger value="sn" className="text-sm">ข้อมูลเครื่องจักรทั้งหมด</TabsTrigger>
           <TabsTrigger value="catalog" className="text-sm">คลังอะไหล่</TabsTrigger>
         </TabsList>
         <TabsContent value="sn" className="mt-4">
-          <SnView q={q} setQ={setQ} />
+          <SnView
+            q={q}
+            setQ={setQ}
+            seller={seller}
+            setSeller={setSeller}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            focusToken={focusToken}
+          />
         </TabsContent>
         <TabsContent value="catalog" className="mt-4">
           <CatalogView />
@@ -134,9 +148,28 @@ function HomePage() {
 
       <InstallPromptCard />
 
+      <SmartSearchDialog
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        onConfirm={({ text, seller: s, status }) => {
+          setSeller(s);
+          setStatusFilter(status);
+          setQ(text);
+          setTab("sn");
+          setFocusToken((n) => n + 1);
+        }}
+      />
+
+      {/* ปุ่มเขียนใบสั่งงานใหม่ — ขอบล่างสุดของหน้าจอ */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 py-2 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl justify-center">
+          <WorkOrderDialog />
+        </div>
+      </div>
     </div>
   );
 }
+
 
 
 function InstallPromptCard() {
@@ -781,13 +814,28 @@ type MachineResult = {
   machine_parts: MachinePart[];
 };
 
-function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
+function SnView({
+  q,
+  setQ,
+  seller,
+  setSeller,
+  statusFilter,
+  setStatusFilter,
+  focusToken,
+}: {
+  q: string;
+  setQ: (v: string) => void;
+  seller: string | null;
+  setSeller: (v: string | null) => void;
+  statusFilter: string | null;
+  setStatusFilter: (v: string | null) => void;
+  focusToken: number;
+}) {
   const [sellerQ, setSellerQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [units, setUnits] = useState<MachineResult[]>([]);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
-  const [seller, setSeller] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
 
   async function load() {
     setLoading(true);
@@ -870,9 +918,22 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
   }, [units, q, seller, sellerQ, statusFilter]);
 
 
+  // ค่าเริ่มต้น: พับปิดทุกเครื่อง
   useEffect(() => {
-    setOpenIds(new Set(filtered.map((u) => u.id)));
-  }, [filtered]);
+    setOpenIds(new Set());
+  }, [q, seller, statusFilter]);
+
+  // กด "ตกลง" ในป๊อปอัป → กางแถวที่ตรงและเลื่อนหน้าจอไปหา
+  useEffect(() => {
+    if (!focusToken) return;
+    const first = filtered[0];
+    if (!first) return;
+    setOpenIds(new Set([first.id]));
+    setTimeout(() => {
+      document.getElementById(`machine-${first.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+  }, [focusToken, filtered.length]);
+
 
   return (
     <div className="space-y-5">
@@ -950,11 +1011,11 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
         </Card>
       ) : (
         <CollapsibleSection
-          title={`รายการเครื่องจักรและอะไหล่ (พบ ${filtered.length} เครื่อง)`}
-          subtitle="กดเพื่อกาง/พับรายการทั้งหมด"
+          title={`ข้อมูลเครื่องจักรทั้งหมด (พบ ${filtered.length} เครื่อง)`}
+          subtitle="แสดงชื่อลูกค้าและ S/N — กด 👁️ ดูเพิ่มเติม เพื่อกางอะไหล่"
           defaultOpen={true}
         >
-          <div className="space-y-3">
+          <div className="space-y-2">
             {filtered.map((u) => (
               <MachineCard
                 key={u.id}
@@ -973,6 +1034,7 @@ function SnView({ q, setQ }: { q: string; setQ: (v: string) => void }) {
           </div>
         </CollapsibleSection>
       )}
+
 
     </div>
   );
@@ -1002,28 +1064,24 @@ function MachineCard({
     ? `${unit.compressor_models.brands?.name ?? ""} ${unit.compressor_models.name}`.trim()
     : "-";
   return (
-    <Card>
+    <Card id={`machine-${unit.id}`} className="overflow-hidden">
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-4 text-left transition-colors hover:bg-accent/40"
+        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-accent/40"
       >
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-lg font-semibold tracking-tight">{unit.serial_number}</span>
-            {(unit as any).status && (
-              <Badge variant="secondary">{(unit as any).status}</Badge>
-            )}
-          </div>
-          <div className="truncate text-sm text-muted-foreground">
-            {model} • {unit.customers?.name ?? "-"} • อะไหล่ {unit.machine_parts?.length ?? 0} รายการ
-          </div>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <span className="truncate text-sm font-semibold">{unit.customers?.name ?? "-"}</span>
+          <Badge variant="outline" className="shrink-0 font-mono text-xs">
+            {unit.serial_number}
+          </Badge>
         </div>
-        <Badge variant="outline" className="shrink-0 gap-1 rounded-full px-3 py-1.5 text-sm">
-          {open ? "ซ่อน" : "ดูอะไหล่"}
+        <span className="flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
+          {open ? "👁️ ซ่อนข้อมูล" : "👁️ ดูเพิ่มเติม"}
           <ChevronDown className={"h-4 w-4 transition-transform " + (open ? "rotate-180" : "")} />
-        </Badge>
+        </span>
       </button>
+
       {open && (
         <CardContent id={`print-${unit.id}`} className="space-y-4 border-t pt-4">
           <div className="no-print flex flex-wrap gap-2">
