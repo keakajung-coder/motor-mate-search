@@ -1012,11 +1012,11 @@ function SnView({
         </Card>
       ) : (
         <CollapsibleSection
-          title={`รายการเครื่องจักรและอะไหล่ (พบ ${filtered.length} เครื่อง)`}
-          subtitle="กดเพื่อกาง/พับรายการทั้งหมด"
+          title={`ข้อมูลเครื่องจักรทั้งหมด (พบ ${filtered.length} เครื่อง)`}
+          subtitle="แสดงชื่อลูกค้าและ S/N — กด 👁️ ดูเพิ่มเติม เพื่อกางอะไหล่"
           defaultOpen={true}
         >
-          <div className="space-y-3">
+          <div className="space-y-2">
             {filtered.map((u) => (
               <MachineCard
                 key={u.id}
@@ -1035,6 +1035,7 @@ function SnView({
           </div>
         </CollapsibleSection>
       )}
+
 
     </div>
   );
