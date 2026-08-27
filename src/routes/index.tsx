@@ -1065,28 +1065,24 @@ function MachineCard({
     ? `${unit.compressor_models.brands?.name ?? ""} ${unit.compressor_models.name}`.trim()
     : "-";
   return (
-    <Card>
+    <Card id={`machine-${unit.id}`} className="overflow-hidden">
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-4 text-left transition-colors hover:bg-accent/40"
+        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-accent/40"
       >
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-lg font-semibold tracking-tight">{unit.serial_number}</span>
-            {(unit as any).status && (
-              <Badge variant="secondary">{(unit as any).status}</Badge>
-            )}
-          </div>
-          <div className="truncate text-sm text-muted-foreground">
-            {model} • {unit.customers?.name ?? "-"} • อะไหล่ {unit.machine_parts?.length ?? 0} รายการ
-          </div>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <span className="truncate text-sm font-semibold">{unit.customers?.name ?? "-"}</span>
+          <Badge variant="outline" className="shrink-0 font-mono text-xs">
+            {unit.serial_number}
+          </Badge>
         </div>
-        <Badge variant="outline" className="shrink-0 gap-1 rounded-full px-3 py-1.5 text-sm">
-          {open ? "ซ่อน" : "ดูอะไหล่"}
+        <span className="flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
+          {open ? "👁️ ซ่อนข้อมูล" : "👁️ ดูเพิ่มเติม"}
           <ChevronDown className={"h-4 w-4 transition-transform " + (open ? "rotate-180" : "")} />
-        </Badge>
+        </span>
       </button>
+
       {open && (
         <CardContent id={`print-${unit.id}`} className="space-y-4 border-t pt-4">
           <div className="no-print flex flex-wrap gap-2">
