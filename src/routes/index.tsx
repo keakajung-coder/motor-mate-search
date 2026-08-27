@@ -17,6 +17,8 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkOrderDialog } from "@/components/WorkOrderDialog";
 import { TroubleshootPanel } from "@/components/TroubleshootPanel";
+import { PartsAlertPanel } from "@/components/PartsAlertPanel";
+import { SmartSearchDialog } from "@/components/SmartSearchDialog";
 import { AdminLockButton } from "@/components/AccessGate";
 import {
   CalendarDays,
