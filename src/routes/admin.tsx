@@ -903,7 +903,11 @@ function MachinesTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="order-0">
+        <StatsPanel refreshKey={units.length} />
+      </div>
       {/* แถวที่ 1 — ช่องค้นหาเต็มความกว้าง */}
+
       <div className="order-1 w-full rounded-xl border bg-card p-3 shadow-sm">
         <SmartSearchBox
           value={q}
