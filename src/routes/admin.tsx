@@ -758,7 +758,11 @@ function MachinesTab() {
       province: u.province ?? "",
       seller: u.seller ?? "",
       status: u.status ?? "",
+      warranty_end: u.warranty_end ?? "",
+      contract_service: !!u.contract_service,
+      data_complete: !!u.data_complete,
       note: u.note ?? "",
+
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
