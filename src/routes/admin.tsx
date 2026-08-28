@@ -687,7 +687,11 @@ function MachinesTab() {
     province: "",
     seller: "",
     status: "",
+    warranty_end: "",
+    contract_service: false,
+    data_complete: false,
     note: "",
+
   };
   const formHistory = useUndoable(empty);
   const form = formHistory.value;
