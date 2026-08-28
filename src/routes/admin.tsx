@@ -1255,10 +1255,51 @@ function MachinesTab() {
                 ))}
               </div>
             </div>
+            <div>
+              <Label>วันสิ้นสุดการรับประกัน</Label>
+              <Input
+                type="date"
+                value={form.warranty_end}
+                onChange={(e) => setForm({ ...form, warranty_end: e.target.value })}
+              />
+            </div>
+            <div className="flex items-end">
+              <label className="flex w-full cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={form.contract_service}
+                  onChange={(e) => setForm({ ...form, contract_service: e.target.checked })}
+                />
+                ติดสัญญาบริการ (Contract Maintenance)
+              </label>
+            </div>
+            <div className="sm:col-span-2">
+              <label
+                className={
+                  "flex cursor-pointer items-center gap-3 rounded-xl border-2 px-3 py-3 text-sm font-semibold transition-colors " +
+                  (form.data_complete
+                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-700"
+                    : "border-orange-400 bg-orange-500/10 text-orange-700")
+                }
+              >
+                <input
+                  type="checkbox"
+                  className="h-5 w-5"
+                  checked={form.data_complete}
+                  onChange={(e) => setForm({ ...form, data_complete: e.target.checked })}
+                />
+                ✅ ตรวจสอบและลงข้อมูลครบถ้วนแล้ว (Data Completed)
+                <span className="ml-auto text-xs font-normal">
+                  {form.data_complete ? "การ์ดจะขึ้นป้ายสีเขียว" : "การ์ดจะขึ้นป้ายสีส้ม/แดง"}
+                </span>
+              </label>
+            </div>
             <div className="sm:col-span-2">
               <Label>หมายเหตุ</Label>
               <Textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
             </div>
+
           </div>
           {dupUnit && (
             <div className="flex flex-wrap items-center gap-2 rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
