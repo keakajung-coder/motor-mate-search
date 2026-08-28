@@ -19,6 +19,9 @@ import { WorkOrderDialog } from "@/components/WorkOrderDialog";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { SmartSearchDialog } from "@/components/SmartSearchDialog";
 import { AdminLockButton } from "@/components/AccessGate";
+import { useAccess } from "@/lib/access";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { isMachineComplete } from "@/lib/report";
 import {
   CalendarDays,
   Search,
@@ -37,6 +40,7 @@ import {
   Download,
   Smartphone,
   ChevronDown,
+  Trash2,
 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
@@ -811,6 +815,7 @@ type MachineResult = {
   compressor_models:
     | { id: string; name: string; brands: { id: string; name: string } | null }
     | null;
+  data_complete?: boolean | null;
   machine_parts: MachinePart[];
 };
 
@@ -843,7 +848,8 @@ function SnView({
       .from("machine_units")
       .select(
         `id, serial_number, install_date, daily_hours, note,
-         site_name, address_line, district, province, seller, status,
+         site_name, address_line, district, province, seller, status, data_complete,
+         warranty_end, contract_service,
          customers ( id, name, phone ),
          compressor_models ( id, name, brands ( id, name ) ),
          machine_parts (
@@ -1021,6 +1027,7 @@ function SnView({
                 key={u.id}
                 unit={u}
                 open={openIds.has(u.id)}
+                onDeleted={load}
                 onToggle={() =>
                   setOpenIds((prev) => {
                     const next = new Set(prev);
@@ -1044,13 +1051,17 @@ function MachineCard({
   unit,
   open,
   onToggle,
+  onDeleted,
 }: {
   unit: MachineResult;
   open: boolean;
   onToggle: () => void;
+  onDeleted?: () => void;
 }) {
+  const { isAdmin } = useAccess();
   const grouped = groupByCategory(unit.machine_parts ?? []);
   const [logs, setLogs] = useState<any[]>([]);
+  const [deleting, setDeleting] = useState(false);
   useEffect(() => {
     if (!open) return;
     supabase
@@ -1063,24 +1074,62 @@ function MachineCard({
   const model = unit.compressor_models
     ? `${unit.compressor_models.brands?.name ?? ""} ${unit.compressor_models.name}`.trim()
     : "-";
+  const complete = isMachineComplete(unit as any);
+
+  async function deleteUnit() {
+    setDeleting(true);
+    await supabase.from("machine_parts").delete().eq("machine_unit_id", unit.id);
+    const { error } = await supabase.from("machine_units").delete().eq("id", unit.id);
+    setDeleting(false);
+    if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
+    toast.success(`ลบเครื่อง S/N ${unit.serial_number} แล้ว`);
+    onDeleted?.();
+  }
+
   return (
     <Card id={`machine-${unit.id}`} className="overflow-hidden">
+      <div className="flex items-center gap-1 pr-2">
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-accent/40"
+        className="flex min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-accent/40"
       >
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <span className="truncate text-sm font-semibold">{unit.customers?.name ?? "-"}</span>
           <Badge variant="outline" className="shrink-0 font-mono text-xs">
             {unit.serial_number}
           </Badge>
+          <span
+            className={
+              "shrink-0 rounded-full px-2 py-0.5 text-[11px] " +
+              (complete
+                ? "bg-emerald-500/15 text-emerald-700"
+                : "bg-orange-500/15 text-orange-700")
+            }
+          >
+            {complete ? "✅ ข้อมูลครบถ้วน" : "⚠️ ข้อมูลยังไม่ครบ"}
+          </span>
         </div>
         <span className="flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
           {open ? "👁️ ซ่อนข้อมูล" : "👁️ ดูเพิ่มเติม"}
           <ChevronDown className={"h-4 w-4 transition-transform " + (open ? "rotate-180" : "")} />
         </span>
       </button>
+      {isAdmin && (
+        <ConfirmButton
+          variant="ghost"
+          size="icon"
+          className="shrink-0 text-destructive hover:bg-destructive/10"
+          title={`ลบข้อมูลเครื่องจักรนี้ (S/N ${unit.serial_number})?`}
+          description="ระบบจะลบหมายเลขเครื่องนี้และรายการอะไหล่ทั้งหมดออกจากฐานข้อมูลถาวร ย้อนกลับไม่ได้"
+          confirmText="ยืนยันลบถาวร"
+          onConfirm={deleteUnit}
+        >
+          {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+        </ConfirmButton>
+      )}
+      </div>
+
 
       {open && (
         <CardContent id={`print-${unit.id}`} className="space-y-4 border-t pt-4">

@@ -419,22 +419,11 @@ export const THAI_PROVINCES = [
 ];
 
 /** ตรวจว่าเครื่องลงข้อมูลครบถ้วนหรือยัง */
-export function isMachineComplete(u: {
-  serial_number?: string | null;
-  model_id?: string | null;
-  customer_id?: string | null;
-  install_date?: string | null;
-  daily_hours?: number | null;
-  seller?: string | null;
-  status?: string | null;
-}): boolean {
-  return Boolean(
-    u.serial_number?.trim() &&
-      u.model_id &&
-      u.customer_id &&
-      u.install_date &&
-      u.daily_hours != null &&
-      (u.seller ?? "").trim() &&
-      (u.status ?? "").trim()
-  );
+/**
+ * ความครบถ้วนของข้อมูลเครื่อง = แอดมินติ๊ก "ตรวจสอบและลงข้อมูลครบถ้วนแล้ว"
+ * (ป้ายเขียว = ติ๊กแล้ว / ป้ายส้ม-แดง = ยังไม่ติ๊ก)
+ */
+export function isMachineComplete(u: { data_complete?: boolean | null }): boolean {
+  return Boolean(u?.data_complete);
 }
+
