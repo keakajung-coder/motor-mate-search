@@ -292,6 +292,7 @@ export type Database = {
       machine_units: {
         Row: {
           address_line: string | null
+          contract_service: boolean
           created_at: string | null
           customer_id: string | null
           daily_hours: number | null
@@ -307,9 +308,11 @@ export type Database = {
           site_name: string | null
           status: string | null
           updated_at: string | null
+          warranty_end: string | null
         }
         Insert: {
           address_line?: string | null
+          contract_service?: boolean
           created_at?: string | null
           customer_id?: string | null
           daily_hours?: number | null
@@ -325,9 +328,11 @@ export type Database = {
           site_name?: string | null
           status?: string | null
           updated_at?: string | null
+          warranty_end?: string | null
         }
         Update: {
           address_line?: string | null
+          contract_service?: boolean
           created_at?: string | null
           customer_id?: string | null
           daily_hours?: number | null
@@ -343,6 +348,7 @@ export type Database = {
           site_name?: string | null
           status?: string | null
           updated_at?: string | null
+          warranty_end?: string | null
         }
         Relationships: [
           {
