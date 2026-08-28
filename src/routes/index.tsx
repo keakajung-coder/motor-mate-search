@@ -19,6 +19,9 @@ import { WorkOrderDialog } from "@/components/WorkOrderDialog";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { SmartSearchDialog } from "@/components/SmartSearchDialog";
 import { AdminLockButton } from "@/components/AccessGate";
+import { useAccess } from "@/lib/access";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { isMachineComplete } from "@/lib/report";
 import {
   CalendarDays,
   Search,
@@ -37,6 +40,7 @@ import {
   Download,
   Smartphone,
   ChevronDown,
+  Trash2,
 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
@@ -811,6 +815,7 @@ type MachineResult = {
   compressor_models:
     | { id: string; name: string; brands: { id: string; name: string } | null }
     | null;
+  data_complete?: boolean | null;
   machine_parts: MachinePart[];
 };
 
@@ -843,7 +848,8 @@ function SnView({
       .from("machine_units")
       .select(
         `id, serial_number, install_date, daily_hours, note,
-         site_name, address_line, district, province, seller, status,
+         site_name, address_line, district, province, seller, status, data_complete,
+         warranty_end, contract_service,
          customers ( id, name, phone ),
          compressor_models ( id, name, brands ( id, name ) ),
          machine_parts (
@@ -1021,6 +1027,7 @@ function SnView({
                 key={u.id}
                 unit={u}
                 open={openIds.has(u.id)}
+                onDeleted={load}
                 onToggle={() =>
                   setOpenIds((prev) => {
                     const next = new Set(prev);
