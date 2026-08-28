@@ -35,6 +35,8 @@ import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { SmartSearchBox } from "@/components/SmartSearchBox";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { TroubleshootTab } from "@/components/admin/TroubleshootTab";
+import { StatsPanel } from "@/components/admin/StatsPanel";
+
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 
