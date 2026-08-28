@@ -825,7 +825,11 @@ function MachinesTab() {
         province: form.province.trim() || null,
         seller: form.seller.trim() || null,
         status: form.status.trim() || null,
+        warranty_end: form.warranty_end || null,
+        contract_service: !!form.contract_service,
+        data_complete: !!form.data_complete,
         note: form.note || null,
+
       };
 
       if (form.id) {
