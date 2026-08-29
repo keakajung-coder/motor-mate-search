@@ -45,11 +45,14 @@ import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 
 
 export const Route = createFileRoute("/planner")({
-  validateSearch: (search: Record<string, unknown>): { sn?: string; customer?: string; job?: string } => {
-    const out: { sn?: string; customer?: string; job?: string } = {};
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { sn?: string; customer?: string; job?: string; date?: string } => {
+    const out: { sn?: string; customer?: string; job?: string; date?: string } = {};
     if (typeof search.sn === "string") out.sn = search.sn;
     if (typeof search.customer === "string") out.customer = search.customer;
     if (typeof search.job === "string") out.job = search.job;
+    if (typeof search.date === "string") out.date = search.date;
     return out;
   },
 
