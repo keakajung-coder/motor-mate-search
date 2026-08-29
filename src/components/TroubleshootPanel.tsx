@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { Search, Stethoscope, Wrench, SendHorizontal, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyAdminQueue } from "@/lib/prefs";
 
 export type Issue = {
   id: string;
