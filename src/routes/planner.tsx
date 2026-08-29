@@ -45,11 +45,14 @@ import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 
 
 export const Route = createFileRoute("/planner")({
-  validateSearch: (search: Record<string, unknown>): { sn?: string; customer?: string; job?: string } => {
-    const out: { sn?: string; customer?: string; job?: string } = {};
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { sn?: string; customer?: string; job?: string; date?: string } => {
+    const out: { sn?: string; customer?: string; job?: string; date?: string } = {};
     if (typeof search.sn === "string") out.sn = search.sn;
     if (typeof search.customer === "string") out.customer = search.customer;
     if (typeof search.job === "string") out.job = search.job;
+    if (typeof search.date === "string") out.date = search.date;
     return out;
   },
 
@@ -204,6 +207,17 @@ function PlannerPage() {
     });
     navigate({ search: {}, replace: true });
   }, [search.sn, search.customer, search.job, navigate]);
+
+  // กระโดดไปยังวันนัดหมายที่ค้นเจอ (?date=YYYY-MM-DD) แล้วเปิดรายละเอียดงานวันนั้นทันที
+  useEffect(() => {
+    if (!search.date) return;
+    const d = new Date(search.date + "T00:00:00");
+    if (Number.isNaN(d.getTime())) return;
+    setCursor(d);
+    setView("day");
+    setDayDetail(search.date);
+    navigate({ search: {}, replace: true });
+  }, [search.date, navigate]);
 
 
 

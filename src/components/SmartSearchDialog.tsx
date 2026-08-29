@@ -269,26 +269,38 @@ export function SmartSearchDialog({
               <Empty />
             ) : (
               unitResults.map(({ u, score }) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => {
-                    onConfirm({ text: u.serial_number, seller, status });
-                    onOpenChange(false);
-                  }}
-                  className="block w-full rounded-lg bg-card px-3 py-2 text-left text-sm hover:bg-accent"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">{u.customers?.name ?? "-"}</span>
-                    <Badge variant="outline">{u.serial_number}</Badge>
-                    {score > 0 && <Badge variant="secondary">ใกล้เคียง</Badge>}
-                  </div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {[u.compressor_models?.brands?.name, u.compressor_models?.name, u.seller, u.status]
-                      .filter(Boolean)
-                      .join(" • ")}
-                  </div>
-                </button>
+                <div key={u.id} className="flex items-center gap-1 rounded-lg bg-card px-2 hover:bg-accent">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onConfirm({ text: u.serial_number, seller, status });
+                      onOpenChange(false);
+                    }}
+                    className="block min-w-0 flex-1 px-1 py-2 text-left text-sm"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">{u.customers?.name ?? "-"}</span>
+                      <Badge variant="outline">{u.serial_number}</Badge>
+                      {score > 0 && <Badge variant="secondary">ใกล้เคียง</Badge>}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {[u.compressor_models?.brands?.name, u.compressor_models?.name, u.seller, u.status]
+                        .filter(Boolean)
+                        .join(" • ")}
+                    </div>
+                  </button>
+                  <AdminRowActions
+                    editTo={{ to: "/admin", search: {} }}
+                    onEdit={() => onOpenChange(false)}
+                    onDelete={async () => {
+                      await supabase.from("machine_parts").delete().eq("machine_unit_id", u.id);
+                      const { error } = await supabase.from("machine_units").delete().eq("id", u.id);
+                      if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
+                      setUnits((rows) => rows.filter((r) => r.id !== u.id));
+                      toast.success("ลบเครื่องจักรนี้แล้ว");
+                    }}
+                  />
+                </div>
               ))
             )
           ) : mode === "planner" ? (
@@ -296,26 +308,38 @@ export function SmartSearchDialog({
               <Empty />
             ) : (
               apptResults.map((a) => (
-                <Link
-                  key={a.id}
-                  to="/planner"
-                  onClick={() => onOpenChange(false)}
-                  className="block rounded-lg bg-card px-3 py-2 text-sm hover:bg-accent"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{a.visit_date}</Badge>
-                    <span className="font-semibold">{a.customer_name ?? "-"}</span>
-                    {a.vehicle_plate && <Badge variant="secondary">{a.vehicle_plate}</Badge>}
-                  </div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {[a.service_type, a.serial_number, a.visit_time].filter(Boolean).join(" • ")}
-                  </div>
-                </Link>
+                <div key={a.id} className="flex items-center gap-1 rounded-lg bg-card px-2 hover:bg-accent">
+                  <Link
+                    to="/planner"
+                    search={{ date: a.visit_date }}
+                    onClick={() => onOpenChange(false)}
+                    className="block min-w-0 flex-1 px-1 py-2 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline">{a.visit_date}</Badge>
+                      <span className="font-semibold">{a.customer_name ?? "-"}</span>
+                      {a.vehicle_plate && <Badge variant="secondary">{a.vehicle_plate}</Badge>}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {[a.service_type, a.serial_number, a.visit_time].filter(Boolean).join(" • ")}
+                    </div>
+                  </Link>
+                  <AdminRowActions
+                    onEdit={() => onOpenChange(false)}
+                    editTo={{ to: "/planner", search: { date: a.visit_date } }}
+                    onDelete={async () => {
+                      const { error } = await supabase.from("appointments").delete().eq("id", a.id);
+                      if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
+                      setAppts((rows) => rows.filter((r) => r.id !== a.id));
+                      toast.success("ลบนัดหมายแล้ว");
+                    }}
+                  />
+                </div>
               ))
             )
           ) : issueResults.length === 0 ? (
-            <div className="px-3 py-4 text-sm text-muted-foreground">
-              ไม่พบอาการนี้ในคลัง — กด “ตกลง” เพื่อไปที่แผงอาการหน้าแรกและส่งต่อให้แอดมิน (AI ร่างคำตอบ)
+            <div className="space-y-2 px-3 py-4 text-sm text-muted-foreground">
+              ไม่พบอาการนี้ในคลัง — กดปุ่มด้านล่างเพื่อส่งเข้าคิวแอดมิน (AI ช่วยร่างคำตอบ)
             </div>
           ) : (
             issueResults.map((i) => (
@@ -336,6 +360,8 @@ export function SmartSearchDialog({
           )}
         </div>
 
+        {mode === "issue" && <ReportIssueButton title={kw} />}
+
         <AdminQuickAdd
           mode={mode}
           onAdded={(sn) => {
@@ -351,6 +377,71 @@ export function SmartSearchDialog({
 
 function Empty() {
   return <div className="px-3 py-4 text-sm text-muted-foreground">ไม่พบข้อมูลที่ตรงกับคำค้นหา</div>;
+}
+
+/** ส่งอาการเสียใหม่เข้าคิวแอดมินทันที (พร้อมเสียงบี๊บ + สั่น) */
+function ReportIssueButton({ title }: { title: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      variant="secondary"
+      className="w-full"
+      disabled={busy}
+      onClick={async () => {
+        const t = title.trim();
+        if (!t) return toast.error("พิมพ์อาการเสียก่อนส่ง");
+        setBusy(true);
+        const { error } = await supabase
+          .from("troubleshooting_issues")
+          .insert({ title: t, status: "pending" });
+        setBusy(false);
+        if (error) return toast.error("ส่งไม่สำเร็จ: " + error.message);
+        notifyAdminQueue();
+        toast.success("ส่งปัญหาเข้าคิวแอดมินแล้ว");
+      }}
+    >
+      {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <SendHorizontal className="mr-1 h-4 w-4" />}
+      📨 ส่งปัญหา / แจ้งอาการเสียใหม่ เข้าคิวแอดมิน
+    </Button>
+  );
+}
+
+/** ปุ่มไอคอนเล็ก แก้ไข/ลบ — แสดงเฉพาะแอดมิน (ปลดล็อกด้วยรหัส 1234) */
+function AdminRowActions({
+  editTo,
+  onEdit,
+  onDelete,
+}: {
+  editTo: { to: string; search?: Record<string, unknown> };
+  onEdit?: () => void;
+  onDelete: () => void | Promise<void>;
+}) {
+  const { isAdmin } = useAccess();
+  if (!isAdmin) return null;
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <Link
+        to={editTo.to as any}
+        search={(editTo.search ?? {}) as any}
+        onClick={onEdit}
+        title="แก้ไข"
+        className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <Pencil className="h-4 w-4" />
+      </Link>
+      <ConfirmButton
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-destructive"
+        title="ยืนยันการลบ"
+        description="ต้องการลบรายการนี้ออกจากระบบถาวรหรือไม่?"
+        confirmText="ลบถาวร"
+        onConfirm={onDelete}
+      >
+        <X className="h-4 w-4" />
+      </ConfirmButton>
+    </div>
+  );
 }
 
 /** แอดมินพิมพ์เพิ่มข้อมูลใหม่ได้จากในป๊อปอัปค้นหา (ซิงก์เข้าฐานข้อมูลเดียวกับหน้าจัดการข้อมูล) */
