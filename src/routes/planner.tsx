@@ -208,6 +208,17 @@ function PlannerPage() {
     navigate({ search: {}, replace: true });
   }, [search.sn, search.customer, search.job, navigate]);
 
+  // กระโดดไปยังวันนัดหมายที่ค้นเจอ (?date=YYYY-MM-DD) แล้วเปิดรายละเอียดงานวันนั้นทันที
+  useEffect(() => {
+    if (!search.date) return;
+    const d = new Date(search.date + "T00:00:00");
+    if (Number.isNaN(d.getTime())) return;
+    setCursor(d);
+    setView("day");
+    setDayDetail(search.date);
+    navigate({ search: {}, replace: true });
+  }, [search.date, navigate]);
+
 
 
 
