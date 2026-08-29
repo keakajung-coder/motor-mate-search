@@ -113,6 +113,9 @@ function HomePage() {
           <ShareAppButton />
           <AdminLockButton />
         </div>
+        <div className="mt-2">
+          <AlertToggles />
+        </div>
       </div>
 
       {/* ===== แถวที่ 2: ปุ่มด่วนเพิ่มเครื่องใหม่ ===== */}
