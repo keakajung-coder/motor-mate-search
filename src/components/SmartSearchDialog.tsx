@@ -360,6 +360,8 @@ export function SmartSearchDialog({
           )}
         </div>
 
+        {mode === "issue" && <ReportIssueButton title={kw} />}
+
         <AdminQuickAdd
           mode={mode}
           onAdded={(sn) => {
