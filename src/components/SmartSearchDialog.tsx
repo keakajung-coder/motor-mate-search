@@ -13,6 +13,9 @@ import {
 import { Search, Package, CalendarDays, Brain, Loader2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useIssues } from "@/components/TroubleshootPanel";
+import { useAccess } from "@/lib/access";
+import { ensureDirectoryEntries } from "@/lib/directory";
+import { toast } from "sonner";
 
 type Mode = "parts" | "planner" | "issue";
 
@@ -332,6 +335,15 @@ export function SmartSearchDialog({
             ))
           )}
         </div>
+
+        <AdminQuickAdd
+          mode={mode}
+          onAdded={(sn) => {
+            setUnits([]);
+            if (sn) setText(sn);
+          }}
+        />
+
       </DialogContent>
     </Dialog>
   );
@@ -340,6 +352,97 @@ export function SmartSearchDialog({
 function Empty() {
   return <div className="px-3 py-4 text-sm text-muted-foreground">ไม่พบข้อมูลที่ตรงกับคำค้นหา</div>;
 }
+
+/** แอดมินพิมพ์เพิ่มข้อมูลใหม่ได้จากในป๊อปอัปค้นหา (ซิงก์เข้าฐานข้อมูลเดียวกับหน้าจัดการข้อมูล) */
+function AdminQuickAdd({
+  mode,
+  onAdded,
+}: {
+  mode: Mode;
+  onAdded: (serial?: string) => void;
+}) {
+  const { isAdmin } = useAccess();
+  const [open, setOpen] = useState(false);
+  const [customer, setCustomer] = useState("");
+  const [serial, setSerial] = useState("");
+  const [phone, setPhone] = useState("");
+  const [partName, setPartName] = useState("");
+  const [partNumber, setPartNumber] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (!isAdmin || mode !== "parts") return null;
+
+  async function submit() {
+    if (!customer.trim() && !serial.trim() && !partNumber.trim() && !partName.trim()) {
+      toast.error("กรอกข้อมูลอย่างน้อย 1 ช่อง");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (customer.trim() || serial.trim()) {
+        await ensureDirectoryEntries({
+          customer_name: customer.trim() || null,
+          contact_phone: phone.trim() || null,
+          serial_number: serial.trim() || null,
+        });
+      }
+      if (partNumber.trim() || partName.trim()) {
+        const pn = partNumber.trim() || partName.trim();
+        const { data: exist } = await supabase
+          .from("products")
+          .select("id")
+          .ilike("part_number", pn)
+          .maybeSingle();
+        if (!exist) {
+          const { error } = await supabase
+            .from("products")
+            .insert({ name: partName.trim() || pn, part_number: pn });
+          if (error) throw error;
+        }
+      }
+      toast.success("บันทึกข้อมูลใหม่เข้าระบบแล้ว");
+      onAdded(serial.trim() || customer.trim() || undefined);
+      setCustomer("");
+      setSerial("");
+      setPhone("");
+      setPartName("");
+      setPartNumber("");
+    } catch (e: any) {
+      toast.error("บันทึกไม่สำเร็จ: " + (e?.message ?? ""));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-dashed p-2">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full text-left text-xs font-medium text-primary"
+      >
+        {open ? "▾" : "▸"} ➕ แอดมิน: พิมพ์เพิ่มลูกค้า / เครื่องจักร / อะไหล่ ใหม่ที่นี่
+      </button>
+      {open && (
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <Input placeholder="ชื่อลูกค้าใหม่" value={customer} onChange={(e) => setCustomer(e.target.value)} />
+          <Input placeholder="เบอร์โทรลูกค้า" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input placeholder="S/N เครื่องใหม่" value={serial} onChange={(e) => setSerial(e.target.value)} />
+          <Input placeholder="ชื่ออะไหล่ใหม่" value={partName} onChange={(e) => setPartName(e.target.value)} />
+          <Input
+            placeholder="รหัสพาร์ท (Part No.)"
+            value={partNumber}
+            onChange={(e) => setPartNumber(e.target.value)}
+          />
+          <Button onClick={submit} disabled={busy}>
+            {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} บันทึกเข้าระบบ
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function Chip({
   active,
