@@ -379,6 +379,71 @@ function Empty() {
   return <div className="px-3 py-4 text-sm text-muted-foreground">ไม่พบข้อมูลที่ตรงกับคำค้นหา</div>;
 }
 
+/** ส่งอาการเสียใหม่เข้าคิวแอดมินทันที (พร้อมเสียงบี๊บ + สั่น) */
+function ReportIssueButton({ title }: { title: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      variant="secondary"
+      className="w-full"
+      disabled={busy}
+      onClick={async () => {
+        const t = title.trim();
+        if (!t) return toast.error("พิมพ์อาการเสียก่อนส่ง");
+        setBusy(true);
+        const { error } = await supabase
+          .from("troubleshooting_issues")
+          .insert({ title: t, status: "pending" });
+        setBusy(false);
+        if (error) return toast.error("ส่งไม่สำเร็จ: " + error.message);
+        notifyAdminQueue();
+        toast.success("ส่งปัญหาเข้าคิวแอดมินแล้ว");
+      }}
+    >
+      {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <SendHorizontal className="mr-1 h-4 w-4" />}
+      📨 ส่งปัญหา / แจ้งอาการเสียใหม่ เข้าคิวแอดมิน
+    </Button>
+  );
+}
+
+/** ปุ่มไอคอนเล็ก แก้ไข/ลบ — แสดงเฉพาะแอดมิน (ปลดล็อกด้วยรหัส 1234) */
+function AdminRowActions({
+  editTo,
+  onEdit,
+  onDelete,
+}: {
+  editTo: { to: string; search?: Record<string, unknown> };
+  onEdit?: () => void;
+  onDelete: () => void | Promise<void>;
+}) {
+  const { isAdmin } = useAccess();
+  if (!isAdmin) return null;
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <Link
+        to={editTo.to as any}
+        search={(editTo.search ?? {}) as any}
+        onClick={onEdit}
+        title="แก้ไข"
+        className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <Pencil className="h-4 w-4" />
+      </Link>
+      <ConfirmButton
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-destructive"
+        title="ยืนยันการลบ"
+        description="ต้องการลบรายการนี้ออกจากระบบถาวรหรือไม่?"
+        confirmText="ลบถาวร"
+        onConfirm={onDelete}
+      >
+        <X className="h-4 w-4" />
+      </ConfirmButton>
+    </div>
+  );
+}
+
 /** แอดมินพิมพ์เพิ่มข้อมูลใหม่ได้จากในป๊อปอัปค้นหา (ซิงก์เข้าฐานข้อมูลเดียวกับหน้าจัดการข้อมูล) */
 function AdminQuickAdd({
   mode,
