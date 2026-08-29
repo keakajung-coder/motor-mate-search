@@ -269,26 +269,38 @@ export function SmartSearchDialog({
               <Empty />
             ) : (
               unitResults.map(({ u, score }) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => {
-                    onConfirm({ text: u.serial_number, seller, status });
-                    onOpenChange(false);
-                  }}
-                  className="block w-full rounded-lg bg-card px-3 py-2 text-left text-sm hover:bg-accent"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">{u.customers?.name ?? "-"}</span>
-                    <Badge variant="outline">{u.serial_number}</Badge>
-                    {score > 0 && <Badge variant="secondary">ใกล้เคียง</Badge>}
-                  </div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {[u.compressor_models?.brands?.name, u.compressor_models?.name, u.seller, u.status]
-                      .filter(Boolean)
-                      .join(" • ")}
-                  </div>
-                </button>
+                <div key={u.id} className="flex items-center gap-1 rounded-lg bg-card px-2 hover:bg-accent">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onConfirm({ text: u.serial_number, seller, status });
+                      onOpenChange(false);
+                    }}
+                    className="block min-w-0 flex-1 px-1 py-2 text-left text-sm"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">{u.customers?.name ?? "-"}</span>
+                      <Badge variant="outline">{u.serial_number}</Badge>
+                      {score > 0 && <Badge variant="secondary">ใกล้เคียง</Badge>}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {[u.compressor_models?.brands?.name, u.compressor_models?.name, u.seller, u.status]
+                        .filter(Boolean)
+                        .join(" • ")}
+                    </div>
+                  </button>
+                  <AdminRowActions
+                    editTo={{ to: "/admin", search: {} }}
+                    onEdit={() => onOpenChange(false)}
+                    onDelete={async () => {
+                      await supabase.from("machine_parts").delete().eq("machine_unit_id", u.id);
+                      const { error } = await supabase.from("machine_units").delete().eq("id", u.id);
+                      if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
+                      setUnits((rows) => rows.filter((r) => r.id !== u.id));
+                      toast.success("ลบเครื่องจักรนี้แล้ว");
+                    }}
+                  />
+                </div>
               ))
             )
           ) : mode === "planner" ? (
