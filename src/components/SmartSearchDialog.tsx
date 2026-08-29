@@ -13,6 +13,9 @@ import {
 import { Search, Package, CalendarDays, Brain, Loader2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useIssues } from "@/components/TroubleshootPanel";
+import { useAccess } from "@/lib/access";
+import { ensureDirectoryEntries } from "@/lib/directory";
+import { toast } from "sonner";
 
 type Mode = "parts" | "planner" | "issue";
 
