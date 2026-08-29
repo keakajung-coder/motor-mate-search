@@ -296,26 +296,38 @@ export function SmartSearchDialog({
               <Empty />
             ) : (
               apptResults.map((a) => (
-                <Link
-                  key={a.id}
-                  to="/planner"
-                  onClick={() => onOpenChange(false)}
-                  className="block rounded-lg bg-card px-3 py-2 text-sm hover:bg-accent"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{a.visit_date}</Badge>
-                    <span className="font-semibold">{a.customer_name ?? "-"}</span>
-                    {a.vehicle_plate && <Badge variant="secondary">{a.vehicle_plate}</Badge>}
-                  </div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {[a.service_type, a.serial_number, a.visit_time].filter(Boolean).join(" • ")}
-                  </div>
-                </Link>
+                <div key={a.id} className="flex items-center gap-1 rounded-lg bg-card px-2 hover:bg-accent">
+                  <Link
+                    to="/planner"
+                    search={{ date: a.visit_date }}
+                    onClick={() => onOpenChange(false)}
+                    className="block min-w-0 flex-1 px-1 py-2 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline">{a.visit_date}</Badge>
+                      <span className="font-semibold">{a.customer_name ?? "-"}</span>
+                      {a.vehicle_plate && <Badge variant="secondary">{a.vehicle_plate}</Badge>}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {[a.service_type, a.serial_number, a.visit_time].filter(Boolean).join(" • ")}
+                    </div>
+                  </Link>
+                  <AdminRowActions
+                    onEdit={() => onOpenChange(false)}
+                    editTo={{ to: "/planner", search: { date: a.visit_date } }}
+                    onDelete={async () => {
+                      const { error } = await supabase.from("appointments").delete().eq("id", a.id);
+                      if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
+                      setAppts((rows) => rows.filter((r) => r.id !== a.id));
+                      toast.success("ลบนัดหมายแล้ว");
+                    }}
+                  />
+                </div>
               ))
             )
           ) : issueResults.length === 0 ? (
-            <div className="px-3 py-4 text-sm text-muted-foreground">
-              ไม่พบอาการนี้ในคลัง — กด “ตกลง” เพื่อไปที่แผงอาการหน้าแรกและส่งต่อให้แอดมิน (AI ร่างคำตอบ)
+            <div className="space-y-2 px-3 py-4 text-sm text-muted-foreground">
+              ไม่พบอาการนี้ในคลัง — กดปุ่มด้านล่างเพื่อส่งเข้าคิวแอดมิน (AI ช่วยร่างคำตอบ)
             </div>
           ) : (
             issueResults.map((i) => (
