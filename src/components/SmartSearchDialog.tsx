@@ -332,6 +332,15 @@ export function SmartSearchDialog({
             ))
           )}
         </div>
+
+        <AdminQuickAdd
+          mode={mode}
+          onAdded={(sn) => {
+            setUnits([]);
+            if (sn) setText(sn);
+          }}
+        />
+
       </DialogContent>
     </Dialog>
   );
