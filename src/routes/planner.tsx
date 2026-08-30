@@ -314,11 +314,25 @@ function PlannerPage() {
         </div>
       </header>
 
+      {/* Desktop: 2 คอลัมน์ (สถิติ/งาน ซ้าย · ปฏิทิน ขวา) / Mobile: 1 คอลัมน์บนลงล่าง */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+      <div className="space-y-5 lg:col-span-4">
       <FoldSection title="แผงสถิติภาพรวม">
         <StatsPanel appts={appts} pending={orders.length} />
       </FoldSection>
 
-      <Card>
+      {isAdmin && (
+        <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} >
+          <PendingOrders orders={orders} reload={load} />
+        </FoldSection>
+      )}
+
+      <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
+        <PartsAlertPanel withActions={isAdmin} />
+      </FoldSection>
+      </div>
+
+      <Card className="h-fit lg:col-span-8">
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -494,16 +508,7 @@ function PlannerPage() {
         </CardContent>
 
       </Card>
-
-      {isAdmin && (
-        <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} >
-          <PendingOrders orders={orders} reload={load} />
-        </FoldSection>
-      )}
-
-      <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
-        <PartsAlertPanel withActions={isAdmin} />
-      </FoldSection>
+      </div>
 
       {dayDetail && (
         <DayDetailDialog
@@ -595,7 +600,7 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
       {items.map((i) => (
         <div
           key={i.label}
@@ -832,7 +837,8 @@ function MonthGrid({
         <span className="ml-auto">แตะวันที่เพื่อดูคิวทั้งวัน{onPickDate ? " · แตะช่องว่างเพื่อเพิ่มงานด่วน" : ""}</span>
       </div>
       <VehicleLegend appts={appts} />
-      <div className="grid grid-cols-7 gap-1 text-xs">
+      <div className="overflow-x-auto pb-1">
+      <div className="grid min-w-[640px] grid-cols-7 gap-1 text-xs">
         {TH_DOW.map((d) => (
           <div key={d} className="py-1 text-center font-medium text-muted-foreground">
             {d}
@@ -902,6 +908,7 @@ function MonthGrid({
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );
