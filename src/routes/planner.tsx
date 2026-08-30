@@ -508,16 +508,7 @@ function PlannerPage() {
         </CardContent>
 
       </Card>
-
-      {isAdmin && (
-        <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} >
-          <PendingOrders orders={orders} reload={load} />
-        </FoldSection>
-      )}
-
-      <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
-        <PartsAlertPanel withActions={isAdmin} />
-      </FoldSection>
+      </div>
 
       {dayDetail && (
         <DayDetailDialog
