@@ -320,6 +320,16 @@ function PlannerPage() {
       <FoldSection title="แผงสถิติภาพรวม">
         <StatsPanel appts={appts} pending={orders.length} />
       </FoldSection>
+
+      {isAdmin && (
+        <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} >
+          <PendingOrders orders={orders} reload={load} />
+        </FoldSection>
+      )}
+
+      <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
+        <PartsAlertPanel withActions={isAdmin} />
+      </FoldSection>
       </div>
 
       <Card className="h-fit lg:col-span-8">
