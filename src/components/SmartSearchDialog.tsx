@@ -10,7 +10,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Search, Package, CalendarDays, Brain, Loader2 } from "lucide-react";
+import { Search, Package, CalendarDays, Brain, Loader2, Pencil, X, SendHorizontal } from "lucide-react";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { notifyAdminQueue } from "@/lib/prefs";
 import { Link } from "@tanstack/react-router";
 import { useIssues } from "@/components/TroubleshootPanel";
 import { useAccess } from "@/lib/access";
