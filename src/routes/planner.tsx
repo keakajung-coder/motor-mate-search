@@ -600,7 +600,7 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
       {items.map((i) => (
         <div
           key={i.label}
@@ -837,7 +837,8 @@ function MonthGrid({
         <span className="ml-auto">แตะวันที่เพื่อดูคิวทั้งวัน{onPickDate ? " · แตะช่องว่างเพื่อเพิ่มงานด่วน" : ""}</span>
       </div>
       <VehicleLegend appts={appts} />
-      <div className="grid grid-cols-7 gap-1 text-xs">
+      <div className="overflow-x-auto pb-1">
+      <div className="grid min-w-[640px] grid-cols-7 gap-1 text-xs">
         {TH_DOW.map((d) => (
           <div key={d} className="py-1 text-center font-medium text-muted-foreground">
             {d}
