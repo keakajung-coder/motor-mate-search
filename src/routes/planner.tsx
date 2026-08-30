@@ -314,11 +314,15 @@ function PlannerPage() {
         </div>
       </header>
 
+      {/* Desktop: 2 คอลัมน์ (สถิติ/งาน ซ้าย · ปฏิทิน ขวา) / Mobile: 1 คอลัมน์บนลงล่าง */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+      <div className="space-y-5 lg:col-span-4">
       <FoldSection title="แผงสถิติภาพรวม">
         <StatsPanel appts={appts} pending={orders.length} />
       </FoldSection>
+      </div>
 
-      <Card>
+      <Card className="h-fit lg:col-span-8">
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2 text-base">
