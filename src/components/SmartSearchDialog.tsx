@@ -10,7 +10,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Search, Package, CalendarDays, Brain, Loader2 } from "lucide-react";
+import { Search, Package, CalendarDays, Brain, Loader2, Pencil, X, SendHorizontal } from "lucide-react";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { notifyAdminQueue } from "@/lib/prefs";
 import { Link } from "@tanstack/react-router";
 import { useIssues } from "@/components/TroubleshootPanel";
 import { useAccess } from "@/lib/access";
@@ -295,7 +297,7 @@ export function SmartSearchDialog({
                     onDelete={async () => {
                       await supabase.from("machine_parts").delete().eq("machine_unit_id", u.id);
                       const { error } = await supabase.from("machine_units").delete().eq("id", u.id);
-                      if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
+                      if (error) { toast.error("ลบไม่สำเร็จ: " + error.message); return; }
                       setUnits((rows) => rows.filter((r) => r.id !== u.id));
                       toast.success("ลบเครื่องจักรนี้แล้ว");
                     }}
@@ -329,7 +331,7 @@ export function SmartSearchDialog({
                     editTo={{ to: "/planner", search: { date: a.visit_date } }}
                     onDelete={async () => {
                       const { error } = await supabase.from("appointments").delete().eq("id", a.id);
-                      if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
+                      if (error) { toast.error("ลบไม่สำเร็จ: " + error.message); return; }
                       setAppts((rows) => rows.filter((r) => r.id !== a.id));
                       toast.success("ลบนัดหมายแล้ว");
                     }}
