@@ -297,7 +297,7 @@ export function SmartSearchDialog({
                     onDelete={async () => {
                       await supabase.from("machine_parts").delete().eq("machine_unit_id", u.id);
                       const { error } = await supabase.from("machine_units").delete().eq("id", u.id);
-                      if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
+                      if (error) { toast.error("ลบไม่สำเร็จ: " + error.message); return; }
                       setUnits((rows) => rows.filter((r) => r.id !== u.id));
                       toast.success("ลบเครื่องจักรนี้แล้ว");
                     }}
@@ -331,7 +331,7 @@ export function SmartSearchDialog({
                     editTo={{ to: "/planner", search: { date: a.visit_date } }}
                     onDelete={async () => {
                       const { error } = await supabase.from("appointments").delete().eq("id", a.id);
-                      if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
+                      if (error) { toast.error("ลบไม่สำเร็จ: " + error.message); return; }
                       setAppts((rows) => rows.filter((r) => r.id !== a.id));
                       toast.success("ลบนัดหมายแล้ว");
                     }}
