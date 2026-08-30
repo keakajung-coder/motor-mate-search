@@ -98,7 +98,7 @@ export function AlertToggles() {
   const online = useOnlineStatus();
 
   const cls = (on: boolean) =>
-    "rounded-full border px-3 py-1 text-xs transition-colors " +
+    "rounded-full border px-2 py-1 text-xs transition-colors sm:px-3 sm:text-sm " +
     (on ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent");
 
   return (
@@ -123,7 +123,7 @@ export function AlertToggles() {
       >
         📳 สั่น: {vibrate ? "เปิด" : "ปิด"}
       </button>
-      <span className="text-xs text-muted-foreground">{online ? "🟢 ออนไลน์" : "🟠 ออฟไลน์"}</span>
+      <span className="text-xs text-muted-foreground sm:text-sm">{online ? "🟢 ออนไลน์" : "🟠 ออฟไลน์"}</span>
     </div>
   );
 }
