@@ -909,6 +909,7 @@ function MonthGrid({
           );
         })}
       </div>
+      </div>
     </div>
   );
 }
