@@ -79,17 +79,17 @@ function AdminPage() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">จัดการข้อมูล</h1>
       <Tabs defaultValue="machines">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="machines">S/N (หมายเลขเครื่อง)</TabsTrigger>
-          <TabsTrigger value="customers">ลูกค้า</TabsTrigger>
-          <TabsTrigger value="products">สินค้า/อะไหล่</TabsTrigger>
-          <TabsTrigger value="brands">ยี่ห้อ</TabsTrigger>
-          <TabsTrigger value="models">รุ่นเครื่อง</TabsTrigger>
-          <TabsTrigger value="staff">ช่าง / รถ</TabsTrigger>
-          <TabsTrigger value="lists">ผู้ขาย / สถานะ</TabsTrigger>
-          <TabsTrigger value="issues">คลังอาการเสีย (AI)</TabsTrigger>
-          <TabsTrigger value="io">นำเข้า / ส่งออก</TabsTrigger>
-          <TabsTrigger value="security">ความปลอดภัย</TabsTrigger>
+        <TabsList className="w-full flex overflow-x-auto whitespace-nowrap scrollbar-none">
+          <TabsTrigger value="machines" className="shrink-0">S/N (หมายเลขเครื่อง)</TabsTrigger>
+          <TabsTrigger value="customers" className="shrink-0">ลูกค้า</TabsTrigger>
+          <TabsTrigger value="products" className="shrink-0">สินค้า/อะไหล่</TabsTrigger>
+          <TabsTrigger value="brands" className="shrink-0">ยี่ห้อ</TabsTrigger>
+          <TabsTrigger value="models" className="shrink-0">รุ่นเครื่อง</TabsTrigger>
+          <TabsTrigger value="staff" className="shrink-0">ช่าง / รถ</TabsTrigger>
+          <TabsTrigger value="lists" className="shrink-0">ผู้ขาย / สถานะ</TabsTrigger>
+          <TabsTrigger value="issues" className="shrink-0">คลังอาการเสีย (AI)</TabsTrigger>
+          <TabsTrigger value="io" className="shrink-0">นำเข้า / ส่งออก</TabsTrigger>
+          <TabsTrigger value="security" className="shrink-0">ความปลอดภัย</TabsTrigger>
         </TabsList>
         <TabsContent value="machines"><MachinesTab /></TabsContent>
         <TabsContent value="customers"><CustomersTab /></TabsContent>
@@ -905,7 +905,7 @@ function MachinesTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="order-0">
+      <div className="order-0 hidden md:block">
         <StatsPanel refreshKey={units.length} />
       </div>
       {/* แถวที่ 1 — ช่องค้นหาเต็มความกว้าง */}
