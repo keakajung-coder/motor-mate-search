@@ -160,6 +160,14 @@
   #print-area, #print-area * { visibility: visible !important; }
   #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 16px; }
   .no-print { display: none !important; }
-  @page { size: A4; margin: 12mm; }
+@page { size: A4; margin: 12mm; }
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
