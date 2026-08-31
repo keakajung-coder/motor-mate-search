@@ -190,6 +190,8 @@ function PlannerPage() {
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [dayDetail, setDayDetail] = useState<string | null>(null);
   const monthRef = useRef<HTMLDivElement>(null);
+  const weekRef = useRef<HTMLDivElement>(null);
+  const dayRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<"" | "image" | "pdf">("");
 
   const search = Route.useSearch();
@@ -265,23 +267,31 @@ function PlannerPage() {
   };
 
   const monthName = `${TH_MONTHS[cursor.getMonth()]}-${cursor.getFullYear() + 543}`;
+  const viewLabel = view === "month" ? "รายเดือน" : view === "week" ? "รายสัปดาห์" : "รายวัน";
+  const fileLabel = view === "month" ? monthName : view === "week" ? `สัปดาห์-${iso(startOfWeek(cursor))}` : iso(cursor);
+  const activeRef = view === "month" ? monthRef : view === "week" ? weekRef : dayRef;
 
-  /** บันทึกตารางรายเดือนเป็นไฟล์ภาพ หรือ PDF เต็มใบ */
-  const exportMonth = async (kind: "image" | "pdf") => {
-    const el = monthRef.current;
+  /** บันทึกตารางปฏิทินเป็นไฟล์ภาพ หรือ PDF เต็มใบ */
+  const exportView = async (
+    kind: "image" | "pdf",
+    ref: React.RefObject<HTMLDivElement | null>,
+    label: string,
+    fileLabel: string
+  ) => {
+    const el = ref.current;
     if (!el) return;
     setExporting(kind);
     try {
       if (kind === "pdf") {
         const blob = await elementToPdfBlobPaged(el, 1, { orientation: "landscape" });
-        await saveFile(blob, `ตารางงาน-${monthName}.pdf`);
+        await saveFile(blob, `ตารางงาน-${fileLabel}.pdf`);
       } else {
         const { toJpeg } = await import("html-to-image");
         const dataUrl = await toJpeg(el, { backgroundColor: "#ffffff", cacheBust: true, pixelRatio: 2, quality: 0.9 });
         const blob = await (await fetch(dataUrl)).blob();
-        await saveFile(blob, `ตารางงาน-${monthName}.jpg`);
+        await saveFile(blob, `ตารางงาน-${fileLabel}.jpg`);
       }
-      toast.success("บันทึกตารางรายเดือนเรียบร้อย");
+      toast.success(`บันทึกตาราง${label}เรียบร้อย`);
     } catch (e) {
       toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
     } finally {
@@ -298,7 +308,7 @@ function PlannerPage() {
         : formatDate(iso(cursor));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 p-2 sm:p-4 pb-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">ปฏิทินนัดหมายบริการ</h1>
@@ -317,9 +327,11 @@ function PlannerPage() {
       {/* Desktop: 2 คอลัมน์ (สถิติ/งาน ซ้าย · ปฏิทิน ขวา) / Mobile: 1 คอลัมน์บนลงล่าง */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
       <div className="space-y-5 lg:col-span-4">
-      <FoldSection title="แผงสถิติภาพรวม">
-        <StatsPanel appts={appts} pending={orders.length} />
-      </FoldSection>
+      <div className="hidden md:block">
+        <FoldSection title="แผงสถิติภาพรวม">
+          <StatsPanel appts={appts} pending={orders.length} />
+        </FoldSection>
+      </div>
 
       {isAdmin && (
         <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} >
@@ -351,12 +363,12 @@ function PlannerPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="grid flex-1 grid-cols-3 gap-1 sm:flex sm:flex-none">
+            <div className="flex overflow-x-auto whitespace-nowrap scrollbar-none mb-4">
               {(["month", "week", "day"] as const).map((v) => (
                 <Button
                   key={v}
                   size="sm"
-                  className="w-full sm:w-auto"
+                  className="shrink-0"
                   variant={view === v ? "default" : "outline"}
                   onClick={() => setView(v)}
                 >
@@ -415,26 +427,26 @@ function PlannerPage() {
               <option value="customer">เรียง: ชื่อลูกค้า ก-ฮ</option>
               <option value="staff">เรียง: ชื่อช่าง ก-ฮ</option>
             </select>
-            {view === "month" && (
+            {(view === "month" || view === "week" || view === "day") && (
               <>
                 <Button
                   size="sm"
                   variant="secondary"
                   disabled={exporting !== ""}
-                  onClick={() => exportMonth("image")}
+                  onClick={() => exportView("image", activeRef, viewLabel, fileLabel)}
                 >
                   {exporting === "image" ? (
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                   ) : (
                     <Camera className="mr-1 h-4 w-4" />
                   )}
-                  📸 บันทึกตารางรายเดือน
+                  📷 📸 บันทึกตาราง{viewLabel}
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={exporting !== ""}
-                  onClick={() => exportMonth("pdf")}
+                  onClick={() => exportView("pdf", activeRef, viewLabel, fileLabel)}
                 >
                   {exporting === "pdf" ? (
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -478,20 +490,22 @@ function PlannerPage() {
             </div>
           ) : (
             <div className="space-y-5">
-              <TimeGrid
-                days={
-                  view === "week"
-                    ? Array.from({ length: 7 }, (_, i) => iso(addDays(startOfWeek(cursor), i)))
-                    : [iso(cursor)]
-                }
-                appts={visible}
-                onPick={(a) => setEditing(a)}
-                onPickSlot={
-                  isAdmin
-                    ? (d, t) => setEditing({ ...newAppointment(d), visit_time: t })
-                    : undefined
-                }
-              />
+              <div ref={view === "week" ? weekRef : dayRef} className="rounded-xl bg-card p-2">
+                <TimeGrid
+                  days={
+                    view === "week"
+                      ? Array.from({ length: 7 }, (_, i) => iso(addDays(startOfWeek(cursor), i)))
+                      : [iso(cursor)]
+                  }
+                  appts={visible}
+                  onPick={(a) => setEditing(a)}
+                  onPickSlot={
+                    isAdmin
+                      ? (d, t) => setEditing({ ...newAppointment(d), visit_time: t })
+                      : undefined
+                  }
+                />
+              </div>
               {view === "day" && (
                 <DayList
                   days={[iso(cursor)]}
