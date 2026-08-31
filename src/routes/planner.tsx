@@ -267,6 +267,9 @@ function PlannerPage() {
   };
 
   const monthName = `${TH_MONTHS[cursor.getMonth()]}-${cursor.getFullYear() + 543}`;
+  const viewLabel = view === "month" ? "รายเดือน" : view === "week" ? "รายสัปดาห์" : "รายวัน";
+  const fileLabel = view === "month" ? monthName : view === "week" ? `สัปดาห์-${iso(startOfWeek(cursor))}` : iso(cursor);
+  const activeRef = view === "month" ? monthRef : view === "week" ? weekRef : dayRef;
 
   /** บันทึกตารางปฏิทินเป็นไฟล์ภาพ หรือ PDF เต็มใบ */
   const exportView = async (
