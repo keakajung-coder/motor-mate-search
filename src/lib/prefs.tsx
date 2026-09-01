@@ -46,10 +46,32 @@ export function buzz(pattern: number | number[] = 120) {
   }
 }
 
+/** เสียงบี๊บสั้น 3 ครั้งติดกัน */
+export function tripleBeep() {
+  beep();
+  setTimeout(() => beep(), 180);
+  setTimeout(() => beep(), 360);
+}
+
+/** สั่น 3 จังหวะ จังหวะละ ~2.5 วินาที */
+export function tripleBuzz() {
+  buzz([2500, 500, 2500, 500, 2500]);
+}
+
+/** แจ้งเตือนเต็มรูปแบบ: บี๊บ 3 ครั้ง + สั่น 3 จังหวะ */
+export function alertPulse() {
+  tripleBeep();
+  tripleBuzz();
+}
+
 /** แจ้งเตือนเมื่อมีปัญหาใหม่เข้าคิวแอดมิน */
 export function notifyAdminQueue() {
-  beep();
-  buzz([120, 60, 120]);
+  alertPulse();
+}
+
+/** แจ้งเตือนผู้ใช้เมื่อแอดมินตอบอาการที่ส่งไป */
+export function notifyUserReply() {
+  alertPulse();
 }
 
 export function useAlertPrefs() {
