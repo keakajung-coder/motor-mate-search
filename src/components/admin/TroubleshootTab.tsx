@@ -115,6 +115,7 @@ function IssueEditor({ issue, onSaved }: { issue: Issue; onSaved: () => void }) 
         check_steps: form.check_steps.trim() || null,
         fix_steps: form.fix_steps.trim() || null,
         status: publish ? "published" : issue.status,
+        answered_at: publish ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", issue.id);

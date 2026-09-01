@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Search, Package, CalendarDays, Brain, Loader2, Pencil, X, SendHorizontal } from "lucide-react";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { rememberMyIssue } from "@/lib/issue-watch";
 import { notifyAdminQueue } from "@/lib/prefs";
 import { Link } from "@tanstack/react-router";
 import { useIssues } from "@/components/TroubleshootPanel";
@@ -393,11 +394,14 @@ function ReportIssueButton({ title }: { title: string }) {
         const t = title.trim();
         if (!t) return toast.error("พิมพ์อาการเสียก่อนส่ง");
         setBusy(true);
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("troubleshooting_issues")
-          .insert({ title: t, status: "pending" });
+          .insert({ title: t, status: "pending" })
+          .select("id")
+          .single();
         setBusy(false);
         if (error) return toast.error("ส่งไม่สำเร็จ: " + error.message);
+        if (data?.id) rememberMyIssue(data.id);
         notifyAdminQueue();
         toast.success("ส่งปัญหาเข้าคิวแอดมินแล้ว");
       }}

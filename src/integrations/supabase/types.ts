@@ -424,6 +424,72 @@ export type Database = {
           },
         ]
       }
+      part_bundle_items: {
+        Row: {
+          bundle_id: string
+          created_at: string
+          id: string
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          bundle_id: string
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity?: number
+        }
+        Update: {
+          bundle_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_bundle_items_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "part_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "part_bundle_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      part_bundles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           brand_id: string | null
@@ -552,6 +618,7 @@ export type Database = {
         Row: {
           ai_check_draft: string | null
           ai_fix_draft: string | null
+          answered_at: string | null
           asked_by: string | null
           causes: string | null
           check_steps: string | null
@@ -567,6 +634,7 @@ export type Database = {
         Insert: {
           ai_check_draft?: string | null
           ai_fix_draft?: string | null
+          answered_at?: string | null
           asked_by?: string | null
           causes?: string | null
           check_steps?: string | null
@@ -582,6 +650,7 @@ export type Database = {
         Update: {
           ai_check_draft?: string | null
           ai_fix_draft?: string | null
+          answered_at?: string | null
           asked_by?: string | null
           causes?: string | null
           check_steps?: string | null

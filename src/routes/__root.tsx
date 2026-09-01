@@ -15,6 +15,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { Wrench, CalendarDays } from "lucide-react";
 import { AccessProvider } from "@/lib/access";
 import { AccessGate, AdminLockButton } from "@/components/AccessGate";
+import { setupPwa } from "@/lib/pwa";
+import { useMyIssueReplies } from "@/lib/issue-watch";
 
 function NotFoundComponent() {
   return (
@@ -152,6 +154,10 @@ function NavBar() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    setupPwa();
+  }, []);
+  useMyIssueReplies();
 
   return (
     <QueryClientProvider client={queryClient}>
