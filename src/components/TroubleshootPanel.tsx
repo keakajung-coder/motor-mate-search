@@ -7,6 +7,7 @@ import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { Search, Stethoscope, Wrench, SendHorizontal, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { notifyAdminQueue } from "@/lib/prefs";
+import { rememberMyIssue } from "@/lib/issue-watch";
 
 export type Issue = {
   id: string;
