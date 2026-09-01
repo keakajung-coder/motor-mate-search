@@ -75,9 +75,14 @@ export function TroubleshootPanel() {
     const title = q.trim();
     if (!title) return;
     setSending(true);
-    const { error } = await supabase.from("troubleshooting_issues").insert({ title, status: "pending" });
+    const { data, error } = await supabase
+      .from("troubleshooting_issues")
+      .insert({ title, status: "pending" })
+      .select("id")
+      .single();
     setSending(false);
     if (error) return toast.error("ส่งไม่สำเร็จ: " + error.message);
+    if (data?.id) rememberMyIssue(data.id);
     notifyAdminQueue();
     toast.success("ส่งอาการนี้ให้แอดมินแล้ว ระบบจะให้ AI ช่วยร่างคำตอบรออนุมัติ");
     setQ("");
