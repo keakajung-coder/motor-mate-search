@@ -152,6 +152,10 @@ function NavBar() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    setupPwa();
+  }, []);
+  useMyIssueReplies();
 
   return (
     <QueryClientProvider client={queryClient}>
