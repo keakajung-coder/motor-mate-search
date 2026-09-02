@@ -59,6 +59,8 @@ const LABELS: Record<string, string> = {
   vehicle_plate: "ทะเบียนรถ",
   result: "ผลปิดงาน",
   close_note: "สรุปการปิดงาน",
+  sort_order: "ลำดับแสดงผล",
+  bundle_name: "ชื่อชุดอะไหล่",
 };
 
 /** เรียงแถวตามคอลัมน์ที่เลือก (รองรับภาษาไทย) */
