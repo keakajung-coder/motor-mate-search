@@ -1079,13 +1079,22 @@ function BundleApply({ unitId, onApplied }: { unitId: string; onApplied: () => v
     if (!b) return toast.error("เลือกชุดอะไหล่ก่อน");
     if (b.items.length === 0) return toast.error("ชุดนี้ยังไม่มีรายการอะไหล่");
     setBusy(true);
-    const { error } = await supabase.from("machine_parts").upsert(
-      b.items.map((it) => ({ machine_unit_id: unitId, product_id: it.product_id, quantity: it.quantity })),
-      { onConflict: "machine_unit_id,product_id" },
-    );
+    const { data: exist } = await supabase
+      .from("machine_parts")
+      .select("product_id")
+      .eq("machine_unit_id", unitId);
+    const has = new Set((exist ?? []).map((r: any) => r.product_id));
+    const rows = b.items
+      .filter((it) => !has.has(it.product_id))
+      .map((it) => ({ machine_unit_id: unitId, product_id: it.product_id, quantity: it.quantity }));
+    if (rows.length === 0) {
+      setBusy(false);
+      return toast.info("อะไหล่ในชุดนี้อยู่ในเครื่องครบแล้ว");
+    }
+    const { error } = await supabase.from("machine_parts").insert(rows);
     setBusy(false);
     if (error) return toast.error("เพิ่มชุดอะไหล่ไม่สำเร็จ: " + error.message);
-    toast.success(`เพิ่ม "${b.name}" (${b.items.length} รายการ) ลงเครื่องแล้ว`);
+    toast.success(`เพิ่ม "${b.name}" (${rows.length} รายการ) ลงเครื่องแล้ว`);
     onApplied();
   };
 
