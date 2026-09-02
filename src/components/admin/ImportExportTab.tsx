@@ -59,6 +59,8 @@ const LABELS: Record<string, string> = {
   vehicle_plate: "ทะเบียนรถ",
   result: "ผลปิดงาน",
   close_note: "สรุปการปิดงาน",
+  sort_order: "ลำดับแสดงผล",
+  bundle_name: "ชื่อชุดอะไหล่",
 };
 
 /** เรียงแถวตามคอลัมน์ที่เลือก (รองรับภาษาไทย) */
@@ -405,6 +407,88 @@ const DATASETS: Dataset[] = [
         result: a.result === "ok" ? "เรียบร้อย" : a.result === "not_ok" ? "ไม่เรียบร้อย" : "",
         close_note: a.close_note ?? "",
       }));
+    },
+  },
+  {
+    key: "categories",
+    label: "หมวดหมู่อะไหล่",
+    columns: ["name", "description", "sort_order"],
+    matchKey: "name",
+    load: async () => {
+      const { data } = await supabase.from("categories").select("name, description, sort_order").order("sort_order");
+      return (data ?? []).map((c: any) => ({
+        name: c.name,
+        description: c.description ?? "",
+        sort_order: c.sort_order ?? 0,
+      }));
+    },
+    importRow: async (row, mode) => {
+      const name = str(row.name);
+      if (!name) return "skipped";
+      const payload = { name, description: str(row.description) || null, sort_order: Number(row.sort_order) || 0 };
+      const { data: exist } = await supabase.from("categories").select("id").ilike("name", name).limit(1);
+      if (exist && exist.length) {
+        if (mode === "insert") return "skipped";
+        const { error } = await supabase.from("categories").update(payload).eq("id", exist[0].id);
+        if (error) throw new Error(error.message);
+        return "updated";
+      }
+      const { error } = await supabase.from("categories").insert(payload);
+      if (error) throw new Error(error.message);
+      return "inserted";
+    },
+  },
+  {
+    key: "bundles",
+    label: "ชุดอะไหล่ (Bundle)",
+    columns: ["bundle_name", "description", "part_number", "quantity"],
+    load: async () => {
+      const { data } = await supabase
+        .from("part_bundles")
+        .select("name, description, part_bundle_items ( quantity, products ( part_number ) )")
+        .order("sort_order");
+      const rows: Row[] = [];
+      for (const b of (data ?? []) as any[]) {
+        if (!b.part_bundle_items?.length) {
+          rows.push({ bundle_name: b.name, description: b.description ?? "", part_number: "", quantity: "" });
+          continue;
+        }
+        for (const it of b.part_bundle_items) {
+          rows.push({
+            bundle_name: b.name,
+            description: b.description ?? "",
+            part_number: it.products?.part_number ?? "",
+            quantity: it.quantity ?? 1,
+          });
+        }
+      }
+      return rows;
+    },
+    importRow: async (row) => {
+      const bundleName = str(row.bundle_name);
+      if (!bundleName) return "skipped";
+      let bundleId: string | null = null;
+      const { data: exist } = await supabase.from("part_bundles").select("id").ilike("name", bundleName).limit(1);
+      if (exist && exist.length) bundleId = exist[0].id;
+      else {
+        const { data: ins, error } = await supabase
+          .from("part_bundles")
+          .insert({ name: bundleName, description: str(row.description) || null })
+          .select("id")
+          .single();
+        if (error) throw new Error(error.message);
+        bundleId = ins.id;
+      }
+      const pn = str(row.part_number);
+      if (!pn || !bundleId) return "inserted";
+      const { data: prod } = await supabase.from("products").select("id").ilike("part_number", pn).limit(1);
+      if (!prod || !prod.length) return "skipped";
+      const { error } = await supabase.from("part_bundle_items").upsert(
+        { bundle_id: bundleId, product_id: prod[0].id, quantity: Number(row.quantity) || 1 },
+        { onConflict: "bundle_id,product_id" },
+      );
+      if (error) throw new Error(error.message);
+      return "inserted";
     },
   },
 ];

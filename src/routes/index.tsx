@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { loadOffline, offlineSavedAt, saveOffline } from "@/lib/offline";
+import { useBundles } from "@/lib/bundles";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -867,8 +869,22 @@ function SnView({
       )
       .order("serial_number");
     setLoading(false);
-    if (error) return toast.error("โหลดข้อมูลผิดพลาด: " + error.message);
-    setUnits((data as unknown as MachineResult[]) ?? []);
+    if (error || !data) {
+      const cached = loadOffline<MachineResult[]>("machine_units");
+      if (cached?.length) {
+        setUnits(cached);
+        const at = offlineSavedAt("machine_units");
+        toast.warning(
+          "ออฟไลน์อยู่ — แสดงข้อมูลที่บันทึกไว้ในเครื่อง" +
+            (at ? ` (ล่าสุด ${at.toLocaleString("th-TH")})` : ""),
+        );
+        return;
+      }
+      return toast.error("โหลดข้อมูลผิดพลาด: " + (error?.message ?? "ไม่ทราบสาเหตุ"));
+    }
+    const rows = data as unknown as MachineResult[];
+    setUnits(rows);
+    saveOffline("machine_units", rows);
   }
   useEffect(() => { load(); }, []);
   useEffect(() => {
@@ -1051,6 +1067,59 @@ function SnView({
   );
 }
 
+/** เลือก "ชุดอะไหล่" สำเร็จรูป แล้วเพิ่มอะไหล่ทั้งชุดลงเครื่องในคลิกเดียว */
+function BundleApply({ unitId, onApplied }: { unitId: string; onApplied: () => void }) {
+  const { bundles } = useBundles();
+  const [pick, setPick] = useState("");
+  const [busy, setBusy] = useState(false);
+  if (bundles.length === 0) return null;
+
+  const apply = async () => {
+    const b = bundles.find((x) => x.id === pick);
+    if (!b) return toast.error("เลือกชุดอะไหล่ก่อน");
+    if (b.items.length === 0) return toast.error("ชุดนี้ยังไม่มีรายการอะไหล่");
+    setBusy(true);
+    const { data: exist } = await supabase
+      .from("machine_parts")
+      .select("product_id")
+      .eq("machine_unit_id", unitId);
+    const has = new Set((exist ?? []).map((r: any) => r.product_id));
+    const rows = b.items
+      .filter((it) => !has.has(it.product_id))
+      .map((it) => ({ machine_unit_id: unitId, product_id: it.product_id, quantity: it.quantity }));
+    if (rows.length === 0) {
+      setBusy(false);
+      return toast.info("อะไหล่ในชุดนี้อยู่ในเครื่องครบแล้ว");
+    }
+    const { error } = await supabase.from("machine_parts").insert(rows);
+    setBusy(false);
+    if (error) return toast.error("เพิ่มชุดอะไหล่ไม่สำเร็จ: " + error.message);
+    toast.success(`เพิ่ม "${b.name}" (${rows.length} รายการ) ลงเครื่องแล้ว`);
+    onApplied();
+  };
+
+  return (
+    <div className="no-print mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-2">
+      <span className="text-xs text-muted-foreground">📦 ใส่ชุดอะไหล่สำเร็จรูป:</span>
+      <select
+        className="h-9 min-w-[12rem] rounded-md border bg-background px-2 text-sm"
+        value={pick}
+        onChange={(e) => setPick(e.target.value)}
+      >
+        <option value="">— เลือกชุด —</option>
+        {bundles.map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.name} ({b.items.length} รายการ)
+          </option>
+        ))}
+      </select>
+      <Button size="sm" onClick={apply} disabled={busy || !pick}>
+        {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}เพิ่มทั้งชุด
+      </Button>
+    </div>
+  );
+}
+
 function MachineCard({
   unit,
   open,
@@ -1185,6 +1254,7 @@ function MachineCard({
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
               <Package className="h-4 w-4" /> รายการอะไหล่
             </div>
+            <BundleApply unitId={unit.id} onApplied={() => onDeleted?.()} />
             {grouped.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 ยังไม่มีรายการอะไหล่สำหรับเครื่องนี้
