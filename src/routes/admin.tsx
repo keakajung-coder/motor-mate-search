@@ -36,6 +36,7 @@ import { SmartSearchBox } from "@/components/SmartSearchBox";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { TroubleshootTab } from "@/components/admin/TroubleshootTab";
 import { StatsPanel } from "@/components/admin/StatsPanel";
+import { BundlesTab } from "@/components/admin/BundlesTab";
 
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
@@ -87,6 +88,7 @@ function AdminPage() {
           <TabsTrigger value="models" className="shrink-0">รุ่นเครื่อง</TabsTrigger>
           <TabsTrigger value="staff" className="shrink-0">ช่าง / รถ</TabsTrigger>
           <TabsTrigger value="lists" className="shrink-0">ผู้ขาย / สถานะ</TabsTrigger>
+          <TabsTrigger value="bundles" className="shrink-0">ชุดอะไหล่</TabsTrigger>
           <TabsTrigger value="issues" className="shrink-0">คลังอาการเสีย (AI)</TabsTrigger>
           <TabsTrigger value="io" className="shrink-0">นำเข้า / ส่งออก</TabsTrigger>
           <TabsTrigger value="security" className="shrink-0">ความปลอดภัย</TabsTrigger>
@@ -107,6 +109,7 @@ function AdminPage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="bundles"><BundlesTab /></TabsContent>
         <TabsContent value="issues"><TroubleshootTab /></TabsContent>
         <TabsContent value="io"><ImportExportTab /></TabsContent>
         <TabsContent value="security">
