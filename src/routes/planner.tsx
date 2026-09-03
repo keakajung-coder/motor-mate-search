@@ -777,10 +777,6 @@ function apptSummary(a: Appointment) {
     .join(" - ");
 }
 
-/** สรุปแบบสั้น เมื่อช่องวันที่มีงานเยอะ: [ลูกค้า] - [ทะเบียนรถ] */
-function apptShort(a: Appointment) {
-  return [a.customer_name || "ไม่ระบุลูกค้า", a.vehicle_plate || "ไม่ระบุรถ"].join(" - ");
-}
 
 /** สีบล็อกแยกตามทะเบียนรถ (พาสเทล) */
 const VEHICLE_COLORS = [
