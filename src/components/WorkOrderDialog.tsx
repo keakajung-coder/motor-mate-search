@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { ClipboardPlus, Loader2 } from "lucide-react";
 import { ensureDirectoryEntries, refreshDirectory, useDirectory } from "@/lib/directory";
+import { BILLING_TYPES, PRIORITIES, SAFETY_GEAR, WORK_TYPES } from "@/lib/job-fields";
 
 export const SERVICE_TYPES = [
   "เช็กระยะ (PM)",
@@ -41,7 +42,24 @@ export type WorkOrderDraft = {
   visit_time: string;
   staff_name: string;
   vehicle_plate: string;
+  job_no: string;
+  priority: string;
+  billing_type: string;
+  po_number: string;
+  billing_note: string;
+  work_types: string;
+  depart_time: string;
+  return_time: string;
+  logistics_note: string;
+  safety_gear: string;
 };
+
+/** เลขที่ใบสั่งงานอัตโนมัติ เช่น JO-260903-1408 */
+function autoJobNo() {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `JO-${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+}
 
 export const emptyDraft = (): WorkOrderDraft => ({
   customer_name: "",
@@ -56,6 +74,16 @@ export const emptyDraft = (): WorkOrderDraft => ({
   visit_time: "09:00",
   staff_name: "",
   vehicle_plate: "",
+  job_no: autoJobNo(),
+  priority: PRIORITIES[0],
+  billing_type: BILLING_TYPES[0],
+  po_number: "",
+  billing_note: "",
+  work_types: "",
+  depart_time: "",
+  return_time: "",
+  logistics_note: "",
+  safety_gear: "",
 });
 
 /** ตัวเลือกบริการ (ช่าง / รถ / S/N) — ดึงจากข้อมูลกลางที่อัปเดตอัตโนมัติ */
@@ -158,6 +186,16 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       visit_time: form.visit_time || null,
       staff_name: form.staff_name.trim() || null,
       vehicle_plate: form.vehicle_plate.trim() || null,
+      job_no: form.job_no.trim() || null,
+      priority: form.priority || null,
+      billing_type: form.billing_type || null,
+      po_number: form.po_number.trim() || null,
+      billing_note: form.billing_note.trim() || null,
+      work_types: form.work_types || null,
+      depart_time: form.depart_time || null,
+      return_time: form.return_time || null,
+      logistics_note: form.logistics_note.trim() || null,
+      safety_gear: form.safety_gear || null,
       status: "pending",
     });
     setSaving(false);
@@ -175,13 +213,56 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
         <ClipboardPlus className="mr-1 h-4 w-4" /> เขียนใบสั่งงานใหม่
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>ใบสั่งงานใหม่</DialogTitle>
             <DialogDescription>เลือกข้อมูลจากรายการที่มีในระบบ ระบบจะส่งให้แอดมินตรวจสอบก่อนขึ้นปฏิทิน</DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          {/* แถวบน: ช่าง / รถ (อัปเดตอัตโนมัติจากฐานข้อมูล) */}
+          <div className="grid gap-3 rounded-xl border bg-muted/30 p-3 sm:grid-cols-2">
+            <Field label="พนักงานเซอร์วิสที่ต้องการ (เลือกได้หลายคน)">
+              <MultiCombobox
+                values={splitNames(form.staff_name)}
+                onChange={(list) => set("staff_name", joinNames(list))}
+                options={dir.staff}
+                placeholder="เลือกช่าง (ติ๊กได้หลายคน)"
+                searchPlaceholder="ค้นหาช่าง..."
+              />
+            </Field>
+            <Field label="ทะเบียนรถที่ใช้เดินทาง (เลือกได้หลายคัน)">
+              <MultiCombobox
+                values={splitNames(form.vehicle_plate)}
+                onChange={(list) => set("vehicle_plate", joinNames(list))}
+                options={dir.vehicles}
+                placeholder="ติ๊กเลือกทะเบียนรถ"
+                searchPlaceholder="ค้นหาทะเบียนรถ..."
+              />
+            </Field>
+          </div>
+
+          <Section title="ข้อมูลใบงาน">
+            <Field label="เลขที่ใบสั่งงาน">
+              <Input value={form.job_no} onChange={(e) => set("job_no", e.target.value)} />
+            </Field>
+            <Field label="ความเร่งด่วน">
+              <Combobox
+                value={form.priority}
+                onChange={(v) => set("priority", v)}
+                options={PRIORITIES.map((p) => ({ value: p }))}
+                allowCustom
+                placeholder="เลือกความเร่งด่วน"
+              />
+            </Field>
+            <Field label="วันที่เข้าบริการ">
+              <Input type="date" value={form.visit_date} onChange={(e) => set("visit_date", e.target.value)} />
+            </Field>
+            <Field label="เวลานัดหมาย">
+              <Input type="time" value={form.visit_time} onChange={(e) => set("visit_time", e.target.value)} />
+            </Field>
+          </Section>
+
+          <Section title="ลูกค้า / เครื่องจักร">
             <Field label="ชื่อลูกค้า *">
               <Combobox
                 value={form.customer_name}
@@ -191,7 +272,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
                 searchPlaceholder="ค้นหาลูกค้า..."
               />
             </Field>
-            <Field label={form.customer_name ? `หมายเลขเครื่อง (S/N) — ของ ${form.customer_name} (เลือกได้หลายเครื่อง)` : "หมายเลขเครื่อง (S/N) (เลือกได้หลายเครื่อง)"}>
+            <Field label={form.customer_name ? `หมายเลขเครื่อง (S/N) — ของ ${form.customer_name}` : "หมายเลขเครื่อง (S/N) (เลือกได้หลายเครื่อง)"}>
               <MultiCombobox
                 values={splitNames(form.serial_number)}
                 onChange={pickSerials}
@@ -230,6 +311,29 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
                 placeholder="เลือกยี่ห้อ/รุ่น"
               />
             </Field>
+          </Section>
+
+          <Section title="การเงิน / การเรียกเก็บ">
+            <Field label="รูปแบบการเก็บเงิน">
+              <Combobox
+                value={form.billing_type}
+                onChange={(v) => set("billing_type", v)}
+                options={BILLING_TYPES.map((b) => ({ value: b }))}
+                allowCustom
+                placeholder="เลือกรูปแบบ"
+              />
+            </Field>
+            <Field label="เลขที่ PO / อ้างอิง">
+              <Input value={form.po_number} onChange={(e) => set("po_number", e.target.value)} />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="หมายเหตุการเงิน">
+                <Input value={form.billing_note} onChange={(e) => set("billing_note", e.target.value)} />
+              </Field>
+            </div>
+          </Section>
+
+          <Section title="ลักษณะงาน / ประเภทบริการ">
             <Field label="ประเภทเซอร์วิส (เลือกได้หลายงาน)">
               <MultiCombobox
                 values={splitNames(form.service_type)}
@@ -239,30 +343,13 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
                 searchPlaceholder="ค้นหาประเภทงาน..."
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="วันที่เข้าบริการ">
-                <Input type="date" value={form.visit_date} onChange={(e) => set("visit_date", e.target.value)} />
-              </Field>
-              <Field label="เวลานัดหมาย">
-                <Input type="time" value={form.visit_time} onChange={(e) => set("visit_time", e.target.value)} />
-              </Field>
-            </div>
-            <Field label="พนักงานเซอร์วิสที่ต้องการ (เลือกได้หลายคน)">
+            <Field label="ลักษณะงานที่ต้องทำ (เลือกได้หลายอย่าง)">
               <MultiCombobox
-                values={splitNames(form.staff_name)}
-                onChange={(list) => set("staff_name", joinNames(list))}
-                options={dir.staff}
-                placeholder="เลือกช่าง (ติ๊กได้หลายคน)"
-                searchPlaceholder="ค้นหาช่าง..."
-              />
-            </Field>
-            <Field label="ทะเบียนรถที่ใช้เดินทาง (เลือกได้หลายคัน)">
-              <MultiCombobox
-                values={splitNames(form.vehicle_plate)}
-                onChange={(list) => set("vehicle_plate", joinNames(list))}
-                options={dir.vehicles}
-                placeholder="ติ๊กเลือกทะเบียนรถ"
-                searchPlaceholder="ค้นหาทะเบียนรถ..."
+                values={splitNames(form.work_types)}
+                onChange={(list) => set("work_types", joinNames(list))}
+                options={WORK_TYPES}
+                placeholder="ติ๊กเลือกลักษณะงาน"
+                searchPlaceholder="ค้นหาลักษณะงาน..."
               />
             </Field>
             <div className="sm:col-span-2">
@@ -270,7 +357,35 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
                 <Textarea rows={3} value={form.job_detail} onChange={(e) => set("job_detail", e.target.value)} />
               </Field>
             </div>
-          </div>
+          </Section>
+
+          <Section title="การเดินทาง">
+            <Field label="เวลาออกเดินทาง">
+              <Input type="time" value={form.depart_time} onChange={(e) => set("depart_time", e.target.value)} />
+            </Field>
+            <Field label="เวลากลับถึงบริษัท (โดยประมาณ)">
+              <Input type="time" value={form.return_time} onChange={(e) => set("return_time", e.target.value)} />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="หมายเหตุการเดินทาง / เส้นทาง">
+                <Input value={form.logistics_note} onChange={(e) => set("logistics_note", e.target.value)} />
+              </Field>
+            </div>
+          </Section>
+
+          <Section title="อุปกรณ์เซฟตี้ที่ต้องเตรียม">
+            <div className="sm:col-span-2">
+              <Field label="อุปกรณ์เซฟตี้ (เลือกได้หลายอย่าง)">
+                <MultiCombobox
+                  values={splitNames(form.safety_gear)}
+                  onChange={(list) => set("safety_gear", joinNames(list))}
+                  options={SAFETY_GEAR}
+                  placeholder="ติ๊กเลือกอุปกรณ์เซฟตี้"
+                  searchPlaceholder="ค้นหาอุปกรณ์..."
+                />
+              </Field>
+            </div>
+          </Section>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
@@ -283,6 +398,16 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/** กล่องหัวข้อย่อยแบบ 2 คอลัมน์ */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2 rounded-xl border p-3">
+      <p className="text-sm font-semibold">{title}</p>
+      <div className="grid gap-3 sm:grid-cols-2">{children}</div>
+    </div>
   );
 }
 
