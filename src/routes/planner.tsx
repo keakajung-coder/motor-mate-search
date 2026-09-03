@@ -1011,80 +1011,127 @@ function TimeGrid({
   onPick: (a: Appointment) => void;
   onPickSlot?: (date: string, time: string) => void;
 }) {
-  const hours = Array.from({ length: 13 }, (_, i) => i + 7); // 07:00 - 19:00
+  const morning = [7, 8, 9, 10, 11]; // เช้า 07:00 - 12:00
+  const afternoon = [13, 14, 15, 16, 17, 18, 19]; // บ่าย 13:00 - 19:00
   const today = iso(new Date());
+  const isWeek = days.length > 1;
+  const cols = isWeek ? `56px ${WEEK_COLS}` : "56px minmax(0,1fr)";
   const hourOf = (a: Appointment) => {
-    const h = Number((a.visit_time ?? "").slice(0, 2));
-    if (Number.isNaN(h)) return hours[0];
-    return Math.min(Math.max(h, hours[0]), hours[hours.length - 1]);
+    let h = Number((a.visit_time ?? "").slice(0, 2));
+    if (Number.isNaN(h)) h = morning[0];
+    if (h === 12) h = 13; // เลี่ยงช่วงพักเที่ยง
+    return Math.min(Math.max(h, morning[0]), afternoon[afternoon.length - 1]);
   };
+  const dowOf = (d: string) => new Date(d + "T00:00:00").getDay();
+
+  const renderHourRow = (h: number) => (
+    <div key={h} className="contents">
+      <div className="bg-muted/40 p-2 text-right text-[11px] text-muted-foreground">
+        {String(h).padStart(2, "0")}:00
+      </div>
+      {days.map((d) => {
+        const list = appts
+          .filter((a) => a.visit_date === d && hourOf(a) === h)
+          .sort(byVehicleThenTime);
+
+        // วันอาทิตย์: แถบแดงแคบพร้อมจุด mini
+        if (isWeek && dowOf(d) === 0) {
+          return (
+            <div key={d + h} className="flex min-h-12 justify-center bg-red-50/70 p-1">
+              <div className="flex w-1.5 flex-col items-center gap-1 rounded-full bg-red-400/60 py-0.5">
+                {list.map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPick(a);
+                    }}
+                    title={apptSummary(a)}
+                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-white shadow ring-1 ring-red-600"
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div
+            key={d + h}
+            onClick={() => onPickSlot?.(d, `${String(h).padStart(2, "0")}:00`)}
+            className={
+              "min-h-12 space-y-1 bg-card p-1 " +
+              (onPickSlot ? "cursor-pointer hover:bg-accent/40" : "")
+            }
+          >
+            {list.map((a) => (
+              <button
+                key={a.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPick(a);
+                }}
+                className={
+                  "block w-full whitespace-normal break-words rounded px-1.5 py-1 text-left leading-tight " +
+                  apptCardClass(a)
+                }
+                title={apptSummary(a)}
+              >
+                <span className="flex items-baseline gap-1 text-[10px]">
+                  <span className="font-semibold">{a.visit_time?.slice(0, 5) || "--:--"}</span>
+                  <span className="truncate opacity-70">{splitNames(a.staff_name).join(", ") || "-"}</span>
+                </span>
+                <span className="block truncate text-xs font-bold">{a.customer_name || "ไม่ระบุลูกค้า"}</span>
+                <span className="block truncate text-[10px] opacity-80">
+                  {splitNames(a.service_type).join(" / ") || a.job_detail || "-"}
+                </span>
+              </button>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="space-y-2">
       <VehicleLegend appts={appts} />
-      <div className="overflow-x-auto">
-        <div className="min-w-[560px]">
+      <div className="scrollbar-none flex overflow-x-auto whitespace-nowrap">
+        <div className={isWeek ? "min-w-[900px] flex-1" : "min-w-[560px] flex-1"}>
           <div
             className="grid gap-px rounded-t-xl bg-border text-xs"
-            style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0,1fr))` }}
+            style={{ gridTemplateColumns: cols }}
           >
             <div className="bg-card p-2" />
-            {days.map((d) => (
-              <div
-                key={d}
-                className={"bg-card p-2 text-center " + (d === today ? "text-primary" : "")}
-              >
-                <p className="text-sm font-bold">วัน{TH_DOW_FULL[new Date(d + "T00:00:00").getDay()]}</p>
-                <p className="text-xs text-muted-foreground">{formatDate(d)}</p>
-              </div>
-            ))}
+            {days.map((d) => {
+              if (isWeek && dowOf(d) === 0) {
+                return (
+                  <div key={d} className="bg-red-50 p-1 text-center text-red-500">
+                    <p className="text-[10px] font-bold leading-tight">อา</p>
+                    <p className="text-[9px] leading-tight">{new Date(d + "T00:00:00").getDate()}</p>
+                  </div>
+                );
+              }
+              return (
+                <div
+                  key={d}
+                  className={"bg-card p-2 text-center " + (d === today ? "text-primary" : "")}
+                >
+                  <p className="text-sm font-bold">วัน{TH_DOW_FULL[dowOf(d)]}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(d)}</p>
+                </div>
+              );
+            })}
           </div>
           <div
             className="grid gap-px rounded-b-xl bg-border text-xs"
-            style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0,1fr))` }}
+            style={{ gridTemplateColumns: cols }}
           >
-            {hours.map((h) => (
-              <div key={h} className="contents">
-                <div className="bg-muted/40 p-2 text-right text-[11px] text-muted-foreground">
-                  {String(h).padStart(2, "0")}:00
-                </div>
-                {days.map((d) => {
-                  const list = appts
-                    .filter((a) => a.visit_date === d && hourOf(a) === h)
-                    .sort(byVehicleThenTime);
-
-                  return (
-                    <div
-                      key={d + h}
-                      onClick={() => onPickSlot?.(d, `${String(h).padStart(2, "0")}:00`)}
-                      className={
-                        "min-h-12 space-y-1 bg-card p-1 " +
-                        (onPickSlot ? "cursor-pointer hover:bg-accent/40" : "")
-                      }
-                    >
-                      {list.map((a) => (
-                        <button
-                          key={a.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onPick(a);
-                          }}
-                          className={
-                            "block w-full whitespace-normal break-words rounded border px-1.5 py-1 text-left leading-tight " +
-                            vehicleColor(a.vehicle_plate) +
-                            " " +
-                            statusEdge(a)
-                          }
-                          title={apptSummary(a)}
-                        >
-                          <span className="font-medium">{a.visit_time?.slice(0, 5)}</span> {apptSummary(a)}
-                        </button>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+            {morning.map(renderHourRow)}
+            <div style={{ gridColumn: "1 / -1" }} className="bg-amber-50 px-2 py-1 text-center text-[11px] font-medium text-amber-700">
+              พักเที่ยง 12:00 – 13:00
+            </div>
+            {afternoon.map(renderHourRow)}
           </div>
         </div>
       </div>
