@@ -21,7 +21,7 @@ import { WorkOrderDialog } from "@/components/WorkOrderDialog";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { SmartSearchDialog } from "@/components/SmartSearchDialog";
 import { AdminLockButton } from "@/components/AccessGate";
-import { useAccess } from "@/lib/access";
+import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { AlertToggles } from "@/lib/prefs";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { isMachineComplete } from "@/lib/report";

@@ -16,7 +16,7 @@ import { rememberMyIssue } from "@/lib/issue-watch";
 import { notifyAdminQueue } from "@/lib/prefs";
 import { Link } from "@tanstack/react-router";
 import { useIssues } from "@/components/TroubleshootPanel";
-import { useAccess } from "@/lib/access";
+import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { ensureDirectoryEntries } from "@/lib/directory";
 import { toast } from "sonner";
 

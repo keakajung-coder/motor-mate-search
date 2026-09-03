@@ -34,7 +34,7 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
-import { useAccess } from "@/lib/access";
+import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog } from "@/components/WorkOrderDialog";
 import { Combobox } from "@/components/ui/combobox";
