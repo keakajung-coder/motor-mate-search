@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { deleteAsAdmin } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -126,7 +127,7 @@ function IssueEditor({ issue, onSaved }: { issue: Issue; onSaved: () => void }) 
   };
 
   const remove = async () => {
-    const { error } = await supabase.from("troubleshooting_issues").delete().eq("id", issue.id);
+    const { error } = await deleteAsAdmin("troubleshooting_issues", { id: issue.id });
     if (error) return toast.error(error.message);
     toast.success("ลบแล้ว");
     onSaved();

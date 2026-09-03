@@ -21,7 +21,7 @@ import { WorkOrderDialog } from "@/components/WorkOrderDialog";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { SmartSearchDialog } from "@/components/SmartSearchDialog";
 import { AdminLockButton } from "@/components/AccessGate";
-import { useAccess } from "@/lib/access";
+import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { AlertToggles } from "@/lib/prefs";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { isMachineComplete } from "@/lib/report";
@@ -1151,8 +1151,8 @@ function MachineCard({
 
   async function deleteUnit() {
     setDeleting(true);
-    await supabase.from("machine_parts").delete().eq("machine_unit_id", unit.id);
-    const { error } = await supabase.from("machine_units").delete().eq("id", unit.id);
+    await deleteAsAdmin("machine_parts", { machine_unit_id: unit.id });
+    const { error } = await deleteAsAdmin("machine_units", { id: unit.id });
     setDeleting(false);
     if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
     toast.success(`ลบเครื่อง S/N ${unit.serial_number} แล้ว`);

@@ -34,7 +34,7 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
-import { useAccess } from "@/lib/access";
+import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog } from "@/components/WorkOrderDialog";
 import { Combobox } from "@/components/ui/combobox";
@@ -777,10 +777,6 @@ function apptSummary(a: Appointment) {
     .join(" - ");
 }
 
-/** สรุปแบบสั้น เมื่อช่องวันที่มีงานเยอะ: [ลูกค้า] - [ทะเบียนรถ] */
-function apptShort(a: Appointment) {
-  return [a.customer_name || "ไม่ระบุลูกค้า", a.vehicle_plate || "ไม่ระบุรถ"].join(" - ");
-}
 
 /** สีบล็อกแยกตามทะเบียนรถ (พาสเทล) */
 const VEHICLE_COLORS = [
@@ -802,6 +798,53 @@ function vehicleColor(plate?: string | null) {
   for (let i = 0; i < p.length; i++) h = (h * 31 + p.charCodeAt(i)) >>> 0;
   return VEHICLE_COLORS[h % VEHICLE_COLORS.length];
 }
+
+/** สีขอบการ์ด (3px) แยกตามทะเบียนรถ */
+const VEHICLE_BORDERS = [
+  "border-emerald-500",
+  "border-sky-500",
+  "border-amber-500",
+  "border-violet-500",
+  "border-rose-500",
+  "border-teal-500",
+  "border-orange-500",
+  "border-indigo-500",
+  "border-lime-500",
+  "border-cyan-500",
+];
+function vehicleBorder(plate?: string | null) {
+  const p = (plate ?? "").split(",")[0]?.trim() ?? "";
+  if (!p) return "border-slate-300";
+  let h = 0;
+  for (let i = 0; i < p.length; i++) h = (h * 31 + p.charCodeAt(i)) >>> 0;
+  return VEHICLE_BORDERS[h % VEHICLE_BORDERS.length];
+}
+/** พื้นหลังพาสเทลของการ์ด แยกตามช่างเทคนิค */
+const STAFF_BGS = [
+  "bg-rose-50",
+  "bg-sky-50",
+  "bg-amber-50",
+  "bg-violet-50",
+  "bg-emerald-50",
+  "bg-teal-50",
+  "bg-orange-50",
+  "bg-indigo-50",
+  "bg-lime-50",
+  "bg-cyan-50",
+];
+function staffBg(name?: string | null) {
+  const n = splitNames(name)[0] ?? "";
+  if (!n) return "bg-white";
+  let h = 0;
+  for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) >>> 0;
+  return STAFF_BGS[h % STAFF_BGS.length];
+}
+/** คลาสการ์ดนัดหมายมาตรฐาน: ขอบ 3px ตามรถ + พื้นพาสเทลตามช่าง + ตัวหนังสือ slate-800 */
+function apptCardClass(a: Appointment) {
+  return "border-[3px] text-slate-800 " + vehicleBorder(a.vehicle_plate) + " " + staffBg(a.staff_name);
+}
+/** ความกว้างคอลัมน์: จันทร์–ศุกร์ เท่ากัน (~17.4%), เสาร์ ~10%, อาทิตย์ ~3% (แถบแดง) */
+const WEEK_COLS = "repeat(5, minmax(0, 17.4fr)) minmax(0, 10fr) minmax(40px, 3fr)";
 /** เส้นขอบซ้ายบอกสถานะงาน (ยังคงรหัสสีสถานะไว้) */
 function statusEdge(a: Appointment) {
   if (a.status === "closed") return a.result === "not_ok" ? "border-l-4 border-l-red-500" : "border-l-4 border-l-emerald-600";
@@ -851,10 +894,16 @@ function MonthGrid({
         <span className="ml-auto">แตะวันที่เพื่อดูคิวทั้งวัน{onPickDate ? " · แตะช่องว่างเพื่อเพิ่มงานด่วน" : ""}</span>
       </div>
       <VehicleLegend appts={appts} />
-      <div className="overflow-x-auto pb-1">
-      <div className="grid min-w-[640px] grid-cols-7 gap-1 text-xs">
-        {TH_DOW.map((d) => (
-          <div key={d} className="py-1 text-center font-medium text-muted-foreground">
+      <div className="scrollbar-none flex overflow-x-auto whitespace-nowrap pb-1">
+      <div className="grid min-w-[900px] flex-1 gap-1 text-xs" style={{ gridTemplateColumns: WEEK_COLS }}>
+        {TH_DOW.map((d, i) => (
+          <div
+            key={d}
+            className={
+              "py-1 text-center font-medium " +
+              (i === 6 ? "text-[10px] text-red-500" : i === 5 ? "text-muted-foreground/80" : "text-muted-foreground")
+            }
+          >
             {d}
           </div>
         ))}
@@ -863,7 +912,38 @@ function MonthGrid({
           const list = appts.filter((a) => a.visit_date === key).sort(byVehicleThenTime);
 
           const dim = d.getMonth() !== cursor.getMonth();
-          const max = 6;
+
+          // วันอาทิตย์: แถบแดงวันหยุดแคบพิเศษ พร้อมจุด mini แทนงาน
+          if (d.getDay() === 0) {
+            return (
+              <div
+                key={key}
+                onClick={() => onPickDay(key)}
+                title={`วันอาทิตย์ที่ ${formatDate(key)} · ${list.length} งาน`}
+                className={
+                  "flex min-h-32 cursor-pointer flex-col items-center rounded-full border sm:min-h-40 md:min-h-48 " +
+                  (key === today ? "border-red-500 bg-red-100 " : "border-red-200 bg-red-50 ") +
+                  (dim ? "opacity-40" : "")
+                }
+              >
+                <span className="mt-1 text-[9px] font-bold leading-none text-red-500">{d.getDate()}</span>
+                <div className="mt-1 flex w-1.5 flex-1 flex-col items-center gap-1 rounded-full bg-red-400/70 py-1">
+                  {list.map((a) => (
+                    <button
+                      key={a.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPick(a);
+                      }}
+                      title={apptSummary(a)}
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-white shadow ring-1 ring-red-600"
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div
               key={key}
@@ -888,8 +968,8 @@ function MonthGrid({
                 </button>
               </div>
 
-              <div className="space-y-0.5">
-                {list.slice(0, max).map((a) => (
+              <div className="scrollbar-none max-h-24 space-y-0.5 overflow-y-auto">
+                {list.map((a) => (
                   <button
                     key={a.id}
                     onClick={(e) => {
@@ -897,27 +977,14 @@ function MonthGrid({
                       onPick(a);
                     }}
                     className={
-                      "block w-full whitespace-normal break-words rounded border px-1 py-0.5 text-left text-[10px] leading-snug " +
-                      vehicleColor(a.vehicle_plate) +
-                      " " +
-                      statusEdge(a)
+                      "block w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium leading-snug " +
+                      apptCardClass(a)
                     }
                     title={apptSummary(a)}
                   >
-                    {apptShort(a)}
+                    {a.customer_name || "ไม่ระบุลูกค้า"}
                   </button>
                 ))}
-                {list.length > max && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPickDay(key);
-                    }}
-                    className="w-full rounded px-1 text-left text-[10px] text-primary underline"
-                  >
-                    +{list.length - max} งาน · ดูทั้งหมด
-                  </button>
-                )}
               </div>
             </div>
           );
@@ -940,80 +1007,127 @@ function TimeGrid({
   onPick: (a: Appointment) => void;
   onPickSlot?: (date: string, time: string) => void;
 }) {
-  const hours = Array.from({ length: 13 }, (_, i) => i + 7); // 07:00 - 19:00
+  const morning = [7, 8, 9, 10, 11]; // เช้า 07:00 - 12:00
+  const afternoon = [13, 14, 15, 16, 17, 18, 19]; // บ่าย 13:00 - 19:00
   const today = iso(new Date());
+  const isWeek = days.length > 1;
+  const cols = isWeek ? `56px ${WEEK_COLS}` : "56px minmax(0,1fr)";
   const hourOf = (a: Appointment) => {
-    const h = Number((a.visit_time ?? "").slice(0, 2));
-    if (Number.isNaN(h)) return hours[0];
-    return Math.min(Math.max(h, hours[0]), hours[hours.length - 1]);
+    let h = Number((a.visit_time ?? "").slice(0, 2));
+    if (Number.isNaN(h)) h = morning[0];
+    if (h === 12) h = 13; // เลี่ยงช่วงพักเที่ยง
+    return Math.min(Math.max(h, morning[0]), afternoon[afternoon.length - 1]);
   };
+  const dowOf = (d: string) => new Date(d + "T00:00:00").getDay();
+
+  const renderHourRow = (h: number) => (
+    <div key={h} className="contents">
+      <div className="bg-muted/40 p-2 text-right text-[11px] text-muted-foreground">
+        {String(h).padStart(2, "0")}:00
+      </div>
+      {days.map((d) => {
+        const list = appts
+          .filter((a) => a.visit_date === d && hourOf(a) === h)
+          .sort(byVehicleThenTime);
+
+        // วันอาทิตย์: แถบแดงแคบพร้อมจุด mini
+        if (isWeek && dowOf(d) === 0) {
+          return (
+            <div key={d + h} className="flex min-h-12 justify-center bg-red-50/70 p-1">
+              <div className="flex w-1.5 flex-col items-center gap-1 rounded-full bg-red-400/60 py-0.5">
+                {list.map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPick(a);
+                    }}
+                    title={apptSummary(a)}
+                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-white shadow ring-1 ring-red-600"
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div
+            key={d + h}
+            onClick={() => onPickSlot?.(d, `${String(h).padStart(2, "0")}:00`)}
+            className={
+              "min-h-12 space-y-1 bg-card p-1 " +
+              (onPickSlot ? "cursor-pointer hover:bg-accent/40" : "")
+            }
+          >
+            {list.map((a) => (
+              <button
+                key={a.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPick(a);
+                }}
+                className={
+                  "block w-full whitespace-normal break-words rounded px-1.5 py-1 text-left leading-tight " +
+                  apptCardClass(a)
+                }
+                title={apptSummary(a)}
+              >
+                <span className="flex items-baseline gap-1 text-[10px]">
+                  <span className="font-semibold">{a.visit_time?.slice(0, 5) || "--:--"}</span>
+                  <span className="truncate opacity-70">{splitNames(a.staff_name).join(", ") || "-"}</span>
+                </span>
+                <span className="block truncate text-xs font-bold">{a.customer_name || "ไม่ระบุลูกค้า"}</span>
+                <span className="block truncate text-[10px] opacity-80">
+                  {splitNames(a.service_type).join(" / ") || a.job_detail || "-"}
+                </span>
+              </button>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="space-y-2">
       <VehicleLegend appts={appts} />
-      <div className="overflow-x-auto">
-        <div className="min-w-[560px]">
+      <div className="scrollbar-none flex overflow-x-auto whitespace-nowrap">
+        <div className={isWeek ? "min-w-[900px] flex-1" : "min-w-[560px] flex-1"}>
           <div
             className="grid gap-px rounded-t-xl bg-border text-xs"
-            style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0,1fr))` }}
+            style={{ gridTemplateColumns: cols }}
           >
             <div className="bg-card p-2" />
-            {days.map((d) => (
-              <div
-                key={d}
-                className={"bg-card p-2 text-center " + (d === today ? "text-primary" : "")}
-              >
-                <p className="text-sm font-bold">วัน{TH_DOW_FULL[new Date(d + "T00:00:00").getDay()]}</p>
-                <p className="text-xs text-muted-foreground">{formatDate(d)}</p>
-              </div>
-            ))}
+            {days.map((d) => {
+              if (isWeek && dowOf(d) === 0) {
+                return (
+                  <div key={d} className="bg-red-50 p-1 text-center text-red-500">
+                    <p className="text-[10px] font-bold leading-tight">อา</p>
+                    <p className="text-[9px] leading-tight">{new Date(d + "T00:00:00").getDate()}</p>
+                  </div>
+                );
+              }
+              return (
+                <div
+                  key={d}
+                  className={"bg-card p-2 text-center " + (d === today ? "text-primary" : "")}
+                >
+                  <p className="text-sm font-bold">วัน{TH_DOW_FULL[dowOf(d)]}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(d)}</p>
+                </div>
+              );
+            })}
           </div>
           <div
             className="grid gap-px rounded-b-xl bg-border text-xs"
-            style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0,1fr))` }}
+            style={{ gridTemplateColumns: cols }}
           >
-            {hours.map((h) => (
-              <div key={h} className="contents">
-                <div className="bg-muted/40 p-2 text-right text-[11px] text-muted-foreground">
-                  {String(h).padStart(2, "0")}:00
-                </div>
-                {days.map((d) => {
-                  const list = appts
-                    .filter((a) => a.visit_date === d && hourOf(a) === h)
-                    .sort(byVehicleThenTime);
-
-                  return (
-                    <div
-                      key={d + h}
-                      onClick={() => onPickSlot?.(d, `${String(h).padStart(2, "0")}:00`)}
-                      className={
-                        "min-h-12 space-y-1 bg-card p-1 " +
-                        (onPickSlot ? "cursor-pointer hover:bg-accent/40" : "")
-                      }
-                    >
-                      {list.map((a) => (
-                        <button
-                          key={a.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onPick(a);
-                          }}
-                          className={
-                            "block w-full whitespace-normal break-words rounded border px-1.5 py-1 text-left leading-tight " +
-                            vehicleColor(a.vehicle_plate) +
-                            " " +
-                            statusEdge(a)
-                          }
-                          title={apptSummary(a)}
-                        >
-                          <span className="font-medium">{a.visit_time?.slice(0, 5)}</span> {apptSummary(a)}
-                        </button>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+            {morning.map(renderHourRow)}
+            <div style={{ gridColumn: "1 / -1" }} className="bg-amber-50 px-2 py-1 text-center text-[11px] font-medium text-amber-700">
+              พักเที่ยง 12:00 – 13:00
+            </div>
+            {afternoon.map(renderHourRow)}
           </div>
         </div>
       </div>
@@ -1102,7 +1216,7 @@ function DayList({
     reload();
   };
   const remove = async (a: Appointment) => {
-    const { error } = await supabase.from("appointments").delete().eq("id", a.id);
+    const { error } = await deleteAsAdmin("appointments", { id: a.id });
     if (error) return toast.error(error.message);
     toast.success("ลบนัดหมายแล้ว");
     reload();
@@ -1302,7 +1416,7 @@ function AppointmentDialog({
 
   const remove = async () => {
     if (!form.id) return;
-    const { error } = await supabase.from("appointments").delete().eq("id", form.id);
+    const { error } = await deleteAsAdmin("appointments", { id: form.id });
     if (error) return toast.error(error.message);
     toast.success("ลบนัดหมายแล้ว");
     (onDeleted ?? onSaved)();

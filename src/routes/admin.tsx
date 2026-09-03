@@ -26,7 +26,7 @@ import { refreshDirectory } from "@/lib/directory";
 import { PasscodeSettings } from "@/components/admin/PasscodeSettings";
 import { BackupRestore } from "@/components/admin/BackupRestore";
 import { AdminLockButton } from "@/components/AccessGate";
-import { useAccess } from "@/lib/access";
+import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { useUndoable } from "@/hooks/use-undoable";
 import { loadOptionList } from "@/lib/option-lists";
@@ -154,7 +154,7 @@ function BrandsTab() {
   }
   async function del(id: string) {
     
-    const { error } = await supabase.from("brands").delete().eq("id", id);
+    const { error } = await deleteAsAdmin("brands", { id });
     if (error) return toast.error(error.message);
     if (editId === id) { setEditId(null); setName(""); }
     load();
@@ -244,7 +244,7 @@ function ModelsTab() {
   }
   async function del(id: string) {
     
-    await supabase.from("compressor_models").delete().eq("id", id);
+    await deleteAsAdmin("compressor_models", { id });
     if (editId === id) reset();
     load();
   }
@@ -352,7 +352,7 @@ function CustomersTab() {
   }
   async function del(id: string) {
     
-    await supabase.from("customers").delete().eq("id", id);
+    await deleteAsAdmin("customers", { id });
     if (form.id === id) setForm(emptyForm);
     load();
   }
@@ -526,7 +526,7 @@ function ProductsTab() {
   }
   async function del(id: string) {
     
-    await supabase.from("products").delete().eq("id", id);
+    await deleteAsAdmin("products", { id });
     if (form.id === id) setForm(empty);
     load();
   }
@@ -900,7 +900,7 @@ function MachinesTab() {
 
   async function del(id: string) {
     
-    await supabase.from("machine_units").delete().eq("id", id);
+    await deleteAsAdmin("machine_units", { id });
     if (selected === id) setSelected(null);
     if (form.id === id) resetForm();
     load();
@@ -1436,7 +1436,7 @@ function MachinePartsEditor({
     load();
   }
   async function del(id: string) {
-    await supabase.from("machine_parts").delete().eq("id", id);
+    await deleteAsAdmin("machine_parts", { id });
     load();
   }
   async function updatePart(id: string, patch: any) {

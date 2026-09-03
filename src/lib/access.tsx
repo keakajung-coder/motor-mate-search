@@ -106,3 +106,20 @@ export function storedAdminCode(): string {
 export function setStoredAdminCode(code: string) {
   localStorage.setItem(ADMIN_KEY, code);
 }
+
+/**
+ * ลบข้อมูลผ่านเซิร์ฟเวอร์โดยยืนยันรหัสแอดมิน (anon ไม่มีสิทธิ์ DELETE)
+ * คืนค่ารูปแบบเดียวกับ supabase: { error }
+ */
+export async function deleteAsAdmin(
+  table: string,
+  filters: Record<string, string>,
+): Promise<{ error: { message: string } | null }> {
+  try {
+    const { adminDelete } = await import("@/lib/admin-write.functions");
+    const res = await adminDelete({ data: { code: storedAdminCode(), table, filters } });
+    return res?.ok ? { error: null } : { error: { message: res?.error ?? "ลบไม่สำเร็จ" } };
+  } catch (e) {
+    return { error: { message: e instanceof Error ? e.message : "ลบไม่สำเร็จ" } };
+  }
+}
