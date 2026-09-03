@@ -898,10 +898,16 @@ function MonthGrid({
         <span className="ml-auto">แตะวันที่เพื่อดูคิวทั้งวัน{onPickDate ? " · แตะช่องว่างเพื่อเพิ่มงานด่วน" : ""}</span>
       </div>
       <VehicleLegend appts={appts} />
-      <div className="overflow-x-auto pb-1">
-      <div className="grid min-w-[640px] grid-cols-7 gap-1 text-xs">
-        {TH_DOW.map((d) => (
-          <div key={d} className="py-1 text-center font-medium text-muted-foreground">
+      <div className="scrollbar-none flex overflow-x-auto whitespace-nowrap pb-1">
+      <div className="grid min-w-[900px] flex-1 gap-1 text-xs" style={{ gridTemplateColumns: WEEK_COLS }}>
+        {TH_DOW.map((d, i) => (
+          <div
+            key={d}
+            className={
+              "py-1 text-center font-medium " +
+              (i === 6 ? "text-[10px] text-red-500" : i === 5 ? "text-muted-foreground/80" : "text-muted-foreground")
+            }
+          >
             {d}
           </div>
         ))}
@@ -910,7 +916,38 @@ function MonthGrid({
           const list = appts.filter((a) => a.visit_date === key).sort(byVehicleThenTime);
 
           const dim = d.getMonth() !== cursor.getMonth();
-          const max = 6;
+
+          // วันอาทิตย์: แถบแดงวันหยุดแคบพิเศษ พร้อมจุด mini แทนงาน
+          if (d.getDay() === 0) {
+            return (
+              <div
+                key={key}
+                onClick={() => onPickDay(key)}
+                title={`วันอาทิตย์ที่ ${formatDate(key)} · ${list.length} งาน`}
+                className={
+                  "flex min-h-32 cursor-pointer flex-col items-center rounded-full border sm:min-h-40 md:min-h-48 " +
+                  (key === today ? "border-red-500 bg-red-100 " : "border-red-200 bg-red-50 ") +
+                  (dim ? "opacity-40" : "")
+                }
+              >
+                <span className="mt-1 text-[9px] font-bold leading-none text-red-500">{d.getDate()}</span>
+                <div className="mt-1 flex w-1.5 flex-1 flex-col items-center gap-1 rounded-full bg-red-400/70 py-1">
+                  {list.map((a) => (
+                    <button
+                      key={a.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPick(a);
+                      }}
+                      title={apptSummary(a)}
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-white shadow ring-1 ring-red-600"
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div
               key={key}
@@ -935,8 +972,8 @@ function MonthGrid({
                 </button>
               </div>
 
-              <div className="space-y-0.5">
-                {list.slice(0, max).map((a) => (
+              <div className="scrollbar-none max-h-24 space-y-0.5 overflow-y-auto">
+                {list.map((a) => (
                   <button
                     key={a.id}
                     onClick={(e) => {
@@ -944,27 +981,14 @@ function MonthGrid({
                       onPick(a);
                     }}
                     className={
-                      "block w-full whitespace-normal break-words rounded border px-1 py-0.5 text-left text-[10px] leading-snug " +
-                      vehicleColor(a.vehicle_plate) +
-                      " " +
-                      statusEdge(a)
+                      "block w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium leading-snug " +
+                      apptCardClass(a)
                     }
                     title={apptSummary(a)}
                   >
-                    {apptShort(a)}
+                    {a.customer_name || "ไม่ระบุลูกค้า"}
                   </button>
                 ))}
-                {list.length > max && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPickDay(key);
-                    }}
-                    className="w-full rounded px-1 text-left text-[10px] text-primary underline"
-                  >
-                    +{list.length - max} งาน · ดูทั้งหมด
-                  </button>
-                )}
               </div>
             </div>
           );
