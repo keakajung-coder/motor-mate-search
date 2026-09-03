@@ -1102,7 +1102,7 @@ function DayList({
     reload();
   };
   const remove = async (a: Appointment) => {
-    const { error } = await supabase.from("appointments").delete().eq("id", a.id);
+    const { error } = await deleteAsAdmin("appointments", { id: a.id });
     if (error) return toast.error(error.message);
     toast.success("ลบนัดหมายแล้ว");
     reload();
@@ -1302,7 +1302,7 @@ function AppointmentDialog({
 
   const remove = async () => {
     if (!form.id) return;
-    const { error } = await supabase.from("appointments").delete().eq("id", form.id);
+    const { error } = await deleteAsAdmin("appointments", { id: form.id });
     if (error) return toast.error(error.message);
     toast.success("ลบนัดหมายแล้ว");
     (onDeleted ?? onSaved)();

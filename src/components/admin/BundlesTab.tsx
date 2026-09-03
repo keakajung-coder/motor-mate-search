@@ -107,17 +107,16 @@ function BundleEditor({
   };
 
   const removeItem = async (productId: string) => {
-    const { error } = await supabase
-      .from("part_bundle_items")
-      .delete()
-      .eq("bundle_id", bundle.id)
-      .eq("product_id", productId);
+    const { error } = await deleteAsAdmin("part_bundle_items", {
+      bundle_id: bundle.id,
+      product_id: productId,
+    });
     if (error) return toast.error(error.message);
     onChanged();
   };
 
   const removeBundle = async () => {
-    const { error } = await supabase.from("part_bundles").delete().eq("id", bundle.id);
+    const { error } = await deleteAsAdmin("part_bundles", { id: bundle.id });
     if (error) return toast.error(error.message);
     toast.success("ลบชุดอะไหล่แล้ว");
     onChanged();

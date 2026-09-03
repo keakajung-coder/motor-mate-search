@@ -1151,8 +1151,8 @@ function MachineCard({
 
   async function deleteUnit() {
     setDeleting(true);
-    await supabase.from("machine_parts").delete().eq("machine_unit_id", unit.id);
-    const { error } = await supabase.from("machine_units").delete().eq("id", unit.id);
+    await deleteAsAdmin("machine_parts", { machine_unit_id: unit.id });
+    const { error } = await deleteAsAdmin("machine_units", { id: unit.id });
     setDeleting(false);
     if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
     toast.success(`ลบเครื่อง S/N ${unit.serial_number} แล้ว`);

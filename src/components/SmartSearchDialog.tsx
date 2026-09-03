@@ -296,8 +296,8 @@ export function SmartSearchDialog({
                     editTo={{ to: "/admin", search: {} }}
                     onEdit={() => onOpenChange(false)}
                     onDelete={async () => {
-                      await supabase.from("machine_parts").delete().eq("machine_unit_id", u.id);
-                      const { error } = await supabase.from("machine_units").delete().eq("id", u.id);
+                      await deleteAsAdmin("machine_parts", { machine_unit_id: u.id });
+                      const { error } = await deleteAsAdmin("machine_units", { id: u.id });
                       if (error) { toast.error("ลบไม่สำเร็จ: " + error.message); return; }
                       setUnits((rows) => rows.filter((r) => r.id !== u.id));
                       toast.success("ลบเครื่องจักรนี้แล้ว");
@@ -331,7 +331,7 @@ export function SmartSearchDialog({
                     onEdit={() => onOpenChange(false)}
                     editTo={{ to: "/planner", search: { date: a.visit_date } }}
                     onDelete={async () => {
-                      const { error } = await supabase.from("appointments").delete().eq("id", a.id);
+                      const { error } = await deleteAsAdmin("appointments", { id: a.id });
                       if (error) { toast.error("ลบไม่สำเร็จ: " + error.message); return; }
                       setAppts((rows) => rows.filter((r) => r.id !== a.id));
                       toast.success("ลบนัดหมายแล้ว");

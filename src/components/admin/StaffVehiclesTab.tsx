@@ -50,7 +50,7 @@ function StaffCard() {
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("service_staff").delete().eq("id", id);
+    const { error } = await deleteAsAdmin("service_staff", { id });
     if (error) return toast.error(error.message);
     toast.success("ลบแล้ว");
     load();
@@ -132,7 +132,7 @@ function VehicleCard() {
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("vehicles").delete().eq("id", id);
+    const { error } = await deleteAsAdmin("vehicles", { id });
     if (error) return toast.error(error.message);
     toast.success("ลบแล้ว");
     load();
