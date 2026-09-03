@@ -40,6 +40,8 @@ export type Database = {
       }
       appointments: {
         Row: {
+          billing_note: string | null
+          billing_type: string | null
           close_note: string | null
           closed_at: string | null
           contact_name: string | null
@@ -47,11 +49,21 @@ export type Database = {
           created_at: string
           customer_address: string | null
           customer_name: string | null
+          depart_time: string | null
           id: string
           job_detail: string | null
+          job_no: string | null
+          logistics_note: string | null
           machine_label: string | null
           machine_unit_id: string | null
+          parts_categories: string | null
+          parts_note: string | null
+          po_number: string | null
+          priority: string | null
+          quotation_required: boolean
           result: string | null
+          return_time: string | null
+          safety_gear: string | null
           serial_number: string | null
           service_type: string | null
           staff_name: string | null
@@ -61,8 +73,11 @@ export type Database = {
           visit_date: string
           visit_time: string | null
           work_order_id: string | null
+          work_types: string | null
         }
         Insert: {
+          billing_note?: string | null
+          billing_type?: string | null
           close_note?: string | null
           closed_at?: string | null
           contact_name?: string | null
@@ -70,11 +85,21 @@ export type Database = {
           created_at?: string
           customer_address?: string | null
           customer_name?: string | null
+          depart_time?: string | null
           id?: string
           job_detail?: string | null
+          job_no?: string | null
+          logistics_note?: string | null
           machine_label?: string | null
           machine_unit_id?: string | null
+          parts_categories?: string | null
+          parts_note?: string | null
+          po_number?: string | null
+          priority?: string | null
+          quotation_required?: boolean
           result?: string | null
+          return_time?: string | null
+          safety_gear?: string | null
           serial_number?: string | null
           service_type?: string | null
           staff_name?: string | null
@@ -84,8 +109,11 @@ export type Database = {
           visit_date: string
           visit_time?: string | null
           work_order_id?: string | null
+          work_types?: string | null
         }
         Update: {
+          billing_note?: string | null
+          billing_type?: string | null
           close_note?: string | null
           closed_at?: string | null
           contact_name?: string | null
@@ -93,11 +121,21 @@ export type Database = {
           created_at?: string
           customer_address?: string | null
           customer_name?: string | null
+          depart_time?: string | null
           id?: string
           job_detail?: string | null
+          job_no?: string | null
+          logistics_note?: string | null
           machine_label?: string | null
           machine_unit_id?: string | null
+          parts_categories?: string | null
+          parts_note?: string | null
+          po_number?: string | null
+          priority?: string | null
+          quotation_required?: boolean
           result?: string | null
+          return_time?: string | null
+          safety_gear?: string | null
           serial_number?: string | null
           service_type?: string | null
           staff_name?: string | null
@@ -107,6 +145,7 @@ export type Database = {
           visit_date?: string
           visit_time?: string | null
           work_order_id?: string | null
+          work_types?: string | null
         }
         Relationships: [
           {
@@ -695,14 +734,23 @@ export type Database = {
       work_orders: {
         Row: {
           admin_note: string | null
+          billing_note: string | null
+          billing_type: string | null
           contact_name: string | null
           contact_phone: string | null
           created_at: string
           customer_address: string | null
           customer_name: string
+          depart_time: string | null
           id: string
           job_detail: string | null
+          job_no: string | null
+          logistics_note: string | null
           machine_label: string | null
+          po_number: string | null
+          priority: string | null
+          return_time: string | null
+          safety_gear: string | null
           serial_number: string | null
           service_type: string | null
           staff_name: string | null
@@ -711,17 +759,27 @@ export type Database = {
           vehicle_plate: string | null
           visit_date: string | null
           visit_time: string | null
+          work_types: string | null
         }
         Insert: {
           admin_note?: string | null
+          billing_note?: string | null
+          billing_type?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
           customer_address?: string | null
           customer_name: string
+          depart_time?: string | null
           id?: string
           job_detail?: string | null
+          job_no?: string | null
+          logistics_note?: string | null
           machine_label?: string | null
+          po_number?: string | null
+          priority?: string | null
+          return_time?: string | null
+          safety_gear?: string | null
           serial_number?: string | null
           service_type?: string | null
           staff_name?: string | null
@@ -730,17 +788,27 @@ export type Database = {
           vehicle_plate?: string | null
           visit_date?: string | null
           visit_time?: string | null
+          work_types?: string | null
         }
         Update: {
           admin_note?: string | null
+          billing_note?: string | null
+          billing_type?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
           customer_address?: string | null
           customer_name?: string
+          depart_time?: string | null
           id?: string
           job_detail?: string | null
+          job_no?: string | null
+          logistics_note?: string | null
           machine_label?: string | null
+          po_number?: string | null
+          priority?: string | null
+          return_time?: string | null
+          safety_gear?: string | null
           serial_number?: string | null
           service_type?: string | null
           staff_name?: string | null
@@ -749,6 +817,7 @@ export type Database = {
           vehicle_plate?: string | null
           visit_date?: string | null
           visit_time?: string | null
+          work_types?: string | null
         }
         Relationships: []
       }
