@@ -802,6 +802,53 @@ function vehicleColor(plate?: string | null) {
   for (let i = 0; i < p.length; i++) h = (h * 31 + p.charCodeAt(i)) >>> 0;
   return VEHICLE_COLORS[h % VEHICLE_COLORS.length];
 }
+
+/** สีขอบการ์ด (3px) แยกตามทะเบียนรถ */
+const VEHICLE_BORDERS = [
+  "border-emerald-500",
+  "border-sky-500",
+  "border-amber-500",
+  "border-violet-500",
+  "border-rose-500",
+  "border-teal-500",
+  "border-orange-500",
+  "border-indigo-500",
+  "border-lime-500",
+  "border-cyan-500",
+];
+function vehicleBorder(plate?: string | null) {
+  const p = (plate ?? "").split(",")[0]?.trim() ?? "";
+  if (!p) return "border-slate-300";
+  let h = 0;
+  for (let i = 0; i < p.length; i++) h = (h * 31 + p.charCodeAt(i)) >>> 0;
+  return VEHICLE_BORDERS[h % VEHICLE_BORDERS.length];
+}
+/** พื้นหลังพาสเทลของการ์ด แยกตามช่างเทคนิค */
+const STAFF_BGS = [
+  "bg-rose-50",
+  "bg-sky-50",
+  "bg-amber-50",
+  "bg-violet-50",
+  "bg-emerald-50",
+  "bg-teal-50",
+  "bg-orange-50",
+  "bg-indigo-50",
+  "bg-lime-50",
+  "bg-cyan-50",
+];
+function staffBg(name?: string | null) {
+  const n = splitNames(name)[0] ?? "";
+  if (!n) return "bg-white";
+  let h = 0;
+  for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) >>> 0;
+  return STAFF_BGS[h % STAFF_BGS.length];
+}
+/** คลาสการ์ดนัดหมายมาตรฐาน: ขอบ 3px ตามรถ + พื้นพาสเทลตามช่าง + ตัวหนังสือ slate-800 */
+function apptCardClass(a: Appointment) {
+  return "border-[3px] text-slate-800 " + vehicleBorder(a.vehicle_plate) + " " + staffBg(a.staff_name);
+}
+/** ความกว้างคอลัมน์: จันทร์–ศุกร์ เท่ากัน (~17.4%), เสาร์ ~10%, อาทิตย์ ~3% (แถบแดง) */
+const WEEK_COLS = "repeat(5, minmax(0, 17.4fr)) minmax(0, 10fr) minmax(40px, 3fr)";
 /** เส้นขอบซ้ายบอกสถานะงาน (ยังคงรหัสสีสถานะไว้) */
 function statusEdge(a: Appointment) {
   if (a.status === "closed") return a.result === "not_ok" ? "border-l-4 border-l-red-500" : "border-l-4 border-l-emerald-600";
