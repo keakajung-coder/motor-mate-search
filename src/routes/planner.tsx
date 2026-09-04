@@ -283,13 +283,25 @@ function PlannerPage() {
     const el = ref.current;
     if (!el) return;
     setExporting(kind);
+    // คลายการตัดขอบ (scroll) ชั่วคราว เพื่อให้จับภาพได้เต็มตารางทุกมุมมอง
+    el.classList.add("export-full");
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const full = { width: el.scrollWidth, height: el.scrollHeight };
     try {
       if (kind === "pdf") {
         const blob = await elementToPdfBlobPaged(el, 1, { orientation: "landscape" });
         await saveFile(blob, `ตารางงาน-${fileLabel}.pdf`);
       } else {
         const { toJpeg } = await import("html-to-image");
-        const dataUrl = await toJpeg(el, { backgroundColor: "#ffffff", cacheBust: true, pixelRatio: 2, quality: 0.9 });
+        const dataUrl = await toJpeg(el, {
+          backgroundColor: "#ffffff",
+          cacheBust: true,
+          pixelRatio: 2,
+          quality: 0.9,
+          width: full.width,
+          height: full.height,
+          style: { width: `${full.width}px`, height: `${full.height}px` },
+        });
         const blob = await (await fetch(dataUrl)).blob();
         await saveFile(blob, `ตารางงาน-${fileLabel}.jpg`);
       }
@@ -297,9 +309,11 @@ function PlannerPage() {
     } catch (e) {
       toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
     } finally {
+      el.classList.remove("export-full");
       setExporting("");
     }
   };
+
 
 
   const title =
@@ -326,9 +340,10 @@ function PlannerPage() {
         </div>
       </header>
 
-      {/* Desktop: 2 คอลัมน์ (สถิติ/งาน ซ้าย · ปฏิทิน ขวา) / Mobile: 1 คอลัมน์บนลงล่าง */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-      <div className="space-y-5 lg:col-span-4">
+      {/* จอใหญ่ (xl+): 2 คอลัมน์ · แท็บเล็ตแนวนอน/มือถือ: แผงพับอยู่ด้านบน ปฏิทินเต็มความกว้าง */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+      <div className="grid gap-4 md:grid-cols-2 xl:col-span-4 xl:grid-cols-1">
+
       <div className="hidden md:block">
         <FoldSection title="แผงสถิติภาพรวม">
           <StatsPanel appts={appts} pending={orders.length} />
@@ -357,7 +372,7 @@ function PlannerPage() {
       </FoldSection>
       </div>
 
-      <Card className="h-fit lg:col-span-8">
+      <Card className="h-fit xl:col-span-8">
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -1000,14 +1015,18 @@ function MonthGrid({
                       onPick(a);
                     }}
                     className={
-                      "block w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium leading-snug " +
+                      "block w-full rounded px-1 py-0.5 text-left text-[10px] font-medium leading-snug " +
                       apptCardClass(a)
                     }
                     title={apptSummary(a)}
                   >
-                    {a.customer_name || "ไม่ระบุลูกค้า"}
+                    <span className="block truncate">{a.customer_name || "ไม่ระบุลูกค้า"}</span>
+                    <span className="block truncate text-xs opacity-80">
+                      🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
+                    </span>
                   </button>
                 ))}
+
               </div>
             </div>
           );
@@ -1104,6 +1123,10 @@ function TimeGrid({
                 <span className="block truncate text-[10px] opacity-80">
                   {splitNames(a.service_type).join(" / ") || a.job_detail || "-"}
                 </span>
+                <span className="block truncate text-xs opacity-80">
+                  🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
+                </span>
+
               </button>
             ))}
           </div>
