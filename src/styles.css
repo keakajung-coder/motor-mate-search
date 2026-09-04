@@ -171,3 +171,14 @@
   display: none;
 }
 
+
+/* โหมดส่งออกภาพ/PDF: คลายการตัดขอบทั้งหมดเพื่อจับภาพตารางเต็มช่วง */
+.export-full,
+.export-full * {
+  overflow: visible !important;
+  max-height: none !important;
+}
+.export-full {
+  width: max-content !important;
+  max-width: none !important;
+}
