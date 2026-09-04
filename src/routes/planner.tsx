@@ -1123,6 +1123,10 @@ function TimeGrid({
                 <span className="block truncate text-[10px] opacity-80">
                   {splitNames(a.service_type).join(" / ") || a.job_detail || "-"}
                 </span>
+                <span className="block truncate text-xs opacity-80">
+                  🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
+                </span>
+
               </button>
             ))}
           </div>
