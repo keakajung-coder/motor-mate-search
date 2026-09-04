@@ -42,6 +42,8 @@ import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-comb
 import { ensureDirectoryEntries, useDirectory } from "@/lib/directory";
 import { elementToPdfBlobPaged, formatDate, isMachineComplete, saveFile } from "@/lib/report";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
+import { JobReportsPanel } from "@/components/JobReportsPanel";
+import { PART_CATEGORIES } from "@/lib/job-fields";
 
 
 export const Route = createFileRoute("/planner")({
@@ -341,6 +343,17 @@ function PlannerPage() {
 
       <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
         <PartsAlertPanel withActions={isAdmin} />
+      </FoldSection>
+
+      <FoldSection title="รายงานสรุปงาน (รายวัน/รายเดือน)">
+        <JobReportsPanel
+          onPickDate={(d) => {
+            const [y, m, dd] = d.split("-").map(Number);
+            setCursor(new Date(y, m - 1, dd));
+            setView("day");
+            setDayDetail(d);
+          }}
+        />
       </FoldSection>
       </div>
 
@@ -1619,6 +1632,11 @@ function CloseJobDialog({
   const [note, setNote] = useState("");
   const [resetParts, setResetParts] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [quotation, setQuotation] = useState(false);
+  const [cats, setCats] = useState<string[]>([]);
+  const [partsNote, setPartsNote] = useState("");
+  const toggleCat = (c: string) =>
+    setCats((list) => (list.includes(c) ? list.filter((x) => x !== c) : [...list, c]));
 
   const submit = async () => {
     if (!result) return toast.error("กรุณาเลือกผลสรุปงาน");
@@ -1627,7 +1645,15 @@ function CloseJobDialog({
 
     const { error } = await supabase
       .from("appointments")
-      .update({ status: "closed", result, close_note: note.trim() || null, closed_at: new Date().toISOString() })
+      .update({
+        status: "closed",
+        result,
+        close_note: note.trim() || null,
+        closed_at: new Date().toISOString(),
+        quotation_required: quotation,
+        parts_categories: cats.join(", ") || null,
+        parts_note: partsNote.trim() || null,
+      })
       .eq("id", appt.id);
     if (error) {
       setSaving(false);
@@ -1689,7 +1715,32 @@ function CloseJobDialog({
             <XCircle className="mr-1 h-4 w-4" /> ไม่เรียบร้อย
           </Button>
         </div>
-        <Textarea rows={3} placeholder="บันทึกสรุปงานสั้นๆ" value={note} onChange={(e) => setNote(e.target.value)} />
+        <div className="space-y-2 rounded-xl border p-3">
+          <p className="text-sm font-semibold">รายละเอียดการปิดงาน</p>
+          <Textarea rows={3} placeholder="บันทึกสรุปงานสั้นๆ" value={note} onChange={(e) => setNote(e.target.value)} />
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={quotation} onChange={(e) => setQuotation(e.target.checked)} />
+            ต้องออกใบเสนอราคาให้ลูกค้า
+          </label>
+        </div>
+
+        <div className="space-y-2 rounded-xl border p-3">
+          <p className="text-sm font-semibold">หมวดอะไหล่ที่ใช้ในงานนี้</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {PART_CATEGORIES.map((c) => (
+              <label key={c} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={cats.includes(c)} onChange={() => toggleCat(c)} />
+                {c}
+              </label>
+            ))}
+          </div>
+          <Input
+            placeholder="ระบุอะไหล่เพิ่มเติม / รายละเอียดอื่นๆ"
+            value={partsNote}
+            onChange={(e) => setPartsNote(e.target.value)}
+          />
+        </div>
+
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={resetParts} onChange={(e) => setResetParts(e.target.checked)} />
           รีเซ็ตอายุอะไหล่ของเครื่อง {appt.serial_number || "-"} เริ่มนับใหม่
