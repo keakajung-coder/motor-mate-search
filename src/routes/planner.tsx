@@ -340,9 +340,10 @@ function PlannerPage() {
         </div>
       </header>
 
-      {/* Desktop: 2 คอลัมน์ (สถิติ/งาน ซ้าย · ปฏิทิน ขวา) / Mobile: 1 คอลัมน์บนลงล่าง */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-      <div className="space-y-5 lg:col-span-4">
+      {/* จอใหญ่ (xl+): 2 คอลัมน์ · แท็บเล็ตแนวนอน/มือถือ: แผงพับอยู่ด้านบน ปฏิทินเต็มความกว้าง */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+      <div className="grid gap-4 md:grid-cols-2 xl:col-span-4 xl:grid-cols-1">
+
       <div className="hidden md:block">
         <FoldSection title="แผงสถิติภาพรวม">
           <StatsPanel appts={appts} pending={orders.length} />
