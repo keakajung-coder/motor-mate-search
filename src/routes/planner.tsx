@@ -1015,14 +1015,18 @@ function MonthGrid({
                       onPick(a);
                     }}
                     className={
-                      "block w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium leading-snug " +
+                      "block w-full rounded px-1 py-0.5 text-left text-[10px] font-medium leading-snug " +
                       apptCardClass(a)
                     }
                     title={apptSummary(a)}
                   >
-                    {a.customer_name || "ไม่ระบุลูกค้า"}
+                    <span className="block truncate">{a.customer_name || "ไม่ระบุลูกค้า"}</span>
+                    <span className="block truncate text-xs opacity-80">
+                      🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
+                    </span>
                   </button>
                 ))}
+
               </div>
             </div>
           );
