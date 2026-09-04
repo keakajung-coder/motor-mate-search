@@ -687,6 +687,16 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
       visit_time: p.visit_time ?? o.visit_time,
       staff_name: p.staff_name ?? o.staff_name,
       vehicle_plate: p.vehicle_plate ?? o.vehicle_plate,
+      job_no: (o as any).job_no ?? null,
+      priority: (o as any).priority ?? null,
+      billing_type: (o as any).billing_type ?? null,
+      po_number: (o as any).po_number ?? null,
+      billing_note: (o as any).billing_note ?? null,
+      work_types: (o as any).work_types ?? null,
+      depart_time: (o as any).depart_time ?? null,
+      return_time: (o as any).return_time ?? null,
+      logistics_note: (o as any).logistics_note ?? null,
+      safety_gear: (o as any).safety_gear ?? null,
       status: "scheduled",
     });
     if (!error) await supabase.from("work_orders").update({ status: "approved" }).eq("id", o.id);
