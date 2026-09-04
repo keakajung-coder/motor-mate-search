@@ -372,7 +372,7 @@ function PlannerPage() {
       </FoldSection>
       </div>
 
-      <Card className="h-fit lg:col-span-8">
+      <Card className="h-fit xl:col-span-8">
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2 text-base">
