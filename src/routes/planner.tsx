@@ -283,13 +283,25 @@ function PlannerPage() {
     const el = ref.current;
     if (!el) return;
     setExporting(kind);
+    // คลายการตัดขอบ (scroll) ชั่วคราว เพื่อให้จับภาพได้เต็มตารางทุกมุมมอง
+    el.classList.add("export-full");
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const full = { width: el.scrollWidth, height: el.scrollHeight };
     try {
       if (kind === "pdf") {
         const blob = await elementToPdfBlobPaged(el, 1, { orientation: "landscape" });
         await saveFile(blob, `ตารางงาน-${fileLabel}.pdf`);
       } else {
         const { toJpeg } = await import("html-to-image");
-        const dataUrl = await toJpeg(el, { backgroundColor: "#ffffff", cacheBust: true, pixelRatio: 2, quality: 0.9 });
+        const dataUrl = await toJpeg(el, {
+          backgroundColor: "#ffffff",
+          cacheBust: true,
+          pixelRatio: 2,
+          quality: 0.9,
+          width: full.width,
+          height: full.height,
+          style: { width: `${full.width}px`, height: `${full.height}px` },
+        });
         const blob = await (await fetch(dataUrl)).blob();
         await saveFile(blob, `ตารางงาน-${fileLabel}.jpg`);
       }
@@ -297,9 +309,11 @@ function PlannerPage() {
     } catch (e) {
       toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
     } finally {
+      el.classList.remove("export-full");
       setExporting("");
     }
   };
+
 
 
   const title =
