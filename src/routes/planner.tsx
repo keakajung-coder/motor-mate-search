@@ -289,7 +289,7 @@ function PlannerPage() {
     const full = { width: el.scrollWidth, height: el.scrollHeight };
     try {
       if (kind === "pdf") {
-        const blob = await elementToPdfBlobPaged(el, 1, { orientation: "landscape" });
+        const blob = await elementToPdfBlobPaged(el, 1, { orientation: "landscape", size: full });
         await saveFile(blob, `ตารางงาน-${fileLabel}.pdf`);
       } else {
         const { toJpeg } = await import("html-to-image");
