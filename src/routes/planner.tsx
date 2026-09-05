@@ -1120,7 +1120,7 @@ function TimeGrid({
               >
                 <span className="flex items-baseline gap-1 text-[10px]">
                   <span className="font-semibold">{a.visit_time?.slice(0, 5) || "--:--"}</span>
-                  <span className="truncate opacity-70">{splitNames(a.staff_name).join(", ") || "-"}</span>
+                  <span className="truncate text-xs opacity-70">{splitNames(a.staff_name).join(", ") || "-"}</span>
                 </span>
                 <span className="block truncate text-xs font-bold">{a.customer_name || "ไม่ระบุลูกค้า"}</span>
                 <span className="block truncate text-[10px] opacity-80">
