@@ -1022,6 +1022,9 @@ function MonthGrid({
                   >
                     <span className="block truncate">{a.customer_name || "ไม่ระบุลูกค้า"}</span>
                     <span className="block truncate text-xs opacity-80">
+                      👤 {splitNames(a.staff_name).join(", ") || "-"}
+                    </span>
+                    <span className="block truncate text-xs opacity-80">
                       🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
                     </span>
                   </button>
