@@ -167,13 +167,9 @@ export async function elementToPdfBlob(el: HTMLElement): Promise<Blob> {
       cacheBust: true,
       pixelRatio: step.pixelRatio,
       quality: step.quality,
-      ...(opts?.size
-        ? {
-            width: opts.size.width,
-            height: opts.size.height,
-            style: { width: `${opts.size.width}px`, height: `${opts.size.height}px` },
-          }
-        : {}),
+      width: el.scrollWidth || undefined,
+      height: el.scrollHeight || undefined,
+
     });
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image();
