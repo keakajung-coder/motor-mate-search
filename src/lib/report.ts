@@ -167,6 +167,9 @@ export async function elementToPdfBlob(el: HTMLElement): Promise<Blob> {
       cacheBust: true,
       pixelRatio: step.pixelRatio,
       quality: step.quality,
+      width: el.scrollWidth || undefined,
+      height: el.scrollHeight || undefined,
+
     });
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image();
@@ -217,7 +220,7 @@ export const MACHINE_STATUSES = [
 export async function elementToPdfBlobPaged(
   el: HTMLElement,
   pages: number,
-  opts?: { orientation?: "portrait" | "landscape" },
+  opts?: { orientation?: "portrait" | "landscape"; size?: { width: number; height: number } },
 ): Promise<Blob> {
   const [{ toJpeg }, { default: jsPDF }] = await Promise.all([
     import("html-to-image"),
@@ -239,6 +242,13 @@ export async function elementToPdfBlobPaged(
       cacheBust: true,
       pixelRatio: step.pixelRatio,
       quality: step.quality,
+      ...(opts?.size
+        ? {
+            width: opts.size.width,
+            height: opts.size.height,
+            style: { width: `${opts.size.width}px`, height: `${opts.size.height}px` },
+          }
+        : {}),
     });
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image();

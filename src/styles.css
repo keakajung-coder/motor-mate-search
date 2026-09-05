@@ -177,8 +177,11 @@
 .export-full * {
   overflow: visible !important;
   max-height: none !important;
+  max-width: none !important;
 }
 .export-full {
   width: max-content !important;
-  max-width: none !important;
+  height: max-content !important;
+  contain: none !important;
 }
+
