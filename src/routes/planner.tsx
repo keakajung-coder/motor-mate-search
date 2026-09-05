@@ -356,6 +356,10 @@ function PlannerPage() {
         </FoldSection>
       )}
 
+      <FoldSection title="ใบสั่งงานที่อนุมัติแล้ว (ส่งออกรูป/PDF)">
+        <ApprovedOrders />
+      </FoldSection>
+
       <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
         <PartsAlertPanel withActions={isAdmin} />
       </FoldSection>
@@ -799,6 +803,95 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
 
       </CardContent>
     </Card>
+  );
+}
+
+// ---------- Approved work orders (export) ----------
+/** ใบสั่งงานที่อนุมัติแล้ว: ส่งออกเป็นรูปภาพ หรือ PDF ได้ทันที */
+function ApprovedOrders() {
+  const [rows, setRows] = useState<WorkOrder[]>([]);
+  const [busy, setBusy] = useState("");
+  const refs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    supabase
+      .from("work_orders")
+      .select("*")
+      .eq("status", "approved")
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data }) => setRows((data ?? []) as unknown as WorkOrder[]));
+  }, []);
+
+  const exportOne = async (o: WorkOrder, kind: "image" | "pdf") => {
+    const el = refs.current[o.id];
+    if (!el) return;
+    const name = `ใบสั่งงาน-${o.customer_name || o.id.slice(0, 6)}`;
+    setBusy(o.id + kind);
+    el.classList.add("export-full");
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const size = { width: el.scrollWidth, height: el.scrollHeight };
+    try {
+      if (kind === "pdf") {
+        const blob = await elementToPdfBlobPaged(el, 1, { orientation: "portrait", size });
+        await saveFile(blob, `${name}.pdf`);
+      } else {
+        const { toJpeg } = await import("html-to-image");
+        const dataUrl = await toJpeg(el, {
+          backgroundColor: "#ffffff",
+          cacheBust: true,
+          pixelRatio: 2,
+          quality: 0.92,
+          width: size.width,
+          height: size.height,
+          style: { width: `${size.width}px`, height: `${size.height}px` },
+        });
+        const blob = await (await fetch(dataUrl)).blob();
+        await saveFile(blob, `${name}.jpg`);
+      }
+      toast.success("บันทึกใบสั่งงานเรียบร้อย");
+    } catch (e) {
+      toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
+    } finally {
+      el.classList.remove("export-full");
+      setBusy("");
+    }
+  };
+
+  if (rows.length === 0) return <p className="text-sm text-muted-foreground">ยังไม่มีใบสั่งงานที่อนุมัติ</p>;
+
+  return (
+    <div className="space-y-3">
+      {rows.map((o) => (
+        <div key={o.id} className="space-y-2 rounded-lg border p-3">
+          <div
+            ref={(n) => {
+              refs.current[o.id] = n;
+            }}
+            className="space-y-1 rounded-md bg-white p-3 text-slate-800"
+          >
+            <p className="text-base font-bold">ใบสั่งงานบริการ</p>
+            <p className="font-semibold">{o.customer_name}</p>
+            <p className="text-xs">{[o.contact_name, o.contact_phone, o.customer_address].filter(Boolean).join(" · ")}</p>
+            <p className="text-xs">{[o.machine_label, o.serial_number, o.service_type].filter(Boolean).join(" · ")}</p>
+            <p className="text-xs">
+              วันที่ {formatDate(o.visit_date ?? "")} {o.visit_time ?? ""} · ช่าง {o.staff_name || "-"} · รถ {o.vehicle_plate || "-"}
+            </p>
+            <p className="text-sm">{o.job_detail}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" disabled={!!busy} onClick={() => exportOne(o, "image")}>
+              {busy === o.id + "image" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
+              บันทึกรูปภาพ
+            </Button>
+            <Button size="sm" variant="outline" disabled={!!busy} onClick={() => exportOne(o, "pdf")}>
+              {busy === o.id + "pdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+              บันทึก PDF
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
