@@ -381,13 +381,26 @@ function PlannerPage() {
           </FoldSection>
         </div>
 
-      <Card className="h-fit xl:col-span-8">
+      <Card className={`h-fit ${sidebarOpen ? "lg:col-span-8" : "lg:col-span-12"}`}>
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <CalendarDays className="h-4 w-4" /> {title}
             </CardTitle>
             <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="hidden lg:inline-flex"
+                onClick={() => setSidebarOpen((o) => !o)}
+                aria-label={sidebarOpen ? "ซ่อนแผงด้านข้าง" : "แสดงแผงด้านข้าง"}
+              >
+                {sidebarOpen ? (
+                  <PanelLeftClose className="h-4 w-4" />
+                ) : (
+                  <PanelLeft className="h-4 w-4" />
+                )}
+              </Button>
               <Button variant="outline" size="icon" onClick={() => shift(-1)}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
