@@ -17,6 +17,10 @@ type Row = {
   visit_time: string | null;
   status: string;
   result: string | null;
+  close_note: string | null;
+  quotation_required: boolean | null;
+  parts_categories: string | null;
+  parts_note: string | null;
 };
 
 const iso = (d: Date) => {
@@ -45,7 +49,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
     setLoading(true);
     const { data } = await supabase
       .from("appointments")
-      .select("id, customer_name, job_detail, staff_name, visit_date, visit_time, status, result")
+      .select("id, customer_name, job_detail, staff_name, visit_date, visit_time, status, result, close_note, quotation_required, parts_categories, parts_note")
       .gte("visit_date", range.from)
       .lte("visit_date", range.to)
       .order("visit_date")
@@ -75,6 +79,16 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
       }
     }
     return [...map.entries()].sort((a, b) => b[1].total - a[1].total);
+  }, [rows]);
+
+  /** จัดกลุ่มตามชื่อลูกค้า สำหรับสรุปส่งออก */
+  const grouped = useMemo(() => {
+    const map = new Map<string, Row[]>();
+    for (const r of rows) {
+      const key = r.customer_name?.trim() || "ไม่ระบุลูกค้า";
+      map.set(key, [...(map.get(key) ?? []), r]);
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0], "th"));
   }, [rows]);
 
   const label = mode === "day" ? formatDate(day) : `${range.from} ถึง ${range.to}`;
@@ -170,6 +184,40 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
                   </li>
                 ))}
               </ul>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground">สรุปงานแยกตามลูกค้า</p>
+            {grouped.length === 0 ? (
+              <p className="text-xs text-muted-foreground">ยังไม่มีข้อมูล</p>
+            ) : (
+              <div className="space-y-2">
+                {grouped.map(([customer, list]) => (
+                  <div key={customer} className="rounded-lg border p-2">
+                    <p className="text-sm font-bold">{customer}</p>
+                    <div className="mt-1 space-y-1">
+                      {list.map((r) => {
+                        const closed = r.status === "closed";
+                        const next =
+                          [r.quotation_required ? "ต้องออกใบเสนอราคา" : "", r.parts_categories ?? "", r.parts_note ?? ""]
+                            .filter(Boolean)
+                            .join(" · ") || (closed ? "ไม่มีงานต่อเนื่อง" : "รอเข้าดำเนินการ");
+                        return (
+                          <div key={r.id} className="grid gap-0.5 border-t pt-1 text-xs first:border-t-0 first:pt-0">
+                            <span>งานที่ทำ: {r.job_detail || r.close_note || "-"}</span>
+                            <span className={closed ? (r.result === "not_ok" ? "text-red-600" : "text-emerald-700") : "text-orange-600"}>
+                              สถานะ: {closed ? (r.result === "not_ok" ? "ไม่เรียบร้อย" : "เรียบร้อย") : "ยังไม่เรียบร้อย"}
+                            </span>
+                            <span>ใบเสนอราคา/งานต่อเนื่อง: {next}</span>
+                            <span>ช่างผู้รับผิดชอบ: {splitNames(r.staff_name ?? "").join(", ") || "-"}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

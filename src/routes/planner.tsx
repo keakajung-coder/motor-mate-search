@@ -1432,11 +1432,9 @@ function DayList({
                         เริ่มดำเนินการ
                       </Button>
                     )}
-                    {a.status !== "closed" && (
-                      <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
-                        ปิดงาน
-                      </Button>
-                    )}
+                    <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
+                      {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดงาน"}
+                    </Button>
                     <ConfirmButton onConfirm={() => remove(a)} description="ลบนัดหมายนี้?">
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </ConfirmButton>
@@ -1775,13 +1773,36 @@ function CloseJobDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [result, setResult] = useState<"ok" | "not_ok" | null>(null);
-  const [note, setNote] = useState("");
-  const [resetParts, setResetParts] = useState(true);
+  const isEdit = appt.status === "closed";
+  const [result, setResult] = useState<"ok" | "not_ok" | null>(
+    isEdit ? ((appt.result as "ok" | "not_ok" | null) ?? "ok") : null,
+  );
+  const [note, setNote] = useState(appt.close_note ?? "");
+  const [resetParts, setResetParts] = useState(!isEdit);
   const [saving, setSaving] = useState(false);
   const [quotation, setQuotation] = useState(false);
   const [cats, setCats] = useState<string[]>([]);
   const [partsNote, setPartsNote] = useState("");
+
+  // โหลดรายละเอียดปิดงานเดิมเมื่อเข้ามาแก้ไข
+  useEffect(() => {
+    if (!isEdit || !appt.id) return;
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from("appointments")
+        .select("quotation_required, parts_categories, parts_note")
+        .eq("id", appt.id)
+        .maybeSingle();
+      if (!alive || !data) return;
+      setQuotation(!!data.quotation_required);
+      setCats((data.parts_categories ?? "").split(",").map((x) => x.trim()).filter(Boolean));
+      setPartsNote(data.parts_note ?? "");
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [isEdit, appt.id]);
   const toggleCat = (c: string) =>
     setCats((list) => (list.includes(c) ? list.filter((x) => x !== c) : [...list, c]));
 
@@ -1796,7 +1817,7 @@ function CloseJobDialog({
         status: "closed",
         result,
         close_note: note.trim() || null,
-        closed_at: new Date().toISOString(),
+        closed_at: appt.closed_at ?? new Date().toISOString(),
         quotation_required: quotation,
         parts_categories: cats.join(", ") || null,
         parts_note: partsNote.trim() || null,
@@ -1817,6 +1838,12 @@ function CloseJobDialog({
       unitId = unit?.id ?? null;
     }
 
+    if (isEdit) {
+      await supabase
+        .from("maintenance_logs")
+        .update({ result, note: note.trim() || null, job_detail: appt.job_detail })
+        .eq("appointment_id", appt.id);
+    } else
     await supabase.from("maintenance_logs").insert({
       machine_unit_id: unitId,
       appointment_id: appt.id,
@@ -1836,7 +1863,7 @@ function CloseJobDialog({
     }
 
     setSaving(false);
-    toast.success("ปิดงานและบันทึกประวัติซ่อมบำรุงแล้ว");
+    toast.success(isEdit ? "แก้ไขรายละเอียดปิดงานแล้ว" : "ปิดงานและบันทึกประวัติซ่อมบำรุงแล้ว");
     onSaved();
   };
 
@@ -1844,8 +1871,12 @@ function CloseJobDialog({
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>สรุปผลปิดงาน</DialogTitle>
-          <DialogDescription>เลือกผลสรุปและบันทึกรายละเอียดเข้าประวัติซ่อมบำรุงของเครื่อง</DialogDescription>
+          <DialogTitle>{isEdit ? "แก้ไขรายละเอียดงานที่ปิดแล้ว" : "สรุปผลปิดงาน"}</DialogTitle>
+          <DialogDescription>
+            {isEdit
+              ? "แก้คำผิดหรืออัปเดตรายละเอียดของงานที่ปิดไปแล้ว แล้วกดบันทึก"
+              : "เลือกผลสรุปและบันทึกรายละเอียดเข้าประวัติซ่อมบำรุงของเครื่อง"}
+          </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-2">
           <Button
@@ -1897,7 +1928,8 @@ function CloseJobDialog({
             ยกเลิก
           </Button>
           <Button onClick={submit} disabled={saving}>
-            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} ปิดงาน
+            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+            {isEdit ? "บันทึกการแก้ไข" : "ปิดงาน"}
           </Button>
         </DialogFooter>
       </DialogContent>
