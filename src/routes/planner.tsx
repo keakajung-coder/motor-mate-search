@@ -192,6 +192,7 @@ function PlannerPage() {
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [dayDetail, setDayDetail] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const monthRef = useRef<HTMLDivElement>(null);
   const weekRef = useRef<HTMLDivElement>(null);
   const dayRef = useRef<HTMLDivElement>(null);
