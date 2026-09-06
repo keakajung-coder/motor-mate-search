@@ -23,12 +23,13 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronDown,
-
   ChevronRight,
   ClipboardList,
   Loader2,
   Camera,
   FileDown,
+  PanelLeft,
+  PanelLeftClose,
   Pencil,
   Phone,
   Trash2,
@@ -191,6 +192,7 @@ function PlannerPage() {
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [dayDetail, setDayDetail] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const monthRef = useRef<HTMLDivElement>(null);
   const weekRef = useRef<HTMLDivElement>(null);
   const dayRef = useRef<HTMLDivElement>(null);
@@ -340,49 +342,65 @@ function PlannerPage() {
         </div>
       </header>
 
-      {/* จอใหญ่ (xl+): 2 คอลัมน์ · แท็บเล็ตแนวนอน/มือถือ: แผงพับอยู่ด้านบน ปฏิทินเต็มความกว้าง */}
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-      <div className="grid gap-4 md:grid-cols-2 xl:col-span-4 xl:grid-cols-1">
+      {/* จอใหญ่/แท็บเล็ตแนวนอน (lg+): แผงด้านข้างพับได้ · ปฏิทินขยายเต็มจอเมื่อพับ */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        <div
+          className={`grid gap-4 md:grid-cols-2 ${
+            sidebarOpen ? "lg:col-span-4 lg:grid-cols-1" : "lg:hidden"
+          }`}
+        >
+          <div className="hidden md:block">
+            <FoldSection title="แผงสถิติภาพรวม">
+              <StatsPanel appts={appts} pending={orders.length} />
+            </FoldSection>
+          </div>
 
-      <div className="hidden md:block">
-        <FoldSection title="แผงสถิติภาพรวม">
-          <StatsPanel appts={appts} pending={orders.length} />
-        </FoldSection>
-      </div>
+          {isAdmin && (
+            <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`}>
+              <PendingOrders orders={orders} reload={load} />
+            </FoldSection>
+          )}
 
-      {isAdmin && (
-        <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} >
-          <PendingOrders orders={orders} reload={load} />
-        </FoldSection>
-      )}
+          <FoldSection title="ใบสั่งงานที่อนุมัติแล้ว (ส่งออกรูป/PDF)">
+            <ApprovedOrders />
+          </FoldSection>
 
-      <FoldSection title="ใบสั่งงานที่อนุมัติแล้ว (ส่งออกรูป/PDF)">
-        <ApprovedOrders />
-      </FoldSection>
+          <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
+            <PartsAlertPanel withActions={isAdmin} />
+          </FoldSection>
 
-      <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
-        <PartsAlertPanel withActions={isAdmin} />
-      </FoldSection>
+          <FoldSection title="รายงานสรุปงาน (รายวัน/รายเดือน)">
+            <JobReportsPanel
+              onPickDate={(d) => {
+                const [y, m, dd] = d.split("-").map(Number);
+                setCursor(new Date(y, m - 1, dd));
+                setView("day");
+                setDayDetail(d);
+              }}
+            />
+          </FoldSection>
+        </div>
 
-      <FoldSection title="รายงานสรุปงาน (รายวัน/รายเดือน)">
-        <JobReportsPanel
-          onPickDate={(d) => {
-            const [y, m, dd] = d.split("-").map(Number);
-            setCursor(new Date(y, m - 1, dd));
-            setView("day");
-            setDayDetail(d);
-          }}
-        />
-      </FoldSection>
-      </div>
-
-      <Card className="h-fit xl:col-span-8">
+      <Card className={`h-fit ${sidebarOpen ? "lg:col-span-8" : "lg:col-span-12"}`}>
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <CalendarDays className="h-4 w-4" /> {title}
             </CardTitle>
             <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="hidden lg:inline-flex"
+                onClick={() => setSidebarOpen((o) => !o)}
+                aria-label={sidebarOpen ? "ซ่อนแผงด้านข้าง" : "แสดงแผงด้านข้าง"}
+              >
+                {sidebarOpen ? (
+                  <PanelLeftClose className="h-4 w-4" />
+                ) : (
+                  <PanelLeft className="h-4 w-4" />
+                )}
+              </Button>
               <Button variant="outline" size="icon" onClick={() => shift(-1)}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
