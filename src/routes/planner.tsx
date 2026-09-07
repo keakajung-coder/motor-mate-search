@@ -90,6 +90,7 @@ type Appointment = {
   status: string;
   result: string | null;
   close_note: string | null;
+  closed_at?: string | null;
 };
 
 type WorkOrder = Appointment & { admin_note: string | null };
