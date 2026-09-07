@@ -155,15 +155,17 @@ function sortApptList(list: Appointment[], sortBy: string): Appointment[] {
 function FoldSection({
   title,
   defaultOpen = false,
+  className,
   children,
 }: {
   title: string;
   defaultOpen?: boolean;
+  className?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-lg border bg-card">
+    <div className={"rounded-lg border bg-card " + (className ?? "")}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
