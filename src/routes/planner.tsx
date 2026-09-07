@@ -28,8 +28,6 @@ import {
   Loader2,
   Camera,
   FileDown,
-  PanelLeft,
-  PanelLeftClose,
   Pencil,
   Phone,
   Trash2,
