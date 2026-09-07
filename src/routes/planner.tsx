@@ -554,7 +554,6 @@ function PlannerPage() {
         </CardContent>
 
       </Card>
-      </div>
 
       {dayDetail && (
         <DayDetailDialog
