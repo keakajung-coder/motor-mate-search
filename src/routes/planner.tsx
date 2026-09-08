@@ -810,6 +810,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
 function ApprovedOrders() {
   const [rows, setRows] = useState<WorkOrder[]>([]);
   const [busy, setBusy] = useState("");
+  const [picked, setPicked] = useState<Record<string, boolean>>({});
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
@@ -822,37 +823,60 @@ function ApprovedOrders() {
       .then(({ data }) => setRows((data ?? []) as unknown as WorkOrder[]));
   }, []);
 
+  const selected = rows.filter((o) => picked[o.id]);
+
+  const withExportMode = async <T,>(els: HTMLElement[], fn: () => Promise<T>): Promise<T> => {
+    els.forEach((e) => e.classList.add("export-full"));
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    try {
+      return await fn();
+    } finally {
+      els.forEach((e) => e.classList.remove("export-full"));
+    }
+  };
+
+  /** ส่งออกใบเดียว — จัดให้พอดีกระดาษ A4 หน้าเดียว */
   const exportOne = async (o: WorkOrder, kind: "image" | "pdf") => {
     const el = refs.current[o.id];
     if (!el) return;
     const name = `ใบสั่งงาน-${o.customer_name || o.id.slice(0, 6)}`;
     setBusy(o.id + kind);
-    el.classList.add("export-full");
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-    const size = { width: el.scrollWidth, height: el.scrollHeight };
     try {
-      if (kind === "pdf") {
-        const blob = await elementToPdfBlobPaged(el, 1, { orientation: "portrait", size });
-        await saveFile(blob, `${name}.pdf`);
-      } else {
-        const { toJpeg } = await import("html-to-image");
-        const dataUrl = await toJpeg(el, {
-          backgroundColor: "#ffffff",
-          cacheBust: true,
-          pixelRatio: 2,
-          quality: 0.92,
-          width: size.width,
-          height: size.height,
-          style: { width: `${size.width}px`, height: `${size.height}px` },
-        });
-        const blob = await (await fetch(dataUrl)).blob();
-        await saveFile(blob, `${name}.jpg`);
-      }
-      toast.success("บันทึกใบสั่งงานเรียบร้อย");
+      const { elementToA4ImageBlob, elementsToA4PdfBlob } = await import("@/lib/report");
+      const blob = await withExportMode([el], () =>
+        kind === "pdf" ? elementsToA4PdfBlob([el]) : elementToA4ImageBlob(el),
+      );
+      await saveFile(blob, `${name}.${kind === "pdf" ? "pdf" : "jpg"}`);
+      toast.success("บันทึกใบสั่งงานเรียบร้อย (A4 หน้าเดียว)");
     } catch (e) {
       toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
     } finally {
-      el.classList.remove("export-full");
+      setBusy("");
+    }
+  };
+
+  /** ส่งออกใบที่ติ๊กเลือกไว้ — PDF รวมเล่ม (1 ใบ = 1 หน้า A4) หรือรูปภาพทีละใบ */
+  const exportSelected = async (kind: "image" | "pdf") => {
+    if (selected.length === 0) return;
+    setBusy("bulk" + kind);
+    try {
+      const { elementToA4ImageBlob, elementsToA4PdfBlob } = await import("@/lib/report");
+      const els = selected.map((o) => refs.current[o.id]).filter(Boolean) as HTMLDivElement[];
+      if (kind === "pdf") {
+        const blob = await withExportMode(els, () => elementsToA4PdfBlob(els));
+        await saveFile(blob, `ใบสั่งงาน-${selected.length}ใบ.pdf`);
+      } else {
+        for (const o of selected) {
+          const el = refs.current[o.id];
+          if (!el) continue;
+          const blob = await withExportMode([el], () => elementToA4ImageBlob(el));
+          await saveFile(blob, `ใบสั่งงาน-${o.customer_name || o.id.slice(0, 6)}.jpg`);
+        }
+      }
+      toast.success(`บันทึก ${selected.length} ใบเรียบร้อย (A4 หน้าเดียวต่อใบ)`);
+    } catch (e) {
+      toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
+    } finally {
       setBusy("");
     }
   };
@@ -861,8 +885,41 @@ function ApprovedOrders() {
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={selected.length === rows.length}
+            onChange={(e) =>
+              setPicked(e.target.checked ? Object.fromEntries(rows.map((r) => [r.id, true])) : {})
+            }
+          />
+          เลือกทั้งหมด ({selected.length}/{rows.length})
+        </label>
+        <div className="ml-auto flex gap-2">
+          <Button size="sm" variant="outline" disabled={!!busy || selected.length === 0} onClick={() => exportSelected("image")}>
+            {busy === "bulkimage" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
+            รูปภาพ A4 ที่เลือก
+          </Button>
+          <Button size="sm" disabled={!!busy || selected.length === 0} onClick={() => exportSelected("pdf")}>
+            {busy === "bulkpdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+            PDF A4 ที่เลือก
+          </Button>
+        </div>
+      </div>
+
       {rows.map((o) => (
         <div key={o.id} className="space-y-2 rounded-lg border p-3">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={!!picked[o.id]}
+              onChange={(e) => setPicked((p) => ({ ...p, [o.id]: e.target.checked }))}
+            />
+            เลือกใบนี้เพื่อส่งออก
+          </label>
           <div
             ref={(n) => {
               refs.current[o.id] = n;
