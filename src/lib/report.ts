@@ -294,6 +294,86 @@ export async function elementToPdfBlobPaged(
   return last!;
 }
 
+/* ---------- ส่งออกใบสั่งงานให้พอดีกระดาษ A4 หน้าเดียว ---------- */
+
+const A4_W_PX = 1240; // A4 @150dpi
+const A4_H_PX = 1754;
+const A4_MARGIN = 56;
+
+/** จับภาพ element เป็น <img> ตามขนาดจริง (ไม่ถูกตัด) */
+async function captureElement(el: HTMLElement, pixelRatio = 2): Promise<HTMLImageElement> {
+  const { toJpeg } = await import("html-to-image");
+  const width = el.scrollWidth || el.offsetWidth;
+  const height = el.scrollHeight || el.offsetHeight;
+  const dataUrl = await toJpeg(el, {
+    backgroundColor: "#ffffff",
+    cacheBust: true,
+    pixelRatio,
+    quality: 0.92,
+    width,
+    height,
+    style: { width: `${width}px`, height: `${height}px` },
+  });
+  return await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = dataUrl;
+  });
+}
+
+/** วาดภาพลงหน้ากระดาษ A4 (ย่อ/ขยายให้พอดีหน้าเดียว จัดกึ่งกลางแนวนอน) */
+function drawOnA4(img: HTMLImageElement, quality = 0.9): { canvas: HTMLCanvasElement; dataUrl: string } {
+  const canvas = document.createElement("canvas");
+  canvas.width = A4_W_PX;
+  canvas.height = A4_H_PX;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, A4_W_PX, A4_H_PX);
+
+  const maxW = A4_W_PX - A4_MARGIN * 2;
+  const maxH = A4_H_PX - A4_MARGIN * 2;
+  const scale = Math.min(maxW / img.width, maxH / img.height);
+  const w = img.width * scale;
+  const h = img.height * scale;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, (A4_W_PX - w) / 2, A4_MARGIN, w, h);
+  return { canvas, dataUrl: canvas.toDataURL("image/jpeg", quality) };
+}
+
+/** ส่งออก element เป็นรูปภาพขนาด A4 หน้าเดียว */
+export async function elementToA4ImageBlob(el: HTMLElement): Promise<Blob> {
+  const img = await captureElement(el);
+  const { dataUrl } = drawOnA4(img, 0.92);
+  return await (await fetch(dataUrl)).blob();
+}
+
+/** ส่งออก element (หนึ่งหรือหลายใบ) เป็น PDF A4 — หนึ่งใบต่อหนึ่งหน้า พอดีหน้า */
+export async function elementsToA4PdfBlob(els: HTMLElement[]): Promise<Blob> {
+  const { default: jsPDF } = await import("jspdf");
+  const imgs: HTMLImageElement[] = [];
+  for (const el of els) imgs.push(await captureElement(el));
+
+  let quality = 0.9;
+  let blob: Blob | null = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    imgs.forEach((img, i) => {
+      if (i > 0) pdf.addPage();
+      const { dataUrl } = drawOnA4(img, quality);
+      pdf.addImage(dataUrl, "JPEG", 0, 0, pageW, pageH, undefined, "FAST");
+    });
+    blob = pdf.output("blob");
+    if (blob.size <= MAX_BYTES) return blob;
+    quality -= 0.2;
+    if (quality < 0.3) break;
+  }
+  return blob!;
+}
+
 /**
  * สร้าง PDF ตาราง โดยวาดด้วย Canvas (รองรับฟอนต์ไทยของเครื่องแน่นอน)
  * แบ่งหน้าอัตโนมัติ และบีบ JPEG จนไฟล์ไม่เกิน 1 MB
