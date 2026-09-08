@@ -1427,7 +1427,12 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
     const el = document.getElementById(`print-${unitId}`);
     if (!el) return;
     setBusy(true);
+    // โหมดส่งออก A4: บังคับความกว้างตามแนวกระดาษ + ตัวหนังสือใหญ่ขึ้น แล้วคืนค่าเดิมเมื่อจบ
+    el.classList.add("export-a4");
+    if (o === "landscape") el.style.width = "1123px";
     try {
+      // รอให้เบราว์เซอร์จัดเลย์เอาต์/โหลดรูปตามขนาดใหม่ก่อนจับภาพ
+      await new Promise((r) => setTimeout(r, 120));
       const { elementToPdfBlobPaged, formatBytes } = await import("@/lib/report");
       const b = await elementToPdfBlobPaged(el, p, { orientation: o });
       setBlob(b);
@@ -1440,6 +1445,8 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
       console.error(err);
       toast.error("สร้าง PDF ไม่สำเร็จ");
     } finally {
+      el.classList.remove("export-a4");
+      el.style.width = "";
       setBusy(false);
     }
   }
