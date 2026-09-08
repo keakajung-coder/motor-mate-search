@@ -185,3 +185,61 @@
   contain: none !important;
 }
 
+/* โหมดส่งออกข้อมูลเครื่อง/ประวัติเป็น A4: ตัวหนังสือใหญ่ขึ้น จัดเต็มหน้ากระดาษ */
+.export-a4 {
+  width: 794px !important; /* กว้าง A4 แนวตั้ง @96dpi */
+  max-width: 794px !important;
+  padding: 28px !important;
+  background: #ffffff !important;
+  font-size: 16px !important;
+  line-height: 1.65 !important;
+  color: #1e293b !important;
+}
+.export-a4 .no-print {
+  display: none !important;
+}
+.export-a4 .print\:flex {
+  display: flex !important;
+}
+/* บังคับจัด 2 คอลัมน์เสมอตอนส่งออก (viewport มือถือไม่กระทบ) */
+.export-a4 .sm\:grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+/* ขยายตัวหนังสือทุกระดับให้อ่านง่ายบนกระดาษ */
+.export-a4 .text-xs {
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+.export-a4 .text-sm {
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+}
+.export-a4 .text-base,
+.export-a4 .font-medium {
+  font-size: 17px !important;
+}
+.export-a4 .font-semibold,
+.export-a4 .text-lg {
+  font-size: 19px !important;
+}
+/* รูปอะไหล่ใหญ่ขึ้น และการ์ดอะไหล่เว้นห่างสบายตา */
+.export-a4 img {
+  width: 96px !important;
+  height: 96px !important;
+}
+.export-a4 .rounded-lg.border {
+  padding: 14px !important;
+}
+/* โหมดพิมพ์จริง: ขยายตัวหนังสือในบล็อกข้อมูลเครื่องเช่นกัน */
+@media print {
+  [id^="print-"] {
+    font-size: 14px;
+  }
+  [id^="print-"] .text-xs {
+    font-size: 12px !important;
+  }
+  [id^="print-"] .text-sm {
+    font-size: 14px !important;
+  }
+}
+
