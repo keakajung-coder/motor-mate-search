@@ -1254,7 +1254,9 @@ function MachineCard({
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
               <Package className="h-4 w-4" /> รายการอะไหล่
             </div>
-            <BundleApply unitId={unit.id} onApplied={() => onDeleted?.()} />
+            <div className="no-print">
+              <BundleApply unitId={unit.id} onApplied={() => onDeleted?.()} />
+            </div>
             {grouped.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 ยังไม่มีรายการอะไหล่สำหรับเครื่องนี้
@@ -1416,7 +1418,7 @@ function groupByCategory(parts: MachinePart[]) {
 
 function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }) {
   const [open, setOpen] = useState(false);
-  const [pages, setPages] = useState(1);
+  const [pages, setPages] = useState(0); // 0 = อัตโนมัติ (ไม่ย่อ แบ่งหน้าตามความยาวจริง)
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
@@ -1481,17 +1483,24 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
 
           <div className="flex flex-wrap items-end gap-2">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">จำนวนหน้ากระดาษ</label>
+              <label className="mb-1 block text-xs text-muted-foreground">จำนวนหน้ากระดาษ (0 = อัตโนมัติ)</label>
               <Input
                 type="number"
-                min={1}
+                min={0}
                 max={20}
                 value={pages}
-                onChange={(e) => setPages(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+                onChange={(e) => setPages(Math.max(0, Math.min(20, Number(e.target.value) || 0)))}
                 className="h-9 w-24"
               />
             </div>
             <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={pages === 0 ? "default" : "outline"}
+                onClick={() => { setPages(0); build(0, orientation); }}
+              >
+                อัตโนมัติ
+              </Button>
               {[1, 2, 3, 4].map((n) => (
                 <Button
                   key={n}

@@ -216,6 +216,7 @@ export const MACHINE_STATUSES = [
 /**
  * แปลง element เป็น PDF โดยกำหนดจำนวนหน้ากระดาษได้
  * ถ้าเนื้อหายาวกว่าจำนวนหน้าที่กำหนด จะย่อขนาดให้พอดี
+ * pages = 0 หมายถึง "อัตโนมัติ" — ไม่ย่อ แบ่งหน้าตามความยาวจริง
  */
 export async function elementToPdfBlobPaged(
   el: HTMLElement,
@@ -272,18 +273,22 @@ export async function elementToPdfBlobPaged(
     let imgW = usableW;
     let imgH = (img.height * imgW) / img.width;
 
-    const wanted = Math.max(1, Math.round(pages));
-    const capacity = usableH * wanted;
-    if (imgH > capacity) {
-      const k = capacity / imgH;
-      imgH *= k;
-      imgW *= k;
+    // pages = 0 → อัตโนมัติ: ไม่ย่อ ให้เนื้อหากว้างเต็มหน้าแล้วแบ่งหน้าตามจริง
+    const wanted = Math.max(0, Math.round(pages));
+    if (wanted > 0) {
+      const capacity = usableH * wanted;
+      if (imgH > capacity) {
+        const k = capacity / imgH;
+        imgH *= k;
+        imgW *= k;
+      }
     }
+    const offsetX = margin + (usableW - imgW) / 2;
 
     const total = Math.max(1, Math.ceil(imgH / usableH - 0.001));
     for (let p = 0; p < total; p++) {
       if (p > 0) pdf.addPage();
-      pdf.addImage(dataUrl, "JPEG", margin, margin - p * usableH, imgW, imgH, undefined, "FAST");
+      pdf.addImage(dataUrl, "JPEG", offsetX, margin - p * usableH, imgW, imgH, undefined, "FAST");
     }
     // เติมหน้าว่างให้ครบตามจำนวนที่ผู้ใช้กำหนด
     for (let p = total; p < wanted; p++) pdf.addPage();
