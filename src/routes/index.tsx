@@ -1416,7 +1416,7 @@ function groupByCategory(parts: MachinePart[]) {
 
 function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }) {
   const [open, setOpen] = useState(false);
-  const [pages, setPages] = useState(1);
+  const [pages, setPages] = useState(0); // 0 = อัตโนมัติ (ไม่ย่อ แบ่งหน้าตามความยาวจริง)
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
