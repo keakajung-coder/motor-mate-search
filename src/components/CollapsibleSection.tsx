@@ -31,7 +31,7 @@ export function CollapsibleSection({
           <span className="block truncate text-sm font-semibold">{title}</span>
           {subtitle && <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>}
         </span>
-        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+        <span className="no-print flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
           {open ? "ซ่อนข้อมูล" : "👁️ ดูเพิ่มเติม"}
           <ChevronDown className={"h-4 w-4 transition-transform " + (open ? "rotate-180" : "")} />
         </span>
@@ -39,7 +39,7 @@ export function CollapsibleSection({
       {open && (
         <div className="space-y-3 border-t p-3">
           {children}
-          <div className="flex justify-end">
+          <div className="no-print flex justify-end">
             <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
               <EyeOff className="mr-1 h-4 w-4" /> ซ่อนข้อมูล
             </Button>
@@ -47,7 +47,7 @@ export function CollapsibleSection({
         </div>
       )}
       {!open && (
-        <div className="flex justify-end px-3 pb-2">
+        <div className="no-print flex justify-end px-3 pb-2">
           <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
             <Eye className="mr-1 h-4 w-4" /> ดูเพิ่มเติม
           </Button>

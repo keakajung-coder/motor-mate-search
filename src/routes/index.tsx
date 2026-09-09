@@ -1254,7 +1254,9 @@ function MachineCard({
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
               <Package className="h-4 w-4" /> รายการอะไหล่
             </div>
-            <BundleApply unitId={unit.id} onApplied={() => onDeleted?.()} />
+            <div className="no-print">
+              <BundleApply unitId={unit.id} onApplied={() => onDeleted?.()} />
+            </div>
             {grouped.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 ยังไม่มีรายการอะไหล่สำหรับเครื่องนี้
