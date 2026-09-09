@@ -1481,17 +1481,24 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
 
           <div className="flex flex-wrap items-end gap-2">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">จำนวนหน้ากระดาษ</label>
+              <label className="mb-1 block text-xs text-muted-foreground">จำนวนหน้ากระดาษ (0 = อัตโนมัติ)</label>
               <Input
                 type="number"
-                min={1}
+                min={0}
                 max={20}
                 value={pages}
-                onChange={(e) => setPages(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+                onChange={(e) => setPages(Math.max(0, Math.min(20, Number(e.target.value) || 0)))}
                 className="h-9 w-24"
               />
             </div>
             <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={pages === 0 ? "default" : "outline"}
+                onClick={() => { setPages(0); build(0, orientation); }}
+              >
+                อัตโนมัติ
+              </Button>
               {[1, 2, 3, 4].map((n) => (
                 <Button
                   key={n}
