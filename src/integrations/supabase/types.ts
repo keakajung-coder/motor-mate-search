@@ -64,6 +64,7 @@ export type Database = {
           result: string | null
           return_time: string | null
           safety_gear: string | null
+          sales_rep: string | null
           serial_number: string | null
           service_type: string | null
           staff_name: string | null
@@ -100,6 +101,7 @@ export type Database = {
           result?: string | null
           return_time?: string | null
           safety_gear?: string | null
+          sales_rep?: string | null
           serial_number?: string | null
           service_type?: string | null
           staff_name?: string | null
@@ -136,6 +138,7 @@ export type Database = {
           result?: string | null
           return_time?: string | null
           safety_gear?: string | null
+          sales_rep?: string | null
           serial_number?: string | null
           service_type?: string | null
           staff_name?: string | null
@@ -751,6 +754,7 @@ export type Database = {
           priority: string | null
           return_time: string | null
           safety_gear: string | null
+          sales_rep: string | null
           serial_number: string | null
           service_type: string | null
           staff_name: string | null
@@ -780,6 +784,7 @@ export type Database = {
           priority?: string | null
           return_time?: string | null
           safety_gear?: string | null
+          sales_rep?: string | null
           serial_number?: string | null
           service_type?: string | null
           staff_name?: string | null
@@ -809,6 +814,7 @@ export type Database = {
           priority?: string | null
           return_time?: string | null
           safety_gear?: string | null
+          sales_rep?: string | null
           serial_number?: string | null
           service_type?: string | null
           staff_name?: string | null

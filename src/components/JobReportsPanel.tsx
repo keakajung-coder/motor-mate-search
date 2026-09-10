@@ -13,6 +13,7 @@ type Row = {
   customer_name: string | null;
   job_detail: string | null;
   staff_name: string | null;
+  sales_rep: string | null;
   visit_date: string;
   visit_time: string | null;
   status: string;
@@ -32,7 +33,8 @@ const iso = (d: Date) => {
 export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) => void }) {
   const [mode, setMode] = useState<"day" | "month">("day");
   const [day, setDay] = useState(iso(new Date()));
-  const [rows, setRows] = useState<Row[]>([]);
+  const [allRows, setAllRows] = useState<Row[]>([]);
+  const [scope, setScope] = useState<"all" | "open" | "closed">("all");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState("");
   const ref = useRef<HTMLDivElement | null>(null);
@@ -49,18 +51,26 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
     setLoading(true);
     const { data } = await supabase
       .from("appointments")
-      .select("id, customer_name, job_detail, staff_name, visit_date, visit_time, status, result, close_note, quotation_required, parts_categories, parts_note")
+      .select("id, customer_name, job_detail, staff_name, sales_rep, visit_date, visit_time, status, result, close_note, quotation_required, parts_categories, parts_note")
       .gte("visit_date", range.from)
       .lte("visit_date", range.to)
       .order("visit_date")
       .order("visit_time");
-    setRows((data ?? []) as Row[]);
+    setAllRows((data ?? []) as Row[]);
     setLoading(false);
   }, [range.from, range.to]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const rows = useMemo(
+    () =>
+      scope === "all"
+        ? allRows
+        : allRows.filter((r) => (scope === "closed" ? r.status === "closed" : r.status !== "closed")),
+    [allRows, scope],
+  );
 
   const done = rows.filter((r) => r.status === "closed");
   const pendingRows = rows.filter((r) => r.status !== "closed");
@@ -92,6 +102,8 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
   }, [rows]);
 
   const label = mode === "day" ? formatDate(day) : `${range.from} ถึง ${range.to}`;
+  const scopeLabel =
+    scope === "open" ? "ก่อนปิดงาน (งานค้าง)" : scope === "closed" ? "หลังปิดงาน (ปิดแล้ว)" : "ทุกสถานะ";
 
   const exportReport = async (kind: "image" | "pdf") => {
     const el = ref.current;
@@ -99,13 +111,13 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
     setExporting(kind);
     try {
       if (kind === "pdf") {
-        const blob = await elementToPdfBlobPaged(el, 1, { orientation: "portrait" });
-        await saveFile(blob, `สรุปงาน-${range.from}.pdf`);
+        const blob = await elementToPdfBlobPaged(el, 0, { orientation: "portrait" });
+        await saveFile(blob, `สรุปงาน-${scopeLabel}-${range.from}.pdf`);
       } else {
         const { toPng } = await import("html-to-image");
         const dataUrl = await toPng(el, { backgroundColor: "#ffffff", cacheBust: true, pixelRatio: 2 });
         const blob = await (await fetch(dataUrl)).blob();
-        await saveFile(blob, `สรุปงาน-${range.from}.png`);
+        await saveFile(blob, `สรุปงาน-${scopeLabel}-${range.from}.png`);
       }
       toast.success("บันทึกรายงานเรียบร้อย");
     } catch (e) {
@@ -126,6 +138,17 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
             {(["day", "month"] as const).map((m) => (
               <Button key={m} size="sm" variant={mode === m ? "default" : "outline"} onClick={() => setMode(m)}>
                 {m === "day" ? "รายวัน" : "รายเดือน"}
+              </Button>
+            ))}
+          </div>
+          <div className="flex gap-1">
+            {([
+              ["all", "ทุกสถานะ"],
+              ["open", "ก่อนปิดงาน"],
+              ["closed", "หลังปิดงาน"],
+            ] as const).map(([k, t]) => (
+              <Button key={k} size="sm" variant={scope === k ? "default" : "outline"} onClick={() => setScope(k)}>
+                {t}
               </Button>
             ))}
           </div>
@@ -151,7 +174,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
 
       <CardContent>
         <div ref={ref} className="space-y-4 bg-card p-1">
-          <p className="text-sm font-semibold">สรุปงาน {mode === "day" ? "ประจำวัน" : "ประจำเดือน"} · {label}</p>
+          <p className="text-sm font-semibold">สรุปงาน {mode === "day" ? "ประจำวัน" : "ประจำเดือน"} · {label} · {scopeLabel}</p>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Metric label="งานทั้งหมด" value={rows.length} />
@@ -211,6 +234,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
                             </span>
                             <span>ใบเสนอราคา/งานต่อเนื่อง: {next}</span>
                             <span>ช่างผู้รับผิดชอบ: {splitNames(r.staff_name ?? "").join(", ") || "-"}</span>
+                            <span>พนักงานขาย (เซลล์): {r.sales_rep || "-"}</span>
                           </div>
                         );
                       })}
