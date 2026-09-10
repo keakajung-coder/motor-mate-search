@@ -85,6 +85,7 @@ type Appointment = {
   visit_time: string | null;
   staff_name: string | null;
   vehicle_plate: string | null;
+  sales_rep?: string | null;
   status: string;
   result: string | null;
   close_note: string | null;
@@ -608,6 +609,7 @@ function newAppointment(date: string): Appointment {
     visit_time: "09:00",
     staff_name: "",
     vehicle_plate: "",
+    sales_rep: "",
     status: "scheduled",
     result: null,
     close_note: null,
@@ -705,6 +707,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
       visit_time: p.visit_time ?? o.visit_time,
       staff_name: p.staff_name ?? o.staff_name,
       vehicle_plate: p.vehicle_plate ?? o.vehicle_plate,
+      sales_rep: (o as any).sales_rep ?? null,
       job_no: (o as any).job_no ?? null,
       priority: (o as any).priority ?? null,
       billing_type: (o as any).billing_type ?? null,
@@ -932,6 +935,7 @@ function ApprovedOrders() {
             <p className="text-xs">{[o.machine_label, o.serial_number, o.service_type].filter(Boolean).join(" · ")}</p>
             <p className="text-xs">
               วันที่ {formatDate(o.visit_date ?? "")} {o.visit_time ?? ""} · ช่าง {o.staff_name || "-"} · รถ {o.vehicle_plate || "-"}
+              {o.sales_rep ? ` · เซลล์ ${o.sales_rep}` : ""}
             </p>
             <p className="text-sm">{o.job_detail}</p>
           </div>
@@ -1176,6 +1180,9 @@ function MonthGrid({
                     <span className="block truncate text-xs opacity-80">
                       🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
                     </span>
+                    {a.sales_rep && (
+                      <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>
+                    )}
                   </button>
                 ))}
 
@@ -1278,6 +1285,7 @@ function TimeGrid({
                 <span className="block truncate text-xs opacity-80">
                   🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
                 </span>
+                {a.sales_rep && <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>}
 
               </button>
             ))}
@@ -1371,7 +1379,7 @@ function DayDetailDialog({
               <p className="text-xs opacity-80">เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}{a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}</p>
               <p className="text-xs opacity-80">ประเภทงาน: {splitNames(a.service_type).join(" / ") || "-"}</p>
               <p className="text-xs opacity-80">
-                ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {splitNames(a.vehicle_plate).join(" / ") || "-"} ·{" "}
+                {a.sales_rep ? `เซลล์: ${a.sales_rep} · ` : ""}ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {splitNames(a.vehicle_plate).join(" / ") || "-"} ·{" "}
                 {STATUS_LABEL[a.status] ?? a.status}
               </p>
               {a.customer_address && <p className="text-xs opacity-80">{a.customer_address}</p>}
@@ -1440,6 +1448,7 @@ function DayList({
                     </p>
                     <p className="text-xs text-muted-foreground">
                       ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {a.vehicle_plate || "-"}
+                      {a.sales_rep ? ` · เซลล์: ${a.sales_rep}` : ""}
                     </p>
                     {a.job_detail && <p className="mt-1 text-sm">{a.job_detail}</p>}
                     {a.status === "closed" && a.close_note && (
@@ -1599,6 +1608,7 @@ function AppointmentDialog({
       visit_time: form.visit_time,
       staff_name: form.staff_name,
       vehicle_plate: form.vehicle_plate,
+      sales_rep: form.sales_rep ?? null,
       status: form.status,
     };
     const { error } = form.id
@@ -1759,6 +1769,14 @@ function AppointmentDialog({
               options={dir.vehicles}
               placeholder="ติ๊กเลือกทะเบียนรถ"
               searchPlaceholder="ค้นหาทะเบียนรถ..."
+            />
+          </F>
+          <F label="พนักงานขาย (เซลล์) ที่ดูแล">
+            <Input
+              disabled={locked}
+              value={form.sales_rep ?? ""}
+              onChange={(e) => set("sales_rep", e.target.value)}
+              placeholder="ชื่อเซลล์ผู้ดูแลลูกค้า"
             />
           </F>
           <div className="sm:col-span-2">
