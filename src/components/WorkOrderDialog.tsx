@@ -42,6 +42,7 @@ export type WorkOrderDraft = {
   visit_time: string;
   staff_name: string;
   vehicle_plate: string;
+  sales_rep: string;
   job_no: string;
   priority: string;
   billing_type: string;
@@ -74,6 +75,7 @@ export const emptyDraft = (): WorkOrderDraft => ({
   visit_time: "09:00",
   staff_name: "",
   vehicle_plate: "",
+  sales_rep: "",
   job_no: autoJobNo(),
   priority: PRIORITIES[0],
   billing_type: BILLING_TYPES[0],
@@ -186,6 +188,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       visit_time: form.visit_time || null,
       staff_name: form.staff_name.trim() || null,
       vehicle_plate: form.vehicle_plate.trim() || null,
+      sales_rep: form.sales_rep.trim() || null,
       job_no: form.job_no.trim() || null,
       priority: form.priority || null,
       billing_type: form.billing_type || null,
@@ -244,6 +247,9 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
           <Section title="ข้อมูลใบงาน">
             <Field label="เลขที่ใบสั่งงาน">
               <Input value={form.job_no} onChange={(e) => set("job_no", e.target.value)} />
+            </Field>
+            <Field label="พนักงานขาย (เซลล์) ที่ดูแล">
+              <Input value={form.sales_rep} onChange={(e) => set("sales_rep", e.target.value)} placeholder="ชื่อเซลล์ผู้ดูแลลูกค้า" />
             </Field>
             <Field label="ความเร่งด่วน">
               <Combobox
