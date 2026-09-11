@@ -680,9 +680,28 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
   const [edit, setEdit] = useState<Record<string, Partial<WorkOrder>>>({});
   const { staff, vehicles } = useServiceOptions();
   const [busy, setBusy] = useState<string | null>(null);
+  const [openEdit, setOpenEdit] = useState<Record<string, boolean>>({});
 
   const patch = (id: string, k: keyof WorkOrder, v: string) =>
     setEdit((e) => ({ ...e, [id]: { ...e[id], [k]: v } }));
+
+  /** ค่าปัจจุบันของช่อง (ค่าที่แอดมินแก้ไว้ ถ้ายังไม่แก้ใช้ค่าเดิม) */
+  const val = (o: WorkOrder, k: keyof WorkOrder) =>
+    ((edit[o.id]?.[k] as string | null | undefined) ?? (o[k] as string | null | undefined) ?? "") as string;
+
+  /** บันทึกการแก้ไขลงใบสั่งงานเดิม (ยังไม่อนุมัติ) */
+  const saveEdits = async (o: WorkOrder) => {
+    const p = edit[o.id];
+    if (!p || Object.keys(p).length === 0) return toast.message("ยังไม่มีการแก้ไข");
+    setBusy(o.id);
+    const { error } = await supabase.from("work_orders").update(p as never).eq("id", o.id);
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success("บันทึกการแก้ไขใบสั่งงานแล้ว");
+    setEdit((e) => ({ ...e, [o.id]: {} }));
+    reload();
+  };
+
 
   const approve = async (o: WorkOrder) => {
     const p = edit[o.id] ?? {};
