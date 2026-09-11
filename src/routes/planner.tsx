@@ -705,41 +705,44 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
 
   const approve = async (o: WorkOrder) => {
     const p = edit[o.id] ?? {};
+    const m = { ...o, ...p } as WorkOrder & Record<string, any>;
     setBusy(o.id);
     const { data: unit } = await supabase
       .from("machine_units")
       .select("id")
-      .eq("serial_number", (p.serial_number ?? o.serial_number) ?? "")
+      .eq("serial_number", m.serial_number ?? "")
       .maybeSingle();
     const { error } = await supabase.from("appointments").insert({
       work_order_id: o.id,
       machine_unit_id: unit?.id ?? null,
-      customer_name: o.customer_name,
-      customer_address: o.customer_address,
-      contact_name: o.contact_name,
-      contact_phone: o.contact_phone,
-      machine_label: o.machine_label,
-      serial_number: p.serial_number ?? o.serial_number,
-      job_detail: o.job_detail,
-      service_type: o.service_type,
-      visit_date: (p.visit_date ?? o.visit_date) as string,
-      visit_time: p.visit_time ?? o.visit_time,
-      staff_name: p.staff_name ?? o.staff_name,
-      vehicle_plate: p.vehicle_plate ?? o.vehicle_plate,
-      sales_rep: (o as any).sales_rep ?? null,
-      job_no: (o as any).job_no ?? null,
-      priority: (o as any).priority ?? null,
-      billing_type: (o as any).billing_type ?? null,
-      po_number: (o as any).po_number ?? null,
-      billing_note: (o as any).billing_note ?? null,
-      work_types: (o as any).work_types ?? null,
-      depart_time: (o as any).depart_time ?? null,
-      return_time: (o as any).return_time ?? null,
-      logistics_note: (o as any).logistics_note ?? null,
-      safety_gear: (o as any).safety_gear ?? null,
+      customer_name: m.customer_name,
+      customer_address: m.customer_address,
+      contact_name: m.contact_name,
+      contact_phone: m.contact_phone,
+      machine_label: m.machine_label,
+      serial_number: m.serial_number,
+      job_detail: m.job_detail,
+      service_type: m.service_type,
+      visit_date: m.visit_date as string,
+      visit_time: m.visit_time,
+      staff_name: m.staff_name,
+      vehicle_plate: m.vehicle_plate,
+      sales_rep: m.sales_rep ?? null,
+      job_no: m.job_no ?? null,
+      priority: m.priority ?? null,
+      billing_type: m.billing_type ?? null,
+      po_number: m.po_number ?? null,
+      billing_note: m.billing_note ?? null,
+      work_types: m.work_types ?? null,
+      depart_time: m.depart_time ?? null,
+      return_time: m.return_time ?? null,
+      logistics_note: m.logistics_note ?? null,
+      safety_gear: m.safety_gear ?? null,
       status: "scheduled",
     });
-    if (!error) await supabase.from("work_orders").update({ status: "approved" }).eq("id", o.id);
+    // เก็บค่าที่แอดมินแก้ไว้ลงใบสั่งงานเดิมด้วย เพื่อให้เอกสารตรงกับงานจริง
+    if (!error) await supabase.from("work_orders").update({ ...(p as never), status: "approved" }).eq("id", o.id);
+
     setBusy(null);
     if (error) return toast.error(error.message);
     toast.success("อนุมัติและเพิ่มลงปฏิทินแล้ว");
