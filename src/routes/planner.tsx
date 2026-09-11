@@ -908,7 +908,18 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
   );
 }
 
+/** ช่องแก้ไขในการ์ดใบสั่งงานรออนุมัติ */
+function EditField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0 space-y-1">
+      <Label className="text-xs">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
 // ---------- Approved work orders (export) ----------
+
 /** ใบสั่งงานที่อนุมัติแล้ว: ส่งออกเป็นรูปภาพ หรือ PDF ได้ทันที */
 function ApprovedOrders() {
   const [rows, setRows] = useState<WorkOrder[]>([]);
