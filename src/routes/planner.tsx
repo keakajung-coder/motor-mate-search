@@ -741,7 +741,11 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
       status: "scheduled",
     });
     // เก็บค่าที่แอดมินแก้ไว้ลงใบสั่งงานเดิมด้วย เพื่อให้เอกสารตรงกับงานจริง
-    if (!error) await supabase.from("work_orders").update({ ...(p as never), status: "approved" }).eq("id", o.id);
+    if (!error)
+      await supabase
+        .from("work_orders")
+        .update({ ...(p as Record<string, unknown>), status: "approved" } as never)
+        .eq("id", o.id);
 
     setBusy(null);
     if (error) return toast.error(error.message);
