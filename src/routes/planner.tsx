@@ -680,47 +680,73 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
   const [edit, setEdit] = useState<Record<string, Partial<WorkOrder>>>({});
   const { staff, vehicles } = useServiceOptions();
   const [busy, setBusy] = useState<string | null>(null);
+  const [openEdit, setOpenEdit] = useState<Record<string, boolean>>({});
 
   const patch = (id: string, k: keyof WorkOrder, v: string) =>
     setEdit((e) => ({ ...e, [id]: { ...e[id], [k]: v } }));
 
+  /** ค่าปัจจุบันของช่อง (ค่าที่แอดมินแก้ไว้ ถ้ายังไม่แก้ใช้ค่าเดิม) */
+  const val = (o: WorkOrder, k: keyof WorkOrder) =>
+    ((edit[o.id]?.[k] as string | null | undefined) ?? (o[k] as string | null | undefined) ?? "") as string;
+
+  /** บันทึกการแก้ไขลงใบสั่งงานเดิม (ยังไม่อนุมัติ) */
+  const saveEdits = async (o: WorkOrder) => {
+    const p = edit[o.id];
+    if (!p || Object.keys(p).length === 0) return toast.message("ยังไม่มีการแก้ไข");
+    setBusy(o.id);
+    const { error } = await supabase.from("work_orders").update(p as never).eq("id", o.id);
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success("บันทึกการแก้ไขใบสั่งงานแล้ว");
+    setEdit((e) => ({ ...e, [o.id]: {} }));
+    reload();
+  };
+
+
   const approve = async (o: WorkOrder) => {
     const p = edit[o.id] ?? {};
+    const m = { ...o, ...p } as WorkOrder & Record<string, any>;
     setBusy(o.id);
     const { data: unit } = await supabase
       .from("machine_units")
       .select("id")
-      .eq("serial_number", (p.serial_number ?? o.serial_number) ?? "")
+      .eq("serial_number", m.serial_number ?? "")
       .maybeSingle();
     const { error } = await supabase.from("appointments").insert({
       work_order_id: o.id,
       machine_unit_id: unit?.id ?? null,
-      customer_name: o.customer_name,
-      customer_address: o.customer_address,
-      contact_name: o.contact_name,
-      contact_phone: o.contact_phone,
-      machine_label: o.machine_label,
-      serial_number: p.serial_number ?? o.serial_number,
-      job_detail: o.job_detail,
-      service_type: o.service_type,
-      visit_date: (p.visit_date ?? o.visit_date) as string,
-      visit_time: p.visit_time ?? o.visit_time,
-      staff_name: p.staff_name ?? o.staff_name,
-      vehicle_plate: p.vehicle_plate ?? o.vehicle_plate,
-      sales_rep: (o as any).sales_rep ?? null,
-      job_no: (o as any).job_no ?? null,
-      priority: (o as any).priority ?? null,
-      billing_type: (o as any).billing_type ?? null,
-      po_number: (o as any).po_number ?? null,
-      billing_note: (o as any).billing_note ?? null,
-      work_types: (o as any).work_types ?? null,
-      depart_time: (o as any).depart_time ?? null,
-      return_time: (o as any).return_time ?? null,
-      logistics_note: (o as any).logistics_note ?? null,
-      safety_gear: (o as any).safety_gear ?? null,
+      customer_name: m.customer_name,
+      customer_address: m.customer_address,
+      contact_name: m.contact_name,
+      contact_phone: m.contact_phone,
+      machine_label: m.machine_label,
+      serial_number: m.serial_number,
+      job_detail: m.job_detail,
+      service_type: m.service_type,
+      visit_date: m.visit_date as string,
+      visit_time: m.visit_time,
+      staff_name: m.staff_name,
+      vehicle_plate: m.vehicle_plate,
+      sales_rep: m.sales_rep ?? null,
+      job_no: m.job_no ?? null,
+      priority: m.priority ?? null,
+      billing_type: m.billing_type ?? null,
+      po_number: m.po_number ?? null,
+      billing_note: m.billing_note ?? null,
+      work_types: m.work_types ?? null,
+      depart_time: m.depart_time ?? null,
+      return_time: m.return_time ?? null,
+      logistics_note: m.logistics_note ?? null,
+      safety_gear: m.safety_gear ?? null,
       status: "scheduled",
     });
-    if (!error) await supabase.from("work_orders").update({ status: "approved" }).eq("id", o.id);
+    // เก็บค่าที่แอดมินแก้ไว้ลงใบสั่งงานเดิมด้วย เพื่อให้เอกสารตรงกับงานจริง
+    if (!error)
+      await supabase
+        .from("work_orders")
+        .update({ ...(p as Record<string, unknown>), status: "approved" } as never)
+        .eq("id", o.id);
+
     setBusy(null);
     if (error) return toast.error(error.message);
     toast.success("อนุมัติและเพิ่มลงปฏิทินแล้ว");
@@ -744,47 +770,124 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
       <CardContent className="space-y-3">
         {orders.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีใบสั่งงานรอตรวจ</p>}
         {orders.map((o) => (
-          <div key={o.id} className="space-y-2 rounded-lg border p-3">
-            <div className="flex flex-wrap justify-between gap-2">
-              <div>
-                <p className="font-semibold">{o.customer_name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {[o.machine_label, o.serial_number, o.service_type].filter(Boolean).join(" · ")}
+          <div key={o.id} className="space-y-3 overflow-hidden rounded-lg border p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="break-words font-semibold leading-snug">{val(o, "customer_name")}</p>
+                <p className="break-words text-xs leading-snug text-muted-foreground">
+                  {[val(o, "machine_label"), val(o, "serial_number"), val(o, "service_type")].filter(Boolean).join(" · ")}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {[o.contact_name, o.contact_phone, o.customer_address].filter(Boolean).join(" · ")}
+                <p className="break-words text-xs leading-snug text-muted-foreground">
+                  {[val(o, "contact_name"), val(o, "contact_phone"), val(o, "customer_address")].filter(Boolean).join(" · ")}
                 </p>
               </div>
-              <Badge variant="secondary">รออนุมัติ</Badge>
+              <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
+                รออนุมัติ
+              </Badge>
             </div>
-            <p className="text-sm">{o.job_detail}</p>
-            <div className="grid gap-2 sm:grid-cols-4">
-              <Input
-                type="date"
-                defaultValue={o.visit_date ?? ""}
-                onChange={(e) => patch(o.id, "visit_date", e.target.value)}
-              />
-              <Input
-                type="time"
-                defaultValue={o.visit_time ?? ""}
-                onChange={(e) => patch(o.id, "visit_time", e.target.value)}
-              />
-              <MultiCombobox
-                values={splitNames(edit[o.id]?.staff_name ?? o.staff_name ?? "")}
-                onChange={(list) => patch(o.id, "staff_name", joinNames(list))}
-                options={staff}
-                placeholder="เลือกช่าง (หลายคนได้)"
-                searchPlaceholder="ค้นหาช่าง..."
-              />
-              <ComboCell
-                value={edit[o.id]?.vehicle_plate ?? o.vehicle_plate ?? ""}
-                onChange={(v) => patch(o.id, "vehicle_plate", v)}
-                options={vehicles}
-                placeholder="เลือกทะเบียนรถ"
-              />
 
+            <p className="whitespace-pre-wrap break-words text-sm">{val(o, "job_detail")}</p>
+
+            <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="min-w-0 space-y-1">
+                <Label className="text-xs">วันที่เข้าบริการ</Label>
+                <Input
+                  className="w-full"
+                  type="date"
+                  value={val(o, "visit_date")}
+                  onChange={(e) => patch(o.id, "visit_date", e.target.value)}
+                />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <Label className="text-xs">เวลานัดหมาย</Label>
+                <Input
+                  className="w-full"
+                  type="time"
+                  value={val(o, "visit_time")}
+                  onChange={(e) => patch(o.id, "visit_time", e.target.value)}
+                />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <Label className="text-xs">ช่างที่รับงาน</Label>
+                <MultiCombobox
+                  values={splitNames(val(o, "staff_name"))}
+                  onChange={(list) => patch(o.id, "staff_name", joinNames(list))}
+                  options={staff}
+                  placeholder="เลือกช่าง (หลายคนได้)"
+                  searchPlaceholder="ค้นหาช่าง..."
+                />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <Label className="text-xs">ทะเบียนรถ</Label>
+                <ComboCell
+                  value={val(o, "vehicle_plate")}
+                  onChange={(v) => patch(o.id, "vehicle_plate", v)}
+                  options={vehicles}
+                  placeholder="เลือกทะเบียนรถ"
+                />
+              </div>
             </div>
-            <div className="flex gap-2">
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-xs"
+              onClick={() => setOpenEdit((s) => ({ ...s, [o.id]: !s[o.id] }))}
+            >
+              <Pencil className="mr-1 h-3.5 w-3.5" />
+              {openEdit[o.id] ? "ซ่อนการแก้ไขรายละเอียด" : "แก้ไขรายละเอียดใบสั่งงาน"}
+            </Button>
+
+            {openEdit[o.id] && (
+              <div className="grid min-w-0 gap-2 rounded-lg border bg-muted/30 p-3 sm:grid-cols-2">
+                <EditField label="ชื่อลูกค้า">
+                  <Input value={val(o, "customer_name")} onChange={(e) => patch(o.id, "customer_name", e.target.value)} />
+                </EditField>
+                <EditField label="ที่อยู่ลูกค้า">
+                  <Input value={val(o, "customer_address")} onChange={(e) => patch(o.id, "customer_address", e.target.value)} />
+                </EditField>
+                <EditField label="ชื่อผู้ติดต่อ">
+                  <Input value={val(o, "contact_name")} onChange={(e) => patch(o.id, "contact_name", e.target.value)} />
+                </EditField>
+                <EditField label="เบอร์โทรผู้ติดต่อ">
+                  <Input value={val(o, "contact_phone")} onChange={(e) => patch(o.id, "contact_phone", e.target.value)} />
+                </EditField>
+                <EditField label="เครื่อง (ยี่ห้อ/รุ่น)">
+                  <Input value={val(o, "machine_label")} onChange={(e) => patch(o.id, "machine_label", e.target.value)} />
+                </EditField>
+                <EditField label="หมายเลขเครื่อง (S/N)">
+                  <Input value={val(o, "serial_number")} onChange={(e) => patch(o.id, "serial_number", e.target.value)} />
+                </EditField>
+                <EditField label="ประเภทเซอร์วิส">
+                  <MultiCombobox
+                    values={splitNames(val(o, "service_type"))}
+                    onChange={(list) => patch(o.id, "service_type", joinNames(list))}
+                    options={SERVICE_TYPES}
+                    placeholder="ติ๊กเลือกประเภทงาน"
+                    searchPlaceholder="ค้นหาประเภทงาน..."
+                  />
+                </EditField>
+                <EditField label="พนักงานขาย (เซลล์)">
+                  <Input
+                    value={val(o, "sales_rep" as keyof WorkOrder)}
+                    onChange={(e) => patch(o.id, "sales_rep" as keyof WorkOrder, e.target.value)}
+                  />
+                </EditField>
+                <div className="sm:col-span-2">
+                  <EditField label="รายละเอียดงาน">
+                    <Textarea rows={3} value={val(o, "job_detail")} onChange={(e) => patch(o.id, "job_detail", e.target.value)} />
+                  </EditField>
+                </div>
+                <div className="sm:col-span-2">
+                  <Button size="sm" variant="secondary" onClick={() => saveEdits(o)} disabled={busy === o.id}>
+                    {busy === o.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} บันทึกการแก้ไข
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => approve(o)} disabled={busy === o.id}>
                 {busy === o.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
                 อนุมัติ
@@ -803,12 +906,24 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
         ))}
 
 
+
       </CardContent>
     </Card>
   );
 }
 
+/** ช่องแก้ไขในการ์ดใบสั่งงานรออนุมัติ */
+function EditField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0 space-y-1">
+      <Label className="text-xs">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
 // ---------- Approved work orders (export) ----------
+
 /** ใบสั่งงานที่อนุมัติแล้ว: ส่งออกเป็นรูปภาพ หรือ PDF ได้ทันที */
 function ApprovedOrders() {
   const [rows, setRows] = useState<WorkOrder[]>([]);
