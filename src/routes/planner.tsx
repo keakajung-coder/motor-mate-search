@@ -766,47 +766,124 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
       <CardContent className="space-y-3">
         {orders.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีใบสั่งงานรอตรวจ</p>}
         {orders.map((o) => (
-          <div key={o.id} className="space-y-2 rounded-lg border p-3">
-            <div className="flex flex-wrap justify-between gap-2">
-              <div>
-                <p className="font-semibold">{o.customer_name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {[o.machine_label, o.serial_number, o.service_type].filter(Boolean).join(" · ")}
+          <div key={o.id} className="space-y-3 overflow-hidden rounded-lg border p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="break-words font-semibold leading-snug">{val(o, "customer_name")}</p>
+                <p className="break-words text-xs leading-snug text-muted-foreground">
+                  {[val(o, "machine_label"), val(o, "serial_number"), val(o, "service_type")].filter(Boolean).join(" · ")}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {[o.contact_name, o.contact_phone, o.customer_address].filter(Boolean).join(" · ")}
+                <p className="break-words text-xs leading-snug text-muted-foreground">
+                  {[val(o, "contact_name"), val(o, "contact_phone"), val(o, "customer_address")].filter(Boolean).join(" · ")}
                 </p>
               </div>
-              <Badge variant="secondary">รออนุมัติ</Badge>
+              <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
+                รออนุมัติ
+              </Badge>
             </div>
-            <p className="text-sm">{o.job_detail}</p>
-            <div className="grid gap-2 sm:grid-cols-4">
-              <Input
-                type="date"
-                defaultValue={o.visit_date ?? ""}
-                onChange={(e) => patch(o.id, "visit_date", e.target.value)}
-              />
-              <Input
-                type="time"
-                defaultValue={o.visit_time ?? ""}
-                onChange={(e) => patch(o.id, "visit_time", e.target.value)}
-              />
-              <MultiCombobox
-                values={splitNames(edit[o.id]?.staff_name ?? o.staff_name ?? "")}
-                onChange={(list) => patch(o.id, "staff_name", joinNames(list))}
-                options={staff}
-                placeholder="เลือกช่าง (หลายคนได้)"
-                searchPlaceholder="ค้นหาช่าง..."
-              />
-              <ComboCell
-                value={edit[o.id]?.vehicle_plate ?? o.vehicle_plate ?? ""}
-                onChange={(v) => patch(o.id, "vehicle_plate", v)}
-                options={vehicles}
-                placeholder="เลือกทะเบียนรถ"
-              />
 
+            <p className="whitespace-pre-wrap break-words text-sm">{val(o, "job_detail")}</p>
+
+            <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="min-w-0 space-y-1">
+                <Label className="text-xs">วันที่เข้าบริการ</Label>
+                <Input
+                  className="w-full"
+                  type="date"
+                  value={val(o, "visit_date")}
+                  onChange={(e) => patch(o.id, "visit_date", e.target.value)}
+                />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <Label className="text-xs">เวลานัดหมาย</Label>
+                <Input
+                  className="w-full"
+                  type="time"
+                  value={val(o, "visit_time")}
+                  onChange={(e) => patch(o.id, "visit_time", e.target.value)}
+                />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <Label className="text-xs">ช่างที่รับงาน</Label>
+                <MultiCombobox
+                  values={splitNames(val(o, "staff_name"))}
+                  onChange={(list) => patch(o.id, "staff_name", joinNames(list))}
+                  options={staff}
+                  placeholder="เลือกช่าง (หลายคนได้)"
+                  searchPlaceholder="ค้นหาช่าง..."
+                />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <Label className="text-xs">ทะเบียนรถ</Label>
+                <ComboCell
+                  value={val(o, "vehicle_plate")}
+                  onChange={(v) => patch(o.id, "vehicle_plate", v)}
+                  options={vehicles}
+                  placeholder="เลือกทะเบียนรถ"
+                />
+              </div>
             </div>
-            <div className="flex gap-2">
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-xs"
+              onClick={() => setOpenEdit((s) => ({ ...s, [o.id]: !s[o.id] }))}
+            >
+              <Pencil className="mr-1 h-3.5 w-3.5" />
+              {openEdit[o.id] ? "ซ่อนการแก้ไขรายละเอียด" : "แก้ไขรายละเอียดใบสั่งงาน"}
+            </Button>
+
+            {openEdit[o.id] && (
+              <div className="grid min-w-0 gap-2 rounded-lg border bg-muted/30 p-3 sm:grid-cols-2">
+                <EditField label="ชื่อลูกค้า">
+                  <Input value={val(o, "customer_name")} onChange={(e) => patch(o.id, "customer_name", e.target.value)} />
+                </EditField>
+                <EditField label="ที่อยู่ลูกค้า">
+                  <Input value={val(o, "customer_address")} onChange={(e) => patch(o.id, "customer_address", e.target.value)} />
+                </EditField>
+                <EditField label="ชื่อผู้ติดต่อ">
+                  <Input value={val(o, "contact_name")} onChange={(e) => patch(o.id, "contact_name", e.target.value)} />
+                </EditField>
+                <EditField label="เบอร์โทรผู้ติดต่อ">
+                  <Input value={val(o, "contact_phone")} onChange={(e) => patch(o.id, "contact_phone", e.target.value)} />
+                </EditField>
+                <EditField label="เครื่อง (ยี่ห้อ/รุ่น)">
+                  <Input value={val(o, "machine_label")} onChange={(e) => patch(o.id, "machine_label", e.target.value)} />
+                </EditField>
+                <EditField label="หมายเลขเครื่อง (S/N)">
+                  <Input value={val(o, "serial_number")} onChange={(e) => patch(o.id, "serial_number", e.target.value)} />
+                </EditField>
+                <EditField label="ประเภทเซอร์วิส">
+                  <MultiCombobox
+                    values={splitNames(val(o, "service_type"))}
+                    onChange={(list) => patch(o.id, "service_type", joinNames(list))}
+                    options={SERVICE_TYPES}
+                    placeholder="ติ๊กเลือกประเภทงาน"
+                    searchPlaceholder="ค้นหาประเภทงาน..."
+                  />
+                </EditField>
+                <EditField label="พนักงานขาย (เซลล์)">
+                  <Input
+                    value={val(o, "sales_rep" as keyof WorkOrder)}
+                    onChange={(e) => patch(o.id, "sales_rep" as keyof WorkOrder, e.target.value)}
+                  />
+                </EditField>
+                <div className="sm:col-span-2">
+                  <EditField label="รายละเอียดงาน">
+                    <Textarea rows={3} value={val(o, "job_detail")} onChange={(e) => patch(o.id, "job_detail", e.target.value)} />
+                  </EditField>
+                </div>
+                <div className="sm:col-span-2">
+                  <Button size="sm" variant="secondary" onClick={() => saveEdits(o)} disabled={busy === o.id}>
+                    {busy === o.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} บันทึกการแก้ไข
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => approve(o)} disabled={busy === o.id}>
                 {busy === o.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
                 อนุมัติ
@@ -823,6 +900,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
             </div>
           </div>
         ))}
+
 
 
       </CardContent>
