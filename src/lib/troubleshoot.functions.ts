@@ -1,14 +1,30 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
 /** ให้ AI ร่างคำตอบ "วิธีตรวจสอบ" และ "วิธีแก้ไข" สำหรับอาการเสียใหม่ของปั๊มลม */
 export const draftTroubleshooting = createServerFn({ method: "POST" })
-  .inputValidator((d: { title: string; note?: string }) => d)
+  .inputValidator((d) =>
+    z.object({
+      title: z.string().trim().min(1).max(200),
+      note: z.string().trim().max(2_000).optional(),
+      adminCode: z.string().min(4).max(128),
+    }).parse(d),
+  )
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("security_settings")
+      .select("value")
+      .eq("key", "admin_passcode")
+      .maybeSingle();
+    if (!row || row.value.trim() !== data.adminCode.trim()) {
+      return { ok: false as const, error: "รหัสแอดมินไม่ถูกต้องหรือยังไม่ได้ปลดล็อก" };
+    }
+
     const apiKey = process.env["LOVABLE_API_KEY"];
     if (!apiKey) return { ok: false as const, error: "ยังไม่ได้เชื่อมต่อระบบ AI" };
 
-    const title = String(data.title ?? "").trim();
-    if (!title) return { ok: false as const, error: "ไม่พบอาการที่ต้องการให้ AI ร่างคำตอบ" };
+    const title = data.title;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

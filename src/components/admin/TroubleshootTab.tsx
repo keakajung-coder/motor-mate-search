@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { deleteAsAdmin } from "@/lib/access";
+import { deleteAsAdmin, storedAdminCode } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -87,7 +87,9 @@ function IssueEditor({ issue, onSaved }: { issue: Issue; onSaved: () => void }) 
   const runAi = async () => {
     setDrafting(true);
     try {
-      const res = await draftTroubleshooting({ data: { title: form.title } });
+      const res = await draftTroubleshooting({
+        data: { title: form.title, adminCode: storedAdminCode() },
+      });
       if (!res.ok) return toast.error(res.error);
       setForm((f) => ({
         ...f,
