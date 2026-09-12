@@ -482,8 +482,13 @@ function ProductsTab() {
   useEffect(() => { load(); }, []);
 
   async function uploadImage(file: File) {
+    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+    const maxBytes = 5 * 1024 * 1024;
+    if (!allowedTypes.has(file.type)) return toast.error("รองรับเฉพาะรูป JPG, PNG หรือ WebP");
+    if (file.size > maxBytes) return toast.error("รูปต้องมีขนาดไม่เกิน 5 MB");
     setUploading(true);
-    const path = `${Date.now()}-${file.name}`;
+    const extension = file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1];
+    const path = `products/${crypto.randomUUID()}.${extension}`;
     const { error } = await supabase.storage.from("product-images").upload(path, file);
     if (error) { setUploading(false); toast.error(error.message); return; }
     const { data } = await supabase.storage.from("product-images").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
