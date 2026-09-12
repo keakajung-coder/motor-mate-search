@@ -55,7 +55,9 @@ export type WorkOrderDraft = {
   safety_gear: string;
 };
 
-export type WorkOrderPrintData = Partial<WorkOrderDraft> & {
+export type WorkOrderPrintData = {
+  [K in keyof WorkOrderDraft]?: WorkOrderDraft[K] | null;
+} & {
   id?: string;
   status?: string | null;
 };
