@@ -55,6 +55,111 @@ export type WorkOrderDraft = {
   safety_gear: string;
 };
 
+export type WorkOrderPrintData = {
+  [K in keyof WorkOrderDraft]?: WorkOrderDraft[K] | null;
+} & {
+  id?: string;
+  status?: string | null;
+};
+
+const displayValue = (value?: string | null) => value?.trim() || "-";
+
+/** รูปแบบเอกสารสำหรับส่งออก ซึ่งเรียงหัวข้อเหมือนฟอร์มสร้างใบสั่งงาน */
+export function WorkOrderFormPrint({ order }: { order: WorkOrderPrintData }) {
+  return (
+    <article className="work-order-form-export" aria-label={`ใบสั่งงาน ${displayValue(order.job_no)}`}>
+      <header className="work-order-form-export__header">
+        <div>
+          <p className="work-order-form-export__eyebrow">SERVICE WORK ORDER</p>
+          <h2>ใบสั่งงานบริการ</h2>
+        </div>
+        <div className="work-order-form-export__status">
+          <span>เลขที่ใบสั่งงาน</span>
+          <strong>{displayValue(order.job_no)}</strong>
+        </div>
+      </header>
+
+      <PrintSection title="พนักงานเซอร์วิส / รถที่ใช้เดินทาง">
+        <PrintField label="พนักงานเซอร์วิส" value={order.staff_name} />
+        <PrintField label="ทะเบียนรถ" value={order.vehicle_plate} />
+      </PrintSection>
+
+      <PrintSection title="ข้อมูลใบงาน">
+        <PrintField label="เลขที่ใบสั่งงาน" value={order.job_no} />
+        <PrintField label="พนักงานขาย (เซลล์) ที่ดูแล" value={order.sales_rep} />
+        <PrintField label="ความเร่งด่วน" value={order.priority} />
+        <PrintField label="วันที่เข้าบริการ" value={order.visit_date} />
+        <PrintField label="เวลานัดหมาย" value={order.visit_time} />
+      </PrintSection>
+
+      <PrintSection title="ลูกค้า / เครื่องจักร">
+        <PrintField label="ชื่อลูกค้า" value={order.customer_name} />
+        <PrintField label="หมายเลขเครื่อง (S/N)" value={order.serial_number} />
+        <PrintField label="ที่อยู่ลูกค้า" value={order.customer_address} wide />
+        <PrintField label="ชื่อผู้ติดต่อ" value={order.contact_name} />
+        <PrintField label="เบอร์โทรผู้ติดต่อ" value={order.contact_phone} />
+        <PrintField label="เครื่องที่จะเข้าไปทำ (ยี่ห้อ/รุ่น)" value={order.machine_label} wide />
+      </PrintSection>
+
+      <PrintSection title="การเงิน / การเรียกเก็บ">
+        <PrintField label="รูปแบบการเก็บเงิน" value={order.billing_type} />
+        <PrintField label="เลขที่ PO / อ้างอิง" value={order.po_number} />
+        <PrintField label="หมายเหตุการเงิน" value={order.billing_note} wide />
+      </PrintSection>
+
+      <PrintSection title="ลักษณะงาน / ประเภทบริการ">
+        <PrintField label="ประเภทเซอร์วิส" value={order.service_type} />
+        <PrintField label="ลักษณะงานที่ต้องทำ" value={order.work_types} />
+        <PrintField label="งานที่ทำ / รายละเอียดปัญหา" value={order.job_detail} wide multiline />
+      </PrintSection>
+
+      <PrintSection title="การเดินทาง">
+        <PrintField label="เวลาออกเดินทาง" value={order.depart_time} />
+        <PrintField label="เวลากลับถึงบริษัท (โดยประมาณ)" value={order.return_time} />
+        <PrintField label="หมายเหตุการเดินทาง / เส้นทาง" value={order.logistics_note} wide />
+      </PrintSection>
+
+      <PrintSection title="อุปกรณ์เซฟตี้ที่ต้องเตรียม">
+        <PrintField label="อุปกรณ์เซฟตี้" value={order.safety_gear} wide />
+      </PrintSection>
+
+      <footer className="work-order-form-export__signatures">
+        <span>ผู้จัดทำ ____________________</span>
+        <span>ผู้อนุมัติ ____________________</span>
+        <span>วันที่ ____________________</span>
+      </footer>
+    </article>
+  );
+}
+
+function PrintSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="work-order-form-export__section">
+      <h3>{title}</h3>
+      <div className="work-order-form-export__grid">{children}</div>
+    </section>
+  );
+}
+
+function PrintField({
+  label,
+  value,
+  wide = false,
+  multiline = false,
+}: {
+  label: string;
+  value?: string | null;
+  wide?: boolean;
+  multiline?: boolean;
+}) {
+  return (
+    <div className={`work-order-form-export__field${wide ? " work-order-form-export__field--wide" : ""}${multiline ? " work-order-form-export__field--multiline" : ""}`}>
+      <span>{label}</span>
+      <strong>{displayValue(value)}</strong>
+    </div>
+  );
+}
+
 /** เลขที่ใบสั่งงานอัตโนมัติ เช่น JO-260903-1408 */
 function autoJobNo() {
   const d = new Date();

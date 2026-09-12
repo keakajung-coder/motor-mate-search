@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog } from "@/components/WorkOrderDialog";
+import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog, WorkOrderFormPrint } from "@/components/WorkOrderDialog";
 import { Combobox } from "@/components/ui/combobox";
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { ensureDirectoryEntries, useDirectory } from "@/lib/directory";
@@ -92,7 +92,19 @@ type Appointment = {
   closed_at?: string | null;
 };
 
-type WorkOrder = Appointment & { admin_note: string | null };
+type WorkOrder = Appointment & {
+  admin_note: string | null;
+  job_no?: string | null;
+  priority?: string | null;
+  billing_type?: string | null;
+  po_number?: string | null;
+  billing_note?: string | null;
+  work_types?: string | null;
+  depart_time?: string | null;
+  return_time?: string | null;
+  logistics_note?: string | null;
+  safety_gear?: string | null;
+};
 
 const STATUS_LABEL: Record<string, string> = {
   scheduled: "รอนัดหมาย",
@@ -930,6 +942,7 @@ function ApprovedOrders() {
   const [busy, setBusy] = useState("");
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
+  const formRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     supabase
@@ -999,6 +1012,28 @@ function ApprovedOrders() {
     }
   };
 
+  /** ส่งออกแบบฟอร์มเต็มตามหน้าสร้างใบสั่งงาน — ย่ออัตโนมัติให้ครบหนึ่งหน้า A4 */
+  const exportFormPdf = async (orders: WorkOrder[]) => {
+    if (orders.length === 0) return;
+    const key = orders.length === 1 ? orders[0].id + "formpdf" : "bulkformpdf";
+    setBusy(key);
+    try {
+      const { elementsToA4PdfBlob } = await import("@/lib/report");
+      const els = orders.map((o) => formRefs.current[o.id]).filter(Boolean) as HTMLDivElement[];
+      if (els.length !== orders.length) throw new Error("ไม่พบแบบฟอร์มสำหรับส่งออก");
+      const blob = await elementsToA4PdfBlob(els);
+      const filename = orders.length === 1
+        ? `ใบสั่งงาน-แบบฟอร์ม-${orders[0].customer_name || orders[0].id.slice(0, 6)}.pdf`
+        : `ใบสั่งงาน-แบบฟอร์ม-${orders.length}ใบ.pdf`;
+      await saveFile(blob, filename);
+      toast.success(`บันทึก PDF แบบฟอร์ม ${orders.length} ใบเรียบร้อย (A4 หน้าเดียวต่อใบ)`);
+    } catch (e) {
+      toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
+    } finally {
+      setBusy("");
+    }
+  };
+
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">ยังไม่มีใบสั่งงานที่อนุมัติ</p>;
 
   return (
@@ -1015,7 +1050,7 @@ function ApprovedOrders() {
           />
           เลือกทั้งหมด ({selected.length}/{rows.length})
         </label>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
           <Button size="sm" variant="outline" disabled={!!busy || selected.length === 0} onClick={() => exportSelected("image")}>
             {busy === "bulkimage" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
             รูปภาพ A4 ที่เลือก
@@ -1023,6 +1058,10 @@ function ApprovedOrders() {
           <Button size="sm" disabled={!!busy || selected.length === 0} onClick={() => exportSelected("pdf")}>
             {busy === "bulkpdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
             PDF A4 ที่เลือก
+          </Button>
+          <Button size="sm" variant="outline" disabled={!!busy || selected.length === 0} onClick={() => exportFormPdf(selected)}>
+            {busy === "bulkformpdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+            PDF แบบฟอร์มที่เลือก
           </Button>
         </div>
       </div>
@@ -1054,7 +1093,16 @@ function ApprovedOrders() {
             </p>
             <p className="text-sm">{o.job_detail}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="work-order-form-export-stage" aria-hidden="true">
+            <div
+              ref={(n) => {
+                formRefs.current[o.id] = n;
+              }}
+            >
+              <WorkOrderFormPrint order={o} />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" disabled={!!busy} onClick={() => exportOne(o, "image")}>
               {busy === o.id + "image" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
               บันทึกรูปภาพ
@@ -1062,6 +1110,10 @@ function ApprovedOrders() {
             <Button size="sm" variant="outline" disabled={!!busy} onClick={() => exportOne(o, "pdf")}>
               {busy === o.id + "pdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
               บันทึก PDF
+            </Button>
+            <Button size="sm" disabled={!!busy} onClick={() => exportFormPdf([o])}>
+              {busy === o.id + "formpdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+              PDF แบบฟอร์ม
             </Button>
           </div>
         </div>
