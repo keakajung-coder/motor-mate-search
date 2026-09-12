@@ -163,6 +163,150 @@
 @page { size: A4; margin: 12mm; }
 }
 
+/* แบบฟอร์มใบสั่งงานสำหรับ PDF: โครงสร้างตรงกับหน้าสร้าง และหลีกเลี่ยงการตัดหัวข้อ */
+.work-order-form-export-stage {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 760px;
+  pointer-events: none;
+}
+
+.work-order-form-export {
+  box-sizing: border-box;
+  width: 760px;
+  min-height: 1075px;
+  padding: 26px;
+  background: #ffffff;
+  color: #1e293b;
+  font-family: "Prompt", "Noto Sans Thai", sans-serif;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.work-order-form-export__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 12px;
+  border-bottom: 3px solid #334155;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.work-order-form-export__header h2 {
+  margin: 2px 0 0;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.work-order-form-export__eyebrow {
+  margin: 0;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.work-order-form-export__status {
+  min-width: 190px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+}
+
+.work-order-form-export__status span,
+.work-order-form-export__field span {
+  display: block;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.work-order-form-export__status strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+}
+
+.work-order-form-export__section {
+  margin-top: 9px;
+  border: 1px solid #cbd5e1;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.work-order-form-export__section h3 {
+  margin: 0;
+  padding: 5px 8px;
+  background: #e2e8f0;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.work-order-form-export__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.work-order-form-export__field {
+  min-height: 39px;
+  padding: 5px 8px;
+  border-top: 1px solid #e2e8f0;
+  overflow-wrap: anywhere;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.work-order-form-export__field:nth-child(odd):not(.work-order-form-export__field--wide) {
+  border-right: 1px solid #e2e8f0;
+}
+
+.work-order-form-export__field--wide {
+  grid-column: 1 / -1;
+}
+
+.work-order-form-export__field--multiline {
+  min-height: 58px;
+}
+
+.work-order-form-export__field strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: pre-wrap;
+}
+
+.work-order-form-export__signatures {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 13px;
+  border-top: 1px solid #94a3b8;
+  text-align: center;
+  font-size: 10px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+@media print {
+  .work-order-form-export {
+    width: 186mm;
+    min-height: 273mm;
+    padding: 0;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .work-order-form-export__section,
+  .work-order-form-export__field,
+  .work-order-form-export__header,
+  .work-order-form-export__signatures {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+}
+
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
