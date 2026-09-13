@@ -118,6 +118,16 @@ export async function deleteAsAdmin(
   try {
     const { adminDelete } = await import("@/lib/admin-write.functions");
     const res = await adminDelete({ data: { code: storedAdminCode(), table, filters } });
+    if (res?.ok) {
+      const { logAudit } = await import("@/lib/audit");
+      await logAudit({
+        table,
+        recordId: filters.id ?? null,
+        action: "delete",
+        summary: `ลบข้อมูลในตาราง ${table} (${Object.entries(filters).map(([k, v]) => `${k}=${v}`).join(", ")})`,
+        changes: filters,
+      });
+    }
     return res?.ok ? { error: null } : { error: { message: res?.error ?? "ลบไม่สำเร็จ" } };
   } catch (e) {
     return { error: { message: e instanceof Error ? e.message : "ลบไม่สำเร็จ" } };
