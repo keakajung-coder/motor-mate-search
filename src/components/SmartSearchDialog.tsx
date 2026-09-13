@@ -25,6 +25,7 @@ type Mode = "parts" | "planner" | "issue";
 type UnitLite = {
   id: string;
   serial_number: string;
+  customer_sn?: string | null;
   seller: string | null;
   status: string | null;
   customers: { name: string | null } | null;
@@ -105,7 +106,7 @@ export function SmartSearchDialog({
         supabase
           .from("machine_units")
           .select(
-            "id, serial_number, seller, status, customers ( name ), compressor_models ( name, brands ( name ) )",
+            "id, serial_number, customer_sn, seller, status, customers ( name ), compressor_models ( name, brands ( name ) )",
           )
           .order("serial_number"),
         supabase
@@ -146,7 +147,7 @@ export function SmartSearchDialog({
     if (!kw) return rows.slice(0, 12).map((u) => ({ u, score: 0 }));
     return rows
       .map((u) => {
-        const hay = `${u.serial_number} ${u.customers?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.seller ?? ""}`;
+        const hay = `${u.serial_number} ${u.customer_sn ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.seller ?? ""}`;
         return { u, score: fuzzyScore(hay, kw) };
       })
       .filter((r) => r.score != null)
@@ -284,6 +285,7 @@ export function SmartSearchDialog({
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold">{u.customers?.name ?? "-"}</span>
                       <Badge variant="outline">{u.serial_number}</Badge>
+                      {u.customer_sn && <Badge variant="secondary">S/N ลูกค้า: {u.customer_sn}</Badge>}
                       {score > 0 && <Badge variant="secondary">ใกล้เคียง</Badge>}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
