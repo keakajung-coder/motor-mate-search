@@ -49,6 +49,7 @@ export type Database = {
           created_at: string
           customer_address: string | null
           customer_name: string | null
+          customer_sn: string | null
           depart_time: string | null
           id: string
           job_detail: string | null
@@ -86,6 +87,7 @@ export type Database = {
           created_at?: string
           customer_address?: string | null
           customer_name?: string | null
+          customer_sn?: string | null
           depart_time?: string | null
           id?: string
           job_detail?: string | null
@@ -123,6 +125,7 @@ export type Database = {
           created_at?: string
           customer_address?: string | null
           customer_name?: string | null
+          customer_sn?: string | null
           depart_time?: string | null
           id?: string
           job_detail?: string | null
@@ -166,6 +169,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      audit_log: {
+        Row: {
+          action: string
+          actor: string
+          changes: Json | null
+          created_at: string
+          id: string
+          record_id: string | null
+          summary: string | null
+          table_name: string
+        }
+        Insert: {
+          action: string
+          actor?: string
+          changes?: Json | null
+          created_at?: string
+          id?: string
+          record_id?: string | null
+          summary?: string | null
+          table_name: string
+        }
+        Update: {
+          action?: string
+          actor?: string
+          changes?: Json | null
+          created_at?: string
+          id?: string
+          record_id?: string | null
+          summary?: string | null
+          table_name?: string
+        }
+        Relationships: []
       }
       brands: {
         Row: {
@@ -337,6 +373,7 @@ export type Database = {
           contract_service: boolean
           created_at: string | null
           customer_id: string | null
+          customer_sn: string | null
           daily_hours: number | null
           data_complete: boolean
           district: string | null
@@ -357,6 +394,7 @@ export type Database = {
           contract_service?: boolean
           created_at?: string | null
           customer_id?: string | null
+          customer_sn?: string | null
           daily_hours?: number | null
           data_complete?: boolean
           district?: string | null
@@ -377,6 +415,7 @@ export type Database = {
           contract_service?: boolean
           created_at?: string | null
           customer_id?: string | null
+          customer_sn?: string | null
           daily_hours?: number | null
           data_complete?: boolean
           district?: string | null
@@ -744,6 +783,7 @@ export type Database = {
           created_at: string
           customer_address: string | null
           customer_name: string
+          customer_sn: string | null
           depart_time: string | null
           id: string
           job_detail: string | null
@@ -774,6 +814,7 @@ export type Database = {
           created_at?: string
           customer_address?: string | null
           customer_name: string
+          customer_sn?: string | null
           depart_time?: string | null
           id?: string
           job_detail?: string | null
@@ -804,6 +845,7 @@ export type Database = {
           created_at?: string
           customer_address?: string | null
           customer_name?: string
+          customer_sn?: string | null
           depart_time?: string | null
           id?: string
           job_detail?: string | null
