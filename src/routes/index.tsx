@@ -814,6 +814,7 @@ type MachinePart = {
 type MachineResult = {
   id: string;
   serial_number: string;
+  customer_sn?: string | null;
   install_date: string | null;
   daily_hours: number | null;
   note: string | null;
@@ -853,7 +854,7 @@ function SnView({
     const { data, error } = await supabase
       .from("machine_units")
       .select(
-        `id, serial_number, install_date, daily_hours, note,
+        `id, serial_number, customer_sn, install_date, daily_hours, note,
          site_name, address_line, district, province, seller, status, data_complete,
          warranty_end, contract_service,
          customers ( id, name, phone ),
@@ -937,7 +938,7 @@ function SnView({
         )
         .join(" ");
       const loc = `${(u as any).site_name ?? ""} ${(u as any).district ?? ""} ${(u as any).province ?? ""} ${unitSeller} ${unitStatus}`;
-      return `${u.serial_number} ${brand} ${model} ${cust} ${phone} ${parts} ${loc}`
+      return `${u.serial_number} ${u.customer_sn ?? ""} ${brand} ${model} ${cust} ${phone} ${parts} ${loc}`
         .toLowerCase()
         .includes(kw);
     }).sort((a, b) => a.serial_number.localeCompare(b.serial_number, "th"));
@@ -967,6 +968,7 @@ function SnView({
         {units.map((u) => {
           const label = [
             u.serial_number,
+            u.customer_sn ? `S/N ลูกค้า ${u.customer_sn}` : null,
             u.compressor_models?.brands?.name,
             u.compressor_models?.name,
             u.customers?.name,
@@ -1172,6 +1174,11 @@ function MachineCard({
           <Badge variant="outline" className="shrink-0 font-mono text-xs">
             {unit.serial_number}
           </Badge>
+          {unit.customer_sn && (
+            <Badge variant="secondary" className="shrink-0 font-mono text-xs">
+              S/N ลูกค้า: {unit.customer_sn}
+            </Badge>
+          )}
           <span
             className={
               "shrink-0 rounded-full px-2 py-0.5 text-[11px] " +
@@ -1214,6 +1221,7 @@ function MachineCard({
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Info label="S/N" value={unit.serial_number} />
+            <Info label="S/N ลูกค้า" value={unit.customer_sn || "-"} />
             <Info label="สถานะเครื่อง" value={(unit as any).status ?? "-"} />
             <Info label="รุ่นเครื่อง" value={model} />
             <Info label="ลูกค้า" value={unit.customers?.name ?? "-"} />
@@ -1589,6 +1597,7 @@ async function shareMachine(unit: MachineResult) {
     : "-";
   const lines: string[] = [
     `S/N: ${unit.serial_number}`,
+    `S/N ลูกค้า: ${unit.customer_sn || "-"}`,
     `รุ่น: ${model}`,
     `ลูกค้า: ${unit.customers?.name ?? "-"}`,
     `เบอร์: ${unit.customers?.phone ?? "-"}`,

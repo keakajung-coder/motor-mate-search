@@ -377,7 +377,7 @@ function PlannerPage() {
           <PartsAlertPanel withActions={isAdmin} />
         </FoldSection>
 
-        <FoldSection title="รายงานสรุปงาน (รายวัน/รายเดือน)" className="md:col-span-2 xl:col-span-1">
+        <FoldSection title="สรุปใบสั่งงาน (วัน/สัปดาห์/เดือน/ช่วงวันที่)" className="md:col-span-2 xl:col-span-1">
           <JobReportsPanel
             onPickDate={(d) => {
               const [y, m, dd] = d.split("-").map(Number);
