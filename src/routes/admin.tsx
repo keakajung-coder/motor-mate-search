@@ -36,6 +36,8 @@ import { SmartSearchBox } from "@/components/SmartSearchBox";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { TroubleshootTab } from "@/components/admin/TroubleshootTab";
 import { StatsPanel } from "@/components/admin/StatsPanel";
+import { AuditLogTab } from "@/components/admin/AuditLogTab";
+import { logAudit } from "@/lib/audit";
 import { BundlesTab } from "@/components/admin/BundlesTab";
 
 
@@ -91,6 +93,7 @@ function AdminPage() {
           <TabsTrigger value="bundles" className="shrink-0">ชุดอะไหล่</TabsTrigger>
           <TabsTrigger value="issues" className="shrink-0">คลังอาการเสีย (AI)</TabsTrigger>
           <TabsTrigger value="io" className="shrink-0">นำเข้า / ส่งออก</TabsTrigger>
+          <TabsTrigger value="audit" className="shrink-0">ประวัติการแก้ไข</TabsTrigger>
           <TabsTrigger value="security" className="shrink-0">ความปลอดภัย</TabsTrigger>
         </TabsList>
         <TabsContent value="machines"><MachinesTab /></TabsContent>
@@ -112,6 +115,7 @@ function AdminPage() {
         <TabsContent value="bundles"><BundlesTab /></TabsContent>
         <TabsContent value="issues"><TroubleshootTab /></TabsContent>
         <TabsContent value="io"><ImportExportTab /></TabsContent>
+        <TabsContent value="audit"><AuditLogTab /></TabsContent>
         <TabsContent value="security">
           <div className="grid gap-4 md:grid-cols-2">
             <PasscodeSettings />
@@ -685,6 +689,7 @@ function MachinesTab() {
   const empty = {
     id: "" as string,
     serial_number: "",
+    customer_sn: "",
     customer_name: "",
     brand_name: "",
     model_name: "",
@@ -756,6 +761,7 @@ function MachinesTab() {
     formHistory.reset({
       id: u.id,
       serial_number: u.serial_number ?? "",
+      customer_sn: u.customer_sn ?? "",
       customer_name: u.customers?.name ?? "",
       brand_name: u.compressor_models?.brands?.name ?? "",
       model_name: u.compressor_models?.name ?? "",
@@ -825,6 +831,7 @@ function MachinesTab() {
 
       const payload = {
         serial_number: form.serial_number.trim(),
+        customer_sn: form.customer_sn.trim() || null,
         model_id,
         customer_id,
         install_date: form.install_date || null,
@@ -845,13 +852,15 @@ function MachinesTab() {
       if (form.id) {
         const { error } = await supabase.from("machine_units").update(payload).eq("id", form.id);
         if (error) return toast.error(error.message);
+        await logAudit({ table: "machine_units", recordId: form.id, action: "update", summary: `แก้ไขเครื่อง S/N ${payload.serial_number}`, changes: payload });
         toast.success("บันทึกเรียบร้อย");
       } else {
         const { data, error } = await supabase.from("machine_units").insert(payload).select("id").single();
         if (error) return toast.error(error.message);
+        await logAudit({ table: "machine_units", recordId: data.id, action: "create", summary: `เพิ่มเครื่อง S/N ${payload.serial_number}`, changes: payload });
         if (addAnother) {
           toast.success("บันทึกแล้ว — กรอกเครื่องถัดไปได้เลย");
-          setForm((f) => ({ ...f, id: "", serial_number: "", note: "", site_name: "" }));
+          setForm((f) => ({ ...f, id: "", serial_number: "", customer_sn: "", note: "", site_name: "" }));
         } else {
           toast.success("เพิ่มเครื่องแล้ว — เพิ่มอะไหล่ได้เลย");
           // keep form open in edit mode so user can add parts inline
@@ -1067,7 +1076,7 @@ function MachinesTab() {
                 if (completeFilter !== "all" && isMachineComplete(u) !== (completeFilter === "yes")) return false;
                 const kw = q.trim().toLowerCase();
                 if (!kw) return true;
-                return `${u.serial_number ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller} ${u.status ?? ""}`
+                return `${u.serial_number ?? ""} ${u.customer_sn ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller} ${u.status ?? ""}`
                   .toLowerCase().includes(kw);
               })
               .map((u) => (
@@ -1076,6 +1085,9 @@ function MachinesTab() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">{u.serial_number}</span>
+                      {u.customer_sn && (
+                        <span className="ml-1 text-xs text-muted-foreground">(S/N ลูกค้า: {u.customer_sn})</span>
+                      )}
                       {u.status && (
                         <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
                           {u.status}
@@ -1139,6 +1151,14 @@ function MachinesTab() {
             <div>
               <Label>S/N เครื่อง</Label>
               <Input value={form.serial_number} onChange={(e) => setForm({ ...form, serial_number: e.target.value })} />
+            </div>
+            <div>
+              <Label>S/N ลูกค้า (Customer S/N)</Label>
+              <Input
+                value={form.customer_sn}
+                onChange={(e) => setForm({ ...form, customer_sn: e.target.value })}
+                placeholder="หมายเลขที่ลูกค้าใช้เรียกเครื่อง (แก้ไขได้ตลอด)"
+              />
             </div>
             <div>
               <Label>ลูกค้า (พิมพ์เพิ่มหรือเลือก)</Label>
