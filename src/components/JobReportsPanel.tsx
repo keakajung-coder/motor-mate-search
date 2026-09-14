@@ -70,6 +70,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
   const [rep, setRep] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState("");
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
   const [editRow, setEditRow] = useState<Row | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -167,17 +168,38 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
   const scopeLabel =
     scope === "open" ? "ก่อนปิดงาน (งานค้าง)" : scope === "closed" ? "หลังปิดงาน (ปิดแล้ว)" : "ทุกสถานะ";
 
+  const quotationItems = (r: Row) => {
+    const details = [r.parts_categories, r.parts_note].map((value) => value?.trim()).filter(Boolean);
+    if (details.length) return details.join(" · ");
+    return r.quotation_required ? "ต้องเสนอราคาเพิ่มเติม" : "-";
+  };
+
+  const workStatus = (r: Row) =>
+    r.status === "closed" ? (r.result === "not_ok" ? "ปิดงานไม่เรียบร้อย" : "เสร็จสมบูรณ์") : "ยังไม่เสร็จ";
+
   const exportReport = async (kind: "image" | "pdf") => {
     const el = ref.current;
     if (!el) return;
     setExporting(kind);
+    el.classList.add("job-report-export", `job-report-export--${orientation}`);
     try {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       if (kind === "pdf") {
-        const blob = await elementToPdfBlobPaged(el, 0, { orientation: "portrait" });
+        const exportWidth = orientation === "landscape" ? 1123 : 794;
+        const blob = await elementToPdfBlobPaged(el, 0, {
+          orientation,
+          size: { width: exportWidth, height: el.scrollHeight },
+        });
         await saveFile(blob, `สรุปใบสั่งงาน-${scopeLabel}-${range.from}.pdf`);
       } else {
         const { toPng } = await import("html-to-image");
-        const dataUrl = await toPng(el, { backgroundColor: "#ffffff", cacheBust: true, pixelRatio: 2 });
+        const dataUrl = await toPng(el, {
+          backgroundColor: "#ffffff",
+          cacheBust: true,
+          pixelRatio: 2,
+          width: el.scrollWidth,
+          height: el.scrollHeight,
+        });
         const blob = await (await fetch(dataUrl)).blob();
         await saveFile(blob, `สรุปใบสั่งงาน-${scopeLabel}-${range.from}.png`);
       }
@@ -185,6 +207,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
     } catch (e) {
       toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
     } finally {
+      el.classList.remove("job-report-export", "job-report-export--portrait", "job-report-export--landscape");
       setExporting("");
     }
   };
@@ -250,7 +273,23 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
             />
           )}
 
-          <div className="ml-auto flex gap-1">
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            <div className="flex gap-1" aria-label="แนวกระดาษ">
+              <Button
+                size="sm"
+                variant={orientation === "portrait" ? "default" : "outline"}
+                onClick={() => setOrientation("portrait")}
+              >
+                แนวตั้ง
+              </Button>
+              <Button
+                size="sm"
+                variant={orientation === "landscape" ? "default" : "outline"}
+                onClick={() => setOrientation("landscape")}
+              >
+                แนวนอน
+              </Button>
+            </div>
             <Button size="sm" variant="outline" disabled={!!exporting} onClick={() => exportReport("image")}>
               {exporting === "image" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
               PNG
@@ -285,7 +324,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
       </CardHeader>
 
       <CardContent>
-        <div ref={ref} className="space-y-4 bg-card p-1">
+        <div ref={ref} className="job-report space-y-4 bg-card p-1">
           <p className="text-sm font-semibold">
             สรุปใบสั่งงาน {modeLabel} · {label} · {scopeLabel}
             {tech ? ` · ช่าง ${tech}` : ""}
@@ -299,22 +338,20 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
             <Metric label="ปิดงานไม่เรียบร้อย" value={notOk} tone="bad" />
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] border-collapse text-xs">
+          <div className="job-report-table-wrap overflow-x-auto">
+            <table className="job-report-table w-full min-w-[1100px] border-collapse text-xs">
               <thead>
                 <tr className="bg-muted/50 text-left">
                   {[
-                    "ลูกค้า",
-                    "S/N เครื่อง",
+                    "ชื่อลูกค้า",
+                    "S/N หลัก",
                     "S/N ลูกค้า",
-                    "งานที่ต้องทำ",
-                    "งานที่ทำจริง",
-                    "ช่าง",
-                    "ทะเบียนรถ",
-                    "เซลล์",
-                    "ใบเสนอราคา",
-                    "สถานะ",
-                    "",
+                    "งานที่ได้รับมอบหมาย",
+                    "งานที่ดำเนินการ",
+                    "รายการเสนอราคาเพิ่มเติม",
+                    "ชื่อช่าง",
+                    "รถ",
+                    "สถานะงาน",
                   ].map((h) => (
                     <th key={h} className="border px-2 py-1 font-semibold">
                       {h}
@@ -325,13 +362,13 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td className="border px-2 py-2 text-muted-foreground" colSpan={11}>
+                    <td className="border px-2 py-2 text-muted-foreground" colSpan={9}>
                       กำลังโหลด...
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td className="border px-2 py-2 text-muted-foreground" colSpan={11}>
+                    <td className="border px-2 py-2 text-muted-foreground" colSpan={9}>
                       ไม่มีข้อมูลในช่วงนี้
                     </td>
                   </tr>
@@ -348,16 +385,13 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
                       <td className="border px-2 py-1 font-mono font-semibold">{custSn(r) || "-"}</td>
                       <td className="border px-2 py-1">{r.job_detail || "-"}</td>
                       <td className="border px-2 py-1">{r.close_note || (r.status === "closed" ? "ปิดงานแล้ว" : "-")}</td>
+                      <td className="border px-2 py-1">{quotationItems(r)}</td>
                       <td className="border px-2 py-1">{r.staff_name || "-"}</td>
                       <td className="border px-2 py-1">{r.vehicle_plate || "-"}</td>
-                      <td className="border px-2 py-1">{r.sales_rep || "-"}</td>
-                      <td className="border px-2 py-1">{r.quotation_required ? "ต้องเสนอราคา" : "-"}</td>
                       <td className="border px-2 py-1">
-                        {r.status === "closed" ? (r.result === "not_ok" ? "ปิดไม่เรียบร้อย" : "เสร็จสมบูรณ์") : "ยังไม่เสร็จ"}
-                      </td>
-                      <td className="border px-2 py-1">
+                        <span>{workStatus(r)}</span>
                         {isAdmin && (
-                          <Button size="sm" variant="outline" className="no-print h-7 px-2" onClick={() => setEditRow(r)}>
+                          <Button size="sm" variant="outline" className="no-print mt-1 h-7 px-2" onClick={() => setEditRow(r)}>
                             <Pencil className="h-3 w-3" />
                           </Button>
                         )}

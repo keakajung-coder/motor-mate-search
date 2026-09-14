@@ -329,6 +329,49 @@
   contain: none !important;
 }
 
+/* ตารางสรุปยังเลื่อนบนหน้าจอ แต่ตอนส่งออกจะจัดทุกคอลัมน์ลงเต็มความกว้าง A4 */
+.job-report-export {
+  box-sizing: border-box;
+  max-width: none !important;
+  padding: 20px !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+}
+.job-report-export--portrait {
+  width: 794px !important;
+}
+.job-report-export--landscape {
+  width: 1123px !important;
+}
+.job-report-export .job-report-table-wrap {
+  overflow: visible !important;
+  width: 100% !important;
+}
+.job-report-export .job-report-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed;
+}
+.job-report-export .job-report-table th,
+.job-report-export .job-report-table td {
+  padding: 5px !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  vertical-align: top;
+}
+.job-report-export--portrait .job-report-table {
+  font-size: 9px !important;
+  line-height: 1.35 !important;
+}
+.job-report-export--landscape .job-report-table {
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+.job-report-export .no-print {
+  display: none !important;
+}
+
 /* โหมดส่งออกข้อมูลเครื่อง/ประวัติเป็น A4: ตัวหนังสือใหญ่ขึ้น จัดเต็มหน้ากระดาษ */
 .export-a4 {
   width: 794px !important; /* กว้าง A4 แนวตั้ง @96dpi */
