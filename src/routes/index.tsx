@@ -54,7 +54,7 @@ function formatDate(d: string | null | undefined): string {
   if (isNaN(dt.getTime())) return d;
   const dd = String(dt.getDate()).padStart(2, "0");
   const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  const yyyy = dt.getFullYear();
+  const yyyy = dt.getFullYear() + 543; // พ.ศ.
   return `${dd}/${mm}/${yyyy}`;
 }
 
