@@ -421,22 +421,18 @@ function PlannerPage() {
                 </Button>
               ))}
             </div>
-            <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              <input
-                type="date"
-                aria-label="ค้นหาวันที่"
-                className="h-9 bg-transparent text-sm outline-none"
-                value={iso(cursor)}
-                onChange={(e) => {
-                  if (!e.target.value) return;
-                  const [y, m, d] = e.target.value.split("-").map(Number);
-                  setCursor(new Date(y, m - 1, d));
-                  setView("day");
-                  setDayDetail(e.target.value);
-                }}
-              />
-            </div>
+            <DateInput
+              aria-label="ค้นหาวันที่"
+              className="w-40"
+              value={iso(cursor)}
+              onChange={(v) => {
+                if (!v) return;
+                const [y, m, d] = v.split("-").map(Number);
+                setCursor(new Date(y, m - 1, d));
+                setView("day");
+                setDayDetail(v);
+              }}
+            />
             <select
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               value={staffFilter}
