@@ -43,6 +43,7 @@ import { elementToPdfBlobPaged, formatDate, isMachineComplete, saveFile } from "
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { JobReportsPanel } from "@/components/JobReportsPanel";
 import { PART_CATEGORIES } from "@/lib/job-fields";
+import { DateInput } from "@/components/ui/date-input";
 
 
 export const Route = createFileRoute("/planner")({
@@ -421,22 +422,18 @@ function PlannerPage() {
                 </Button>
               ))}
             </div>
-            <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              <input
-                type="date"
-                aria-label="ค้นหาวันที่"
-                className="h-9 bg-transparent text-sm outline-none"
-                value={iso(cursor)}
-                onChange={(e) => {
-                  if (!e.target.value) return;
-                  const [y, m, d] = e.target.value.split("-").map(Number);
-                  setCursor(new Date(y, m - 1, d));
-                  setView("day");
-                  setDayDetail(e.target.value);
-                }}
-              />
-            </div>
+            <DateInput
+              aria-label="ค้นหาวันที่"
+              className="w-40"
+              value={iso(cursor)}
+              onChange={(v) => {
+                if (!v) return;
+                const [y, m, d] = v.split("-").map(Number);
+                setCursor(new Date(y, m - 1, d));
+                setView("day");
+                setDayDetail(v);
+              }}
+            />
             <select
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               value={staffFilter}
@@ -803,11 +800,10 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
             <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
               <div className="min-w-0 space-y-1">
                 <Label className="text-xs">วันที่เข้าบริการ</Label>
-                <Input
+                <DateInput
                   className="w-full"
-                  type="date"
                   value={val(o, "visit_date")}
-                  onChange={(e) => patch(o.id, "visit_date", e.target.value)}
+                  onChange={(v) => patch(o.id, "visit_date", v)}
                 />
               </div>
               <div className="min-w-0 space-y-1">
@@ -1326,7 +1322,7 @@ function MonthGrid({
                 </button>
               </div>
 
-              <div className="scrollbar-none max-h-24 space-y-0.5 overflow-y-auto">
+              <div className="scrollbar-none min-h-0 flex-1 space-y-0.5 overflow-y-auto">
                 {list.map((a) => (
                   <button
                     key={a.id}
@@ -1912,7 +1908,7 @@ function AppointmentDialog({
           </F>
           <div className="grid grid-cols-2 gap-3">
             <F label="วันที่">
-              <Input disabled={locked} type="date" value={form.visit_date} onChange={(e) => set("visit_date", e.target.value)} />
+              <DateInput disabled={locked} value={form.visit_date} onChange={(v) => set("visit_date", v)} />
             </F>
             <F label="เวลา">
               <Input disabled={locked} type="time" value={form.visit_time ?? ""} onChange={(e) => set("visit_time", e.target.value)} />

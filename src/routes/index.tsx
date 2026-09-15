@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
+import { DateInput } from "@/components/ui/date-input";
 
 function formatDate(d: string | null | undefined): string {
   if (!d) return "-";
@@ -54,7 +55,7 @@ function formatDate(d: string | null | undefined): string {
   if (isNaN(dt.getTime())) return d;
   const dd = String(dt.getDate()).padStart(2, "0");
   const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  const yyyy = dt.getFullYear();
+  const yyyy = dt.getFullYear() + 543; // พ.ศ.
   return `${dd}/${mm}/${yyyy}`;
 }
 
@@ -877,7 +878,7 @@ function SnView({
         const at = offlineSavedAt("machine_units");
         toast.warning(
           "ออฟไลน์อยู่ — แสดงข้อมูลที่บันทึกไว้ในเครื่อง" +
-            (at ? ` (ล่าสุด ${at.toLocaleString("th-TH")})` : ""),
+            (at ? ` (ล่าสุด ${at.toLocaleString("th-TH-u-ca-buddhist")})` : ""),
         );
         return;
       }
@@ -1366,12 +1367,12 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
           <div className="no-print flex flex-1 min-w-[10rem] flex-wrap items-center gap-1 rounded bg-muted/50 px-2 py-1">
             <CalendarClock className="h-3 w-3 shrink-0 text-muted-foreground" />
             <span className="shrink-0 text-muted-foreground">เปลี่ยนล่าสุด:</span>
-            <input
-              type="date"
+            <DateInput
               value={lastChanged ?? ""}
-              onChange={(e) => saveDate(e.target.value || null)}
+              onChange={(v) => saveDate(v || null)}
               disabled={savingDate}
-              className="h-7 min-w-[7rem] flex-1 rounded border bg-background px-1 text-xs"
+              size="sm"
+              className="min-w-[8rem] flex-1"
             />
             <Button
               size="sm"

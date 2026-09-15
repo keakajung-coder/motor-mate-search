@@ -13,6 +13,7 @@ import { splitNames } from "@/components/ui/multi-combobox";
 import { elementToPdfBlobPaged, formatDate, saveFile } from "@/lib/report";
 import { useAccess } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
+import { DateInput } from "@/components/ui/date-input";
 
 type Row = {
   id: string;
@@ -247,29 +248,26 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
 
           {mode === "custom" ? (
             <div className="flex items-center gap-1">
-              <input
-                type="date"
+              <DateInput
                 aria-label="ตั้งแต่วันที่"
-                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                className="w-36"
                 value={customFrom}
-                onChange={(e) => e.target.value && setCustomFrom(e.target.value)}
+                onChange={(v) => v && setCustomFrom(v)}
               />
               <span className="text-xs text-muted-foreground">ถึง</span>
-              <input
-                type="date"
+              <DateInput
                 aria-label="ถึงวันที่"
-                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                className="w-36"
                 value={customTo}
-                onChange={(e) => e.target.value && setCustomTo(e.target.value)}
+                onChange={(v) => v && setCustomTo(v)}
               />
             </div>
           ) : (
-            <input
-              type="date"
+            <DateInput
               aria-label="เลือกวันที่รายงาน"
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              className="w-36"
               value={day}
-              onChange={(e) => e.target.value && setDay(e.target.value)}
+              onChange={(v) => v && setDay(v)}
             />
           )}
 

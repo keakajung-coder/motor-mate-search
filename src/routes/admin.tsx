@@ -39,6 +39,7 @@ import { StatsPanel } from "@/components/admin/StatsPanel";
 import { AuditLogTab } from "@/components/admin/AuditLogTab";
 import { logAudit } from "@/lib/audit";
 import { BundlesTab } from "@/components/admin/BundlesTab";
+import { DateInput } from "@/components/ui/date-input";
 
 
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
@@ -1209,7 +1210,7 @@ function MachinesTab() {
             </div>
             <div>
               <Label>วันที่ติดตั้ง</Label>
-              <Input type="date" value={form.install_date} onChange={(e) => setForm({ ...form, install_date: e.target.value })} />
+              <DateInput value={form.install_date} onChange={(v) => setForm({ ...form, install_date: v })} />
             </div>
             <div>
               <Label>ชม.ทำงาน/วัน</Label>
@@ -1291,10 +1292,9 @@ function MachinesTab() {
             </div>
             <div>
               <Label>วันสิ้นสุดการรับประกัน</Label>
-              <Input
-                type="date"
+              <DateInput
                 value={form.warranty_end}
-                onChange={(e) => setForm({ ...form, warranty_end: e.target.value })}
+                onChange={(v) => setForm({ ...form, warranty_end: v })}
               />
             </div>
             <div className="flex items-end">
@@ -1588,10 +1588,10 @@ function MachinePartsEditor({
               </div>
               <div>
                 <Label className="text-xs">เปลี่ยนล่าสุด</Label>
-                <Input
-                  type="date" defaultValue={mp.last_changed_at ?? ""}
-                  onBlur={(e) => updatePart(mp.id, { last_changed_at: e.target.value || null })}
-                  className="h-8"
+                <DateInput
+                  value={mp.last_changed_at ?? ""}
+                  onChange={(v) => updatePart(mp.id, { last_changed_at: v || null })}
+                  size="sm"
                 />
               </div>
             </div>

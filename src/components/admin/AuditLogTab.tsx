@@ -65,7 +65,7 @@ export function AuditLogTab() {
                   <span className="font-medium">{r.table_name}</span>
                   <Badge variant="secondary">{r.actor === "admin" ? "แอดมิน" : "ผู้ใช้ทั่วไป"}</Badge>
                   <span className="ml-auto text-xs text-muted-foreground">
-                    {new Date(r.created_at).toLocaleString("th-TH")}
+                    {new Date(r.created_at).toLocaleString("th-TH-u-ca-buddhist")}
                   </span>
                 </div>
                 {r.summary && <p className="mt-1 text-muted-foreground">{r.summary}</p>}

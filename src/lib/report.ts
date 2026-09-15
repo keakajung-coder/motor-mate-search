@@ -1,12 +1,13 @@
 /** Shared helpers: date format, usage calculation, PDF export (size-capped) */
 
+/** แสดงวันที่เป็น วว/ดด/ปปปป แบบพุทธศักราช (พ.ศ.) */
 export function formatDate(d: string | null | undefined): string {
   if (!d) return "-";
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return String(d);
   const dd = String(dt.getDate()).padStart(2, "0");
   const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  return `${dd}/${mm}/${dt.getFullYear()}`;
+  return `${dd}/${mm}/${dt.getFullYear() + 543}`;
 }
 
 export type Usage = {
