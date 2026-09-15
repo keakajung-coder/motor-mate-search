@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { BarChart3, Camera, FileDown, Loader2, Pencil } from "lucide-react";
@@ -73,6 +74,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
   const [exporting, setExporting] = useState("");
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
   const [editRow, setEditRow] = useState<Row | null>(null);
+  const [show, setShow] = useState({ table: true, pending: true, customers: true, workload: true });
   const ref = useRef<HTMLDivElement | null>(null);
 
   const range = useMemo(
@@ -175,8 +177,26 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
     return r.quotation_required ? "ต้องเสนอราคาเพิ่มเติม" : "-";
   };
 
+  const visibleCount = Object.values(show).filter(Boolean).length;
+
   const workStatus = (r: Row) =>
     r.status === "closed" ? (r.result === "not_ok" ? "ปิดงานไม่เรียบร้อย" : "เสร็จสมบูรณ์") : "ยังไม่เสร็จ";
+
+  /** เครื่องคำนวณเลย์เอาต์อัตโนมัติ: ย่อ/ขยายขนาดตัวอักษรและระยะห่างให้พอดีหน้ากระดาษ */
+  const fitScale = (el: HTMLElement, pageHeight: number) => {
+    el.style.setProperty("--jr-scale", "1");
+    el.getBoundingClientRect();
+    const h = el.scrollHeight;
+    if (h <= pageHeight) {
+      // เนื้อหาน้อย: ขยายเล็กน้อยให้เต็มหน้า แต่ไม่เกิน 1.25 เท่า
+      const up = Math.min(1.25, Math.max(1, (pageHeight / Math.max(h, 1)) * 0.92));
+      el.style.setProperty("--jr-scale", up.toFixed(3));
+      return;
+    }
+    const pages = Math.ceil(h / pageHeight);
+    const scale = Math.max(0.6, Math.min(1, (pages * pageHeight * 0.96) / h));
+    el.style.setProperty("--jr-scale", scale.toFixed(3));
+  };
 
   const exportReport = async (kind: "image" | "pdf") => {
     const el = ref.current;
@@ -184,6 +204,9 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
     setExporting(kind);
     el.classList.add("job-report-export", `job-report-export--${orientation}`);
     try {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      const pageHeight = orientation === "landscape" ? 794 : 1123;
+      fitScale(el, pageHeight);
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       if (kind === "pdf") {
         const exportWidth = orientation === "landscape" ? 1123 : 794;
@@ -209,6 +232,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
       toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
     } finally {
       el.classList.remove("job-report-export", "job-report-export--portrait", "job-report-export--landscape");
+      el.style.removeProperty("--jr-scale");
       setExporting("");
     }
   };
@@ -319,10 +343,33 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
             </Button>
           ))}
         </div>
+
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 p-2 text-xs">
+          <span className="text-muted-foreground">แสดงส่วน:</span>
+          {([
+            ["table", "ตารางงาน"],
+            ["pending", "งานที่ยังค้าง"],
+            ["customers", "สรุปตามลูกค้า"],
+            ["workload", "ภาระงานรายช่าง"],
+          ] as const).map(([k, t]) => (
+            <label key={k} className="flex cursor-pointer items-center gap-1.5">
+              <Checkbox
+                checked={show[k]}
+                onCheckedChange={(v) => setShow((s) => ({ ...s, [k]: v === true }))}
+                aria-label={t}
+              />
+              <span>{t}</span>
+            </label>
+          ))}
+        </div>
       </CardHeader>
 
       <CardContent>
-        <div ref={ref} className="job-report space-y-4 bg-card p-1">
+        <div
+          ref={ref}
+          data-sections={visibleCount}
+          className={`job-report bg-card p-1 ${visibleCount <= 2 ? "space-y-6" : "space-y-4"}`}
+        >
           <p className="text-sm font-semibold">
             สรุปใบสั่งงาน {modeLabel} · {label} · {scopeLabel}
             {tech ? ` · ช่าง ${tech}` : ""}
@@ -336,6 +383,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
             <Metric label="ปิดงานไม่เรียบร้อย" value={notOk} tone="bad" />
           </div>
 
+          {show.table && (
           <div className="job-report-table-wrap overflow-x-auto">
             <table className="job-report-table w-full min-w-[1100px] border-collapse text-xs">
               <thead>
@@ -400,13 +448,18 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
               </tbody>
             </table>
           </div>
+          )}
 
+          {show.pending && (
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground">งานที่ยังค้าง (กดเพื่อไปยังวันนั้น)</p>
             {pendingRows.length === 0 ? (
               <p className="text-xs text-muted-foreground">ไม่มีงานค้าง 🎉</p>
             ) : (
-              <ul className="max-h-56 space-y-1 overflow-y-auto scrollbar-none">
+              <ul
+                className="space-y-1 overflow-y-auto scrollbar-none"
+                style={{ maxHeight: visibleCount <= 2 ? 520 : 224 }}
+              >
                 {pendingRows.map((r) => (
                   <li key={r.id}>
                     <button
@@ -425,7 +478,9 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
               </ul>
             )}
           </div>
+          )}
 
+          {show.customers && (
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground">สรุปงานแยกตามลูกค้า</p>
             {grouped.length === 0 ? (
@@ -454,7 +509,9 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
               </div>
             )}
           </div>
+          )}
 
+          {show.workload && (
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground">ภาระงานรายช่าง</p>
             <div className="flex flex-wrap gap-2">
@@ -466,6 +523,11 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
               {workload.length === 0 && <p className="text-xs text-muted-foreground">ยังไม่มีข้อมูล</p>}
             </div>
           </div>
+          )}
+
+          {visibleCount === 0 && (
+            <p className="text-xs text-muted-foreground">เลือกอย่างน้อยหนึ่งส่วนด้านบนเพื่อแสดงข้อมูล</p>
+          )}
         </div>
       </CardContent>
 

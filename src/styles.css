@@ -430,3 +430,39 @@
   }
 }
 
+
+/* เครื่องปรับเลย์เอาต์อัตโนมัติของสรุปใบสั่งงาน: ย่อ/ขยายตามจำนวนส่วนที่เปิดและความยาวเนื้อหา */
+.job-report-export {
+  --jr-scale: 1;
+  --jr-base-font: 9px;
+}
+.job-report-export--landscape {
+  --jr-base-font: 11px;
+}
+.job-report-export > * + * {
+  margin-top: calc(1rem * var(--jr-scale)) !important;
+}
+.job-report-export .job-report-table {
+  font-size: calc(var(--jr-base-font) * var(--jr-scale)) !important;
+  line-height: 1.38 !important;
+}
+.job-report-export .job-report-table th,
+.job-report-export .job-report-table td {
+  padding: calc(5px * var(--jr-scale)) !important;
+}
+.job-report-export .text-xs,
+.job-report-export .text-\[11px\] {
+  font-size: calc(11px * var(--jr-scale)) !important;
+  line-height: 1.45 !important;
+}
+.job-report-export .text-sm {
+  font-size: calc(13px * var(--jr-scale)) !important;
+}
+.job-report-export .text-lg {
+  font-size: calc(18px * var(--jr-scale)) !important;
+}
+.job-report-export ul,
+.job-report-export .job-report-table-wrap {
+  max-height: none !important;
+  overflow: visible !important;
+}
