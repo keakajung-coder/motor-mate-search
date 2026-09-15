@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
+import { DateInput } from "@/components/ui/date-input";
 
 function formatDate(d: string | null | undefined): string {
   if (!d) return "-";
@@ -877,7 +878,7 @@ function SnView({
         const at = offlineSavedAt("machine_units");
         toast.warning(
           "ออฟไลน์อยู่ — แสดงข้อมูลที่บันทึกไว้ในเครื่อง" +
-            (at ? ` (ล่าสุด ${at.toLocaleString("th-TH")})` : ""),
+            (at ? ` (ล่าสุด ${at.toLocaleString("th-TH-u-ca-buddhist")})` : ""),
         );
         return;
       }

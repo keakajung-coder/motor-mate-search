@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { computeUsage, formatDate } from "@/lib/report";
+import { DateInput } from "@/components/ui/date-input";
 
 export type AlertRow = {
   id: string;
@@ -204,7 +205,7 @@ function EditPartDialog({
         <div className="space-y-3">
           <div className="space-y-1">
             <Label>วันที่เปลี่ยนล่าสุด</Label>
-            <Input type="date" value={lastChanged} onChange={(e) => setLastChanged(e.target.value)} />
+            <DateInput value={lastChanged} onChange={setLastChanged} />
           </div>
           <div className="space-y-1">
             <Label>รอบการเปลี่ยน (ชั่วโมง)</Label>

@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { ClipboardPlus, Loader2 } from "lucide-react";
 import { ensureDirectoryEntries, refreshDirectory, useDirectory } from "@/lib/directory";
 import { BILLING_TYPES, PRIORITIES, SAFETY_GEAR, WORK_TYPES } from "@/lib/job-fields";
+import { DateInput } from "@/components/ui/date-input";
 
 export const SERVICE_TYPES = [
   "เช็กระยะ (PM)",
@@ -366,7 +367,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
               />
             </Field>
             <Field label="วันที่เข้าบริการ">
-              <Input type="date" value={form.visit_date} onChange={(e) => set("visit_date", e.target.value)} />
+              <DateInput value={form.visit_date} onChange={(v) => set("visit_date", v)} />
             </Field>
             <Field label="เวลานัดหมาย">
               <Input type="time" value={form.visit_time} onChange={(e) => set("visit_time", e.target.value)} />
