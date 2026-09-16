@@ -21,15 +21,21 @@ export async function notifyAdmins(input: {
   dedupeKey?: string;
 }) {
   try {
-    const { error } = await supabase.from("notifications").insert({
-      kind: input.kind,
-      title: input.title,
-      body: input.body ?? null,
-      link: input.link ?? null,
-      dedupe_key: input.dedupeKey ?? null,
-    });
-    // ถ้าซ้ำ (dedupe_key ชนกัน) ไม่ต้องส่งช่องทางอื่นซ้ำอีก
-    if (error) return;
+    const { data, error } = await supabase
+      .from("notifications")
+      .upsert(
+        {
+          kind: input.kind,
+          title: input.title,
+          body: input.body ?? null,
+          link: input.link ?? null,
+          dedupe_key: input.dedupeKey ?? null,
+        },
+        { onConflict: "dedupe_key", ignoreDuplicates: true },
+      )
+      .select("id");
+    // ถ้าซ้ำ (dedupe_key ชนกัน) จะไม่มีแถวใหม่ — ไม่ต้องส่งช่องทางอื่นซ้ำอีก
+    if (error || !data || data.length === 0) return;
   } catch {
     return;
   }
