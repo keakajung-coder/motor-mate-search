@@ -1,0 +1,136 @@
+import { createServerFn } from "@tanstack/react-start";
+
+const SETTING_KEYS = {
+  token: "line_channel_token",
+  targets: "line_target_ids",
+  email: "alert_email",
+} as const;
+
+async function readSettings() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("security_settings")
+    .select("key, value")
+    .in("key", [SETTING_KEYS.token, SETTING_KEYS.targets, SETTING_KEYS.email]);
+  const map = new Map((data ?? []).map((r) => [r.key, r.value ?? ""]));
+  return {
+    token: (map.get(SETTING_KEYS.token) ?? "").trim(),
+    targets: (map.get(SETTING_KEYS.targets) ?? "")
+      .split(/[\s,]+/)
+      .map((s) => s.trim())
+      .filter(Boolean),
+    email: (map.get(SETTING_KEYS.email) ?? "").trim(),
+  };
+}
+
+async function verifyAdmin(code: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("security_settings")
+    .select("value")
+    .eq("key", "admin_passcode")
+    .maybeSingle();
+  return !!data && data.value.trim() === String(code ?? "").trim();
+}
+
+async function pushLine(token: string, targets: string[], text: string) {
+  const results: { to: string; ok: boolean; error?: string }[] = [];
+  for (const to of targets) {
+    try {
+      const res = await fetch("https://api.line.me/v2/bot/message/push", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ to, messages: [{ type: "text", text: text.slice(0, 4900) }] }),
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        console.error(`LINE push failed [${res.status}]: ${body}`);
+        results.push({ to, ok: false, error: `${res.status} ${body}` });
+      } else {
+        results.push({ to, ok: true });
+      }
+    } catch (e) {
+      results.push({ to, ok: false, error: e instanceof Error ? e.message : "network error" });
+    }
+  }
+  return results;
+}
+
+/** ส่งแจ้งเตือนเข้า Line (Messaging API) ให้แอดมินทุกคนที่ตั้งค่าไว้ */
+export const sendAdminAlert = createServerFn({ method: "POST" })
+  .inputValidator((d: { title: string; body?: string; link?: string }) => d)
+  .handler(async ({ data }) => {
+    const settings = await readSettings();
+    const text = [data.title, data.body ?? "", data.link ? `ลิงก์: ${data.link}` : ""]
+      .filter(Boolean)
+      .join("\n");
+
+    if (!settings.token || settings.targets.length === 0) {
+      return { line: "skipped" as const, email: "skipped" as const };
+    }
+    const results = await pushLine(settings.token, settings.targets, text);
+    const sent = results.filter((r) => r.ok).length;
+    return {
+      line: sent > 0 ? ("sent" as const) : ("failed" as const),
+      email: "skipped" as const,
+      errors: results.filter((r) => !r.ok).map((r) => r.error ?? ""),
+    };
+  });
+
+/** อ่านค่าตั้งค่าแจ้งเตือน (ต้องใช้รหัสแอดมิน, ซ่อนโทเคนบางส่วน) */
+export const getAlertSettings = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string }) => d)
+  .handler(async ({ data }) => {
+    if (!(await verifyAdmin(data.code))) return { ok: false as const, error: "ต้องปลดล็อกแอดมินก่อน" };
+    const s = await readSettings();
+    return {
+      ok: true as const,
+      hasToken: s.token.length > 0,
+      tokenPreview: s.token ? `${s.token.slice(0, 6)}…${s.token.slice(-4)}` : "",
+      targets: s.targets.join("\n"),
+      email: s.email,
+    };
+  });
+
+/** บันทึกค่าตั้งค่าแจ้งเตือน (โทเคน Line / ปลายทาง / อีเมล) */
+export const saveAlertSettings = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token?: string; targets?: string; email?: string }) => d)
+  .handler(async ({ data }) => {
+    if (!(await verifyAdmin(data.code))) return { ok: false as const, error: "ต้องปลดล็อกแอดมินก่อน" };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const rows: { key: string; value: string }[] = [];
+    if (typeof data.token === "string" && data.token.trim())
+      rows.push({ key: SETTING_KEYS.token, value: data.token.trim() });
+    if (typeof data.targets === "string") rows.push({ key: SETTING_KEYS.targets, value: data.targets.trim() });
+    if (typeof data.email === "string") rows.push({ key: SETTING_KEYS.email, value: data.email.trim() });
+    for (const r of rows) {
+      const { data: exists } = await supabaseAdmin
+        .from("security_settings")
+        .select("id")
+        .eq("key", r.key)
+        .maybeSingle();
+      const { error } = exists
+        ? await supabaseAdmin.from("security_settings").update({ value: r.value }).eq("key", r.key)
+        : await supabaseAdmin.from("security_settings").insert({ key: r.key, value: r.value });
+      if (error) return { ok: false as const, error: error.message };
+    }
+    return { ok: true as const };
+  });
+
+/** ส่งข้อความทดสอบเข้า Line */
+export const testAdminAlert = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string }) => d)
+  .handler(async ({ data }) => {
+    if (!(await verifyAdmin(data.code))) return { ok: false as const, error: "ต้องปลดล็อกแอดมินก่อน" };
+    const s = await readSettings();
+    if (!s.token) return { ok: false as const, error: "ยังไม่ได้ใส่ Channel Access Token" };
+    if (s.targets.length === 0) return { ok: false as const, error: "ยังไม่ได้ใส่ User ID / Group ID" };
+    const results = await pushLine(s.token, s.targets, "ทดสอบแจ้งเตือนจากระบบอะไหล่ปั๊มลม ✅");
+    const failed = results.filter((r) => !r.ok);
+    if (failed.length === results.length)
+      return { ok: false as const, error: failed[0]?.error ?? "ส่งไม่สำเร็จ" };
+    return { ok: true as const, sent: results.length - failed.length, failed: failed.length };
+  });
