@@ -8,6 +8,7 @@ import { Search, Stethoscope, Wrench, SendHorizontal, Loader2 } from "lucide-rea
 import { toast } from "sonner";
 import { notifyAdminQueue } from "@/lib/prefs";
 import { rememberMyIssue } from "@/lib/issue-watch";
+import { notifyAdmins } from "@/lib/notify";
 
 export type Issue = {
   id: string;

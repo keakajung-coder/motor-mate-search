@@ -25,6 +25,7 @@ import { refreshDirectory } from "@/lib/directory";
 
 import { PasscodeSettings } from "@/components/admin/PasscodeSettings";
 import { BackupRestore } from "@/components/admin/BackupRestore";
+import { AlertSettings } from "@/components/admin/AlertSettings";
 import { AdminLockButton } from "@/components/AccessGate";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -119,6 +120,7 @@ function AdminPage() {
         <TabsContent value="audit"><AuditLogTab /></TabsContent>
         <TabsContent value="security">
           <div className="grid gap-4 md:grid-cols-2">
+            <AlertSettings />
             <PasscodeSettings />
             <BackupRestore />
           </div>
