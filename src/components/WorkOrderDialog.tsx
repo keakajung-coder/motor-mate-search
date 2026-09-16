@@ -309,6 +309,19 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
     });
     setSaving(false);
     if (error) return toast.error(error.message);
+    void notifyAdmins({
+      kind: "work_order",
+      title: `ใบสั่งงานใหม่: ${form.customer_name.trim()}`,
+      body: [
+        form.serial_number.trim() && `S/N ${form.serial_number.trim()}`,
+        form.job_detail.trim(),
+        form.visit_date && `วันที่นัด ${form.visit_date}`,
+        form.staff_name.trim() && `ช่าง ${form.staff_name.trim()}`,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      link: "/planner",
+    });
     toast.success("ส่งใบสั่งงานแล้ว รอแอดมินอนุมัติ");
     setForm(emptyDraft());
     setOpen(false);

@@ -17,6 +17,7 @@ import { AccessProvider } from "@/lib/access";
 import { AccessGate, AdminLockButton } from "@/components/AccessGate";
 import { setupPwa } from "@/lib/pwa";
 import { useMyIssueReplies } from "@/lib/issue-watch";
+import { NotificationBell } from "@/components/NotificationBell";
 
 function NotFoundComponent() {
   return (
@@ -145,6 +146,7 @@ function NavBar() {
           >
             จัดการข้อมูล
           </Link>
+          <NotificationBell />
           <AdminLockButton />
         </nav>
       </div>
