@@ -8,6 +8,7 @@ import { Search, Stethoscope, Wrench, SendHorizontal, Loader2 } from "lucide-rea
 import { toast } from "sonner";
 import { notifyAdminQueue } from "@/lib/prefs";
 import { rememberMyIssue } from "@/lib/issue-watch";
+import { notifyAdmins } from "@/lib/notify";
 
 export type Issue = {
   id: string;
@@ -85,6 +86,13 @@ export function TroubleshootPanel() {
     if (error) return toast.error("ส่งไม่สำเร็จ: " + error.message);
     if (data?.id) rememberMyIssue(data.id);
     notifyAdminQueue();
+    void notifyAdmins({
+      kind: "issue",
+      title: `แจ้งปัญหาเครื่องใหม่: ${title}`,
+      body: "ผู้ใช้ส่งอาการเข้ามาในคลังความรู้ รอแอดมินตรวจและอนุมัติคำตอบ",
+      link: "/admin",
+      dedupeKey: data?.id ? `issue:${data.id}` : undefined,
+    });
     toast.success("ส่งอาการนี้ให้แอดมินแล้ว ระบบจะให้ AI ช่วยร่างคำตอบรออนุมัติ");
     setQ("");
     reload();

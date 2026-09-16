@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { computeUsage, formatDate } from "@/lib/report";
 import { DateInput } from "@/components/ui/date-input";
+import { notifyAdmins } from "@/lib/notify";
 
 export type AlertRow = {
   id: string;
@@ -78,6 +79,16 @@ export function PartsAlertPanel({ withActions = false }: { withActions?: boolean
     out.sort((a, b) => a.days - b.days);
     setRows(out);
     setLoading(false);
+    // แจ้งเตือนแอดมินสำหรับอะไหล่ที่ครบกำหนด/เลยกำหนด (กันซ้ำด้วย dedupe key)
+    for (const r of out.filter((x) => x.days <= 7)) {
+      void notifyAdmins({
+        kind: "part_due",
+        title: `อะไหล่ครบกำหนดเปลี่ยน: ${r.part}`,
+        body: `S/N ${r.serial} · ${r.customer} · ${r.days <= 0 ? `เลยกำหนด ${Math.abs(r.days)} วัน` : `อีก ${r.days} วัน`} (${formatDate(r.nextDate)})`,
+        link: "/planner",
+        dedupeKey: `part:${r.id}:${r.nextDate}`,
+      });
+    }
   }, []);
 
   useEffect(() => {
