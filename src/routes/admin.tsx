@@ -308,7 +308,7 @@ function ModelsTab() {
 function CustomersTab() {
   const [items, setItems] = useState<any[]>([]);
   const [machinesByCust, setMachinesByCust] = useState<Record<string, any[]>>({});
-  const emptyForm = { id: "", name: "", phone: "", address: "", note: "" };
+  const emptyForm = { id: "", name: "", phone: "", line_id: "", address: "", note: "" };
   const [form, setForm] = useState(emptyForm);
   const [q, setQ] = useState("");
 
