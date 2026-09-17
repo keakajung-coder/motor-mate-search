@@ -8,6 +8,8 @@ import { sendAdminAlert, sendUserAlert } from "@/lib/notify.functions";
 export async function notifyUsers(input: {
   customerName?: string | null;
   staffName?: string | null;
+  /** ส่งให้ช่างทุกคนที่ผูก LINE ไว้ */
+  allStaff?: boolean;
   title: string;
   body?: string;
   link?: string;
