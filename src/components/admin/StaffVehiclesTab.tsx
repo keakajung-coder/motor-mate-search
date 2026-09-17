@@ -99,6 +99,12 @@ function StaffCard() {
                   placeholder="เบอร์โทร"
                   onBlur={(e) => update(r.id, { phone: e.target.value.trim() || null })}
                 />
+                <Input
+                  className="w-40"
+                  defaultValue={r.line_id ?? ""}
+                  placeholder="LINE ID / เบอร์ LINE"
+                  onBlur={(e) => update(r.id, { line_id: e.target.value.trim() || null })}
+                />
                 <ConfirmButton onConfirm={() => remove(r.id)} description={`ลบพนักงาน ${r.name}?`}>
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </ConfirmButton>
