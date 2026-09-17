@@ -337,6 +337,7 @@ function CustomersTab() {
     const payload = {
       name: form.name.trim(),
       phone: form.phone.trim() || null,
+      line_id: form.line_id.trim() || null,
       address: form.address.trim() || null,
       note: form.note.trim() || null,
     };
