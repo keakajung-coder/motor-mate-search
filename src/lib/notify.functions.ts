@@ -80,6 +80,28 @@ export const sendAdminAlert = createServerFn({ method: "POST" })
     };
   });
 
+/** ส่งแจ้งเตือนเข้า Line ให้ผู้ใช้ (ลูกค้า/ช่าง) ตาม LINE ID ที่ผูกไว้ในโปรไฟล์ */
+export const sendUserAlert = createServerFn({ method: "POST" })
+  .inputValidator((d: { lineIds: string[]; title: string; body?: string; link?: string }) => d)
+  .handler(async ({ data }) => {
+    const settings = await readSettings();
+    // LINE Messaging API ส่งได้เฉพาะ userId (U…) / groupId (C…) / roomId (R…) เท่านั้น
+    const targets = Array.from(
+      new Set(
+        (data.lineIds ?? [])
+          .map((s) => String(s ?? "").trim())
+          .filter((s) => /^[UCR][0-9a-f]{20,}$/i.test(s)),
+      ),
+    );
+    if (!settings.token || targets.length === 0) return { line: "skipped" as const, sent: 0 };
+    const text = [data.title, data.body ?? "", data.link ? `ลิงก์: ${data.link}` : ""]
+      .filter(Boolean)
+      .join("\n");
+    const results = await pushLine(settings.token, targets, text);
+    const sent = results.filter((r) => r.ok).length;
+    return { line: sent > 0 ? ("sent" as const) : ("failed" as const), sent };
+  });
+
 /** อ่านค่าตั้งค่าแจ้งเตือน (ต้องใช้รหัสแอดมิน, ซ่อนโทเคนบางส่วน) */
 export const getAlertSettings = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string }) => d)
