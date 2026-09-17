@@ -1,5 +1,53 @@
 import { supabase } from "@/integrations/supabase/client";
-import { sendAdminAlert } from "@/lib/notify.functions";
+import { sendAdminAlert, sendUserAlert } from "@/lib/notify.functions";
+
+/**
+ * แจ้งเตือนผู้ใช้ (ลูกค้า/ช่าง) ผ่าน Line ตาม LINE ID ที่ผูกไว้ในโปรไฟล์
+ * ระบุชื่อลูกค้า/ชื่อช่าง แล้วระบบจะไปดึง LINE ID ให้เอง
+ */
+export async function notifyUsers(input: {
+  customerName?: string | null;
+  staffName?: string | null;
+  /** ส่งให้ช่างทุกคนที่ผูก LINE ไว้ */
+  allStaff?: boolean;
+  title: string;
+  body?: string;
+  link?: string;
+}) {
+  try {
+    const ids: string[] = [];
+    if (input.customerName?.trim()) {
+      const { data } = await supabase
+        .from("customers")
+        .select("line_id")
+        .eq("name", input.customerName.trim())
+        .limit(1);
+      if (data?.[0]?.line_id) ids.push(data[0].line_id);
+    }
+    if (input.staffName?.trim()) {
+      const { data } = await supabase
+        .from("service_staff")
+        .select("line_id")
+        .eq("name", input.staffName.trim())
+        .limit(1);
+      if (data?.[0]?.line_id) ids.push(data[0].line_id);
+    }
+    if (input.allStaff) {
+      const { data } = await supabase
+        .from("service_staff")
+        .select("line_id")
+        .eq("active", true)
+        .not("line_id", "is", null);
+      for (const r of data ?? []) if (r.line_id) ids.push(r.line_id);
+    }
+    if (ids.length === 0) return;
+    await sendUserAlert({
+      data: { lineIds: ids, title: input.title, body: input.body ?? "", link: input.link ?? "" },
+    });
+  } catch {
+    /* ส่งไม่สำเร็จไม่ให้กระทบงานหลัก */
+  }
+}
 
 export type NotifyKind = "work_order" | "issue" | "part_due";
 

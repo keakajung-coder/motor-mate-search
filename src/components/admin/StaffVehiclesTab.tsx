@@ -8,7 +8,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Truck, UserCog } from "lucide-react";
 
-type Staff = { id: string; name: string; phone: string | null };
+type Staff = { id: string; name: string; phone: string | null; line_id: string | null };
 type Vehicle = { id: string; plate: string; note: string | null };
 
 export function StaffVehiclesTab() {
@@ -25,9 +25,10 @@ function StaffCard() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [lineId, setLineId] = useState("");
 
   const load = async () => {
-    const { data } = await supabase.from("service_staff").select("id, name, phone").order("name");
+    const { data } = await supabase.from("service_staff").select("id, name, phone, line_id").order("name");
     setRows((data ?? []) as Staff[]);
     setLoading(false);
   };
@@ -37,10 +38,13 @@ function StaffCard() {
 
   const add = async () => {
     if (!name.trim()) return;
-    const { error } = await supabase.from("service_staff").insert({ name: name.trim(), phone: phone.trim() || null });
+    const { error } = await supabase
+      .from("service_staff")
+      .insert({ name: name.trim(), phone: phone.trim() || null, line_id: lineId.trim() || null });
     if (error) return toast.error(error.message);
     setName("");
     setPhone("");
+    setLineId("");
     toast.success("เพิ่มพนักงานแล้ว");
     load();
   };
@@ -68,6 +72,12 @@ function StaffCard() {
         <div className="flex flex-wrap gap-2">
           <Input className="min-w-40 flex-1" placeholder="ชื่อพนักงาน" value={name} onChange={(e) => setName(e.target.value)} />
           <Input className="w-36" placeholder="เบอร์โทร" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input
+            className="w-44"
+            placeholder="LINE ID / เบอร์ LINE"
+            value={lineId}
+            onChange={(e) => setLineId(e.target.value)}
+          />
           <Button onClick={add}>
             <Plus className="mr-1 h-4 w-4" /> เพิ่ม
           </Button>
@@ -77,7 +87,7 @@ function StaffCard() {
         ) : (
           <div className="space-y-2">
             {rows.map((r) => (
-              <div key={r.id} className="flex items-center gap-2 rounded-md border p-2">
+              <div key={r.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
                 <Input
                   className="flex-1"
                   defaultValue={r.name}
@@ -88,6 +98,12 @@ function StaffCard() {
                   defaultValue={r.phone ?? ""}
                   placeholder="เบอร์โทร"
                   onBlur={(e) => update(r.id, { phone: e.target.value.trim() || null })}
+                />
+                <Input
+                  className="w-40"
+                  defaultValue={r.line_id ?? ""}
+                  placeholder="LINE ID / เบอร์ LINE"
+                  onBlur={(e) => update(r.id, { line_id: e.target.value.trim() || null })}
                 />
                 <ConfirmButton onConfirm={() => remove(r.id)} description={`ลบพนักงาน ${r.name}?`}>
                   <Trash2 className="h-4 w-4 text-destructive" />

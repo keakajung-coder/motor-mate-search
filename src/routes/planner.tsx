@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { notifyUsers } from "@/lib/notify";
 import {
   AlertTriangle,
   CalendarDays,
@@ -2082,6 +2083,19 @@ function CloseJobDialog({
     }
 
     setSaving(false);
+    void notifyUsers({
+      customerName: appt.customer_name,
+      staffName: appt.staff_name,
+      title: `${isEdit ? "อัปเดตผลการซ่อม" : "ปิดงานเรียบร้อย"}: ${appt.customer_name ?? ""}`,
+      body: [
+        appt.serial_number && `S/N ${appt.serial_number}`,
+        appt.job_detail,
+        `ผลงาน: ${result === "ok" ? "เรียบร้อย" : "ยังไม่เรียบร้อย"}`,
+        note.trim(),
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    });
     toast.success(isEdit ? "แก้ไขรายละเอียดปิดงานแล้ว" : "ปิดงานและบันทึกประวัติซ่อมบำรุงแล้ว");
     onSaved();
   };

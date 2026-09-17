@@ -308,7 +308,7 @@ function ModelsTab() {
 function CustomersTab() {
   const [items, setItems] = useState<any[]>([]);
   const [machinesByCust, setMachinesByCust] = useState<Record<string, any[]>>({});
-  const emptyForm = { id: "", name: "", phone: "", address: "", note: "" };
+  const emptyForm = { id: "", name: "", phone: "", line_id: "", address: "", note: "" };
   const [form, setForm] = useState(emptyForm);
   const [q, setQ] = useState("");
 
@@ -337,6 +337,7 @@ function CustomersTab() {
     const payload = {
       name: form.name.trim(),
       phone: form.phone.trim() || null,
+      line_id: form.line_id.trim() || null,
       address: form.address.trim() || null,
       note: form.note.trim() || null,
     };
@@ -352,7 +353,7 @@ function CustomersTab() {
   }
   function startEdit(c: any) {
     setForm({
-      id: c.id, name: c.name ?? "", phone: c.phone ?? "",
+      id: c.id, name: c.name ?? "", phone: c.phone ?? "", line_id: c.line_id ?? "",
       address: c.address ?? "", note: c.note ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -383,6 +384,14 @@ function CustomersTab() {
           <div>
             <Label>เบอร์โทร</Label>
             <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          </div>
+          <div>
+            <Label>LINE ID หรือเบอร์โทร LINE</Label>
+            <Input
+              value={form.line_id}
+              placeholder="เช่น U1234... หรือ 0812345678"
+              onChange={(e) => setForm({ ...form, line_id: e.target.value })}
+            />
           </div>
           <div>
             <Label>ที่อยู่</Label>

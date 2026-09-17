@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { computeUsage, formatDate } from "@/lib/report";
 import { DateInput } from "@/components/ui/date-input";
-import { notifyAdmins } from "@/lib/notify";
+import { notifyAdmins, notifyUsers } from "@/lib/notify";
 
 export type AlertRow = {
   id: string;
@@ -87,6 +87,11 @@ export function PartsAlertPanel({ withActions = false }: { withActions?: boolean
         body: `S/N ${r.serial} · ${r.customer} · ${r.days <= 0 ? `เลยกำหนด ${Math.abs(r.days)} วัน` : `อีก ${r.days} วัน`} (${formatDate(r.nextDate)})`,
         link: "/planner",
         dedupeKey: `part:${r.id}:${r.nextDate}`,
+      });
+      void notifyUsers({
+        customerName: r.customer,
+        title: `แจ้งเตือนอะไหล่ครบกำหนดเปลี่ยน: ${r.part}`,
+        body: `S/N ${r.serial} · ${r.days <= 0 ? `เลยกำหนด ${Math.abs(r.days)} วัน` : `อีก ${r.days} วัน`} (${formatDate(r.nextDate)})`,
       });
     }
   }, []);

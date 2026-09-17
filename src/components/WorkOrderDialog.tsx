@@ -19,7 +19,7 @@ import { ClipboardPlus, Loader2 } from "lucide-react";
 import { ensureDirectoryEntries, refreshDirectory, useDirectory } from "@/lib/directory";
 import { BILLING_TYPES, PRIORITIES, SAFETY_GEAR, WORK_TYPES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
-import { notifyAdmins } from "@/lib/notify";
+import { notifyAdmins, notifyUsers } from "@/lib/notify";
 
 export const SERVICE_TYPES = [
   "เช็กระยะ (PM)",
@@ -322,6 +322,19 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
         .filter(Boolean)
         .join(" · "),
       link: "/planner",
+    });
+    void notifyUsers({
+      customerName: form.customer_name.trim(),
+      staffName: form.staff_name.trim(),
+      title: `แจ้งใบสั่งงานใหม่: ${form.customer_name.trim()}`,
+      body: [
+        form.serial_number.trim() && `S/N ${form.serial_number.trim()}`,
+        form.job_detail.trim(),
+        form.visit_date && `วันที่นัด ${form.visit_date}`,
+        form.staff_name.trim() && `ช่าง ${form.staff_name.trim()}`,
+      ]
+        .filter(Boolean)
+        .join(" · "),
     });
     toast.success("ส่งใบสั่งงานแล้ว รอแอดมินอนุมัติ");
     setForm(emptyDraft());
