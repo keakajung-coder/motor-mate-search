@@ -353,7 +353,7 @@ function CustomersTab() {
   }
   function startEdit(c: any) {
     setForm({
-      id: c.id, name: c.name ?? "", phone: c.phone ?? "",
+      id: c.id, name: c.name ?? "", phone: c.phone ?? "", line_id: c.line_id ?? "",
       address: c.address ?? "", note: c.note ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
