@@ -8,7 +8,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Truck, UserCog } from "lucide-react";
 
-type Staff = { id: string; name: string; phone: string | null };
+type Staff = { id: string; name: string; phone: string | null; line_id: string | null };
 type Vehicle = { id: string; plate: string; note: string | null };
 
 export function StaffVehiclesTab() {
