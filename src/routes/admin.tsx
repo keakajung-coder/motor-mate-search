@@ -386,6 +386,14 @@ function CustomersTab() {
             <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </div>
           <div>
+            <Label>LINE ID หรือเบอร์โทร LINE</Label>
+            <Input
+              value={form.line_id}
+              placeholder="เช่น U1234... หรือ 0812345678"
+              onChange={(e) => setForm({ ...form, line_id: e.target.value })}
+            />
+          </div>
+          <div>
             <Label>ที่อยู่</Label>
             <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </div>
