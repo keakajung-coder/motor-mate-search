@@ -72,6 +72,12 @@ function StaffCard() {
         <div className="flex flex-wrap gap-2">
           <Input className="min-w-40 flex-1" placeholder="ชื่อพนักงาน" value={name} onChange={(e) => setName(e.target.value)} />
           <Input className="w-36" placeholder="เบอร์โทร" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input
+            className="w-44"
+            placeholder="LINE ID / เบอร์ LINE"
+            value={lineId}
+            onChange={(e) => setLineId(e.target.value)}
+          />
           <Button onClick={add}>
             <Plus className="mr-1 h-4 w-4" /> เพิ่ม
           </Button>
