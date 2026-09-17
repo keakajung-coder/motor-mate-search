@@ -25,9 +25,10 @@ function StaffCard() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [lineId, setLineId] = useState("");
 
   const load = async () => {
-    const { data } = await supabase.from("service_staff").select("id, name, phone").order("name");
+    const { data } = await supabase.from("service_staff").select("id, name, phone, line_id").order("name");
     setRows((data ?? []) as Staff[]);
     setLoading(false);
   };
@@ -37,10 +38,13 @@ function StaffCard() {
 
   const add = async () => {
     if (!name.trim()) return;
-    const { error } = await supabase.from("service_staff").insert({ name: name.trim(), phone: phone.trim() || null });
+    const { error } = await supabase
+      .from("service_staff")
+      .insert({ name: name.trim(), phone: phone.trim() || null, line_id: lineId.trim() || null });
     if (error) return toast.error(error.message);
     setName("");
     setPhone("");
+    setLineId("");
     toast.success("เพิ่มพนักงานแล้ว");
     load();
   };
