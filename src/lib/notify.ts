@@ -32,6 +32,14 @@ export async function notifyUsers(input: {
         .limit(1);
       if (data?.[0]?.line_id) ids.push(data[0].line_id);
     }
+    if (input.allStaff) {
+      const { data } = await supabase
+        .from("service_staff")
+        .select("line_id")
+        .eq("active", true)
+        .not("line_id", "is", null);
+      for (const r of data ?? []) if (r.line_id) ids.push(r.line_id);
+    }
     if (ids.length === 0) return;
     await sendUserAlert({
       data: { lineIds: ids, title: input.title, body: input.body ?? "", link: input.link ?? "" },
