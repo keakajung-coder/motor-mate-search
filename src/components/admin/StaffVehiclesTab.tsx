@@ -87,7 +87,7 @@ function StaffCard() {
         ) : (
           <div className="space-y-2">
             {rows.map((r) => (
-              <div key={r.id} className="flex items-center gap-2 rounded-md border p-2">
+              <div key={r.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
                 <Input
                   className="flex-1"
                   defaultValue={r.name}
