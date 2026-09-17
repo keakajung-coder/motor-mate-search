@@ -19,7 +19,7 @@ import { ClipboardPlus, Loader2 } from "lucide-react";
 import { ensureDirectoryEntries, refreshDirectory, useDirectory } from "@/lib/directory";
 import { BILLING_TYPES, PRIORITIES, SAFETY_GEAR, WORK_TYPES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
-import { notifyAdmins } from "@/lib/notify";
+import { notifyAdmins, notifyUsers } from "@/lib/notify";
 
 export const SERVICE_TYPES = [
   "เช็กระยะ (PM)",
