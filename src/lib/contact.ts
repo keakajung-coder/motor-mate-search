@@ -113,7 +113,7 @@ export async function shareContacts(input: {
   try {
     const names = input.staffNames.map((n) => n.trim()).filter(Boolean);
     if (names.length === 0) return false;
-    const rows = (await loadStaffContacts()).filter((r) => names.includes(r.name));
+    const rows = (await loadAllContacts()).filter((r) => names.includes(r.name));
     if (rows.length === 0) return false;
 
     const ids = rows.map((r) => r.line_id ?? "").filter(Boolean);
