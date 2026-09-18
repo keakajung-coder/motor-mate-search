@@ -15,7 +15,6 @@ type Row = {
   id: string;
   kind: string;
   name: string;
-  company: string | null;
   phone: string | null;
   line_contact: string | null;
 };
@@ -36,7 +35,7 @@ export function SalesContactsCard() {
   const load = async () => {
     const { data } = await supabase
       .from("sales_contacts")
-      .select("id, kind, name, company, phone, line_contact")
+      .select("id, kind, name, phone, line_contact")
       .order("name");
     setRows((data ?? []) as Row[]);
     setLoading(false);
