@@ -10,7 +10,7 @@ import {
   contactText,
   lineHref,
   lineShareHref,
-  loadStaffContacts,
+  loadAllContacts,
   setAutoShare,
   shareContacts,
   telHref,
