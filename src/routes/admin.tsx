@@ -110,8 +110,7 @@ function AdminPage() {
           <div className="space-y-4">
             <SellerTransfer />
             <SalesContactsCard />
-            <div className="grid gap-4 md:grid-cols-2">
-              <OptionListManager listKey="sellers" column="seller" title="ผู้ขาย" />
+            <div className="grid gap-4">
               <OptionListManager listKey="statuses" column="status" title="สถานะเครื่อง" presets={MACHINE_STATUSES} />
             </div>
           </div>

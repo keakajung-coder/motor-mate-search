@@ -163,7 +163,7 @@ export function SalesContactsCard() {
                 const line = visibleLineId(row.line_contact);
                 const tel = telHref(row.phone);
                 const lh = lineHref(line);
-                const detailsVisible = visibleRows[row.id] ?? true;
+                const lineVisible = visibleRows[row.id] ?? true;
                 const isEditing = editingId === row.id;
                 return (
                   <div key={row.id} className="rounded-md border p-3">
@@ -197,53 +197,53 @@ export function SalesContactsCard() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="grid min-w-0 flex-1 gap-2 text-sm sm:grid-cols-3">
-                          <div>
-                            <span className="block text-xs text-muted-foreground">ชื่อ</span>
-                            <span className="font-medium">{row.name}</span>
-                          </div>
-                          <div>
-                            <span className="block text-xs text-muted-foreground">เบอร์โทร</span>
-                            {detailsVisible && tel ? (
-                              <a className="inline-flex items-center gap-1 text-primary underline" href={tel}>
-                                <Phone className="h-3.5 w-3.5" /> {row.phone}
-                              </a>
-                            ) : <span>{detailsVisible ? "—" : "••••••••"}</span>}
-                          </div>
-                          <div>
-                            <span className="block text-xs text-muted-foreground">LINE ID</span>
-                            {detailsVisible && lh ? (
-                              <a className="inline-flex items-center gap-1 text-primary underline" href={lh} target="_blank" rel="noreferrer">
-                                <MessageCircle className="h-3.5 w-3.5" /> {line}
-                              </a>
-                            ) : <span>{detailsVisible ? (line || "—") : "••••••••"}</span>}
-                          </div>
+                      <div className="grid min-w-0 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-[minmax(9rem,1fr)_minmax(8rem,0.8fr)_minmax(10rem,1fr)_auto_auto_auto] lg:items-center">
+                        <div className="min-w-0">
+                          <span className="block text-xs text-muted-foreground">ชื่อ</span>
+                          <span className="block truncate font-medium" title={row.name}>{row.name}</span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <label className="flex items-center gap-2 text-xs text-muted-foreground" htmlFor={`contact-visible-${row.id}`}>
-                            <Switch
-                              id={`contact-visible-${row.id}`}
-                              checked={detailsVisible}
-                              onCheckedChange={(checked) => setVisibleRows((current) => ({ ...current, [row.id]: checked }))}
-                            />
-                            {detailsVisible ? "แสดง" : "ซ่อน"}
-                          </label>
-                          <Button size="sm" variant="outline" onClick={() => startEdit(row)}>
-                            <Pencil className="mr-1 h-4 w-4" /> แก้ไข
+                        <div className="min-w-0">
+                          <span className="block text-xs text-muted-foreground">เบอร์โทร</span>
+                          {tel ? (
+                            <a className="inline-flex max-w-full items-center gap-1 truncate text-primary underline" href={tel}>
+                              <Phone className="h-3.5 w-3.5 shrink-0" /> {row.phone}
+                            </a>
+                          ) : <span>—</span>}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block text-xs text-muted-foreground">LINE ID</span>
+                          {lineVisible && lh ? (
+                            <a className="inline-flex max-w-full items-center gap-1 truncate text-primary underline" href={lh} target="_blank" rel="noreferrer">
+                              <MessageCircle className="h-3.5 w-3.5 shrink-0" /> {line}
+                            </a>
+                          ) : <span>{lineVisible ? (line || "—") : "••••••••"}</span>}
+                        </div>
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground" htmlFor={`contact-visible-${row.id}`}>
+                          <Switch
+                            id={`contact-visible-${row.id}`}
+                            checked={lineVisible}
+                            onCheckedChange={(checked) => setVisibleRows((current) => ({ ...current, [row.id]: checked }))}
+                          />
+                          {lineVisible ? "แสดง LINE" : "ซ่อน LINE"}
+                        </label>
+                        <Button size="sm" variant="outline" onClick={() => startEdit(row)}>
+                          <Pencil className="mr-1 h-4 w-4" /> แก้ไข
+                        </Button>
+                        {isAdmin ? (
+                          <ConfirmButton
+                            size="sm"
+                            variant="destructive"
+                            onConfirm={() => remove(row.id, row.name)}
+                            title="ลบรายชื่อนี้?"
+                            description={`ลบ ${row.name} ออกจากระบบถาวร`}
+                          >
+                            <Trash2 className="mr-1 h-4 w-4" /> ลบ
+                          </ConfirmButton>
+                        ) : (
+                          <Button size="sm" variant="destructive" disabled>
+                            <Trash2 className="mr-1 h-4 w-4" /> ลบ
                           </Button>
-                          {isAdmin && (
-                            <ConfirmButton
-                              size="sm"
-                              variant="destructive"
-                              onConfirm={() => remove(row.id, row.name)}
-                              title="ลบรายชื่อนี้?"
-                              description={`ลบ ${row.name} ออกจากระบบถาวร`}
-                            >
-                              <Trash2 className="mr-1 h-4 w-4" /> ลบ
-                            </ConfirmButton>
-                          )}
-                        </div>
+                        )}
                       </div>
                     )}
                   </div>
