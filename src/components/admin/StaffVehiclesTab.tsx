@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { deleteAsAdmin } from "@/lib/access";
+import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Truck, UserCog } from "lucide-react";
 
-type Staff = { id: string; name: string; phone: string | null; line_id: string | null };
+type Staff = { id: string; name: string; phone: string | null; line_contact: string | null };
 type Vehicle = { id: string; plate: string; note: string | null };
 
 export function StaffVehiclesTab() {
@@ -21,6 +21,7 @@ export function StaffVehiclesTab() {
 }
 
 function StaffCard() {
+  const { isAdmin } = useAccess();
   const [rows, setRows] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -28,7 +29,7 @@ function StaffCard() {
   const [lineId, setLineId] = useState("");
 
   const load = async () => {
-    const { data } = await supabase.from("service_staff").select("id, name, phone, line_id").order("name");
+    const { data } = await supabase.from("service_staff").select("id, name, phone, line_contact").order("name");
     setRows((data ?? []) as Staff[]);
     setLoading(false);
   };
@@ -40,7 +41,7 @@ function StaffCard() {
     if (!name.trim()) return;
     const { error } = await supabase
       .from("service_staff")
-      .insert({ name: name.trim(), phone: phone.trim() || null, line_id: lineId.trim() || null });
+      .insert({ name: name.trim(), phone: phone.trim() || null, line_contact: lineId.trim() || null });
     if (error) return toast.error(error.message);
     setName("");
     setPhone("");
@@ -74,7 +75,7 @@ function StaffCard() {
           <Input className="w-36" placeholder="เบอร์โทร" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <Input
             className="w-44"
-            placeholder="LINE ID / เบอร์ LINE"
+            placeholder="LINE ID (เช่น @service หรือ 0812345678)"
             value={lineId}
             onChange={(e) => setLineId(e.target.value)}
           />
@@ -101,13 +102,19 @@ function StaffCard() {
                 />
                 <Input
                   className="w-40"
-                  defaultValue={r.line_id ?? ""}
-                  placeholder="LINE ID / เบอร์ LINE"
-                  onBlur={(e) => update(r.id, { line_id: e.target.value.trim() || null })}
+                  defaultValue={r.line_contact ?? ""}
+                  placeholder="LINE ID (เช่น @service หรือ 0812345678)"
+                  onBlur={(e) => update(r.id, { line_contact: e.target.value.trim() || null })}
                 />
-                <ConfirmButton onConfirm={() => remove(r.id)} description={`ลบพนักงาน ${r.name}?`}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </ConfirmButton>
+                {isAdmin && (
+                  <ConfirmButton
+                    onConfirm={() => remove(r.id)}
+                    title="ลบผู้ใช้นี้?"
+                    description={`ลบพนักงาน ${r.name} ออกจากระบบถาวร`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </ConfirmButton>
+                )}
               </div>
             ))}
             {rows.length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีข้อมูล</p>}
@@ -119,6 +126,7 @@ function StaffCard() {
 }
 
 function VehicleCard() {
+  const { isAdmin } = useAccess();
   const [rows, setRows] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [plate, setPlate] = useState("");
@@ -187,9 +195,15 @@ function VehicleCard() {
                   placeholder="หมายเหตุ"
                   onBlur={(e) => update(r.id, { note: e.target.value.trim() || null })}
                 />
-                <ConfirmButton onConfirm={() => remove(r.id)} description={`ลบทะเบียน ${r.plate}?`}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </ConfirmButton>
+                {isAdmin && (
+                  <ConfirmButton
+                    onConfirm={() => remove(r.id)}
+                    title="ลบรถคันนี้?"
+                    description={`ลบทะเบียน ${r.plate} ออกจากระบบถาวร`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </ConfirmButton>
+                )}
               </div>
             ))}
             {rows.length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีข้อมูล</p>}
