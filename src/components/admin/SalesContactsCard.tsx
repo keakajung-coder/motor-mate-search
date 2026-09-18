@@ -8,6 +8,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { toast } from "sonner";
 import { Briefcase, Loader2, MessageCircle, Phone, Plus, Trash2 } from "lucide-react";
 import { lineHref, telHref, visibleLineId } from "@/lib/contact";
+import { loadOptionList, saveOptionList } from "@/lib/option-lists";
 
 type Row = {
   id: string;
@@ -56,6 +57,13 @@ export function SalesContactsCard() {
       line_contact: lineId.trim() || null,
     });
     if (error) return toast.error(error.message);
+    // ผูกชื่อเข้ากับลิสต์ "ผู้ขาย" (ด้านล่างซ้าย) ให้อัตโนมัติ ถ้ายังไม่มี
+    const sellers = await loadOptionList("sellers");
+    const n = name.trim();
+    if (!sellers.some((s) => s.toLowerCase() === n.toLowerCase())) {
+      await saveOptionList("sellers", [...sellers, n]);
+    }
+    window.dispatchEvent(new Event("sales-contacts-changed"));
     setName("");
     setCompany("");
     setPhone("");
@@ -66,13 +74,15 @@ export function SalesContactsCard() {
 
   const update = async (id: string, patch: Partial<Row>) => {
     const { error } = await supabase.from("sales_contacts").update(patch).eq("id", id);
-    if (error) toast.error(error.message);
+    if (error) return toast.error(error.message);
+    window.dispatchEvent(new Event("sales-contacts-changed"));
   };
 
   const remove = async (id: string) => {
     const { error } = await deleteAsAdmin("sales_contacts", { id });
     if (error) return toast.error(error.message);
     toast.success("ลบแล้ว");
+    window.dispatchEvent(new Event("sales-contacts-changed"));
     load();
   };
 
