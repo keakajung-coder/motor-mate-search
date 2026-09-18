@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { notifyAdminQueue } from "@/lib/prefs";
 import { rememberMyIssue } from "@/lib/issue-watch";
 import { notifyAdmins, notifyUsers } from "@/lib/notify";
+import { ContactShare } from "@/components/ContactShare";
+import { autoShareEnabled, shareContacts } from "@/lib/contact";
 
 export type Issue = {
   id: string;
@@ -61,6 +63,7 @@ export function TroubleshootPanel() {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Issue | null>(null);
   const [sending, setSending] = useState(false);
+  const [shareNames, setShareNames] = useState<string[]>([]);
 
   const kw = q.trim().toLowerCase();
   const matched = useMemo(() => {
@@ -98,6 +101,9 @@ export function TroubleshootPanel() {
       title: `มีการแจ้งปัญหาเครื่องใหม่: ${title}`,
       body: "กรุณาตรวจสอบรายละเอียดอาการเสียในระบบ",
     });
+    if (autoShareEnabled() && shareNames.length > 0) {
+      void shareContacts({ staffNames: shareNames, title: `ผู้ติดต่อสำหรับอาการ: ${title}` });
+    }
     toast.success("ส่งอาการนี้ให้แอดมินแล้ว ระบบจะให้ AI ช่วยร่างคำตอบรออนุมัติ");
     setQ("");
     reload();
@@ -145,6 +151,12 @@ export function TroubleshootPanel() {
           </Button>
         </div>
       )}
+
+      <ContactShare
+        selected={shareNames}
+        onSelectedChange={setShareNames}
+        title={`ผู้ติดต่อช่างสำหรับอาการ: ${q.trim() || "ปัญหาเครื่อง"}`}
+      />
 
       {selected && (
         <div className="space-y-3">
