@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, Phone, MessageCircle } from "lucide-react";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { loadOptionList, saveOptionList, type OptionListKey } from "@/lib/option-lists";
+import { lineHref, telHref, visibleLineId } from "@/lib/contact";
 
 /**
  * จัดการรายการตัวเลือก "ผู้ขาย" หรือ "สถานะเครื่อง"
@@ -28,6 +29,8 @@ export function OptionListManager({
 }) {
   const [custom, setCustom] = useState<string[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  /** ข้อมูลติดต่อ (เบอร์/LINE) ของผู้ขายจากตาราง sales_contacts แม็ปตามชื่อ */
+  const [contacts, setContacts] = useState<Record<string, { phone: string | null; line: string | null }>>({});
   const [newName, setNewName] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -45,8 +48,22 @@ export function OptionListManager({
       if (v) map[v] = (map[v] ?? 0) + 1;
     }
     setCounts(map);
+    if (listKey === "sellers") {
+      const { data: sc } = await supabase.from("sales_contacts").select("name, phone, line_contact");
+      const cmap: Record<string, { phone: string | null; line: string | null }> = {};
+      for (const r of (sc ?? []) as any[]) {
+        const key = String(r.name ?? "").trim();
+        if (key) cmap[key] = { phone: r.phone ?? null, line: visibleLineId(r.line_contact) || null };
+      }
+      setContacts(cmap);
+    }
   }
   useEffect(() => { load(); }, [listKey, column]);
+  useEffect(() => {
+    const onChanged = () => load();
+    window.addEventListener("sales-contacts-changed", onChanged);
+    return () => window.removeEventListener("sales-contacts-changed", onChanged);
+  }, [listKey, column]);
 
   const all = useMemo(
     () =>
@@ -124,9 +141,30 @@ export function OptionListManager({
                 </>
               ) : (
                 <>
-                  <span className="flex items-center gap-2">
-                    {s}
-                    <Badge variant="outline">{counts[s] ?? 0} เครื่อง</Badge>
+                  <span className="flex flex-col gap-0.5">
+                    <span className="flex items-center gap-2">
+                      {s}
+                      <Badge variant="outline">{counts[s] ?? 0} เครื่อง</Badge>
+                    </span>
+                    {contacts[s] && (telHref(contacts[s].phone) || lineHref(contacts[s].line)) && (
+                      <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                        {telHref(contacts[s].phone) && (
+                          <a className="inline-flex items-center gap-1 text-primary underline" href={telHref(contacts[s].phone)}>
+                            <Phone className="h-3 w-3" /> {contacts[s].phone}
+                          </a>
+                        )}
+                        {lineHref(contacts[s].line) && (
+                          <a
+                            className="inline-flex items-center gap-1 text-primary underline"
+                            href={lineHref(contacts[s].line)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <MessageCircle className="h-3 w-3" /> {contacts[s].line}
+                          </a>
+                        )}
+                      </span>
+                    )}
                   </span>
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" onClick={() => { setEditing(s); setEditValue(s); }}>
