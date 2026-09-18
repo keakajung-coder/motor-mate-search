@@ -108,12 +108,14 @@ function AdminPage() {
         <TabsContent value="lists">
           <div className="space-y-4">
             <SellerTransfer />
+            <SalesContactsCard />
             <div className="grid gap-4 md:grid-cols-2">
               <OptionListManager listKey="sellers" column="seller" title="ผู้ขาย" />
               <OptionListManager listKey="statuses" column="status" title="สถานะเครื่อง" presets={MACHINE_STATUSES} />
             </div>
           </div>
         </TabsContent>
+
 
         <TabsContent value="bundles"><BundlesTab /></TabsContent>
         <TabsContent value="issues"><TroubleshootTab /></TabsContent>
