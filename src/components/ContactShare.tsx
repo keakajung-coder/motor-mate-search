@@ -37,7 +37,7 @@ export function ContactShare({
   const [auto, setAuto] = useState(false);
 
   useEffect(() => {
-    loadStaffContacts().then(setRows);
+    loadAllContacts().then(setRows);
     setAuto(autoShareEnabled());
   }, []);
 
