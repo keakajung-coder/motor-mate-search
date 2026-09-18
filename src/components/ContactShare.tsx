@@ -55,7 +55,7 @@ export function ContactShare({
   return (
     <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-semibold">ผู้ติดต่อช่าง / ผู้ให้บริการ</p>
+        <p className="text-sm font-semibold">ผู้ติดต่อ ช่าง / ผู้ขาย / เซลล์</p>
         <div className="flex items-center gap-2">
           <Label htmlFor="auto-share" className="text-xs text-muted-foreground">
             แชร์อัตโนมัติ
