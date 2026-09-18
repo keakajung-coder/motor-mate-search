@@ -4,9 +4,10 @@ import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { toast } from "sonner";
-import { Briefcase, Loader2, MessageCircle, Phone, Plus, Trash2, UserRound } from "lucide-react";
+import { Briefcase, Check, Loader2, MessageCircle, Pencil, Phone, Plus, Trash2, X } from "lucide-react";
 import { lineHref, telHref, visibleLineId } from "@/lib/contact";
 import { loadOptionList, saveOptionList } from "@/lib/option-lists";
 
@@ -19,23 +20,18 @@ type Row = {
   line_contact: string | null;
 };
 
-const KINDS = [
-  { value: "vendor", label: "ผู้ขาย" },
-  { value: "sales", label: "เซลล์" },
-];
+const emptyDraft = { name: "", phone: "", lineId: "" };
 
-const emptyDraft = { name: "", company: "", phone: "", lineId: "" };
-
-/** จัดการรายชื่อผู้ขาย / เซลล์ แยกส่วนละฟอร์มเพิ่ม + ปุ่มลบรายรายการ */
+/** จัดการรายชื่อผู้ขายและเซลล์รวมเป็นกลุ่มเดียว โดยคงประเภทและข้อมูลเดิมในฐานข้อมูล */
 export function SalesContactsCard() {
   const { isAdmin } = useAccess();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  /** แยก draft ฟอร์มตาม kind (vendor / sales) */
-  const [drafts, setDrafts] = useState<Record<string, typeof emptyDraft>>({
-    vendor: { ...emptyDraft },
-    sales: { ...emptyDraft },
-  });
+  const [draft, setDraft] = useState({ ...emptyDraft });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ ...emptyDraft });
+  const [visibleRows, setVisibleRows] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     const { data } = await supabase
@@ -49,36 +45,69 @@ export function SalesContactsCard() {
     load();
   }, []);
 
-  const setDraft = (kind: string, patch: Partial<typeof emptyDraft>) =>
-    setDrafts((d) => ({ ...d, [kind]: { ...d[kind], ...patch } }));
-
-  const add = async (kind: string) => {
-    const d = drafts[kind];
-    if (!d.name.trim()) return toast.error("กรอกชื่อก่อน");
+  const add = async () => {
+    if (!draft.name.trim()) return toast.error("กรอกชื่อก่อน");
+    setSaving(true);
     const { error } = await supabase.from("sales_contacts").insert({
-      kind,
-      name: d.name.trim(),
-      company: d.company.trim() || null,
-      phone: d.phone.trim() || null,
-      line_contact: d.lineId.trim() || null,
+      kind: "vendor",
+      name: draft.name.trim(),
+      phone: draft.phone.trim() || null,
+      line_contact: draft.lineId.trim() || null,
     });
-    if (error) return toast.error(error.message);
+    if (error) {
+      setSaving(false);
+      return toast.error(error.message);
+    }
     // ผูกชื่อเข้ากับลิสต์ "ผู้ขาย" (ด้านล่างซ้าย) ให้อัตโนมัติ ถ้ายังไม่มี
     const sellers = await loadOptionList("sellers");
-    const n = d.name.trim();
+    const n = draft.name.trim();
     if (!sellers.some((s) => s.toLowerCase() === n.toLowerCase())) {
       await saveOptionList("sellers", [...sellers, n]);
     }
     window.dispatchEvent(new Event("sales-contacts-changed"));
-    setDrafts((prev) => ({ ...prev, [kind]: { ...emptyDraft } }));
+    setDraft({ ...emptyDraft });
+    setSaving(false);
     toast.success("เพิ่มรายชื่อแล้ว");
     load();
   };
 
-  const update = async (id: string, patch: Partial<Row>) => {
-    const { error } = await supabase.from("sales_contacts").update(patch).eq("id", id);
-    if (error) return toast.error(error.message);
+  const startEdit = (row: Row) => {
+    setEditingId(row.id);
+    setEditDraft({
+      name: row.name,
+      phone: row.phone ?? "",
+      lineId: visibleLineId(row.line_contact),
+    });
+  };
+
+  const update = async (row: Row) => {
+    const name = editDraft.name.trim();
+    if (!name) return toast.error("กรอกชื่อก่อน");
+    setSaving(true);
+    const { error } = await supabase
+      .from("sales_contacts")
+      .update({
+        name,
+        phone: editDraft.phone.trim() || null,
+        line_contact: editDraft.lineId.trim() || null,
+      })
+      .eq("id", row.id);
+    if (error) {
+      setSaving(false);
+      return toast.error(error.message);
+    }
+    if (name !== row.name) {
+      const sellers = await loadOptionList("sellers");
+      const oldNameStillUsed = rows.some((item) => item.id !== row.id && item.name.trim() === row.name.trim());
+      const next = oldNameStillUsed ? sellers : sellers.filter((seller) => seller.trim() !== row.name.trim());
+      if (!next.some((seller) => seller.toLowerCase() === name.toLowerCase())) next.push(name);
+      await saveOptionList("sellers", next);
+    }
+    setEditingId(null);
+    setSaving(false);
     window.dispatchEvent(new Event("sales-contacts-changed"));
+    toast.success("บันทึกแล้ว");
+    load();
   };
 
   const remove = async (id: string, name: string) => {
@@ -99,125 +128,133 @@ export function SalesContactsCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Briefcase className="h-4 w-4" /> ผู้ขาย / เซลล์ ({rows.length})
+          <Briefcase className="h-4 w-4" /> ผู้ขาย ({rows.length})
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4">
         {loading ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : (
-          KINDS.map((k) => {
-            const list = rows.filter((r) => r.kind === k.value);
-            const d = drafts[k.value];
-            return (
-              <section key={k.value} className="space-y-3 rounded-md border p-3">
-                <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <UserRound className="h-4 w-4 text-muted-foreground" />
-                  {k.label} ({list.length})
-                </h3>
+          <section className="space-y-3">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(9rem,1fr)_minmax(8rem,0.8fr)_minmax(10rem,1fr)_auto]">
+              <Input
+                placeholder="ชื่อ"
+                value={draft.name}
+                onChange={(e) => setDraft((current) => ({ ...current, name: e.target.value }))}
+                onKeyDown={(e) => e.key === "Enter" && add()}
+              />
+              <Input
+                placeholder="เบอร์โทร"
+                value={draft.phone}
+                onChange={(e) => setDraft((current) => ({ ...current, phone: e.target.value }))}
+              />
+              <Input
+                placeholder="LINE ID"
+                value={draft.lineId}
+                onChange={(e) => setDraft((current) => ({ ...current, lineId: e.target.value }))}
+              />
+              <Button onClick={add} disabled={saving}>
+                {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}
+                เพิ่ม
+              </Button>
+            </div>
 
-                {/* ฟอร์มเพิ่มรายชื่อของส่วนนี้โดยเฉพาะ */}
-                <div className="flex flex-wrap gap-2">
-                  <Input
-                    className="min-w-36 flex-1"
-                    placeholder="ชื่อ"
-                    value={d.name}
-                    onChange={(e) => setDraft(k.value, { name: e.target.value })}
-                    onKeyDown={(e) => e.key === "Enter" && add(k.value)}
-                  />
-                  <Input
-                    className="w-40"
-                    placeholder="บริษัท / ร้าน"
-                    value={d.company}
-                    onChange={(e) => setDraft(k.value, { company: e.target.value })}
-                  />
-                  <Input
-                    className="w-36"
-                    placeholder="เบอร์โทร"
-                    value={d.phone}
-                    onChange={(e) => setDraft(k.value, { phone: e.target.value })}
-                  />
-                  <Input
-                    className="w-44"
-                    placeholder="LINE ID (เช่น @shop หรือ 0812345678)"
-                    value={d.lineId}
-                    onChange={(e) => setDraft(k.value, { lineId: e.target.value })}
-                  />
-                  <Button onClick={() => add(k.value)}>
-                    <Plus className="mr-1 h-4 w-4" /> เพิ่ม{k.label}
-                  </Button>
-                </div>
-
-                <div className="space-y-2">
-                  {list.map((r) => {
-                    const line = visibleLineId(r.line_contact);
-                    const tel = telHref(r.phone);
-                    const lh = lineHref(line);
-                    return (
-                      <div key={r.id} className="space-y-2 rounded-md border p-2">
+            <div className="space-y-2">
+              {rows.map((row) => {
+                const line = visibleLineId(row.line_contact);
+                const tel = telHref(row.phone);
+                const lh = lineHref(line);
+                const detailsVisible = visibleRows[row.id] ?? true;
+                const isEditing = editingId === row.id;
+                return (
+                  <div key={row.id} className="rounded-md border p-3">
+                    {isEditing ? (
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(9rem,1fr)_minmax(8rem,0.8fr)_minmax(10rem,1fr)_auto]">
+                        <Input
+                          aria-label="ชื่อ"
+                          value={editDraft.name}
+                          onChange={(e) => setEditDraft((current) => ({ ...current, name: e.target.value }))}
+                        />
+                        <Input
+                          aria-label="เบอร์โทร"
+                          placeholder="เบอร์โทร"
+                          value={editDraft.phone}
+                          onChange={(e) => setEditDraft((current) => ({ ...current, phone: e.target.value }))}
+                        />
+                        <Input
+                          aria-label="LINE ID"
+                          placeholder="LINE ID"
+                          value={editDraft.lineId}
+                          onChange={(e) => setEditDraft((current) => ({ ...current, lineId: e.target.value }))}
+                          onKeyDown={(e) => e.key === "Enter" && update(row)}
+                        />
+                        <div className="flex gap-1">
+                          <Button size="sm" onClick={() => update(row)} disabled={saving}>
+                            <Check className="mr-1 h-4 w-4" /> บันทึก
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setEditingId(null)} disabled={saving}>
+                            <X className="mr-1 h-4 w-4" /> ยกเลิก
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="grid min-w-0 flex-1 gap-2 text-sm sm:grid-cols-3">
+                          <div>
+                            <span className="block text-xs text-muted-foreground">ชื่อ</span>
+                            <span className="font-medium">{row.name}</span>
+                          </div>
+                          <div>
+                            <span className="block text-xs text-muted-foreground">เบอร์โทร</span>
+                            {detailsVisible && tel ? (
+                              <a className="inline-flex items-center gap-1 text-primary underline" href={tel}>
+                                <Phone className="h-3.5 w-3.5" /> {row.phone}
+                              </a>
+                            ) : <span>{detailsVisible ? "—" : "••••••••"}</span>}
+                          </div>
+                          <div>
+                            <span className="block text-xs text-muted-foreground">LINE ID</span>
+                            {detailsVisible && lh ? (
+                              <a className="inline-flex items-center gap-1 text-primary underline" href={lh} target="_blank" rel="noreferrer">
+                                <MessageCircle className="h-3.5 w-3.5" /> {line}
+                              </a>
+                            ) : <span>{detailsVisible ? (line || "—") : "••••••••"}</span>}
+                          </div>
+                        </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Input
-                            className="min-w-32 flex-1"
-                            defaultValue={r.name}
-                            onBlur={(e) => e.target.value.trim() && update(r.id, { name: e.target.value.trim() })}
-                          />
-                          <Input
-                            className="w-36"
-                            defaultValue={r.company ?? ""}
-                            placeholder="บริษัท / ร้าน"
-                            onBlur={(e) => update(r.id, { company: e.target.value.trim() || null })}
-                          />
-                          <Input
-                            className="w-32"
-                            defaultValue={r.phone ?? ""}
-                            placeholder="เบอร์โทร"
-                            onBlur={(e) => update(r.id, { phone: e.target.value.trim() || null })}
-                          />
-                          <Input
-                            className="w-40"
-                            defaultValue={r.line_contact ?? ""}
-                            placeholder="LINE ID"
-                            onBlur={(e) => update(r.id, { line_contact: e.target.value.trim() || null })}
-                          />
+                          <label className="flex items-center gap-2 text-xs text-muted-foreground" htmlFor={`contact-visible-${row.id}`}>
+                            <Switch
+                              id={`contact-visible-${row.id}`}
+                              checked={detailsVisible}
+                              onCheckedChange={(checked) => setVisibleRows((current) => ({ ...current, [row.id]: checked }))}
+                            />
+                            {detailsVisible ? "แสดง" : "ซ่อน"}
+                          </label>
+                          <Button size="sm" variant="outline" onClick={() => startEdit(row)}>
+                            <Pencil className="mr-1 h-4 w-4" /> แก้ไข
+                          </Button>
                           {isAdmin && (
                             <ConfirmButton
-                              onConfirm={() => remove(r.id, r.name)}
+                              size="sm"
+                              variant="destructive"
+                              onConfirm={() => remove(row.id, row.name)}
                               title="ลบรายชื่อนี้?"
-                              description={`ลบ ${r.name} ออกจากระบบถาวร`}
+                              description={`ลบ ${row.name} ออกจากระบบถาวร`}
                             >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <Trash2 className="mr-1 h-4 w-4" /> ลบ
                             </ConfirmButton>
                           )}
                         </div>
-                        {(tel || lh) && (
-                          <div className="flex flex-wrap items-center gap-3 text-sm">
-                            {tel && (
-                              <a className="inline-flex items-center gap-1 text-primary underline" href={tel}>
-                                <Phone className="h-3.5 w-3.5" /> {r.phone}
-                              </a>
-                            )}
-                            {lh && (
-                              <a
-                                className="inline-flex items-center gap-1 text-primary underline"
-                                href={lh}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                <MessageCircle className="h-3.5 w-3.5" /> {line}
-                              </a>
-                            )}
-                          </div>
-                        )}
                       </div>
-                    );
-                  })}
-                  {list.length === 0 && (
-                    <p className="text-sm text-muted-foreground">ยังไม่มีข้อมูล{k.label}</p>
-                  )}
-                </div>
-              </section>
-            );
-          })
+                    )}
+                  </div>
+                );
+              })}
+              {rows.length === 0 && (
+                <p className="rounded-md border px-3 py-4 text-sm text-muted-foreground">ยังไม่มีข้อมูลผู้ขาย</p>
+              )}
+            </div>
+          </section>
         )}
       </CardContent>
     </Card>
