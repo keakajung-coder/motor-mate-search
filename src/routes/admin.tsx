@@ -28,6 +28,7 @@ import { BackupRestore } from "@/components/admin/BackupRestore";
 import { AlertSettings } from "@/components/admin/AlertSettings";
 import { AdminLockButton } from "@/components/AccessGate";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
+import { lineHref, telHref, visibleLineId } from "@/lib/contact";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { useUndoable } from "@/hooks/use-undoable";
 import { loadOptionList } from "@/lib/option-lists";
@@ -306,9 +307,10 @@ function ModelsTab() {
 
 // ---------- Customers ----------
 function CustomersTab() {
+  const { isAdmin } = useAccess();
   const [items, setItems] = useState<any[]>([]);
   const [machinesByCust, setMachinesByCust] = useState<Record<string, any[]>>({});
-  const emptyForm = { id: "", name: "", phone: "", line_id: "", address: "", note: "" };
+  const emptyForm = { id: "", name: "", phone: "", line_contact: "", address: "", note: "" };
   const [form, setForm] = useState(emptyForm);
   const [q, setQ] = useState("");
 
@@ -337,7 +339,7 @@ function CustomersTab() {
     const payload = {
       name: form.name.trim(),
       phone: form.phone.trim() || null,
-      line_id: form.line_id.trim() || null,
+      line_contact: form.line_contact.trim() || null,
       address: form.address.trim() || null,
       note: form.note.trim() || null,
     };
@@ -353,7 +355,7 @@ function CustomersTab() {
   }
   function startEdit(c: any) {
     setForm({
-      id: c.id, name: c.name ?? "", phone: c.phone ?? "", line_id: c.line_id ?? "",
+      id: c.id, name: c.name ?? "", phone: c.phone ?? "", line_contact: c.line_contact ?? "",
       address: c.address ?? "", note: c.note ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -386,11 +388,11 @@ function CustomersTab() {
             <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </div>
           <div>
-            <Label>LINE ID หรือเบอร์โทร LINE</Label>
+            <Label>LINE ID</Label>
             <Input
-              value={form.line_id}
-              placeholder="เช่น U1234... หรือ 0812345678"
-              onChange={(e) => setForm({ ...form, line_id: e.target.value })}
+              value={form.line_contact}
+              placeholder="เช่น @mycompany หรือ 0812345678"
+              onChange={(e) => setForm({ ...form, line_contact: e.target.value })}
             />
           </div>
           <div>
@@ -438,11 +440,39 @@ function CustomersTab() {
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <div className="font-medium">{c.name}</div>
-                    <div className="text-xs text-muted-foreground">{c.phone} {c.address && `• ${c.address}`}</div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      {c.phone && (
+                        <a className="text-primary underline" href={telHref(c.phone)}>
+                          {c.phone}
+                        </a>
+                      )}
+                      {visibleLineId(c.line_contact) &&
+                        (lineHref(c.line_contact) ? (
+                          <a
+                            className="text-primary underline"
+                            href={lineHref(c.line_contact)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            LINE {visibleLineId(c.line_contact)}
+                          </a>
+                        ) : (
+                          <span>LINE {visibleLineId(c.line_contact)}</span>
+                        ))}
+                      {c.address && <span>• {c.address}</span>}
+                    </div>
                   </div>
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" onClick={() => startEdit(c)}><Pencil className="h-4 w-4" /></Button>
-                    <ConfirmButton title={`ลบลูกค้า "${c.name}"?`} onConfirm={() => del(c.id)}><Trash2 className="h-4 w-4" /></ConfirmButton>
+                    {isAdmin && (
+                      <ConfirmButton
+                        title={`ลบผู้ใช้ "${c.name}"?`}
+                        description="ข้อมูลลูกค้ารายนี้จะถูกลบถาวร"
+                        onConfirm={() => del(c.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </ConfirmButton>
+                    )}
                   </div>
                 </div>
                 {machines.length > 0 && (
