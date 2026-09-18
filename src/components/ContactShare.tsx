@@ -10,7 +10,7 @@ import {
   contactText,
   lineHref,
   lineShareHref,
-  loadStaffContacts,
+  loadAllContacts,
   setAutoShare,
   shareContacts,
   telHref,
@@ -37,7 +37,7 @@ export function ContactShare({
   const [auto, setAuto] = useState(false);
 
   useEffect(() => {
-    loadStaffContacts().then(setRows);
+    loadAllContacts().then(setRows);
     setAuto(autoShareEnabled());
   }, []);
 
@@ -55,7 +55,7 @@ export function ContactShare({
   return (
     <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-semibold">ผู้ติดต่อช่าง / ผู้ให้บริการ</p>
+        <p className="text-sm font-semibold">ผู้ติดต่อ ช่าง / ผู้ขาย / เซลล์</p>
         <div className="flex items-center gap-2">
           <Label htmlFor="auto-share" className="text-xs text-muted-foreground">
             แชร์อัตโนมัติ
@@ -80,9 +80,10 @@ export function ContactShare({
             onClick={() => toggle(r.name)}
           >
             {r.name}
+            {r.role && r.role !== "staff" ? ` · ${r.role === "vendor" ? "ผู้ขาย" : "เซลล์"}` : ""}
           </Badge>
         ))}
-        {rows.length === 0 && <span className="text-xs text-muted-foreground">ยังไม่มีรายชื่อช่าง</span>}
+        {rows.length === 0 && <span className="text-xs text-muted-foreground">ยังไม่มีรายชื่อผู้ติดต่อ</span>}
       </div>
 
       {picked.length > 0 && (

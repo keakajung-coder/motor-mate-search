@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle, Undo2, Redo2, Lock } from "lucide-react";
 import { ImportExportTab } from "@/components/admin/ImportExportTab";
 import { OptionListManager } from "@/components/admin/OptionListManager";
+import { SalesContactsCard } from "@/components/admin/SalesContactsCard";
 import { StaffVehiclesTab } from "@/components/admin/StaffVehiclesTab";
 import { SellerTransfer } from "@/components/admin/SellerTransfer";
 import { refreshDirectory } from "@/lib/directory";
@@ -108,12 +109,14 @@ function AdminPage() {
         <TabsContent value="lists">
           <div className="space-y-4">
             <SellerTransfer />
+            <SalesContactsCard />
             <div className="grid gap-4 md:grid-cols-2">
               <OptionListManager listKey="sellers" column="seller" title="ผู้ขาย" />
               <OptionListManager listKey="statuses" column="status" title="สถานะเครื่อง" presets={MACHINE_STATUSES} />
             </div>
           </div>
         </TabsContent>
+
 
         <TabsContent value="bundles"><BundlesTab /></TabsContent>
         <TabsContent value="issues"><TroubleshootTab /></TabsContent>
