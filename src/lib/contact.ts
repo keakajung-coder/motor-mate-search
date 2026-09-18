@@ -42,6 +42,9 @@ export type ContactRow = {
   phone: string | null;
   line_contact: string | null;
   line_id: string | null;
+  /** ประเภทผู้ติดต่อ: ช่าง / ผู้ขาย / เซลล์ */
+  role?: "staff" | "vendor" | "sales";
+  company?: string | null;
 };
 
 export async function loadStaffContacts(): Promise<ContactRow[]> {
@@ -49,8 +52,33 @@ export async function loadStaffContacts(): Promise<ContactRow[]> {
     .from("service_staff")
     .select("id, name, phone, line_contact, line_id")
     .order("name");
-  return (data ?? []) as ContactRow[];
+  return ((data ?? []) as any[]).map((r) => ({ ...r, role: "staff" as const }));
 }
+
+/** รายชื่อผู้ขาย / เซลล์ (พร้อมเบอร์โทรและ LINE ID) */
+export async function loadSalesContacts(): Promise<ContactRow[]> {
+  const { data } = await supabase
+    .from("sales_contacts")
+    .select("id, kind, name, company, phone, line_contact, line_id, active")
+    .eq("active", true)
+    .order("name");
+  return ((data ?? []) as any[]).map((r) => ({
+    id: r.id,
+    name: r.name,
+    phone: r.phone,
+    line_contact: r.line_contact,
+    line_id: r.line_id,
+    company: r.company,
+    role: r.kind === "vendor" ? ("vendor" as const) : ("sales" as const),
+  }));
+}
+
+/** รวมรายชื่อผู้ติดต่อทั้งหมดที่เลือกแชร์ได้ (ช่าง + ผู้ขาย/เซลล์) */
+export async function loadAllContacts(): Promise<ContactRow[]> {
+  const [staff, sales] = await Promise.all([loadStaffContacts(), loadSalesContacts()]);
+  return [...staff, ...sales];
+}
+
 
 export function contactText(rows: ContactRow[], heading = "ข้อมูลผู้ติดต่อ (ช่าง/ผู้ให้บริการ)") {
   const body = rows.map((r) => {
