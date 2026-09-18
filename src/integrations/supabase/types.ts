@@ -683,6 +683,48 @@ export type Database = {
           },
         ]
       }
+      sales_contacts: {
+        Row: {
+          active: boolean
+          company: string | null
+          created_at: string
+          id: string
+          kind: string
+          line_contact: string | null
+          line_id: string | null
+          name: string
+          note: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          company?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          line_contact?: string | null
+          line_id?: string | null
+          name: string
+          note?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          company?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          line_contact?: string | null
+          line_id?: string | null
+          name?: string
+          note?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       security_settings: {
         Row: {
           created_at: string
