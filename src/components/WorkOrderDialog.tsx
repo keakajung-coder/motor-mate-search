@@ -20,6 +20,8 @@ import { ensureDirectoryEntries, refreshDirectory, useDirectory } from "@/lib/di
 import { BILLING_TYPES, PRIORITIES, SAFETY_GEAR, WORK_TYPES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
 import { notifyAdmins, notifyUsers } from "@/lib/notify";
+import { ContactShare } from "@/components/ContactShare";
+import { autoShareEnabled, shareContacts } from "@/lib/contact";
 
 export const SERVICE_TYPES = [
   "เช็กระยะ (PM)",
@@ -210,6 +212,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<WorkOrderDraft>(emptyDraft());
+  const [shareNames, setShareNames] = useState<string[]>([]);
   const dir = useDirectory();
 
   const set = (k: keyof WorkOrderDraft, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -336,6 +339,15 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
         .filter(Boolean)
         .join(" · "),
     });
+    const names = shareNames.length > 0 ? shareNames : splitNames(form.staff_name);
+    if (autoShareEnabled() && names.length > 0) {
+      void shareContacts({
+        staffNames: names,
+        customerName: form.customer_name.trim(),
+        title: `ผู้ติดต่อสำหรับงาน: ${form.customer_name.trim()}`,
+      });
+    }
+    setShareNames([]);
     toast.success("ส่งใบสั่งงานแล้ว รอแอดมินอนุมัติ");
     setForm(emptyDraft());
     setOpen(false);
@@ -525,6 +537,13 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
               </Field>
             </div>
           </Section>
+
+          <ContactShare
+            selected={shareNames}
+            onSelectedChange={setShareNames}
+            customerName={form.customer_name}
+            title={`ผู้ติดต่อสำหรับงาน: ${form.customer_name.trim() || "ใบสั่งงานใหม่"}`}
+          />
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>

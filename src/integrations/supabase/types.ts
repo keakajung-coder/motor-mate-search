@@ -288,6 +288,7 @@ export type Database = {
           address: string | null
           created_at: string | null
           id: string
+          line_contact: string | null
           line_id: string | null
           name: string
           note: string | null
@@ -298,6 +299,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           id?: string
+          line_contact?: string | null
           line_id?: string | null
           name: string
           note?: string | null
@@ -308,6 +310,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           id?: string
+          line_contact?: string | null
           line_id?: string | null
           name?: string
           note?: string | null
@@ -709,6 +712,7 @@ export type Database = {
           active: boolean
           created_at: string
           id: string
+          line_contact: string | null
           line_id: string | null
           name: string
           phone: string | null
@@ -718,6 +722,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           id?: string
+          line_contact?: string | null
           line_id?: string | null
           name: string
           phone?: string | null
@@ -727,6 +732,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           id?: string
+          line_contact?: string | null
           line_id?: string | null
           name?: string
           phone?: string | null
