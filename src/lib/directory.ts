@@ -6,11 +6,15 @@ export type DirCustomer = { name: string; phone: string; address: string };
 export type DirMachine = {
   serial: string;
   label: string;
+  brand: string;
+  model: string;
+  customer_sn: string;
   customer: string;
   address: string;
   phone: string;
   seller: string;
 };
+
 export type Directory = {
   customers: DirCustomer[];
   machines: DirMachine[];
