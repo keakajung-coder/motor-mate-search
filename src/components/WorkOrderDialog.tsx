@@ -459,6 +459,14 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
                 searchPlaceholder="ค้นหา S/N..."
               />
             </Field>
+            <Field label="หมายเลขเครื่องของลูกค้า (S/N ลูกค้า)">
+              <Input
+                value={form.customer_sn}
+                onChange={(e) => set("customer_sn", e.target.value)}
+                placeholder="เติมอัตโนมัติจากเครื่อง แก้ไขได้"
+              />
+            </Field>
+
             <Field label="ที่อยู่ลูกค้า">
               <Combobox
                 value={form.customer_address}
