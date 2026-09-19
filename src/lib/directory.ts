@@ -6,11 +6,15 @@ export type DirCustomer = { name: string; phone: string; address: string };
 export type DirMachine = {
   serial: string;
   label: string;
+  brand: string;
+  model: string;
+  customer_sn: string;
   customer: string;
   address: string;
   phone: string;
   seller: string;
 };
+
 export type Directory = {
   customers: DirCustomer[];
   machines: DirMachine[];
@@ -30,7 +34,7 @@ async function fetchAll() {
     supabase.from("customers").select("name, phone, address").order("name"),
     supabase
       .from("machine_units")
-      .select("serial_number, seller, address_line, district, province, customers ( name, phone, address ), compressor_models ( name, brands ( name ) )")
+      .select("serial_number, customer_sn, seller, address_line, district, province, customers ( name, phone, address ), compressor_models ( name, brands ( name ) )")
       .order("serial_number"),
     supabase.from("service_staff").select("name").order("name"),
     supabase.from("vehicles").select("plate").order("plate"),
@@ -46,6 +50,10 @@ async function fetchAll() {
     machines: (m.data ?? []).map((r: any) => ({
       serial: r.serial_number ?? "",
       label: [r.compressor_models?.brands?.name, r.compressor_models?.name].filter(Boolean).join(" "),
+      brand: r.compressor_models?.brands?.name ?? "",
+      model: r.compressor_models?.name ?? "",
+      customer_sn: r.customer_sn ?? "",
+
       customer: r.customers?.name ?? "",
       address:
         [r.address_line, r.district, r.province].filter(Boolean).join(" ") || (r.customers?.address ?? ""),

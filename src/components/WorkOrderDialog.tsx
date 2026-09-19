@@ -40,6 +40,8 @@ export type WorkOrderDraft = {
   contact_phone: string;
   machine_label: string;
   serial_number: string;
+  customer_sn: string;
+
   job_detail: string;
   service_type: string;
   visit_date: string;
@@ -178,6 +180,8 @@ export const emptyDraft = (): WorkOrderDraft => ({
   contact_phone: "",
   machine_label: "",
   serial_number: "",
+  customer_sn: "",
+
   job_detail: "",
   service_type: SERVICE_TYPES[0],
   visit_date: new Date().toISOString().slice(0, 10),
@@ -219,20 +223,26 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
 
   const pickCustomer = (name: string) => {
     const c = dir.customers.find((x) => x.name === name);
-    const m = dir.machines.find((x) => x.customer === name);
+    const owned = dir.machines.filter((x) => x.customer === name);
+    const m = owned[0];
     setForm((f) => {
       // เก็บเฉพาะ S/N ที่เป็นของลูกค้ารายใหม่
       const kept = splitNames(f.serial_number).filter((s) => {
         const owner = dir.machines.find((x) => x.serial === s)?.customer;
         return !owner || owner === name;
       });
+      const keptHits = kept.map((s) => dir.machines.find((x) => x.serial === s)).filter(Boolean) as typeof dir.machines;
+      const src = keptHits[0] ?? (owned.length === 1 ? m : undefined);
       return {
         ...f,
         customer_name: name,
         serial_number: joinNames(kept),
-        // ดึงที่อยู่/เบอร์โทรที่ผูกกับลูกค้ารายนี้มาเติมอัตโนมัติ (แก้ไขต่อได้)
+        // ดึงข้อมูลที่ผูกกับลูกค้ารายนี้มาเติมอัตโนมัติ (แก้ไขต่อได้ทุกช่อง)
         customer_address: c?.address || m?.address || f.customer_address,
         contact_phone: c?.phone || m?.phone || f.contact_phone,
+        machine_label: src?.label || f.machine_label,
+        customer_sn: src?.customer_sn || f.customer_sn,
+        sales_rep: src?.seller || m?.seller || f.sales_rep,
       };
     });
   };
@@ -247,11 +257,15 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       ...f,
       serial_number: joinNames(serials),
       machine_label: joinNames(Array.from(new Set(hits.map((h) => h.label).filter(Boolean)))) || f.machine_label,
+      customer_sn:
+        joinNames(Array.from(new Set(hits.map((h) => h.customer_sn).filter(Boolean)))) || f.customer_sn,
       customer_name: first?.customer || f.customer_name,
       customer_address: first?.address || f.customer_address,
       contact_phone: first?.phone || f.contact_phone,
+      sales_rep: first?.seller || f.sales_rep,
     }));
   };
+
 
   const customerOptions = dir.customers.map((c) => ({
     value: c.name,
@@ -268,6 +282,10 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
   const phoneOptions = Array.from(
     new Set([...dir.customers.map((c) => c.phone), ...dir.machines.map((m) => m.phone)].filter(Boolean)),
   ).map((p) => ({ value: p }));
+  const sellerOptions = Array.from(new Set(dir.machines.map((m) => m.seller).filter(Boolean))).map((s) => ({
+    value: s,
+  }));
+
 
   const submit = async () => {
     if (!form.customer_name.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
@@ -292,6 +310,8 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       contact_phone: form.contact_phone.trim() || null,
       machine_label: form.machine_label.trim() || null,
       serial_number: form.serial_number.trim() || null,
+      customer_sn: form.customer_sn.trim() || null,
+
       job_detail: form.job_detail.trim(),
       service_type: form.service_type || null,
       visit_date: form.visit_date || null,
@@ -394,8 +414,15 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
               <Input value={form.job_no} onChange={(e) => set("job_no", e.target.value)} />
             </Field>
             <Field label="พนักงานขาย (เซลล์) ที่ดูแล">
-              <Input value={form.sales_rep} onChange={(e) => set("sales_rep", e.target.value)} placeholder="ชื่อเซลล์ผู้ดูแลลูกค้า" />
+              <Combobox
+                value={form.sales_rep}
+                onChange={(v) => set("sales_rep", v)}
+                options={sellerOptions}
+                allowCustom
+                placeholder="ชื่อเซลล์ผู้ดูแลลูกค้า (เติมอัตโนมัติจากเครื่อง)"
+              />
             </Field>
+
             <Field label="ความเร่งด่วน">
               <Combobox
                 value={form.priority}
@@ -432,6 +459,14 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
                 searchPlaceholder="ค้นหา S/N..."
               />
             </Field>
+            <Field label="หมายเลขเครื่องของลูกค้า (S/N ลูกค้า)">
+              <Input
+                value={form.customer_sn}
+                onChange={(e) => set("customer_sn", e.target.value)}
+                placeholder="เติมอัตโนมัติจากเครื่อง แก้ไขได้"
+              />
+            </Field>
+
             <Field label="ที่อยู่ลูกค้า">
               <Combobox
                 value={form.customer_address}

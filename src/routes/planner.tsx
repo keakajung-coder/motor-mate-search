@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { notifyUsers } from "@/lib/notify";
+import { Switch } from "@/components/ui/switch";
+import { loadAutoJobAlert, saveAutoJobAlert, sendJobApprovalAlert } from "@/lib/job-alerts";
+
 import {
   AlertTriangle,
   CalendarDays,
@@ -691,6 +694,12 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
   const { staff, vehicles } = useServiceOptions();
   const [busy, setBusy] = useState<string | null>(null);
   const [openEdit, setOpenEdit] = useState<Record<string, boolean>>({});
+  const [autoAlert, setAutoAlert] = useState(true);
+
+  useEffect(() => {
+    loadAutoJobAlert().then(setAutoAlert);
+  }, []);
+
 
   const patch = (id: string, k: keyof WorkOrder, v: string) =>
     setEdit((e) => ({ ...e, [id]: { ...e[id], [k]: v } }));
@@ -760,8 +769,22 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
     setBusy(null);
     if (error) return toast.error(error.message);
     toast.success("อนุมัติและเพิ่มลงปฏิทินแล้ว");
+    if (autoAlert) {
+      const sent = await sendJobApprovalAlert(m);
+      if (sent > 0) toast.success(`ส่งแจ้งเตือน LINE ให้เซลล์/ช่างแล้ว (${sent} ราย)`);
+    }
     reload();
   };
+
+  /** ส่งรายละเอียดงานเข้า LINE ให้เซลล์และช่างด้วยตัวเอง */
+  const shareNow = async (o: WorkOrder) => {
+    const m = { ...o, ...(edit[o.id] ?? {}) } as WorkOrder & Record<string, any>;
+    const sent = await sendJobApprovalAlert(m);
+    toast[sent > 0 ? "success" : "error"](
+      sent > 0 ? `ส่งเข้า LINE แล้ว (${sent} ราย)` : "ยังส่งไม่ได้ — เซลล์/ช่างยังไม่ได้ผูก LINE",
+    );
+  };
+
 
   const reject = async (o: WorkOrder) => {
     const { error } = await supabase.from("work_orders").update({ status: "rejected" }).eq("id", o.id);
@@ -773,10 +796,26 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <ClipboardList className="h-4 w-4" /> ใบสั่งงานรออนุมัติ ({orders.length})
+        <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
+          <span className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" /> ใบสั่งงานรออนุมัติ ({orders.length})
+          </span>
+          <span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+            <Label htmlFor="auto-job-alert" className="text-xs">
+              ส่ง LINE อัตโนมัติเมื่ออนุมัติ
+            </Label>
+            <Switch
+              id="auto-job-alert"
+              checked={autoAlert}
+              onCheckedChange={(v) => {
+                setAutoAlert(v);
+                void saveAutoJobAlert(v);
+              }}
+            />
+          </span>
         </CardTitle>
       </CardHeader>
+
       <CardContent className="space-y-3">
         {orders.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีใบสั่งงานรอตรวจ</p>}
         {orders.map((o) => (
@@ -901,9 +940,13 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
                 {busy === o.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
                 อนุมัติ
               </Button>
+              <Button size="sm" variant="secondary" onClick={() => shareNow(o)}>
+                <Phone className="mr-1 h-4 w-4" /> ส่ง LINE ให้เซลล์/ช่าง
+              </Button>
               <ConfirmButton
                 variant="outline"
                 onConfirm={() => reject(o)}
+
                 title="ปฏิเสธใบสั่งงาน?"
                 description="รายการนี้จะไม่ถูกนำขึ้นปฏิทิน"
                 confirmText="ปฏิเสธ"
