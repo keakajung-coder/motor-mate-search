@@ -769,8 +769,22 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
     setBusy(null);
     if (error) return toast.error(error.message);
     toast.success("อนุมัติและเพิ่มลงปฏิทินแล้ว");
+    if (autoAlert) {
+      const sent = await sendJobApprovalAlert(m);
+      if (sent > 0) toast.success(`ส่งแจ้งเตือน LINE ให้เซลล์/ช่างแล้ว (${sent} ราย)`);
+    }
     reload();
   };
+
+  /** ส่งรายละเอียดงานเข้า LINE ให้เซลล์และช่างด้วยตัวเอง */
+  const shareNow = async (o: WorkOrder) => {
+    const m = { ...o, ...(edit[o.id] ?? {}) } as WorkOrder & Record<string, any>;
+    const sent = await sendJobApprovalAlert(m);
+    toast[sent > 0 ? "success" : "error"](
+      sent > 0 ? `ส่งเข้า LINE แล้ว (${sent} ราย)` : "ยังส่งไม่ได้ — เซลล์/ช่างยังไม่ได้ผูก LINE",
+    );
+  };
+
 
   const reject = async (o: WorkOrder) => {
     const { error } = await supabase.from("work_orders").update({ status: "rejected" }).eq("id", o.id);
