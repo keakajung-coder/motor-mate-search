@@ -796,10 +796,26 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <ClipboardList className="h-4 w-4" /> ใบสั่งงานรออนุมัติ ({orders.length})
+        <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
+          <span className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" /> ใบสั่งงานรออนุมัติ ({orders.length})
+          </span>
+          <span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+            <Label htmlFor="auto-job-alert" className="text-xs">
+              ส่ง LINE อัตโนมัติเมื่ออนุมัติ
+            </Label>
+            <Switch
+              id="auto-job-alert"
+              checked={autoAlert}
+              onCheckedChange={(v) => {
+                setAutoAlert(v);
+                void saveAutoJobAlert(v);
+              }}
+            />
+          </span>
         </CardTitle>
       </CardHeader>
+
       <CardContent className="space-y-3">
         {orders.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีใบสั่งงานรอตรวจ</p>}
         {orders.map((o) => (
