@@ -34,7 +34,7 @@ async function fetchAll() {
     supabase.from("customers").select("name, phone, address").order("name"),
     supabase
       .from("machine_units")
-      .select("serial_number, seller, address_line, district, province, customers ( name, phone, address ), compressor_models ( name, brands ( name ) )")
+      .select("serial_number, customer_sn, seller, address_line, district, province, customers ( name, phone, address ), compressor_models ( name, brands ( name ) )")
       .order("serial_number"),
     supabase.from("service_staff").select("name").order("name"),
     supabase.from("vehicles").select("plate").order("plate"),
