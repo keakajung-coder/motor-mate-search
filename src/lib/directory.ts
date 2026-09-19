@@ -50,6 +50,10 @@ async function fetchAll() {
     machines: (m.data ?? []).map((r: any) => ({
       serial: r.serial_number ?? "",
       label: [r.compressor_models?.brands?.name, r.compressor_models?.name].filter(Boolean).join(" "),
+      brand: r.compressor_models?.brands?.name ?? "",
+      model: r.compressor_models?.name ?? "",
+      customer_sn: r.customer_sn ?? "",
+
       customer: r.customers?.name ?? "",
       address:
         [r.address_line, r.district, r.province].filter(Boolean).join(" ") || (r.customers?.address ?? ""),
