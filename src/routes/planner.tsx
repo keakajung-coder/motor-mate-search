@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { notifyUsers } from "@/lib/notify";
+import { Switch } from "@/components/ui/switch";
+import { loadAutoJobAlert, saveAutoJobAlert, sendJobApprovalAlert } from "@/lib/job-alerts";
+
 import {
   AlertTriangle,
   CalendarDays,
@@ -691,6 +694,12 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
   const { staff, vehicles } = useServiceOptions();
   const [busy, setBusy] = useState<string | null>(null);
   const [openEdit, setOpenEdit] = useState<Record<string, boolean>>({});
+  const [autoAlert, setAutoAlert] = useState(true);
+
+  useEffect(() => {
+    loadAutoJobAlert().then(setAutoAlert);
+  }, []);
+
 
   const patch = (id: string, k: keyof WorkOrder, v: string) =>
     setEdit((e) => ({ ...e, [id]: { ...e[id], [k]: v } }));
