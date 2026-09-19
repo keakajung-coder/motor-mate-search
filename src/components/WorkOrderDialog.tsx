@@ -282,6 +282,10 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
   const phoneOptions = Array.from(
     new Set([...dir.customers.map((c) => c.phone), ...dir.machines.map((m) => m.phone)].filter(Boolean)),
   ).map((p) => ({ value: p }));
+  const sellerOptions = Array.from(new Set(dir.machines.map((m) => m.seller).filter(Boolean))).map((s) => ({
+    value: s,
+  }));
+
 
   const submit = async () => {
     if (!form.customer_name.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
@@ -306,6 +310,8 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       contact_phone: form.contact_phone.trim() || null,
       machine_label: form.machine_label.trim() || null,
       serial_number: form.serial_number.trim() || null,
+      customer_sn: form.customer_sn.trim() || null,
+
       job_detail: form.job_detail.trim(),
       service_type: form.service_type || null,
       visit_date: form.visit_date || null,
@@ -408,8 +414,15 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
               <Input value={form.job_no} onChange={(e) => set("job_no", e.target.value)} />
             </Field>
             <Field label="พนักงานขาย (เซลล์) ที่ดูแล">
-              <Input value={form.sales_rep} onChange={(e) => set("sales_rep", e.target.value)} placeholder="ชื่อเซลล์ผู้ดูแลลูกค้า" />
+              <Combobox
+                value={form.sales_rep}
+                onChange={(v) => set("sales_rep", v)}
+                options={sellerOptions}
+                allowCustom
+                placeholder="ชื่อเซลล์ผู้ดูแลลูกค้า (เติมอัตโนมัติจากเครื่อง)"
+              />
             </Field>
+
             <Field label="ความเร่งด่วน">
               <Combobox
                 value={form.priority}
