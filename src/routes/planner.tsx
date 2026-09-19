@@ -940,9 +940,13 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
                 {busy === o.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
                 อนุมัติ
               </Button>
+              <Button size="sm" variant="secondary" onClick={() => shareNow(o)}>
+                <Phone className="mr-1 h-4 w-4" /> ส่ง LINE ให้เซลล์/ช่าง
+              </Button>
               <ConfirmButton
                 variant="outline"
                 onConfirm={() => reject(o)}
+
                 title="ปฏิเสธใบสั่งงาน?"
                 description="รายการนี้จะไม่ถูกนำขึ้นปฏิทิน"
                 confirmText="ปฏิเสธ"
