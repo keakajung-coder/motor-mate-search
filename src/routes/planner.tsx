@@ -1211,7 +1211,10 @@ function ApprovedOrders({ reloadPlanner }: { reloadPlanner: () => void }) {
             }}
             className="space-y-1 rounded-md bg-white p-3 text-slate-800"
           >
-            <p className="text-base font-bold">ใบสั่งงานบริการ</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-base font-bold">ใบสั่งงานบริการ</p>
+              <JobStatusBadge status={appointments[o.id]?.status ?? o.status} />
+            </div>
             <p className="font-semibold">{o.customer_name}</p>
             <p className="text-xs">{[o.contact_name, o.contact_phone, o.customer_address].filter(Boolean).join(" · ")}</p>
             <p className="text-xs">{[o.machine_label, o.serial_number, o.service_type].filter(Boolean).join(" · ")}</p>
@@ -1708,6 +1711,10 @@ function DayList({
   const setStatus = async (a: Appointment, status: string) => {
     const { error } = await supabase.from("appointments").update({ status }).eq("id", a.id);
     if (error) return toast.error(error.message);
+    if (a.work_order_id) {
+      const { error: orderError } = await supabase.from("work_orders").update({ status }).eq("id", a.work_order_id);
+      if (orderError) return toast.error("อัปเดตใบสั่งงานไม่สำเร็จ: " + orderError.message);
+    }
     reload();
   };
   const remove = async (a: Appointment) => {
@@ -1926,8 +1933,9 @@ function AppointmentDialog({
         </DialogHeader>
 
         {form.id && (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/40 p-3 text-sm">
-            <Badge variant="secondary">{STATUS_LABEL[form.status] ?? form.status}</Badge>
+          <div className="relative flex flex-wrap items-center gap-2 overflow-hidden rounded-xl border bg-muted/40 py-3 pl-6 pr-3 text-sm">
+            <StatusRail status={form.status} />
+            <JobStatusBadge status={form.status} />
             <span>{formatDate(form.visit_date)} {form.visit_time?.slice(0, 5)}</span>
             {form.result && (
               <Badge className={form.result === "not_ok" ? "bg-destructive text-destructive-foreground" : "bg-emerald-600 text-white"}>
@@ -2160,6 +2168,17 @@ function CloseJobDialog({
     if (error) {
       setSaving(false);
       return toast.error(error.message);
+    }
+
+    if (appt.work_order_id) {
+      const { error: orderError } = await supabase
+        .from("work_orders")
+        .update({ status: "closed", visit_date: appt.visit_date, visit_time: appt.visit_time })
+        .eq("id", appt.work_order_id);
+      if (orderError) {
+        setSaving(false);
+        return toast.error("ปิดใบสั่งงานไม่สำเร็จ: " + orderError.message);
+      }
     }
 
     let unitId: string | null = null;
