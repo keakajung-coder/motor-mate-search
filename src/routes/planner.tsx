@@ -78,6 +78,7 @@ export const Route = createFileRoute("/planner")({
 
 type Appointment = {
   id: string;
+  work_order_id?: string | null;
   customer_name: string | null;
   customer_address: string | null;
   contact_name: string | null;
@@ -112,10 +113,46 @@ type WorkOrder = Appointment & {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  scheduled: "รอนัดหมาย",
+  pending: "รอดำเนินการ",
+  approved: "รอดำเนินการ",
+  scheduled: "นัดหมายแล้ว",
   in_progress: "กำลังดำเนินการ",
-  closed: "ปิดงาน",
+  closed: "เสร็จสิ้น",
 };
+
+type StatusStage = "pending" | "active" | "completed";
+const statusStage = (status?: string | null): StatusStage =>
+  status === "closed" ? "completed" : status === "scheduled" || status === "in_progress" ? "active" : "pending";
+const STATUS_STAGE_STYLE: Record<StatusStage, { rail: string; badge: string; label: string }> = {
+  pending: { rail: "bg-red-500", badge: "border-red-300 bg-red-50 text-red-700", label: "รอดำเนินการ" },
+  active: { rail: "bg-amber-400", badge: "border-amber-300 bg-amber-50 text-amber-800", label: "นัดหมายแล้ว / กำลังดำเนินการ" },
+  completed: { rail: "bg-emerald-500", badge: "border-emerald-300 bg-emerald-50 text-emerald-700", label: "เสร็จสิ้น" },
+};
+
+function StatusRail({ status }: { status?: string | null }) {
+  const style = STATUS_STAGE_STYLE[statusStage(status)];
+  return <span aria-hidden="true" className={`absolute inset-y-0 left-1 w-1.5 rounded-full ${style.rail}`} />;
+}
+
+function JobStatusBadge({ status, compact = false }: { status?: string | null; compact?: boolean }) {
+  const style = STATUS_STAGE_STYLE[statusStage(status)];
+  return (
+    <Badge variant="outline" className={`${style.badge} ${compact ? "px-1 py-0 text-[9px]" : ""}`}>
+      {status === "in_progress" ? "กำลังดำเนินการ" : status === "scheduled" ? "นัดหมายแล้ว" : style.label}
+    </Badge>
+  );
+}
+
+function StatusLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+      {(Object.keys(STATUS_STAGE_STYLE) as StatusStage[]).map((stage) => {
+        const item = STATUS_STAGE_STYLE[stage];
+        return <span key={stage} className="flex items-center gap-1.5"><span className={`h-3 w-1.5 rounded-full ${item.rail}`} />{item.label}</span>;
+      })}
+    </div>
+  );
+}
 
 const iso = (d: Date) => {
   const x = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
@@ -374,8 +411,8 @@ function PlannerPage() {
           </FoldSection>
         )}
 
-        <FoldSection title="ใบสั่งงานที่อนุมัติแล้ว (ส่งออกรูป/PDF)">
-          <ApprovedOrders />
+        <FoldSection title="งานที่อนุมัติแล้ว / ฝ่ายขายยืนยันนัดหมาย" defaultOpen>
+          <ApprovedOrders reloadPlanner={load} />
         </FoldSection>
 
         <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
@@ -519,6 +556,7 @@ function PlannerPage() {
         </CardHeader>
 
         <CardContent>
+          <div className="mb-3"><StatusLegend /></div>
           {loading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -757,7 +795,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
       return_time: m.return_time ?? null,
       logistics_note: m.logistics_note ?? null,
       safety_gear: m.safety_gear ?? null,
-      status: "scheduled",
+      status: "pending",
     });
     // เก็บค่าที่แอดมินแก้ไว้ลงใบสั่งงานเดิมด้วย เพื่อให้เอกสารตรงกับงานจริง
     if (!error)
@@ -819,7 +857,8 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
       <CardContent className="space-y-3">
         {orders.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีใบสั่งงานรอตรวจ</p>}
         {orders.map((o) => (
-          <div key={o.id} className="space-y-3 overflow-hidden rounded-lg border p-3">
+          <div key={o.id} className="relative space-y-3 overflow-hidden rounded-lg border py-3 pl-6 pr-3">
+            <StatusRail status="pending" />
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1 space-y-0.5">
                 <p className="break-words font-semibold leading-snug">{val(o, "customer_name")}</p>
@@ -830,9 +869,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
                   {[val(o, "contact_name"), val(o, "contact_phone"), val(o, "customer_address")].filter(Boolean).join(" · ")}
                 </p>
               </div>
-              <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
-                รออนุมัติ
-              </Badge>
+              <JobStatusBadge status="pending" />
             </div>
 
             <p className="whitespace-pre-wrap break-words text-sm">{val(o, "job_detail")}</p>
@@ -977,22 +1014,51 @@ function EditField({ label, children }: { label: string; children: React.ReactNo
 // ---------- Approved work orders (export) ----------
 
 /** ใบสั่งงานที่อนุมัติแล้ว: ส่งออกเป็นรูปภาพ หรือ PDF ได้ทันที */
-function ApprovedOrders() {
+function ApprovedOrders({ reloadPlanner }: { reloadPlanner: () => void }) {
   const [rows, setRows] = useState<WorkOrder[]>([]);
+  const [appointments, setAppointments] = useState<Record<string, Appointment>>({});
   const [busy, setBusy] = useState("");
   const [picked, setPicked] = useState<Record<string, boolean>>({});
+  const [schedule, setSchedule] = useState<Record<string, { date: string; time: string }>>({});
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
   const formRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  useEffect(() => {
-    supabase
-      .from("work_orders")
-      .select("*")
-      .eq("status", "approved")
-      .order("created_at", { ascending: false })
-      .limit(50)
-      .then(({ data }) => setRows((data ?? []) as unknown as WorkOrder[]));
+  const loadApproved = useCallback(async () => {
+    const [{ data: workOrders }, { data: apptRows }] = await Promise.all([
+      supabase.from("work_orders").select("*").in("status", ["approved", "scheduled", "in_progress", "closed"]).order("created_at", { ascending: false }).limit(50),
+      supabase.from("appointments").select("*").not("work_order_id", "is", null),
+    ]);
+    const nextRows = (workOrders ?? []) as unknown as WorkOrder[];
+    const nextAppointments = Object.fromEntries(
+      ((apptRows ?? []) as Appointment[]).filter((a) => a.work_order_id).map((a) => [a.work_order_id as string, a]),
+    );
+    setRows(nextRows);
+    setAppointments(nextAppointments);
+    setSchedule(Object.fromEntries(nextRows.map((o) => {
+      const a = nextAppointments[o.id];
+      return [o.id, { date: a?.visit_date ?? o.visit_date ?? "", time: a?.visit_time ?? o.visit_time ?? "" }];
+    })));
   }, []);
+
+  useEffect(() => { void loadApproved(); }, [loadApproved]);
+
+  const confirmAppointment = async (o: WorkOrder) => {
+    const a = appointments[o.id];
+    const chosen = schedule[o.id];
+    if (!a) return toast.error("ไม่พบรายการงานที่เชื่อมกับปฏิทิน");
+    if (!chosen?.date) return toast.error("กรุณาเลือกวันที่นัดหมาย");
+    setBusy(o.id + "schedule");
+    const [apptResult, orderResult] = await Promise.all([
+      supabase.from("appointments").update({ visit_date: chosen.date, visit_time: chosen.time || null, status: "scheduled" }).eq("id", a.id),
+      supabase.from("work_orders").update({ visit_date: chosen.date, visit_time: chosen.time || null, status: "scheduled" }).eq("id", o.id),
+    ]);
+    setBusy("");
+    const error = apptResult.error ?? orderResult.error;
+    if (error) return toast.error("ยืนยันนัดหมายไม่สำเร็จ: " + error.message);
+    toast.success("ยืนยันนัดหมายและอัปเดตปฏิทินแล้ว");
+    await loadApproved();
+    reloadPlanner();
+  };
 
   const selected = rows.filter((o) => picked[o.id]);
 
@@ -1107,7 +1173,29 @@ function ApprovedOrders() {
       </div>
 
       {rows.map((o) => (
-        <div key={o.id} className="space-y-2 rounded-lg border p-3">
+        <div key={o.id} className="relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3">
+          <StatusRail status={appointments[o.id]?.status ?? o.status} />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <JobStatusBadge status={appointments[o.id]?.status ?? o.status} />
+            <span className="text-xs text-muted-foreground">เซลล์: {o.sales_rep || "ยังไม่ระบุ"}</span>
+          </div>
+          <div className="grid gap-2 rounded-md border bg-muted/30 p-2 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
+            <DateInput
+              aria-label={`วันที่นัดหมาย ${o.customer_name}`}
+              value={schedule[o.id]?.date ?? ""}
+              onChange={(date) => setSchedule((s) => ({ ...s, [o.id]: { date, time: s[o.id]?.time ?? "" } }))}
+            />
+            <Input
+              aria-label={`เวลานัดหมาย ${o.customer_name}`}
+              type="time"
+              value={schedule[o.id]?.time ?? ""}
+              onChange={(e) => setSchedule((s) => ({ ...s, [o.id]: { date: s[o.id]?.date ?? "", time: e.target.value } }))}
+            />
+            <Button size="sm" onClick={() => confirmAppointment(o)} disabled={busy === o.id + "schedule" || statusStage(appointments[o.id]?.status ?? o.status) === "completed"}>
+              {busy === o.id + "schedule" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Phone className="mr-1 h-4 w-4" />}
+              นัดหมายแล้ว
+            </Button>
+          </div>
           <label className="flex items-center gap-2 text-sm font-medium">
             <input
               type="checkbox"
@@ -1123,7 +1211,10 @@ function ApprovedOrders() {
             }}
             className="space-y-1 rounded-md bg-white p-3 text-slate-800"
           >
-            <p className="text-base font-bold">ใบสั่งงานบริการ</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-base font-bold">ใบสั่งงานบริการ</p>
+              <JobStatusBadge status={appointments[o.id]?.status ?? o.status} />
+            </div>
             <p className="font-semibold">{o.customer_name}</p>
             <p className="text-xs">{[o.contact_name, o.contact_phone, o.customer_address].filter(Boolean).join(" · ")}</p>
             <p className="text-xs">{[o.machine_label, o.serial_number, o.service_type].filter(Boolean).join(" · ")}</p>
@@ -1239,17 +1330,10 @@ function staffBg(name?: string | null) {
 }
 /** คลาสการ์ดนัดหมายมาตรฐาน: ขอบ 3px ตามรถ + พื้นพาสเทลตามช่าง + ตัวหนังสือ slate-800 */
 function apptCardClass(a: Appointment) {
-  return "border-[3px] text-slate-800 " + vehicleBorder(a.vehicle_plate) + " " + staffBg(a.staff_name);
+  return "relative overflow-hidden border-[3px] pl-3 text-slate-800 " + vehicleBorder(a.vehicle_plate) + " " + staffBg(a.staff_name);
 }
 /** ความกว้างคอลัมน์: จันทร์–ศุกร์ เท่ากัน (~17.4%), เสาร์ ~10%, อาทิตย์ ~3% (แถบแดง) */
 const WEEK_COLS = "repeat(5, minmax(0, 17.4fr)) minmax(0, 10fr) minmax(40px, 3fr)";
-/** เส้นขอบซ้ายบอกสถานะงาน (ยังคงรหัสสีสถานะไว้) */
-function statusEdge(a: Appointment) {
-  if (a.status === "closed") return a.result === "not_ok" ? "border-l-4 border-l-red-500" : "border-l-4 border-l-emerald-600";
-  if (a.status === "in_progress") return "border-l-4 border-l-red-400";
-  return "border-l-4 border-l-amber-400";
-}
-
 function VehicleLegend({ appts }: { appts: Appointment[] }) {
   const plates = Array.from(new Set(appts.flatMap((a) => splitNames(a.vehicle_plate)))).sort();
   if (plates.length === 0) return null;
@@ -1286,9 +1370,7 @@ function MonthGrid({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm border-l-4 border-l-amber-400 bg-muted" /> รอนัดหมาย</span>
-        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm border-l-4 border-l-red-400 bg-muted" /> งานซ่อมด่วน</span>
-        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm border-l-4 border-l-emerald-600 bg-muted" /> ปิดงานแล้ว</span>
+        <StatusLegend />
         <span className="ml-auto">แตะวันที่เพื่อดูคิวทั้งวัน{onPickDate ? " · แตะช่องว่างเพื่อเพิ่มงานด่วน" : ""}</span>
       </div>
       <VehicleLegend appts={appts} />
@@ -1380,6 +1462,7 @@ function MonthGrid({
                     }
                     title={apptSummary(a)}
                   >
+                    <StatusRail status={a.status} />
                     <span className="block truncate">{a.customer_name || "ไม่ระบุลูกค้า"}</span>
                     <span className="block truncate text-xs opacity-80">
                       👤 {splitNames(a.staff_name).join(", ") || "-"}
@@ -1481,6 +1564,7 @@ function TimeGrid({
                 }
                 title={apptSummary(a)}
               >
+                <StatusRail status={a.status} />
                 <span className="flex items-baseline gap-1 text-[10px]">
                   <span className="font-semibold">{a.visit_time?.slice(0, 5) || "--:--"}</span>
                   <span className="truncate text-xs opacity-70">{splitNames(a.staff_name).join(", ") || "-"}</span>
@@ -1577,9 +1661,10 @@ function DayDetailDialog({
               key={a.id}
               onClick={() => onPick(a)}
               className={
-                "block w-full rounded-xl border p-3 text-left " + vehicleColor(a.vehicle_plate) + " " + statusEdge(a)
+                "relative block w-full overflow-hidden rounded-xl border py-3 pl-6 pr-3 text-left " + vehicleColor(a.vehicle_plate)
               }
             >
+              <StatusRail status={a.status} />
               <p className="font-medium">
                 {a.visit_time?.slice(0, 5) || "-"} · {a.customer_name || "ไม่ระบุลูกค้า"}
               </p>
@@ -1626,6 +1711,10 @@ function DayList({
   const setStatus = async (a: Appointment, status: string) => {
     const { error } = await supabase.from("appointments").update({ status }).eq("id", a.id);
     if (error) return toast.error(error.message);
+    if (a.work_order_id) {
+      const { error: orderError } = await supabase.from("work_orders").update({ status }).eq("id", a.work_order_id);
+      if (orderError) return toast.error("อัปเดตใบสั่งงานไม่สำเร็จ: " + orderError.message);
+    }
     reload();
   };
   const remove = async (a: Appointment) => {
@@ -1644,7 +1733,8 @@ function DayList({
             <p className="text-sm font-semibold">{formatDate(d)}</p>
             {list.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีนัดหมาย</p>}
             {list.map((a) => (
-              <div key={a.id} className="space-y-2 rounded-lg border p-3">
+              <div key={a.id} className="relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3">
+                <StatusRail status={a.status} />
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">
@@ -1662,19 +1752,7 @@ function DayList({
                       <p className="mt-1 text-xs text-muted-foreground">สรุป: {a.close_note}</p>
                     )}
                   </div>
-                  <Badge
-                    className={
-                      a.status === "closed"
-                        ? a.result === "not_ok"
-                          ? "bg-destructive text-destructive-foreground"
-                          : "bg-emerald-600 text-white"
-                        : ""
-                    }
-                    variant={a.status === "closed" ? "default" : "secondary"}
-                  >
-                    {STATUS_LABEL[a.status] ?? a.status}
-                    {a.status === "closed" ? (a.result === "not_ok" ? " · ไม่เรียบร้อย" : " · เรียบร้อย") : ""}
-                  </Badge>
+                  <JobStatusBadge status={a.status} />
                 </div>
                 {isAdmin && (
                   <div className="flex flex-wrap gap-2">
@@ -1855,8 +1933,9 @@ function AppointmentDialog({
         </DialogHeader>
 
         {form.id && (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/40 p-3 text-sm">
-            <Badge variant="secondary">{STATUS_LABEL[form.status] ?? form.status}</Badge>
+          <div className="relative flex flex-wrap items-center gap-2 overflow-hidden rounded-xl border bg-muted/40 py-3 pl-6 pr-3 text-sm">
+            <StatusRail status={form.status} />
+            <JobStatusBadge status={form.status} />
             <span>{formatDate(form.visit_date)} {form.visit_time?.slice(0, 5)}</span>
             {form.result && (
               <Badge className={form.result === "not_ok" ? "bg-destructive text-destructive-foreground" : "bg-emerald-600 text-white"}>
@@ -2089,6 +2168,17 @@ function CloseJobDialog({
     if (error) {
       setSaving(false);
       return toast.error(error.message);
+    }
+
+    if (appt.work_order_id) {
+      const { error: orderError } = await supabase
+        .from("work_orders")
+        .update({ status: "closed", visit_date: appt.visit_date, visit_time: appt.visit_time })
+        .eq("id", appt.work_order_id);
+      if (orderError) {
+        setSaving(false);
+        return toast.error("ปิดใบสั่งงานไม่สำเร็จ: " + orderError.message);
+      }
     }
 
     let unitId: string | null = null;
