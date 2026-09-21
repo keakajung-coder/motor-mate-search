@@ -668,7 +668,7 @@ function newAppointment(date: string): Appointment {
     staff_name: "",
     vehicle_plate: "",
     sales_rep: "",
-    status: "scheduled",
+    status: "approved",
     result: null,
     close_note: null,
   };
