@@ -804,13 +804,14 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
       safety_gear: m.safety_gear ?? null,
       attachments: m.attachments ?? null,
 
-      status: "scheduled",
+      // อนุมัติเฉยๆ ยังเป็นสีแดง จนกว่าจะกด "นัดหมายแล้ว" หรือ "เริ่มดำเนินการ"
+      status: o.status === "scheduled" ? "scheduled" : "approved",
     });
     // เก็บค่าที่แอดมินแก้ไว้ลงใบสั่งงานเดิมด้วย เพื่อให้เอกสารตรงกับงานจริง
     if (!error)
       await supabase
         .from("work_orders")
-        .update({ ...(p as Record<string, unknown>), status: "scheduled" } as never)
+        .update({ ...(p as Record<string, unknown>), status: o.status === "scheduled" ? "scheduled" : "approved" } as never)
         .eq("id", o.id);
 
     setBusy(null);
