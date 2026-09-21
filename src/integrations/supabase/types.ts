@@ -40,6 +40,7 @@ export type Database = {
       }
       appointments: {
         Row: {
+          attachments: string | null
           billing_note: string | null
           billing_type: string | null
           close_note: string | null
@@ -78,6 +79,7 @@ export type Database = {
           work_types: string | null
         }
         Insert: {
+          attachments?: string | null
           billing_note?: string | null
           billing_type?: string | null
           close_note?: string | null
@@ -116,6 +118,7 @@ export type Database = {
           work_types?: string | null
         }
         Update: {
+          attachments?: string | null
           billing_note?: string | null
           billing_type?: string | null
           close_note?: string | null
@@ -863,6 +866,7 @@ export type Database = {
       work_orders: {
         Row: {
           admin_note: string | null
+          attachments: string | null
           billing_note: string | null
           billing_type: string | null
           contact_name: string | null
@@ -894,6 +898,7 @@ export type Database = {
         }
         Insert: {
           admin_note?: string | null
+          attachments?: string | null
           billing_note?: string | null
           billing_type?: string | null
           contact_name?: string | null
@@ -925,6 +930,7 @@ export type Database = {
         }
         Update: {
           admin_note?: string | null
+          attachments?: string | null
           billing_note?: string | null
           billing_type?: string | null
           contact_name?: string | null
