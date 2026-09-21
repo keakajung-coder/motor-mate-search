@@ -61,7 +61,9 @@ export type WorkOrderDraft = {
   return_time: string;
   logistics_note: string;
   safety_gear: string;
+  attachments: string;
 };
+
 
 export type WorkOrderPrintData = {
   [K in keyof WorkOrderDraft]?: WorkOrderDraft[K] | null;
