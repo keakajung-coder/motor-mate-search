@@ -1472,9 +1472,15 @@ function MonthGrid({
                     <span className="block truncate text-xs opacity-80">
                       🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
                     </span>
+                    {(a.serial_number || a.machine_label) && (
+                      <span className="block truncate text-[10px] opacity-80">
+                        ⚙️ {splitNames(a.serial_number).join(" / ") || splitNames(a.machine_label).join(" / ")}
+                      </span>
+                    )}
                     {a.sales_rep && (
                       <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>
                     )}
+
                   </button>
                 ))}
 
@@ -1767,11 +1773,12 @@ function DayList({
                     <Button size="sm" variant="outline" onClick={() => onEdit(a)}>
                       แก้ไข
                     </Button>
-                    {a.status === "scheduled" && (
+                    {a.status !== "in_progress" && a.status !== "closed" && (
                       <Button size="sm" onClick={() => setStatus(a, "in_progress")}>
                         เริ่มดำเนินการ
                       </Button>
                     )}
+
                     <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
                       {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดงาน"}
                     </Button>
