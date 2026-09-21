@@ -120,16 +120,16 @@ type WorkOrder = Appointment & {
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "รอดำเนินการ",
-  approved: "นัดหมายแล้ว",
+  approved: "รอดำเนินการ",
   scheduled: "นัดหมายแล้ว",
   in_progress: "กำลังดำเนินการ",
   closed: "เสร็จสิ้น",
 };
 
 type StatusStage = "pending" | "active" | "completed";
-// เหลือง = นัดหมายแล้ว/เริ่มงานแล้ว, แดง = ยังไม่นัดและยังไม่เริ่ม, เขียว = ปิดงาน
+// เหลือง = กด "นัดหมายแล้ว" หรือ "เริ่มดำเนินการ" เท่านั้น, แดง = ยังไม่กด, เขียว = ปิดงาน
 const statusStage = (status?: string | null): StatusStage =>
-  status === "closed" ? "completed" : status === "approved" || status === "scheduled" || status === "in_progress" ? "active" : "pending";
+  status === "closed" ? "completed" : status === "scheduled" || status === "in_progress" ? "active" : "pending";
 const STATUS_STAGE_STYLE: Record<StatusStage, { rail: string; badge: string; label: string }> = {
   pending: { rail: "bg-red-500", badge: "border-red-300 bg-red-50 text-red-700", label: "รอดำเนินการ" },
   active: { rail: "bg-amber-400", badge: "border-amber-300 bg-amber-50 text-amber-800", label: "นัดหมายแล้ว / กำลังดำเนินการ" },
