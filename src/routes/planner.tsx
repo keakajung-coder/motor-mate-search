@@ -120,16 +120,16 @@ type WorkOrder = Appointment & {
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "รอดำเนินการ",
-  approved: "นัดหมายแล้ว",
+  approved: "รอดำเนินการ",
   scheduled: "นัดหมายแล้ว",
   in_progress: "กำลังดำเนินการ",
   closed: "เสร็จสิ้น",
 };
 
 type StatusStage = "pending" | "active" | "completed";
-// เหลือง = นัดหมายแล้ว/เริ่มงานแล้ว, แดง = ยังไม่นัดและยังไม่เริ่ม, เขียว = ปิดงาน
+// เหลือง = กด "นัดหมายแล้ว" หรือ "เริ่มดำเนินการ" เท่านั้น, แดง = ยังไม่กด, เขียว = ปิดงาน
 const statusStage = (status?: string | null): StatusStage =>
-  status === "closed" ? "completed" : status === "approved" || status === "scheduled" || status === "in_progress" ? "active" : "pending";
+  status === "closed" ? "completed" : status === "scheduled" || status === "in_progress" ? "active" : "pending";
 const STATUS_STAGE_STYLE: Record<StatusStage, { rail: string; badge: string; label: string }> = {
   pending: { rail: "bg-red-500", badge: "border-red-300 bg-red-50 text-red-700", label: "รอดำเนินการ" },
   active: { rail: "bg-amber-400", badge: "border-amber-300 bg-amber-50 text-amber-800", label: "นัดหมายแล้ว / กำลังดำเนินการ" },
@@ -668,7 +668,7 @@ function newAppointment(date: string): Appointment {
     staff_name: "",
     vehicle_plate: "",
     sales_rep: "",
-    status: "scheduled",
+    status: "approved",
     result: null,
     close_note: null,
   };
@@ -804,13 +804,14 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
       safety_gear: m.safety_gear ?? null,
       attachments: m.attachments ?? null,
 
-      status: "scheduled",
+      // อนุมัติเฉยๆ ยังเป็นสีแดง จนกว่าจะกด "นัดหมายแล้ว" หรือ "เริ่มดำเนินการ"
+      status: o.status === "scheduled" ? "scheduled" : "approved",
     });
     // เก็บค่าที่แอดมินแก้ไว้ลงใบสั่งงานเดิมด้วย เพื่อให้เอกสารตรงกับงานจริง
     if (!error)
       await supabase
         .from("work_orders")
-        .update({ ...(p as Record<string, unknown>), status: "scheduled" } as never)
+        .update({ ...(p as Record<string, unknown>), status: o.status === "scheduled" ? "scheduled" : "approved" } as never)
         .eq("id", o.id);
 
     setBusy(null);
