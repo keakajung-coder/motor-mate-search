@@ -17,6 +17,8 @@ import {
 import { toast } from "sonner";
 import { ClipboardPlus, Loader2 } from "lucide-react";
 import { ensureDirectoryEntries, refreshDirectory, useDirectory } from "@/lib/directory";
+import { ensureSeller, useSellerNames } from "@/lib/sellers";
+
 import { BILLING_TYPES, PRIORITIES, SAFETY_GEAR, WORK_TYPES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
 import { notifyAdmins, notifyUsers } from "@/lib/notify";
@@ -218,6 +220,8 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
   const [form, setForm] = useState<WorkOrderDraft>(emptyDraft());
   const [shareNames, setShareNames] = useState<string[]>([]);
   const dir = useDirectory();
+  const sellerNames = useSellerNames();
+
 
   const set = (k: keyof WorkOrderDraft, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -282,9 +286,12 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
   const phoneOptions = Array.from(
     new Set([...dir.customers.map((c) => c.phone), ...dir.machines.map((m) => m.phone)].filter(Boolean)),
   ).map((p) => ({ value: p }));
-  const sellerOptions = Array.from(new Set(dir.machines.map((m) => m.seller).filter(Boolean))).map((s) => ({
+  const sellerOptions = Array.from(
+    new Set([...dir.machines.map((m) => m.seller), ...sellerNames].filter(Boolean)),
+  ).map((s) => ({
     value: s,
   }));
+
 
 
   const submit = async () => {
@@ -303,6 +310,8 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
     });
     for (const s of serials.slice(1)) await ensureDirectoryEntries({ customer_name: form.customer_name, serial_number: s });
     for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
+    await ensureSeller(form.sales_rep);
+
     const { error } = await supabase.from("work_orders").insert({
       customer_name: form.customer_name.trim(),
       customer_address: form.customer_address.trim() || null,

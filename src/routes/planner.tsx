@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { notifyUsers } from "@/lib/notify";
 import { Switch } from "@/components/ui/switch";
 import { loadAutoJobAlert, saveAutoJobAlert, sendJobApprovalAlert } from "@/lib/job-alerts";
+import { ensureSeller, useSellerNames } from "@/lib/sellers";
+
 
 import {
   AlertTriangle,
@@ -1470,9 +1472,15 @@ function MonthGrid({
                     <span className="block truncate text-xs opacity-80">
                       🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
                     </span>
+                    {(a.serial_number || a.machine_label) && (
+                      <span className="block truncate text-[10px] opacity-80">
+                        ⚙️ {splitNames(a.serial_number).join(" / ") || splitNames(a.machine_label).join(" / ")}
+                      </span>
+                    )}
                     {a.sales_rep && (
                       <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>
                     )}
+
                   </button>
                 ))}
 
@@ -1576,7 +1584,13 @@ function TimeGrid({
                 <span className="block truncate text-xs opacity-80">
                   🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
                 </span>
+                {(a.serial_number || a.machine_label) && (
+                  <span className="block truncate text-[10px] opacity-80">
+                    ⚙️ {splitNames(a.serial_number).join(" / ") || splitNames(a.machine_label).join(" / ")}
+                  </span>
+                )}
                 {a.sales_rep && <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>}
+
 
               </button>
             ))}
@@ -1759,11 +1773,12 @@ function DayList({
                     <Button size="sm" variant="outline" onClick={() => onEdit(a)}>
                       แก้ไข
                     </Button>
-                    {a.status === "scheduled" && (
+                    {a.status !== "in_progress" && a.status !== "closed" && (
                       <Button size="sm" onClick={() => setStatus(a, "in_progress")}>
                         เริ่มดำเนินการ
                       </Button>
                     )}
+
                     <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
                       {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดงาน"}
                     </Button>
@@ -1825,6 +1840,8 @@ function AppointmentDialog({
   const [saving, setSaving] = useState(false);
   const locked = !canEdit || !editMode;
   const dir = useDirectory();
+  const sellerNames = useSellerNames();
+
   const set = (k: keyof Appointment, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const pickCustomer = (name: string) => {
@@ -1874,6 +1891,8 @@ function AppointmentDialog({
     });
     for (const s of serials.slice(1)) await ensureDirectoryEntries({ customer_name: form.customer_name, serial_number: s });
     for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
+    await ensureSeller(form.sales_rep);
+
     const { data: unit } = await supabase
       .from("machine_units")
       .select("id")
@@ -2058,13 +2077,16 @@ function AppointmentDialog({
             />
           </F>
           <F label="พนักงานขาย (เซลล์) ที่ดูแล">
-            <Input
+            <Combobox
               disabled={locked}
               value={form.sales_rep ?? ""}
-              onChange={(e) => set("sales_rep", e.target.value)}
-              placeholder="ชื่อเซลล์ผู้ดูแลลูกค้า"
+              onChange={(v) => set("sales_rep", v)}
+              options={Array.from(new Set([...sellerNames, ...dir.machines.map((m) => m.seller)].filter(Boolean))).map((s) => ({ value: s }))}
+              allowCustom
+              placeholder="เลือกเซลล์ หรือพิมพ์ชื่อใหม่"
             />
           </F>
+
           <div className="sm:col-span-2">
             <F label="รายละเอียดงาน / บันทึกให้ช่าง">
               <Textarea disabled={locked} rows={3} value={form.job_detail ?? ""} onChange={(e) => set("job_detail", e.target.value)} />
