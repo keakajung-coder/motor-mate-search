@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ClipboardPlus, Loader2 } from "lucide-react";
+import { CalendarCheck2, ClipboardPlus, Loader2 } from "lucide-react";
 import { ensureDirectoryEntries, refreshDirectory, useDirectory } from "@/lib/directory";
 import { ensureSeller, useSellerNames } from "@/lib/sellers";
 import { JobAttachments } from "@/components/JobAttachments";
@@ -386,8 +386,9 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       });
     }
     setShareNames([]);
-    toast.success("ส่งใบสั่งงานแล้ว รอแอดมินอนุมัติ");
+    toast.success(booked ? "ส่งใบสั่งงานแล้ว (นัดหมายแล้ว)" : "ส่งใบสั่งงานแล้ว รอแอดมินอนุมัติ");
     setForm(emptyDraft());
+    setBooked(false);
     setOpen(false);
     refreshDirectory();
     onCreated?.();
@@ -605,13 +606,24 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
             title={`ผู้ติดต่อสำหรับงาน: ${form.customer_name.trim() || "ใบสั่งงานใหม่"}`}
           />
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              ยกเลิก
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button
+              type="button"
+              variant={booked ? "default" : "outline"}
+              className={booked ? "bg-amber-500 text-white hover:bg-amber-600" : "border-amber-400 text-amber-700 hover:bg-amber-50"}
+              onClick={() => setBooked((b) => !b)}
+            >
+              <CalendarCheck2 className="mr-1 h-4 w-4" />
+              {booked ? "นัดหมายแล้ว ✓ (งานจะขึ้นสีเหลือง)" : "นัดหมายแล้ว"}
             </Button>
-            <Button onClick={submit} disabled={saving}>
-              {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} ส่งใบสั่งงาน
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                ยกเลิก
+              </Button>
+              <Button onClick={submit} disabled={saving}>
+                {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} ส่งใบสั่งงาน
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
