@@ -220,6 +220,8 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
   const [form, setForm] = useState<WorkOrderDraft>(emptyDraft());
   const [shareNames, setShareNames] = useState<string[]>([]);
   const dir = useDirectory();
+  const sellerNames = useSellerNames();
+
 
   const set = (k: keyof WorkOrderDraft, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
