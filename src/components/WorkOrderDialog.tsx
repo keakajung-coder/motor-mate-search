@@ -225,6 +225,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<WorkOrderDraft>(emptyDraft());
   const [shareNames, setShareNames] = useState<string[]>([]);
+  const [booked, setBooked] = useState(false);
   const dir = useDirectory();
   const sellerNames = useSellerNames();
 
@@ -346,7 +347,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       safety_gear: form.safety_gear || null,
       attachments: form.attachments || null,
 
-      status: "pending",
+      status: booked ? "scheduled" : "pending",
     });
     setSaving(false);
     if (error) return toast.error(error.message);
