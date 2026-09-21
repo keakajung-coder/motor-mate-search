@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { ClipboardPlus, Loader2 } from "lucide-react";
 import { ensureDirectoryEntries, refreshDirectory, useDirectory } from "@/lib/directory";
 import { ensureSeller, useSellerNames } from "@/lib/sellers";
+import { JobAttachments } from "@/components/JobAttachments";
+
 
 import { BILLING_TYPES, PRIORITIES, SAFETY_GEAR, WORK_TYPES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
@@ -61,7 +63,9 @@ export type WorkOrderDraft = {
   return_time: string;
   logistics_note: string;
   safety_gear: string;
+  attachments: string;
 };
+
 
 export type WorkOrderPrintData = {
   [K in keyof WorkOrderDraft]?: WorkOrderDraft[K] | null;
@@ -201,7 +205,9 @@ export const emptyDraft = (): WorkOrderDraft => ({
   return_time: "",
   logistics_note: "",
   safety_gear: "",
+  attachments: "",
 });
+
 
 /** ตัวเลือกบริการ (ช่าง / รถ / S/N) — ดึงจากข้อมูลกลางที่อัปเดตอัตโนมัติ */
 export function useServiceOptions() {
@@ -338,6 +344,8 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       return_time: form.return_time || null,
       logistics_note: form.logistics_note.trim() || null,
       safety_gear: form.safety_gear || null,
+      attachments: form.attachments || null,
+
       status: "pending",
     });
     setSaving(false);
@@ -568,7 +576,14 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
             </div>
           </Section>
 
+          <Section title="รูปภาพ / คลิปหน้างาน (ไฟล์แนบ)">
+            <div className="sm:col-span-2">
+              <JobAttachments value={form.attachments} onChange={(v) => set("attachments", v ?? "")} />
+            </div>
+          </Section>
+
           <Section title="อุปกรณ์เซฟตี้ที่ต้องเตรียม">
+
             <div className="sm:col-span-2">
               <Field label="อุปกรณ์เซฟตี้ (เลือกได้หลายอย่าง)">
                 <MultiCombobox
