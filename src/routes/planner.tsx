@@ -20,6 +20,8 @@ import { notifyUsers } from "@/lib/notify";
 import { Switch } from "@/components/ui/switch";
 import { loadAutoJobAlert, saveAutoJobAlert, sendJobApprovalAlert } from "@/lib/job-alerts";
 import { ensureSeller, useSellerNames } from "@/lib/sellers";
+import { JobAttachments } from "@/components/JobAttachments";
+
 
 
 import {
@@ -94,6 +96,8 @@ type Appointment = {
   staff_name: string | null;
   vehicle_plate: string | null;
   sales_rep?: string | null;
+  attachments?: string | null;
+
   status: string;
   result: string | null;
   close_note: string | null;
@@ -797,6 +801,8 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
       return_time: m.return_time ?? null,
       logistics_note: m.logistics_note ?? null,
       safety_gear: m.safety_gear ?? null,
+      attachments: m.attachments ?? null,
+
       status: "pending",
     });
     // เก็บค่าที่แอดมินแก้ไว้ลงใบสั่งงานเดิมด้วย เพื่อให้เอกสารตรงกับงานจริง
