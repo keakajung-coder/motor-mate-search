@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { ClipboardPlus, Loader2 } from "lucide-react";
 import { ensureDirectoryEntries, refreshDirectory, useDirectory } from "@/lib/directory";
 import { ensureSeller, useSellerNames } from "@/lib/sellers";
+import { JobAttachments } from "@/components/JobAttachments";
+
 
 import { BILLING_TYPES, PRIORITIES, SAFETY_GEAR, WORK_TYPES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
@@ -203,7 +205,9 @@ export const emptyDraft = (): WorkOrderDraft => ({
   return_time: "",
   logistics_note: "",
   safety_gear: "",
+  attachments: "",
 });
+
 
 /** ตัวเลือกบริการ (ช่าง / รถ / S/N) — ดึงจากข้อมูลกลางที่อัปเดตอัตโนมัติ */
 export function useServiceOptions() {
