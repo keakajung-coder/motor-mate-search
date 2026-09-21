@@ -1919,6 +1919,8 @@ function AppointmentDialog({
       staff_name: form.staff_name,
       vehicle_plate: form.vehicle_plate,
       sales_rep: form.sales_rep ?? null,
+      attachments: form.attachments ?? null,
+
       status: form.status,
     };
     const { error } = form.id
@@ -2098,6 +2100,16 @@ function AppointmentDialog({
               <Textarea disabled={locked} rows={3} value={form.job_detail ?? ""} onChange={(e) => set("job_detail", e.target.value)} />
             </F>
           </div>
+          <div className="sm:col-span-2">
+            <F label="รูปภาพ / คลิปหน้างาน">
+              <JobAttachments
+                value={form.attachments}
+                onChange={locked ? undefined : (v) => set("attachments", v ?? "")}
+                readOnly={locked}
+              />
+            </F>
+          </div>
+
         </div>
 
         <DialogFooter className="gap-2">
