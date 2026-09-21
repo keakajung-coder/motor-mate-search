@@ -344,6 +344,8 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       return_time: form.return_time || null,
       logistics_note: form.logistics_note.trim() || null,
       safety_gear: form.safety_gear || null,
+      attachments: form.attachments || null,
+
       status: "pending",
     });
     setSaving(false);
@@ -574,7 +576,14 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
             </div>
           </Section>
 
+          <Section title="รูปภาพ / คลิปหน้างาน (ไฟล์แนบ)">
+            <div className="sm:col-span-2">
+              <JobAttachments value={form.attachments} onChange={(v) => set("attachments", v ?? "")} />
+            </div>
+          </Section>
+
           <Section title="อุปกรณ์เซฟตี้ที่ต้องเตรียม">
+
             <div className="sm:col-span-2">
               <Field label="อุปกรณ์เซฟตี้ (เลือกได้หลายอย่าง)">
                 <MultiCombobox
