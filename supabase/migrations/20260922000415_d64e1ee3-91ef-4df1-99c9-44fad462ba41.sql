@@ -1,0 +1,1 @@
+ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS parts_replaced text; ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS quotation_items text;

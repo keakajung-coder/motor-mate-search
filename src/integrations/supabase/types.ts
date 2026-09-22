@@ -60,8 +60,10 @@ export type Database = {
           machine_unit_id: string | null
           parts_categories: string | null
           parts_note: string | null
+          parts_replaced: string | null
           po_number: string | null
           priority: string | null
+          quotation_items: string | null
           quotation_required: boolean
           result: string | null
           return_time: string | null
@@ -99,8 +101,10 @@ export type Database = {
           machine_unit_id?: string | null
           parts_categories?: string | null
           parts_note?: string | null
+          parts_replaced?: string | null
           po_number?: string | null
           priority?: string | null
+          quotation_items?: string | null
           quotation_required?: boolean
           result?: string | null
           return_time?: string | null
@@ -138,8 +142,10 @@ export type Database = {
           machine_unit_id?: string | null
           parts_categories?: string | null
           parts_note?: string | null
+          parts_replaced?: string | null
           po_number?: string | null
           priority?: string | null
+          quotation_items?: string | null
           quotation_required?: boolean
           result?: string | null
           return_time?: string | null
