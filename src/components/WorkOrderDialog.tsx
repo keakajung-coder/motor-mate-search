@@ -607,15 +607,21 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
           />
 
           <DialogFooter className="gap-2 sm:justify-between">
-            <Button
-              type="button"
-              variant={booked ? "default" : "outline"}
-              className={booked ? "bg-amber-500 text-white hover:bg-amber-600" : "border-amber-400 text-amber-700 hover:bg-amber-50"}
-              onClick={() => setBooked((b) => !b)}
+            <label
+              className={
+                "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium " +
+                (booked ? "border-amber-400 bg-amber-50 text-amber-700" : "text-muted-foreground")
+              }
             >
-              <CalendarCheck2 className="mr-1 h-4 w-4" />
-              {booked ? "นัดหมายแล้ว ✓ (งานจะขึ้นสีเหลือง)" : "นัดหมายแล้ว"}
-            </Button>
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-amber-500"
+                checked={booked}
+                onChange={(e) => setBooked(e.target.checked)}
+              />
+              <CalendarCheck2 className="h-4 w-4" />
+              นัดหมายแล้ว (งานจะขึ้นสีเหลือง)
+            </label>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setOpen(false)}>
                 ยกเลิก
