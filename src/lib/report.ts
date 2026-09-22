@@ -222,7 +222,12 @@ export const MACHINE_STATUSES = [
 export async function elementToPdfBlobPaged(
   el: HTMLElement,
   pages: number,
-  opts?: { orientation?: "portrait" | "landscape"; size?: { width: number; height: number } },
+  opts?: {
+    orientation?: "portrait" | "landscape";
+    size?: { width: number; height: number };
+    maxBytes?: number;
+    pixelRatio?: number;
+  },
 ): Promise<Blob> {
   const [{ toJpeg }, { default: jsPDF }] = await Promise.all([
     import("html-to-image"),
@@ -230,7 +235,7 @@ export async function elementToPdfBlobPaged(
   ]);
 
   const steps: Array<{ pixelRatio: number; quality: number }> = [
-    { pixelRatio: 2, quality: 0.82 },
+    { pixelRatio: opts?.pixelRatio ?? 2, quality: opts?.maxBytes ? 0.92 : 0.82 },
     { pixelRatio: 1.5, quality: 0.7 },
     { pixelRatio: 1.2, quality: 0.6 },
     { pixelRatio: 1, quality: 0.5 },
@@ -295,7 +300,7 @@ export async function elementToPdfBlobPaged(
     for (let p = total; p < wanted; p++) pdf.addPage();
 
     last = pdf.output("blob");
-    if (last.size <= MAX_BYTES) return last;
+    if (last.size <= (opts?.maxBytes ?? MAX_BYTES)) return last;
   }
   return last!;
 }

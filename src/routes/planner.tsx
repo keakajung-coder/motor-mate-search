@@ -1671,6 +1671,7 @@ function DayDetailDialog({
   const [zoom, setZoom] = useState(0.7);
   const [documentHeight, setDocumentHeight] = useState(1100);
   const [exporting, setExporting] = useState<"" | "image" | "pdf">("");
+  const [outputAction, setOutputAction] = useState<"share" | "download">("share");
   const documentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1694,6 +1695,8 @@ function DayDetailDialog({
         blob = await elementToPdfBlobPaged(el, 0, {
           orientation: "portrait",
           size: { width: el.scrollWidth, height: el.scrollHeight },
+          maxBytes: 8 * 1024 * 1024,
+          pixelRatio: 2.5,
         });
       } else {
         const { toPng } = await import("html-to-image");
@@ -1707,7 +1710,9 @@ function DayDetailDialog({
         });
         blob = await (await fetch(dataUrl)).blob();
       }
-      const action = await shareOrDownload(blob, filename, `คิวงานวันที่ ${formatDate(date)}`);
+      const action = outputAction === "share"
+        ? await shareOrDownload(blob, filename, `คิวงานวันที่ ${formatDate(date)}`)
+        : await saveFile(blob, filename);
       toast.success(action === "shared" ? "เปิดเมนูแชร์แล้ว" : "ดาวน์โหลดไฟล์เรียบร้อย");
     } catch (error) {
       toast.error("สร้างไฟล์ไม่สำเร็จ: " + (error as Error).message);
@@ -1781,11 +1786,19 @@ function DayDetailDialog({
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2">
+                <div className="flex rounded-md border bg-background p-0.5" aria-label="วิธีส่งออก">
+                  <Button size="sm" variant={outputAction === "share" ? "secondary" : "ghost"} onClick={() => setOutputAction("share")}>
+                    <Share2 className="mr-1 h-4 w-4" /> แชร์
+                  </Button>
+                  <Button size="sm" variant={outputAction === "download" ? "secondary" : "ghost"} onClick={() => setOutputAction("download")}>
+                    <FileDown className="mr-1 h-4 w-4" /> ดาวน์โหลด
+                  </Button>
+                </div>
                 <Button size="sm" variant="outline" disabled={!!exporting} onClick={() => exportDailyQueue("image")}>
-                  {exporting === "image" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />} รูปภาพ
+                  {exporting === "image" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />} {outputAction === "share" ? "แชร์" : "ดาวน์โหลด"}รูปภาพ
                 </Button>
                 <Button size="sm" disabled={!!exporting} onClick={() => exportDailyQueue("pdf")}>
-                  {exporting === "pdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />} PDF
+                  {exporting === "pdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />} {outputAction === "share" ? "แชร์" : "ดาวน์โหลด"} PDF
                 </Button>
               </div>
             </div>
