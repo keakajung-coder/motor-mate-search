@@ -1776,25 +1776,42 @@ function DayList({
                   </div>
                   <JobStatusBadge status={a.status} />
                 </div>
-                {isAdmin && (
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => onEdit(a)}>
-                      แก้ไข
+                {a.status !== "closed" && (
+                  <label
+                    className={
+                      "flex w-fit cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-xs font-medium " +
+                      (a.status === "scheduled" ? "border-amber-400 bg-amber-50 text-amber-700" : "text-muted-foreground")
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-amber-500"
+                      checked={a.status === "scheduled"}
+                      onChange={(e) => setStatus(a, e.target.checked ? "scheduled" : "approved")}
+                    />
+                    นัดหมายแล้ว
+                  </label>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => onEdit(a)}>
+                    แก้ไข
+                  </Button>
+                  {a.status !== "in_progress" && a.status !== "closed" && (
+                    <Button size="sm" onClick={() => setStatus(a, "in_progress")}>
+                      เริ่มดำเนินการ
                     </Button>
-                    {a.status !== "in_progress" && a.status !== "closed" && (
-                      <Button size="sm" onClick={() => setStatus(a, "in_progress")}>
-                        เริ่มดำเนินการ
-                      </Button>
-                    )}
+                  )}
 
-                    <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
-                      {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดงาน"}
-                    </Button>
+                  <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
+                    {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดงาน"}
+                  </Button>
+                  {isAdmin && (
                     <ConfirmButton onConfirm={() => remove(a)} description="ลบนัดหมายนี้?">
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </ConfirmButton>
-                  </div>
-                )}
+                  )}
+                </div>
+
               </div>
             ))}
           </div>
