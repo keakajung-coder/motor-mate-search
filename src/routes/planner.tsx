@@ -2259,8 +2259,10 @@ function CloseJobDialog({
         close_note: note.trim() || null,
         closed_at: appt.closed_at ?? new Date().toISOString(),
         quotation_required: quotation,
-        parts_categories: cats.join(", ") || null,
+        parts_categories: cats.filter((c) => PART_CATEGORIES.includes(c)).join(", ") || null,
         parts_note: partsNote.trim() || null,
+        parts_replaced: [cats.join(", "), partsNote.trim()].filter(Boolean).join(" · ") || null,
+        quotation_items: quoteItems.join(", ") || null,
       })
       .eq("id", appt.id);
     if (error) {
@@ -2367,19 +2369,42 @@ function CloseJobDialog({
         </div>
 
         <div className="space-y-2 rounded-xl border p-3">
-          <p className="text-sm font-semibold">หมวดอะไหล่ที่ใช้ในงานนี้</p>
+          <p className="text-sm font-semibold">อะไหล่ที่เปลี่ยนในงานนี้</p>
+          <p className="text-xs text-muted-foreground">
+            {unitParts.length > 0
+              ? `อะไหล่ที่บันทึกไว้กับเครื่อง ${appt.serial_number ?? ""}`
+              : "ยังไม่มีอะไหล่บันทึกไว้กับเครื่องนี้ — เลือกจากหมวดอะไหล่ หรือพิมพ์เพิ่มเอง"}
+          </p>
           <div className="grid grid-cols-2 gap-1.5">
-            {PART_CATEGORIES.map((c) => (
+            {partOptions.map((c) => (
               <label key={c} className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={cats.includes(c)} onChange={() => toggleCat(c)} />
                 {c}
               </label>
             ))}
           </div>
+          <MultiCombobox
+            values={cats}
+            onChange={setCats}
+            options={Array.from(new Set([...partOptions, ...catalog]))}
+            placeholder="เลือกอะไหล่จากคลัง หรือพิมพ์ชื่อใหม่"
+            searchPlaceholder="ค้นหาอะไหล่ในคลัง..."
+          />
           <Input
             placeholder="ระบุอะไหล่เพิ่มเติม / รายละเอียดอื่นๆ"
             value={partsNote}
             onChange={(e) => setPartsNote(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2 rounded-xl border p-3">
+          <p className="text-sm font-semibold">รายการที่ต้องเสนอราคาเพิ่มเติม</p>
+          <MultiCombobox
+            values={quoteItems}
+            onChange={setQuoteItems}
+            options={Array.from(new Set([...catalog, ...partOptions]))}
+            placeholder="เลือกอะไหล่ที่ต้องเสนอราคา หรือพิมพ์เอง"
+            searchPlaceholder="ค้นหาอะไหล่ในคลัง..."
           />
         </div>
 
