@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle, Undo2, Redo2, Lock } from "lucide-react";
+import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle, Undo2, Redo2 } from "lucide-react";
 import { ImportExportTab } from "@/components/admin/ImportExportTab";
 import { OptionListManager } from "@/components/admin/OptionListManager";
 import { SalesContactsCard } from "@/components/admin/SalesContactsCard";
@@ -27,7 +27,7 @@ import { refreshDirectory } from "@/lib/directory";
 import { PasscodeSettings } from "@/components/admin/PasscodeSettings";
 import { BackupRestore } from "@/components/admin/BackupRestore";
 import { AlertSettings } from "@/components/admin/AlertSettings";
-import { AdminLockButton } from "@/components/AccessGate";
+import { ReadOnlyScope } from "@/components/AccessGate";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { lineHref, telHref, visibleLineId } from "@/lib/contact";
 import { ConfirmButton } from "@/components/ConfirmButton";
