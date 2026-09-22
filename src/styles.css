@@ -607,3 +607,19 @@
   font-size: 12px;
   text-align: center;
 }
+.daily-queue-pdf-stage {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  z-index: -1;
+}
+.daily-queue-document--pdf-page {
+  display: flex;
+  height: 1123px;
+  min-height: 1123px;
+  flex-direction: column;
+}
+.daily-queue-document--pdf-page .daily-queue-document__body {
+  flex: 1;
+  align-content: start;
+}

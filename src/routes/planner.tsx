@@ -1692,12 +1692,35 @@ function DayDetailDialog({
     try {
       let blob: Blob;
       if (kind === "pdf") {
-        blob = await elementToPdfBlobPaged(el, 0, {
-          orientation: "portrait",
-          size: { width: el.scrollWidth, height: el.scrollHeight },
-          maxBytes: 8 * 1024 * 1024,
-          pixelRatio: 2.5,
+        const stage = document.createElement("div");
+        stage.className = "daily-queue-pdf-stage";
+        const header = el.querySelector(".daily-queue-document__header");
+        const footer = el.querySelector("footer");
+        const jobs = Array.from(el.querySelectorAll<HTMLElement>(".daily-queue-document__job"));
+        const sourcePages = jobs.length ? jobs : [el.querySelector<HTMLElement>(".daily-queue-document__empty")].filter(Boolean) as HTMLElement[];
+        const pages = sourcePages.map((source, index) => {
+          const page = document.createElement("div");
+          page.className = "daily-queue-document daily-queue-document--pdf-page";
+          if (header) page.append(header.cloneNode(true));
+          const body = document.createElement("main");
+          body.className = "daily-queue-document__body";
+          body.append(source.cloneNode(true));
+          page.append(body);
+          if (footer) {
+            const pageFooter = footer.cloneNode(true) as HTMLElement;
+            pageFooter.textContent = `เอกสารคิวงานรายวัน · หน้า ${index + 1}/${sourcePages.length}`;
+            page.append(pageFooter);
+          }
+          stage.append(page);
+          return page;
         });
+        document.body.append(stage);
+        try {
+          const { elementsToA4PdfBlob } = await import("@/lib/report");
+          blob = await elementsToA4PdfBlob(pages, { maxBytes: 8 * 1024 * 1024, pixelRatio: 2.5 });
+        } finally {
+          stage.remove();
+        }
       } else {
         const { toPng } = await import("html-to-image");
         const dataUrl = await toPng(el, {

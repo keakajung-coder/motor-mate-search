@@ -361,10 +361,13 @@ export async function elementToA4ImageBlob(el: HTMLElement): Promise<Blob> {
 }
 
 /** ส่งออก element (หนึ่งหรือหลายใบ) เป็น PDF A4 — หนึ่งใบต่อหนึ่งหน้า พอดีหน้า */
-export async function elementsToA4PdfBlob(els: HTMLElement[]): Promise<Blob> {
+export async function elementsToA4PdfBlob(
+  els: HTMLElement[],
+  opts?: { maxBytes?: number; pixelRatio?: number },
+): Promise<Blob> {
   const { default: jsPDF } = await import("jspdf");
   const imgs: HTMLImageElement[] = [];
-  for (const el of els) imgs.push(await captureElement(el));
+  for (const el of els) imgs.push(await captureElement(el, opts?.pixelRatio ?? 2));
 
   let quality = 0.9;
   let blob: Blob | null = null;
@@ -378,7 +381,7 @@ export async function elementsToA4PdfBlob(els: HTMLElement[]): Promise<Blob> {
       pdf.addImage(dataUrl, "JPEG", 0, 0, pageW, pageH, undefined, "FAST");
     });
     blob = pdf.output("blob");
-    if (blob.size <= MAX_BYTES) return blob;
+    if (blob.size <= (opts?.maxBytes ?? MAX_BYTES)) return blob;
     quality -= 0.2;
     if (quality < 0.3) break;
   }
