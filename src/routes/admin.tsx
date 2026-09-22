@@ -64,24 +64,6 @@ function SearchBox({ value, onChange, placeholder }: { value: string; onChange: 
 function AdminPage() {
   const { isAdmin } = useAccess();
 
-  if (!isAdmin) {
-    return (
-      <Card className="mx-auto max-w-md">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Lock className="h-4 w-4" /> ต้องปลดล็อกโหมดแอดมิน
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            กดไอคอนกุญแจที่มุมขวาบนของหน้าจอ แล้วกรอกรหัสแอดมินเพื่อเข้าจัดการข้อมูล
-          </p>
-          <AdminLockButton />
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">จัดการข้อมูล</h1>
@@ -96,38 +78,43 @@ function AdminPage() {
           <TabsTrigger value="lists" className="shrink-0">ผู้ขาย / สถานะ</TabsTrigger>
           <TabsTrigger value="bundles" className="shrink-0">ชุดอะไหล่</TabsTrigger>
           <TabsTrigger value="issues" className="shrink-0">คลังอาการเสีย (AI)</TabsTrigger>
-          <TabsTrigger value="io" className="shrink-0">นำเข้า / ส่งออก</TabsTrigger>
+          {isAdmin && <TabsTrigger value="io" className="shrink-0">นำเข้า / ส่งออก</TabsTrigger>}
           <TabsTrigger value="audit" className="shrink-0">ประวัติการแก้ไข</TabsTrigger>
-          <TabsTrigger value="security" className="shrink-0">ความปลอดภัย</TabsTrigger>
+          {isAdmin && <TabsTrigger value="security" className="shrink-0">ความปลอดภัย</TabsTrigger>}
         </TabsList>
-        <TabsContent value="machines"><MachinesTab /></TabsContent>
+        <TabsContent value="machines"><ReadOnlyScope><MachinesTab /></ReadOnlyScope></TabsContent>
+        {/* ลูกค้า: ผู้ใช้ทั่วไปเพิ่มลูกค้าใหม่ได้ (ลบได้เฉพาะแอดมิน) */}
         <TabsContent value="customers"><CustomersTab /></TabsContent>
-        <TabsContent value="products"><ProductsTab /></TabsContent>
-        <TabsContent value="brands"><BrandsTab /></TabsContent>
-        <TabsContent value="models"><ModelsTab /></TabsContent>
-        <TabsContent value="staff"><StaffVehiclesTab /></TabsContent>
+        <TabsContent value="products"><ReadOnlyScope><ProductsTab /></ReadOnlyScope></TabsContent>
+        <TabsContent value="brands"><ReadOnlyScope><BrandsTab /></ReadOnlyScope></TabsContent>
+        <TabsContent value="models"><ReadOnlyScope><ModelsTab /></ReadOnlyScope></TabsContent>
+        <TabsContent value="staff"><ReadOnlyScope><StaffVehiclesTab /></ReadOnlyScope></TabsContent>
         <TabsContent value="lists">
-          <div className="space-y-4">
-            <SellerTransfer />
-            <SalesContactsCard />
-            <div className="grid gap-4">
-              <OptionListManager listKey="statuses" column="status" title="สถานะเครื่อง" presets={MACHINE_STATUSES} />
+          <ReadOnlyScope>
+            <div className="space-y-4">
+              <SellerTransfer />
+              <SalesContactsCard />
+              <div className="grid gap-4">
+                <OptionListManager listKey="statuses" column="status" title="สถานะเครื่อง" presets={MACHINE_STATUSES} />
+              </div>
             </div>
-          </div>
+          </ReadOnlyScope>
         </TabsContent>
 
 
-        <TabsContent value="bundles"><BundlesTab /></TabsContent>
-        <TabsContent value="issues"><TroubleshootTab /></TabsContent>
-        <TabsContent value="io"><ImportExportTab /></TabsContent>
-        <TabsContent value="audit"><AuditLogTab /></TabsContent>
-        <TabsContent value="security">
-          <div className="grid gap-4 md:grid-cols-2">
-            <AlertSettings />
-            <PasscodeSettings />
-            <BackupRestore />
-          </div>
-        </TabsContent>
+        <TabsContent value="bundles"><ReadOnlyScope><BundlesTab /></ReadOnlyScope></TabsContent>
+        <TabsContent value="issues"><ReadOnlyScope><TroubleshootTab /></ReadOnlyScope></TabsContent>
+        {isAdmin && <TabsContent value="io"><ImportExportTab /></TabsContent>}
+        <TabsContent value="audit"><ReadOnlyScope><AuditLogTab /></ReadOnlyScope></TabsContent>
+        {isAdmin && (
+          <TabsContent value="security">
+            <div className="grid gap-4 md:grid-cols-2">
+              <AlertSettings />
+              <PasscodeSettings />
+              <BackupRestore />
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
