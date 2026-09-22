@@ -396,11 +396,9 @@ function PlannerPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <WorkOrderDialog onCreated={load} />
-          {isAdmin && (
-            <Button variant="outline" className="h-11" onClick={() => setEditing(newAppointment(iso(cursor)))}>
-              <CalendarPlus className="mr-1 h-4 w-4" /> เพิ่มนัดหมายลงปฏิทินโดยตรง
-            </Button>
-          )}
+          <Button variant="outline" className="h-11" onClick={() => setEditing(newAppointment(iso(cursor)))}>
+            <CalendarPlus className="mr-1 h-4 w-4" /> เพิ่มนัดหมายลงปฏิทินโดยตรง
+          </Button>
         </div>
       </header>
 
