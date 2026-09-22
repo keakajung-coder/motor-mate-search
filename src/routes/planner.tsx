@@ -2179,6 +2179,9 @@ function CloseJobDialog({
   const [quotation, setQuotation] = useState(false);
   const [cats, setCats] = useState<string[]>([]);
   const [partsNote, setPartsNote] = useState("");
+  const [quoteItems, setQuoteItems] = useState<string[]>([]);
+  const [unitParts, setUnitParts] = useState<string[]>([]);
+  const [catalog, setCatalog] = useState<string[]>([]);
 
   // โหลดรายละเอียดปิดงานเดิมเมื่อเข้ามาแก้ไข
   useEffect(() => {
@@ -2187,18 +2190,59 @@ function CloseJobDialog({
     (async () => {
       const { data } = await supabase
         .from("appointments")
-        .select("quotation_required, parts_categories, parts_note")
+        .select("quotation_required, parts_categories, parts_note, parts_replaced, quotation_items")
         .eq("id", appt.id)
         .maybeSingle();
       if (!alive || !data) return;
       setQuotation(!!data.quotation_required);
-      setCats((data.parts_categories ?? "").split(",").map((x) => x.trim()).filter(Boolean));
+      setCats(
+        splitNames(data.parts_replaced ?? "").length
+          ? splitNames(data.parts_replaced)
+          : splitNames(data.parts_categories ?? ""),
+      );
       setPartsNote(data.parts_note ?? "");
+      setQuoteItems(splitNames(data.quotation_items ?? ""));
     })();
     return () => {
       alive = false;
     };
   }, [isEdit, appt.id]);
+
+  // อะไหล่ที่บันทึกไว้กับเครื่องเครื่องนี้ + คลังอะไหล่ทั้งหมด (สำหรับเลือก)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const prodRes = await supabase.from("products").select("name, part_number").order("name").limit(500);
+      const names = (prodRes.data ?? []).map((p) => [p.part_number, p.name].filter(Boolean).join(" · "));
+      if (alive) setCatalog(names);
+
+      if (!appt.serial_number) return;
+      const { data: unit } = await supabase
+        .from("machine_units")
+        .select("id")
+        .eq("serial_number", appt.serial_number)
+        .maybeSingle();
+      if (!unit?.id) return;
+      const { data: mp } = await supabase
+        .from("machine_parts")
+        .select("products(name, part_number)")
+        .eq("machine_unit_id", unit.id);
+      if (!alive) return;
+      const logged = (mp ?? [])
+        .map((r) => {
+          const p = (r as { products: { name: string | null; part_number: string | null } | null }).products;
+          return p ? [p.part_number, p.name].filter(Boolean).join(" · ") : "";
+        })
+        .filter(Boolean);
+      setUnitParts(Array.from(new Set(logged)));
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [appt.serial_number]);
+
+  // อะไหล่ของเครื่องที่บันทึกไว้ ถ้าไม่มีให้ใช้ชื่อหมวดอะไหล่แทน
+  const partOptions = unitParts.length > 0 ? unitParts : PART_CATEGORIES;
   const toggleCat = (c: string) =>
     setCats((list) => (list.includes(c) ? list.filter((x) => x !== c) : [...list, c]));
 
