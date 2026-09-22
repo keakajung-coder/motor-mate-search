@@ -24,6 +24,7 @@ export function CollapsibleSection({
     <div className={"rounded-xl border bg-card " + (className ?? "")}>
       <button
         type="button"
+        data-readonly-allow
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left hover:bg-accent/40"
       >

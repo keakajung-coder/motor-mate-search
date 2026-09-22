@@ -396,11 +396,9 @@ function PlannerPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <WorkOrderDialog onCreated={load} />
-          {isAdmin && (
-            <Button variant="outline" className="h-11" onClick={() => setEditing(newAppointment(iso(cursor)))}>
-              <CalendarPlus className="mr-1 h-4 w-4" /> เพิ่มนัดหมายลงปฏิทินโดยตรง
-            </Button>
-          )}
+          <Button variant="outline" className="h-11" onClick={() => setEditing(newAppointment(iso(cursor)))}>
+            <CalendarPlus className="mr-1 h-4 w-4" /> เพิ่มนัดหมายลงปฏิทินโดยตรง
+          </Button>
         </div>
       </header>
 
@@ -575,7 +573,7 @@ function PlannerPage() {
                 cursor={cursor}
                 appts={visible}
                 onPick={(a) => setEditing(a)}
-                onPickDate={isAdmin ? (d) => setEditing(newAppointment(d)) : undefined}
+                onPickDate={(d) => setEditing(newAppointment(d))}
                 onPickDay={(d) => setDayDetail(d)}
               />
             </div>
@@ -590,11 +588,7 @@ function PlannerPage() {
                   }
                   appts={visible}
                   onPick={(a) => setEditing(a)}
-                  onPickSlot={
-                    isAdmin
-                      ? (d, t) => setEditing({ ...newAppointment(d), visit_time: t })
-                      : undefined
-                  }
+                  onPickSlot={(d, t) => setEditing({ ...newAppointment(d), visit_time: t })}
                 />
               </div>
               {view === "day" && (
@@ -630,7 +624,7 @@ function PlannerPage() {
       {editing && (
         <AppointmentDialog
           value={editing}
-          canEdit={isAdmin}
+          canEdit
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
@@ -1776,25 +1770,42 @@ function DayList({
                   </div>
                   <JobStatusBadge status={a.status} />
                 </div>
-                {isAdmin && (
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => onEdit(a)}>
-                      แก้ไข
+                {a.status !== "closed" && (
+                  <label
+                    className={
+                      "flex w-fit cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-xs font-medium " +
+                      (a.status === "scheduled" ? "border-amber-400 bg-amber-50 text-amber-700" : "text-muted-foreground")
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-amber-500"
+                      checked={a.status === "scheduled"}
+                      onChange={(e) => setStatus(a, e.target.checked ? "scheduled" : "approved")}
+                    />
+                    นัดหมายแล้ว
+                  </label>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => onEdit(a)}>
+                    แก้ไข
+                  </Button>
+                  {a.status !== "in_progress" && a.status !== "closed" && (
+                    <Button size="sm" onClick={() => setStatus(a, "in_progress")}>
+                      เริ่มดำเนินการ
                     </Button>
-                    {a.status !== "in_progress" && a.status !== "closed" && (
-                      <Button size="sm" onClick={() => setStatus(a, "in_progress")}>
-                        เริ่มดำเนินการ
-                      </Button>
-                    )}
+                  )}
 
-                    <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
-                      {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดงาน"}
-                    </Button>
+                  <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
+                    {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดงาน"}
+                  </Button>
+                  {isAdmin && (
                     <ConfirmButton onConfirm={() => remove(a)} description="ลบนัดหมายนี้?">
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </ConfirmButton>
-                  </div>
-                )}
+                  )}
+                </div>
+
               </div>
             ))}
           </div>
@@ -1846,6 +1857,7 @@ function AppointmentDialog({
   const [form, setForm] = useState<Appointment>(value);
   const [editMode, setEditMode] = useState(!value.id);
   const [saving, setSaving] = useState(false);
+  const { isAdmin: canDelete } = useAccess();
   const locked = !canEdit || !editMode;
   const dir = useDirectory();
   const sellerNames = useSellerNames();
@@ -2115,7 +2127,7 @@ function AppointmentDialog({
         </div>
 
         <DialogFooter className="gap-2">
-          {canEdit && form.id && (
+          {canDelete && form.id && (
             <ConfirmButton
               variant="destructive"
               size="default"
@@ -2167,6 +2179,9 @@ function CloseJobDialog({
   const [quotation, setQuotation] = useState(false);
   const [cats, setCats] = useState<string[]>([]);
   const [partsNote, setPartsNote] = useState("");
+  const [quoteItems, setQuoteItems] = useState<string[]>([]);
+  const [unitParts, setUnitParts] = useState<string[]>([]);
+  const [catalog, setCatalog] = useState<string[]>([]);
 
   // โหลดรายละเอียดปิดงานเดิมเมื่อเข้ามาแก้ไข
   useEffect(() => {
@@ -2175,18 +2190,59 @@ function CloseJobDialog({
     (async () => {
       const { data } = await supabase
         .from("appointments")
-        .select("quotation_required, parts_categories, parts_note")
+        .select("quotation_required, parts_categories, parts_note, parts_replaced, quotation_items")
         .eq("id", appt.id)
         .maybeSingle();
       if (!alive || !data) return;
       setQuotation(!!data.quotation_required);
-      setCats((data.parts_categories ?? "").split(",").map((x) => x.trim()).filter(Boolean));
+      setCats(
+        splitNames(data.parts_replaced ?? "").length
+          ? splitNames(data.parts_replaced)
+          : splitNames(data.parts_categories ?? ""),
+      );
       setPartsNote(data.parts_note ?? "");
+      setQuoteItems(splitNames(data.quotation_items ?? ""));
     })();
     return () => {
       alive = false;
     };
   }, [isEdit, appt.id]);
+
+  // อะไหล่ที่บันทึกไว้กับเครื่องเครื่องนี้ + คลังอะไหล่ทั้งหมด (สำหรับเลือก)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const prodRes = await supabase.from("products").select("name, part_number").order("name").limit(500);
+      const names = (prodRes.data ?? []).map((p) => [p.part_number, p.name].filter(Boolean).join(" · "));
+      if (alive) setCatalog(names);
+
+      if (!appt.serial_number) return;
+      const { data: unit } = await supabase
+        .from("machine_units")
+        .select("id")
+        .eq("serial_number", appt.serial_number)
+        .maybeSingle();
+      if (!unit?.id) return;
+      const { data: mp } = await supabase
+        .from("machine_parts")
+        .select("products(name, part_number)")
+        .eq("machine_unit_id", unit.id);
+      if (!alive) return;
+      const logged = (mp ?? [])
+        .map((r) => {
+          const p = (r as { products: { name: string | null; part_number: string | null } | null }).products;
+          return p ? [p.part_number, p.name].filter(Boolean).join(" · ") : "";
+        })
+        .filter(Boolean);
+      setUnitParts(Array.from(new Set(logged)));
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [appt.serial_number]);
+
+  // อะไหล่ของเครื่องที่บันทึกไว้ ถ้าไม่มีให้ใช้ชื่อหมวดอะไหล่แทน
+  const partOptions = unitParts.length > 0 ? unitParts : PART_CATEGORIES;
   const toggleCat = (c: string) =>
     setCats((list) => (list.includes(c) ? list.filter((x) => x !== c) : [...list, c]));
 
@@ -2203,8 +2259,10 @@ function CloseJobDialog({
         close_note: note.trim() || null,
         closed_at: appt.closed_at ?? new Date().toISOString(),
         quotation_required: quotation,
-        parts_categories: cats.join(", ") || null,
+        parts_categories: cats.filter((c) => PART_CATEGORIES.includes(c)).join(", ") || null,
         parts_note: partsNote.trim() || null,
+        parts_replaced: [cats.join(", "), partsNote.trim()].filter(Boolean).join(" · ") || null,
+        quotation_items: quoteItems.join(", ") || null,
       })
       .eq("id", appt.id);
     if (error) {
@@ -2311,19 +2369,42 @@ function CloseJobDialog({
         </div>
 
         <div className="space-y-2 rounded-xl border p-3">
-          <p className="text-sm font-semibold">หมวดอะไหล่ที่ใช้ในงานนี้</p>
+          <p className="text-sm font-semibold">อะไหล่ที่เปลี่ยนในงานนี้</p>
+          <p className="text-xs text-muted-foreground">
+            {unitParts.length > 0
+              ? `อะไหล่ที่บันทึกไว้กับเครื่อง ${appt.serial_number ?? ""}`
+              : "ยังไม่มีอะไหล่บันทึกไว้กับเครื่องนี้ — เลือกจากหมวดอะไหล่ หรือพิมพ์เพิ่มเอง"}
+          </p>
           <div className="grid grid-cols-2 gap-1.5">
-            {PART_CATEGORIES.map((c) => (
+            {partOptions.map((c) => (
               <label key={c} className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={cats.includes(c)} onChange={() => toggleCat(c)} />
                 {c}
               </label>
             ))}
           </div>
+          <MultiCombobox
+            values={cats}
+            onChange={setCats}
+            options={Array.from(new Set([...partOptions, ...catalog]))}
+            placeholder="เลือกอะไหล่จากคลัง หรือพิมพ์ชื่อใหม่"
+            searchPlaceholder="ค้นหาอะไหล่ในคลัง..."
+          />
           <Input
             placeholder="ระบุอะไหล่เพิ่มเติม / รายละเอียดอื่นๆ"
             value={partsNote}
             onChange={(e) => setPartsNote(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2 rounded-xl border p-3">
+          <p className="text-sm font-semibold">รายการที่ต้องเสนอราคาเพิ่มเติม</p>
+          <MultiCombobox
+            values={quoteItems}
+            onChange={setQuoteItems}
+            options={Array.from(new Set([...catalog, ...partOptions]))}
+            placeholder="เลือกอะไหล่ที่ต้องเสนอราคา หรือพิมพ์เอง"
+            searchPlaceholder="ค้นหาอะไหล่ในคลัง..."
           />
         </div>
 

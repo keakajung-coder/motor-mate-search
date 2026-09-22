@@ -153,6 +153,42 @@ export function AdminLockButton() {
   );
 }
 
+/**
+ * โหมดดูอย่างเดียวสำหรับผู้ใช้ทั่วไป
+ * ยังเปิดดู ค้นหา และพับ/กางข้อมูลได้ แต่กดปุ่มเพิ่ม/แก้ไข/ลบไม่ได้
+ */
+export function ReadOnlyScope({ children }: { children: React.ReactNode }) {
+  const { isAdmin } = useAccess();
+
+  if (isAdmin) return <>{children}</>;
+
+  const guard = (e: React.MouseEvent | React.KeyboardEvent) => {
+    const target = e.target as HTMLElement | null;
+    const ctl = target?.closest("button, [role='button'], a[href]") as HTMLElement | null;
+    if (!ctl) return;
+    // อนุญาต: แท็บ/ป๊อปอัป/ตัวพับเก็บ และส่วนที่ทำเครื่องหมายว่าใช้ดูข้อมูลได้
+    if (ctl.hasAttribute("data-state") || ctl.closest("[data-readonly-allow]")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    toast.info("โหมดดูอย่างเดียว — ปลดล็อกแอดมินเพื่อเพิ่ม แก้ไข หรือลบข้อมูล");
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <Lock className="h-4 w-4" />
+        คุณกำลังดูข้อมูลแบบอ่านอย่างเดียว การเพิ่ม แก้ไข และลบข้อมูลสงวนไว้สำหรับผู้ดูแลระบบ
+        <span className="ml-auto" data-readonly-allow>
+          <AdminLockButton />
+        </span>
+      </div>
+      <div onClickCapture={guard} onKeyDownCapture={(e) => e.key === "Enter" && guard(e)}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /** ล็อกเนื้อหาไว้เฉพาะแอดมิน */
 export function AdminOnly({ children }: { children: React.ReactNode }) {
   const { isAdmin } = useAccess();
