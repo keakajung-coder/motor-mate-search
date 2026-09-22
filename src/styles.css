@@ -88,6 +88,16 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
+  --report-background: oklch(1 0 0);
+  --report-foreground: oklch(0.279 0.041 260.031);
+  --report-muted: oklch(0.446 0.043 257.281);
+  --report-border: oklch(0.869 0.022 252.894);
+  --report-border-strong: oklch(0.704 0.04 256.788);
+  --report-heading: oklch(0.372 0.044 257.287);
+  --report-soft: oklch(0.929 0.013 255.508);
+  --report-pending: oklch(0.637 0.237 25.331);
+  --report-active: oklch(0.769 0.188 70.08);
+  --report-completed: oklch(0.596 0.145 163.225);
   --sidebar: oklch(0.984 0.003 247.858);
   --sidebar-foreground: oklch(0.129 0.042 264.695);
   --sidebar-primary: oklch(0.208 0.042 265.755);
@@ -465,4 +475,151 @@
 .job-report-export .job-report-table-wrap {
   max-height: none !important;
   overflow: visible !important;
+}
+
+/* เอกสารคิวงานรายวัน: ขนาด A4 คงที่และตัวอักษรอ่านง่ายทั้งภาพ/PDF */
+.daily-queue-document {
+  box-sizing: border-box;
+  width: 794px;
+  min-height: 1123px;
+  padding: 42px 46px 32px;
+  background: var(--report-background);
+  color: var(--report-foreground);
+  font-family: "Prompt", "Noto Sans Thai", ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+}
+.daily-queue-document__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 3px solid var(--report-heading);
+  padding-bottom: 18px;
+}
+.daily-queue-document__eyebrow {
+  margin: 0 0 4px;
+  color: var(--report-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+.daily-queue-document h2 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.25;
+}
+.daily-queue-document__date {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+.daily-queue-document__date span,
+.daily-queue-document__date small {
+  color: var(--report-muted);
+  font-size: 13px;
+}
+.daily-queue-document__date strong {
+  font-size: 20px;
+}
+.daily-queue-document__body {
+  display: grid;
+  gap: 18px;
+  padding: 24px 0;
+}
+.daily-queue-document__job {
+  position: relative;
+  overflow: hidden;
+  break-inside: avoid;
+  border: 1px solid var(--report-border-strong);
+  border-left-width: 8px;
+  border-radius: 6px;
+  padding: 18px 20px;
+}
+.daily-queue-document__job--pending { border-left-color: var(--report-pending); }
+.daily-queue-document__job--active { border-left-color: var(--report-active); }
+.daily-queue-document__job--completed { border-left-color: var(--report-completed); }
+.daily-queue-document__job-head {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--report-border);
+  padding-bottom: 12px;
+}
+.daily-queue-document__sequence {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--report-soft);
+  font-size: 17px;
+  font-weight: 700;
+}
+.daily-queue-document__time {
+  margin: 0;
+  color: var(--report-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+.daily-queue-document h3 {
+  margin: 1px 0 0;
+  font-size: 21px;
+  line-height: 1.35;
+}
+.daily-queue-document__status {
+  border: 1px solid var(--report-border-strong);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.daily-queue-document__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 14px 0 0;
+}
+.daily-queue-document__grid div { min-width: 0; }
+.daily-queue-document__grid dt {
+  color: var(--report-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.daily-queue-document__grid dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  font-weight: 500;
+}
+.daily-queue-document__wide { grid-column: 1 / -1; }
+.daily-queue-document__empty {
+  padding: 160px 0;
+  text-align: center;
+  color: var(--report-muted);
+  font-size: 18px;
+}
+.daily-queue-document footer {
+  border-top: 1px solid var(--report-border-strong);
+  padding-top: 12px;
+  color: var(--report-muted);
+  font-size: 12px;
+  text-align: center;
+}
+.daily-queue-pdf-stage {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  z-index: -1;
+}
+.daily-queue-document--pdf-page {
+  display: flex;
+  height: 1123px;
+  min-height: 1123px;
+  flex-direction: column;
+}
+.daily-queue-document--pdf-page .daily-queue-document__body {
+  flex: 1;
+  align-content: start;
 }

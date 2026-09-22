@@ -222,7 +222,12 @@ export const MACHINE_STATUSES = [
 export async function elementToPdfBlobPaged(
   el: HTMLElement,
   pages: number,
-  opts?: { orientation?: "portrait" | "landscape"; size?: { width: number; height: number } },
+  opts?: {
+    orientation?: "portrait" | "landscape";
+    size?: { width: number; height: number };
+    maxBytes?: number;
+    pixelRatio?: number;
+  },
 ): Promise<Blob> {
   const [{ toJpeg }, { default: jsPDF }] = await Promise.all([
     import("html-to-image"),
@@ -230,7 +235,7 @@ export async function elementToPdfBlobPaged(
   ]);
 
   const steps: Array<{ pixelRatio: number; quality: number }> = [
-    { pixelRatio: 2, quality: 0.82 },
+    { pixelRatio: opts?.pixelRatio ?? 2, quality: opts?.maxBytes ? 0.92 : 0.82 },
     { pixelRatio: 1.5, quality: 0.7 },
     { pixelRatio: 1.2, quality: 0.6 },
     { pixelRatio: 1, quality: 0.5 },
@@ -295,7 +300,7 @@ export async function elementToPdfBlobPaged(
     for (let p = total; p < wanted; p++) pdf.addPage();
 
     last = pdf.output("blob");
-    if (last.size <= MAX_BYTES) return last;
+    if (last.size <= (opts?.maxBytes ?? MAX_BYTES)) return last;
   }
   return last!;
 }
@@ -356,10 +361,13 @@ export async function elementToA4ImageBlob(el: HTMLElement): Promise<Blob> {
 }
 
 /** ส่งออก element (หนึ่งหรือหลายใบ) เป็น PDF A4 — หนึ่งใบต่อหนึ่งหน้า พอดีหน้า */
-export async function elementsToA4PdfBlob(els: HTMLElement[]): Promise<Blob> {
+export async function elementsToA4PdfBlob(
+  els: HTMLElement[],
+  opts?: { maxBytes?: number; pixelRatio?: number },
+): Promise<Blob> {
   const { default: jsPDF } = await import("jspdf");
   const imgs: HTMLImageElement[] = [];
-  for (const el of els) imgs.push(await captureElement(el));
+  for (const el of els) imgs.push(await captureElement(el, opts?.pixelRatio ?? 2));
 
   let quality = 0.9;
   let blob: Blob | null = null;
@@ -373,7 +381,7 @@ export async function elementsToA4PdfBlob(els: HTMLElement[]): Promise<Blob> {
       pdf.addImage(dataUrl, "JPEG", 0, 0, pageW, pageH, undefined, "FAST");
     });
     blob = pdf.output("blob");
-    if (blob.size <= MAX_BYTES) return blob;
+    if (blob.size <= (opts?.maxBytes ?? MAX_BYTES)) return blob;
     quality -= 0.2;
     if (quality < 0.3) break;
   }
