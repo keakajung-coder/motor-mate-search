@@ -38,8 +38,12 @@ import {
   FileDown,
   Pencil,
   Phone,
+  RotateCcw,
+  Share2,
   Trash2,
   XCircle,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -47,7 +51,7 @@ import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog, WorkOrderFormPrint }
 import { Combobox } from "@/components/ui/combobox";
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { ensureDirectoryEntries, useDirectory } from "@/lib/directory";
-import { elementToPdfBlobPaged, formatDate, isMachineComplete, saveFile } from "@/lib/report";
+import { elementToPdfBlobPaged, formatDate, isMachineComplete, saveFile, shareOrDownload } from "@/lib/report";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { JobReportsPanel } from "@/components/JobReportsPanel";
 import { PART_CATEGORIES } from "@/lib/job-fields";
@@ -1663,47 +1667,189 @@ function DayDetailDialog({
   onPick: (a: Appointment) => void;
 }) {
   const list = sortApptList(appts.filter((a) => a.visit_date === date), sortBy).sort(byVehicleThenTime);
+  const [preview, setPreview] = useState(false);
+  const [zoom, setZoom] = useState(0.7);
+  const [documentHeight, setDocumentHeight] = useState(1100);
+  const [exporting, setExporting] = useState<"" | "image" | "pdf">("");
+  const documentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!preview || !documentRef.current) return;
+    const el = documentRef.current;
+    const measure = () => setDocumentHeight(el.scrollHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [preview, list.length]);
+
+  const exportDailyQueue = async (kind: "image" | "pdf") => {
+    const el = documentRef.current;
+    if (!el) return;
+    setExporting(kind);
+    const filename = `คิวงาน-${date}.${kind === "pdf" ? "pdf" : "png"}`;
+    try {
+      let blob: Blob;
+      if (kind === "pdf") {
+        blob = await elementToPdfBlobPaged(el, 0, {
+          orientation: "portrait",
+          size: { width: el.scrollWidth, height: el.scrollHeight },
+        });
+      } else {
+        const { toPng } = await import("html-to-image");
+        const dataUrl = await toPng(el, {
+          backgroundColor: "#ffffff",
+          cacheBust: true,
+          pixelRatio: 2,
+          width: el.scrollWidth,
+          height: el.scrollHeight,
+          style: { width: `${el.scrollWidth}px`, height: `${el.scrollHeight}px` },
+        });
+        blob = await (await fetch(dataUrl)).blob();
+      }
+      const action = await shareOrDownload(blob, filename, `คิวงานวันที่ ${formatDate(date)}`);
+      toast.success(action === "shared" ? "เปิดเมนูแชร์แล้ว" : "ดาวน์โหลดไฟล์เรียบร้อย");
+    } catch (error) {
+      toast.error("สร้างไฟล์ไม่สำเร็จ: " + (error as Error).message);
+    } finally {
+      setExporting("");
+    }
+  };
+
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>คิวงานวันที่ {formatDate(date)}</DialogTitle>
-          <DialogDescription>ทั้งหมด {list.length} งาน · แตะรายการเพื่อดูรายละเอียดเชิงลึก</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-2">
-          {list.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีนัดหมายในวันนี้</p>}
-          {list.map((a) => (
-            <button
-              key={a.id}
-              onClick={() => onPick(a)}
-              className={
-                "relative block w-full overflow-hidden rounded-xl border py-3 pl-6 pr-3 text-left " + vehicleColor(a.vehicle_plate)
-              }
-            >
-              <StatusRail status={a.status} />
-              <p className="font-medium">
-                {a.visit_time?.slice(0, 5) || "-"} · {a.customer_name || "ไม่ระบุลูกค้า"}
-              </p>
-              <p className="text-xs opacity-80">เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}{a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}</p>
-              <p className="text-xs opacity-80">ประเภทงาน: {splitNames(a.service_type).join(" / ") || "-"}</p>
-              <p className="text-xs opacity-80">
-                {a.sales_rep ? `เซลล์: ${a.sales_rep} · ` : ""}ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {splitNames(a.vehicle_plate).join(" / ") || "-"} ·{" "}
-                {STATUS_LABEL[a.status] ?? a.status}
-              </p>
-              {a.customer_address && <p className="text-xs opacity-80">{a.customer_address}</p>}
-              {a.job_detail && <p className="mt-1 text-sm">{a.job_detail}</p>}
-            </button>
-          ))}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            ปิด
-          </Button>
-        </DialogFooter>
+      <DialogContent className={preview ? "max-h-[94vh] max-w-[96vw] overflow-hidden p-3 sm:max-w-5xl sm:p-5" : "max-h-[90vh] overflow-y-auto sm:max-w-xl"}>
+        {!preview ? (
+          <>
+            <DialogHeader className="pr-8">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <DialogTitle>คิวงานวันที่ {formatDate(date)}</DialogTitle>
+                  <DialogDescription className="mt-1">ทั้งหมด {list.length} งาน · แตะรายการเพื่อดูรายละเอียดเชิงลึก</DialogDescription>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setPreview(true)}>
+                  <Share2 className="mr-1 h-4 w-4" /> แชร์
+                </Button>
+              </div>
+            </DialogHeader>
+            <div className="space-y-2">
+              {list.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีนัดหมายในวันนี้</p>}
+              {list.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => onPick(a)}
+                  className={
+                    "relative block w-full overflow-hidden rounded-xl border py-3 pl-6 pr-3 text-left " + vehicleColor(a.vehicle_plate)
+                  }
+                >
+                  <StatusRail status={a.status} />
+                  <p className="font-medium">
+                    {a.visit_time?.slice(0, 5) || "-"} · {a.customer_name || "ไม่ระบุลูกค้า"}
+                  </p>
+                  <p className="text-xs opacity-80">เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}{a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}</p>
+                  <p className="text-xs opacity-80">ประเภทงาน: {splitNames(a.service_type).join(" / ") || "-"}</p>
+                  <p className="text-xs opacity-80">
+                    {a.sales_rep ? `เซลล์: ${a.sales_rep} · ` : ""}ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {splitNames(a.vehicle_plate).join(" / ") || "-"} ·{" "}
+                    {STATUS_LABEL[a.status] ?? a.status}
+                  </p>
+                  {a.customer_address && <p className="text-xs opacity-80">{a.customer_address}</p>}
+                  {a.job_detail && <p className="mt-1 text-sm">{a.job_detail}</p>}
+                </button>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={onClose}>ปิด</Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader className="pr-8">
+              <DialogTitle>ตัวอย่างคิวงานวันที่ {formatDate(date)}</DialogTitle>
+              <DialogDescription>ตรวจรายละเอียดและขยายเอกสารก่อนแชร์หรือดาวน์โหลด</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/40 p-2">
+              <div className="flex items-center gap-1">
+                <Button size="icon" variant="outline" aria-label="ซูมออก" title="ซูมออก" onClick={() => setZoom((v) => Math.max(0.4, v - 0.1))}>
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <span className="w-14 text-center text-sm font-medium">{Math.round(zoom * 100)}%</span>
+                <Button size="icon" variant="outline" aria-label="ซูมเข้า" title="ซูมเข้า" onClick={() => setZoom((v) => Math.min(1.5, v + 0.1))}>
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+                <Button size="icon" variant="ghost" aria-label="คืนขนาด" title="คืนขนาด" onClick={() => setZoom(0.7)}>
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" disabled={!!exporting} onClick={() => exportDailyQueue("image")}>
+                  {exporting === "image" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />} รูปภาพ
+                </Button>
+                <Button size="sm" disabled={!!exporting} onClick={() => exportDailyQueue("pdf")}>
+                  {exporting === "pdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />} PDF
+                </Button>
+              </div>
+            </div>
+            <div className="h-[62vh] overflow-auto rounded-md border bg-muted p-3">
+              <div className="relative mx-auto" style={{ width: 794 * zoom, height: documentHeight * zoom }}>
+                <div className="absolute left-0 top-0 origin-top-left" style={{ transform: `scale(${zoom})` }}>
+                  <DailyQueueDocument ref={documentRef} date={date} list={list} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPreview(false)}>กลับไปรายการงาน</Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
 }
+
+const DailyQueueDocument = ({ ref, date, list }: { ref: React.Ref<HTMLDivElement>; date: string; list: Appointment[] }) => (
+  <div ref={ref} className="daily-queue-document">
+    <header className="daily-queue-document__header">
+      <div>
+        <p className="daily-queue-document__eyebrow">ตารางปฏิบัติงานบริการ</p>
+        <h2>คิวงานรายวัน</h2>
+      </div>
+      <div className="daily-queue-document__date">
+        <span>วันที่</span>
+        <strong>{formatDate(date)}</strong>
+        <small>ทั้งหมด {list.length} งาน</small>
+      </div>
+    </header>
+    <main className="daily-queue-document__body">
+      {list.length === 0 ? (
+        <p className="daily-queue-document__empty">ไม่มีนัดหมายในวันนี้</p>
+      ) : list.map((a, index) => (
+        <section key={a.id} className={`daily-queue-document__job daily-queue-document__job--${statusStage(a.status)}`}>
+          <div className="daily-queue-document__job-head">
+            <div className="daily-queue-document__sequence">{index + 1}</div>
+            <div>
+              <p className="daily-queue-document__time">{a.visit_time?.slice(0, 5) || "ไม่ระบุเวลา"}</p>
+              <h3>{a.customer_name || "ไม่ระบุลูกค้า"}</h3>
+            </div>
+            <span className="daily-queue-document__status">{STATUS_LABEL[a.status] ?? a.status}</span>
+          </div>
+          <dl className="daily-queue-document__grid">
+            <div><dt>เครื่อง / รุ่น</dt><dd>{splitNames(a.machine_label).join(" / ") || "-"}</dd></div>
+            <div><dt>Serial Number</dt><dd>{splitNames(a.serial_number).join(" / ") || "-"}</dd></div>
+            <div><dt>ประเภทงาน</dt><dd>{splitNames(a.service_type).join(" / ") || "-"}</dd></div>
+            <div><dt>ผู้ขาย / เซลล์</dt><dd>{a.sales_rep || "-"}</dd></div>
+            <div><dt>ช่างผู้รับผิดชอบ</dt><dd>{splitNames(a.staff_name).join(", ") || "-"}</dd></div>
+            <div><dt>รถบริการ</dt><dd>{splitNames(a.vehicle_plate).join(" / ") || "-"}</dd></div>
+            <div><dt>ผู้ติดต่อ</dt><dd>{[a.contact_name, a.contact_phone].filter(Boolean).join(" · ") || "-"}</dd></div>
+            <div className="daily-queue-document__wide"><dt>ที่อยู่หน้างาน</dt><dd>{a.customer_address || "-"}</dd></div>
+            <div className="daily-queue-document__wide"><dt>รายละเอียดงาน / อาการ</dt><dd>{a.job_detail || "-"}</dd></div>
+            {(a.result || a.close_note) && <div className="daily-queue-document__wide"><dt>ผลการดำเนินงาน</dt><dd>{[a.result, a.close_note].filter(Boolean).join(" · ")}</dd></div>}
+          </dl>
+        </section>
+      ))}
+    </main>
+    <footer>เอกสารคิวงานรายวัน · สร้างจากระบบจัดการงานบริการ</footer>
+  </div>
+);
 
 
 
