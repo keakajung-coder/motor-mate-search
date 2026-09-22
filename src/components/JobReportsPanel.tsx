@@ -33,6 +33,8 @@ type Row = {
   quotation_required: boolean | null;
   parts_categories: string | null;
   parts_note: string | null;
+  parts_replaced: string | null;
+  quotation_items: string | null;
 };
 
 const iso = (d: Date) => {
@@ -88,7 +90,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
       supabase
         .from("appointments")
         .select(
-          "id, customer_name, job_detail, staff_name, sales_rep, vehicle_plate, serial_number, customer_sn, visit_date, visit_time, status, result, close_note, quotation_required, parts_categories, parts_note",
+          "id, customer_name, job_detail, staff_name, sales_rep, vehicle_plate, serial_number, customer_sn, visit_date, visit_time, status, result, close_note, quotation_required, parts_categories, parts_note, parts_replaced, quotation_items",
         )
         .gte("visit_date", range.from)
         .lte("visit_date", range.to)
@@ -171,9 +173,18 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
   const scopeLabel =
     scope === "open" ? "ก่อนปิดงาน (งานค้าง)" : scope === "closed" ? "หลังปิดงาน (ปิดแล้ว)" : "ทุกสถานะ";
 
+  /** อะไหล่ที่เปลี่ยนจริงในงาน */
+  const replacedParts = (r: Row) => {
+    const details = [r.parts_replaced, r.parts_categories, r.parts_note]
+      .map((value) => value?.trim())
+      .filter(Boolean);
+    return details.length ? [...new Set(details)].join(" · ") : "-";
+  };
+
+  /** รายการที่ต้องเสนอราคาเพิ่มเติม */
   const quotationItems = (r: Row) => {
-    const details = [r.parts_categories, r.parts_note].map((value) => value?.trim()).filter(Boolean);
-    if (details.length) return details.join(" · ");
+    const items = r.quotation_items?.trim();
+    if (items) return items;
     return r.quotation_required ? "ต้องเสนอราคาเพิ่มเติม" : "-";
   };
 
@@ -394,6 +405,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
                     "S/N ลูกค้า",
                     "งานที่ได้รับมอบหมาย",
                     "งานที่ดำเนินการ",
+                    "อะไหล่ที่เปลี่ยน",
                     "รายการเสนอราคาเพิ่มเติม",
                     "ชื่อช่าง",
                     "รถ",
