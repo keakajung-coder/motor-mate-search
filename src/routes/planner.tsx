@@ -573,7 +573,7 @@ function PlannerPage() {
                 cursor={cursor}
                 appts={visible}
                 onPick={(a) => setEditing(a)}
-                onPickDate={isAdmin ? (d) => setEditing(newAppointment(d)) : undefined}
+                onPickDate={(d) => setEditing(newAppointment(d))}
                 onPickDay={(d) => setDayDetail(d)}
               />
             </div>
@@ -588,11 +588,7 @@ function PlannerPage() {
                   }
                   appts={visible}
                   onPick={(a) => setEditing(a)}
-                  onPickSlot={
-                    isAdmin
-                      ? (d, t) => setEditing({ ...newAppointment(d), visit_time: t })
-                      : undefined
-                  }
+                  onPickSlot={(d, t) => setEditing({ ...newAppointment(d), visit_time: t })}
                 />
               </div>
               {view === "day" && (
@@ -628,7 +624,7 @@ function PlannerPage() {
       {editing && (
         <AppointmentDialog
           value={editing}
-          canEdit={isAdmin}
+          canEdit
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
