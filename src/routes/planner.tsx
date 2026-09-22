@@ -1857,6 +1857,7 @@ function AppointmentDialog({
   const [form, setForm] = useState<Appointment>(value);
   const [editMode, setEditMode] = useState(!value.id);
   const [saving, setSaving] = useState(false);
+  const { isAdmin: canDelete } = useAccess();
   const locked = !canEdit || !editMode;
   const dir = useDirectory();
   const sellerNames = useSellerNames();
@@ -2126,7 +2127,7 @@ function AppointmentDialog({
         </div>
 
         <DialogFooter className="gap-2">
-          {canEdit && form.id && (
+          {canDelete && form.id && (
             <ConfirmButton
               variant="destructive"
               size="default"
