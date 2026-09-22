@@ -420,13 +420,13 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td className="border px-2 py-2 text-muted-foreground" colSpan={9}>
+                    <td className="border px-2 py-2 text-muted-foreground" colSpan={10}>
                       กำลังโหลด...
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td className="border px-2 py-2 text-muted-foreground" colSpan={9}>
+                    <td className="border px-2 py-2 text-muted-foreground" colSpan={10}>
                       ไม่มีข้อมูลในช่วงนี้
                     </td>
                   </tr>
@@ -443,6 +443,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
                       <td className="border px-2 py-1 font-mono font-semibold">{custSn(r) || "-"}</td>
                       <td className="border px-2 py-1">{r.job_detail || "-"}</td>
                       <td className="border px-2 py-1">{r.close_note || (r.status === "closed" ? "ปิดงานแล้ว" : "-")}</td>
+                      <td className="border px-2 py-1">{replacedParts(r)}</td>
                       <td className="border px-2 py-1">{quotationItems(r)}</td>
                       <td className="border px-2 py-1">{r.staff_name || "-"}</td>
                       <td className="border px-2 py-1">{r.vehicle_plate || "-"}</td>
