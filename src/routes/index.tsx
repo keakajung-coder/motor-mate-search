@@ -98,7 +98,7 @@ function HomePage() {
   const [focusToken, setFocusToken] = useState(0);
 
   return (
-    <div className="space-y-5 pb-24">
+    <div className="min-w-0 space-y-5 pb-[calc(6rem+env(safe-area-inset-bottom))]">
       {/* ===== แถวที่ 1: ปุ่มค้นหาทางลัดอัจฉริยะ ===== */}
       <div className="sticky top-0 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-card sm:px-4 sm:shadow-sm">
         <Button
@@ -1492,7 +1492,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="flex min-w-0 flex-wrap items-end gap-2">
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">จำนวนหน้ากระดาษ (0 = อัตโนมัติ)</label>
               <Input
@@ -1504,7 +1504,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
                 className="h-9 w-24"
               />
             </div>
-            <div className="flex gap-1">
+            <div className="flex max-w-full gap-1 overflow-x-auto pb-1">
               <Button
                 size="sm"
                 variant={pages === 0 ? "default" : "outline"}
@@ -1523,7 +1523,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
                 </Button>
               ))}
             </div>
-            <div className="flex gap-1">
+            <div className="flex max-w-full gap-1 overflow-x-auto pb-1">
               <Button
                 size="sm"
                 variant={orientation === "portrait" ? "default" : "outline"}
@@ -1563,7 +1563,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
             <span className="text-xs text-muted-foreground">
               {size ? `ขนาดไฟล์: ${size} • ${pages} หน้า` : ""}
             </span>
-            <div className="flex gap-2">
+            <div className="flex min-w-0 flex-wrap gap-2">
               <Button
                 variant="outline"
                 disabled={!blob}

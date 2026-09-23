@@ -2018,7 +2018,7 @@ function DayList({
                   )}
 
                   <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
-                    {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดงาน"}
+                    {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดใบงาน"}
                   </Button>
                   {isAdmin && (
                     <ConfirmButton onConfirm={() => remove(a)} description="ลบนัดหมายนี้?">
