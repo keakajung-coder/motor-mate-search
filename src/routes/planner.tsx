@@ -392,13 +392,13 @@ function PlannerPage() {
         : formatDate(iso(cursor));
 
   return (
-    <div className="space-y-5 p-2 sm:p-4 pb-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <div className="min-w-0 space-y-5 p-1 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <header className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">ปฏิทินนัดหมายบริการ</h1>
           <p className="text-sm text-muted-foreground">วางแผนงานเข้าบริการ ตรวจใบสั่งงาน และแจ้งเตือนอะไหล่ล่วงหน้า</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-wrap gap-2 sm:justify-end">
           <WorkOrderDialog onCreated={load} />
           <Button variant="outline" className="h-11" onClick={() => setEditing(newAppointment(iso(cursor)))}>
             <CalendarPlus className="mr-1 h-4 w-4" /> เพิ่มนัดหมายลงปฏิทินโดยตรง
@@ -415,12 +415,12 @@ function PlannerPage() {
         </div>
 
         {isAdmin && (
-          <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} defaultOpen className="md:col-span-2 xl:col-span-1">
+          <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} className="md:col-span-2 xl:col-span-1">
             <PendingOrders orders={orders} reload={load} />
           </FoldSection>
         )}
 
-        <FoldSection title="งานที่อนุมัติแล้ว / ฝ่ายขายยืนยันนัดหมาย" defaultOpen>
+        <FoldSection title="งานที่อนุมัติแล้ว / ฝ่ายขายยืนยันนัดหมาย">
           <ApprovedOrders reloadPlanner={load} />
         </FoldSection>
 
@@ -622,6 +622,10 @@ function PlannerPage() {
             setDayDetail(null);
             setEditing(a);
           }}
+          onCloseJob={(a) => {
+            setDayDetail(null);
+            setClosing(a);
+          }}
         />
       )}
 
@@ -633,6 +637,10 @@ function PlannerPage() {
           onSaved={() => {
             setEditing(null);
             load();
+          }}
+          onCloseJob={(a) => {
+            setEditing(null);
+            setClosing(a);
           }}
         />
       )}

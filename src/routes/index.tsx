@@ -133,7 +133,12 @@ function HomePage() {
       </div>
 
       {/* ===== แถวที่ 3: แจ้งเตือนอายุอะไหล่ 30 วัน ===== */}
-      <PartsAlertPanel />
+      <CollapsibleSection
+        title="อะไหล่ครบกำหนดเปลี่ยนใน 30 วัน"
+        subtitle="เปิดดูรายการอะไหล่ที่ใกล้ครบกำหนด"
+      >
+        <PartsAlertPanel />
+      </CollapsibleSection>
 
       {/* ===== แถวที่ 4: ตารางข้อมูลทั้งหมด (ยุบแถว) ===== */}
       <Tabs value={tab} onValueChange={setTab} className="w-full">
@@ -1008,7 +1013,6 @@ function SnView({
         <CollapsibleSection
           title={`สถานะเครื่อง (ทั้งหมด ${units.length} เครื่อง)`}
           subtitle="กรองรายการตามสถานะเครื่อง"
-          defaultOpen={true}
         >
           <div className="flex flex-wrap items-center gap-2">
             <FilterChip active={statusFilter === null} onClick={() => setStatusFilter(null)}>
@@ -1042,7 +1046,6 @@ function SnView({
         <CollapsibleSection
           title={`ข้อมูลเครื่องจักรทั้งหมด (พบ ${filtered.length} เครื่อง)`}
           subtitle="แสดงชื่อลูกค้าและ S/N — กด 👁️ ดูเพิ่มเติม เพื่อกางอะไหล่"
-          defaultOpen={true}
         >
           <div className="space-y-2">
             {filtered.map((u) => (
@@ -1277,7 +1280,6 @@ function MachineCard({
                     key={g.name}
                     title={g.name}
                     subtitle={`${g.items.length} รายการ`}
-                    defaultOpen={true}
                   >
                     <div className="grid gap-3 sm:grid-cols-2">
                       {g.items.map((mp) => (

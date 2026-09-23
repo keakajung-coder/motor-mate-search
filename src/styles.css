@@ -150,9 +150,15 @@
 
   html {
     font-family: "Prompt", "Noto Sans Thai", ui-sans-serif, system-ui, sans-serif;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   body {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 100dvh;
+    overflow-x: hidden;
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-size: 16px;
@@ -162,6 +168,10 @@
 
   h1, h2, h3 {
     line-height: 1.45;
+  }
+
+  input, select, textarea, button {
+    max-width: 100%;
   }
 }
 

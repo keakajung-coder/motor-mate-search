@@ -33,7 +33,7 @@ export function TroubleshootTab() {
 
   return (
     <div className="space-y-4">
-      <CollapsibleSection title="➕ เพิ่มอาการเสียใหม่" subtitle="พิมพ์อาการ แล้วให้ AI ช่วยร่างคำตอบ" defaultOpen>
+      <CollapsibleSection title="➕ เพิ่มอาการเสียใหม่" subtitle="พิมพ์อาการ แล้วให้ AI ช่วยร่างคำตอบ">
         <div className="flex flex-wrap gap-2">
           <Input
             className="min-w-[14rem] flex-1"
@@ -50,7 +50,6 @@ export function TroubleshootTab() {
       <CollapsibleSection
         title={`🕓 อาการรออนุมัติ (${pending.length})`}
         subtitle="ปัญหาใหม่ที่ช่างส่งเข้ามา — ให้ AI ร่างคำตอบ ตรวจแล้วกดอนุมัติ"
-        defaultOpen
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         {!loading && pending.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีรายการรออนุมัติ</p>}
@@ -62,7 +61,6 @@ export function TroubleshootTab() {
       <CollapsibleSection
         title={`📚 คลังความรู้ที่เผยแพร่แล้ว (${published.length})`}
         subtitle="ช่างค้นหาเจอที่หน้าแรก"
-        defaultOpen
       >
         {published.map((i) => (
           <IssueEditor key={i.id} issue={i} onSaved={reload} />
