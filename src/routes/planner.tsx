@@ -36,6 +36,8 @@ import {
   Loader2,
   Camera,
   FileDown,
+  Eye,
+  EyeOff,
   Pencil,
   Phone,
   RotateCcw,
@@ -237,8 +239,12 @@ function FoldSection({
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-semibold hover:bg-accent/50"
       >
-        {title}
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        <span className="min-w-0 break-words">{title}</span>
+        <span className="flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
+          {open ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {open ? "ซ่อนข้อมูล" : "ดูเพิ่มเติม"}
+          <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        </span>
       </button>
       {open && <div className="border-t p-3">{children}</div>}
     </div>
@@ -421,7 +427,7 @@ function PlannerPage() {
         )}
 
         <FoldSection title="งานที่อนุมัติแล้ว / ฝ่ายขายยืนยันนัดหมาย">
-          <ApprovedOrders reloadPlanner={load} />
+          <ApprovedOrders reloadPlanner={load} onCloseJob={setClosing} />
         </FoldSection>
 
         <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
