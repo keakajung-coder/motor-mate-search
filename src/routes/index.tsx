@@ -98,7 +98,7 @@ function HomePage() {
   const [focusToken, setFocusToken] = useState(0);
 
   return (
-    <div className="space-y-5 pb-24">
+    <div className="min-w-0 space-y-5 pb-[calc(6rem+env(safe-area-inset-bottom))]">
       {/* ===== แถวที่ 1: ปุ่มค้นหาทางลัดอัจฉริยะ ===== */}
       <div className="sticky top-0 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-card sm:px-4 sm:shadow-sm">
         <Button
@@ -133,7 +133,12 @@ function HomePage() {
       </div>
 
       {/* ===== แถวที่ 3: แจ้งเตือนอายุอะไหล่ 30 วัน ===== */}
-      <PartsAlertPanel />
+      <CollapsibleSection
+        title="อะไหล่ครบกำหนดเปลี่ยนใน 30 วัน"
+        subtitle="เปิดดูรายการอะไหล่ที่ใกล้ครบกำหนด"
+      >
+        <PartsAlertPanel />
+      </CollapsibleSection>
 
       {/* ===== แถวที่ 4: ตารางข้อมูลทั้งหมด (ยุบแถว) ===== */}
       <Tabs value={tab} onValueChange={setTab} className="w-full">
@@ -1008,7 +1013,6 @@ function SnView({
         <CollapsibleSection
           title={`สถานะเครื่อง (ทั้งหมด ${units.length} เครื่อง)`}
           subtitle="กรองรายการตามสถานะเครื่อง"
-          defaultOpen={true}
         >
           <div className="flex flex-wrap items-center gap-2">
             <FilterChip active={statusFilter === null} onClick={() => setStatusFilter(null)}>
@@ -1042,7 +1046,6 @@ function SnView({
         <CollapsibleSection
           title={`ข้อมูลเครื่องจักรทั้งหมด (พบ ${filtered.length} เครื่อง)`}
           subtitle="แสดงชื่อลูกค้าและ S/N — กด 👁️ ดูเพิ่มเติม เพื่อกางอะไหล่"
-          defaultOpen={true}
         >
           <div className="space-y-2">
             {filtered.map((u) => (
@@ -1277,7 +1280,6 @@ function MachineCard({
                     key={g.name}
                     title={g.name}
                     subtitle={`${g.items.length} รายการ`}
-                    defaultOpen={true}
                   >
                     <div className="grid gap-3 sm:grid-cols-2">
                       {g.items.map((mp) => (
@@ -1490,7 +1492,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="flex min-w-0 flex-wrap items-end gap-2">
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">จำนวนหน้ากระดาษ (0 = อัตโนมัติ)</label>
               <Input
@@ -1502,7 +1504,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
                 className="h-9 w-24"
               />
             </div>
-            <div className="flex gap-1">
+            <div className="flex max-w-full gap-1 overflow-x-auto pb-1">
               <Button
                 size="sm"
                 variant={pages === 0 ? "default" : "outline"}
@@ -1521,7 +1523,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
                 </Button>
               ))}
             </div>
-            <div className="flex gap-1">
+            <div className="flex max-w-full gap-1 overflow-x-auto pb-1">
               <Button
                 size="sm"
                 variant={orientation === "portrait" ? "default" : "outline"}
@@ -1561,7 +1563,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
             <span className="text-xs text-muted-foreground">
               {size ? `ขนาดไฟล์: ${size} • ${pages} หน้า` : ""}
             </span>
-            <div className="flex gap-2">
+            <div className="flex min-w-0 flex-wrap gap-2">
               <Button
                 variant="outline"
                 disabled={!blob}

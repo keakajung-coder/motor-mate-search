@@ -36,6 +36,8 @@ import {
   Loader2,
   Camera,
   FileDown,
+  Eye,
+  EyeOff,
   Pencil,
   Phone,
   RotateCcw,
@@ -237,8 +239,12 @@ function FoldSection({
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-semibold hover:bg-accent/50"
       >
-        {title}
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        <span className="min-w-0 break-words">{title}</span>
+        <span className="flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
+          {open ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {open ? "ซ่อนข้อมูล" : "ดูเพิ่มเติม"}
+          <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        </span>
       </button>
       {open && <div className="border-t p-3">{children}</div>}
     </div>
@@ -392,13 +398,13 @@ function PlannerPage() {
         : formatDate(iso(cursor));
 
   return (
-    <div className="space-y-5 p-2 sm:p-4 pb-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <div className="min-w-0 space-y-5 p-1 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <header className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">ปฏิทินนัดหมายบริการ</h1>
           <p className="text-sm text-muted-foreground">วางแผนงานเข้าบริการ ตรวจใบสั่งงาน และแจ้งเตือนอะไหล่ล่วงหน้า</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-wrap gap-2 sm:justify-end">
           <WorkOrderDialog onCreated={load} />
           <Button variant="outline" className="h-11" onClick={() => setEditing(newAppointment(iso(cursor)))}>
             <CalendarPlus className="mr-1 h-4 w-4" /> เพิ่มนัดหมายลงปฏิทินโดยตรง
@@ -415,13 +421,13 @@ function PlannerPage() {
         </div>
 
         {isAdmin && (
-          <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} defaultOpen className="md:col-span-2 xl:col-span-1">
+          <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} className="md:col-span-2 xl:col-span-1">
             <PendingOrders orders={orders} reload={load} />
           </FoldSection>
         )}
 
-        <FoldSection title="งานที่อนุมัติแล้ว / ฝ่ายขายยืนยันนัดหมาย" defaultOpen>
-          <ApprovedOrders reloadPlanner={load} />
+        <FoldSection title="งานที่อนุมัติแล้ว / ฝ่ายขายยืนยันนัดหมาย">
+          <ApprovedOrders reloadPlanner={load} onCloseJob={setClosing} />
         </FoldSection>
 
         <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
@@ -622,6 +628,10 @@ function PlannerPage() {
             setDayDetail(null);
             setEditing(a);
           }}
+          onCloseJob={(a) => {
+            setDayDetail(null);
+            setClosing(a);
+          }}
         />
       )}
 
@@ -633,6 +643,10 @@ function PlannerPage() {
           onSaved={() => {
             setEditing(null);
             load();
+          }}
+          onCloseJob={(a) => {
+            setEditing(null);
+            setClosing(a);
           }}
         />
       )}
@@ -1022,7 +1036,13 @@ function EditField({ label, children }: { label: string; children: React.ReactNo
 // ---------- Approved work orders (export) ----------
 
 /** ใบสั่งงานที่อนุมัติแล้ว: ส่งออกเป็นรูปภาพ หรือ PDF ได้ทันที */
-function ApprovedOrders({ reloadPlanner }: { reloadPlanner: () => void }) {
+function ApprovedOrders({
+  reloadPlanner,
+  onCloseJob,
+}: {
+  reloadPlanner: () => void;
+  onCloseJob: (appt: Appointment) => void;
+}) {
   const [rows, setRows] = useState<WorkOrder[]>([]);
   const [appointments, setAppointments] = useState<Record<string, Appointment>>({});
   const [busy, setBusy] = useState("");
@@ -1242,6 +1262,11 @@ function ApprovedOrders({ reloadPlanner }: { reloadPlanner: () => void }) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            {appointments[o.id] && appointments[o.id].status !== "closed" && (
+              <Button size="sm" variant="secondary" onClick={() => onCloseJob(appointments[o.id])}>
+                <CheckCircle2 className="mr-1 h-4 w-4" /> ปิดใบงาน
+              </Button>
+            )}
             <Button size="sm" variant="outline" disabled={!!busy} onClick={() => exportOne(o, "image")}>
               {busy === o.id + "image" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
               บันทึกรูปภาพ
@@ -1659,12 +1684,14 @@ function DayDetailDialog({
   sortBy = "date-asc",
   onClose,
   onPick,
+  onCloseJob,
 }: {
   date: string;
   appts: Appointment[];
   sortBy?: string;
   onClose: () => void;
   onPick: (a: Appointment) => void;
+  onCloseJob: (a: Appointment) => void;
 }) {
   const list = sortApptList(appts.filter((a) => a.visit_date === date), sortBy).sort(byVehicleThenTime);
   const [preview, setPreview] = useState(false);
@@ -1763,26 +1790,38 @@ function DayDetailDialog({
             <div className="space-y-2">
               {list.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีนัดหมายในวันนี้</p>}
               {list.map((a) => (
-                <button
+                <div
                   key={a.id}
-                  onClick={() => onPick(a)}
                   className={
-                    "relative block w-full overflow-hidden rounded-xl border py-3 pl-6 pr-3 text-left " + vehicleColor(a.vehicle_plate)
+                    "relative grid min-w-0 grid-cols-1 gap-2 overflow-hidden rounded-xl border py-3 pl-6 pr-3 sm:grid-cols-[minmax(0,1fr)_auto] " + vehicleColor(a.vehicle_plate)
                   }
                 >
                   <StatusRail status={a.status} />
-                  <p className="font-medium">
-                    {a.visit_time?.slice(0, 5) || "-"} · {a.customer_name || "ไม่ระบุลูกค้า"}
-                  </p>
-                  <p className="text-xs opacity-80">เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}{a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}</p>
-                  <p className="text-xs opacity-80">ประเภทงาน: {splitNames(a.service_type).join(" / ") || "-"}</p>
-                  <p className="text-xs opacity-80">
-                    {a.sales_rep ? `เซลล์: ${a.sales_rep} · ` : ""}ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {splitNames(a.vehicle_plate).join(" / ") || "-"} ·{" "}
-                    {STATUS_LABEL[a.status] ?? a.status}
-                  </p>
-                  {a.customer_address && <p className="text-xs opacity-80">{a.customer_address}</p>}
-                  {a.job_detail && <p className="mt-1 text-sm">{a.job_detail}</p>}
-                </button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => onPick(a)}
+                    className="h-auto min-w-0 justify-start whitespace-normal p-0 text-left hover:bg-transparent"
+                  >
+                    <span className="min-w-0 space-y-0.5">
+                      <span className="block break-words font-medium">
+                        {a.visit_time?.slice(0, 5) || "-"} · {a.customer_name || "ไม่ระบุลูกค้า"}
+                      </span>
+                      <span className="block break-words text-xs opacity-80">เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}{a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}</span>
+                      <span className="block break-words text-xs opacity-80">ประเภทงาน: {splitNames(a.service_type).join(" / ") || "-"}</span>
+                      <span className="block break-words text-xs opacity-80">
+                        {a.sales_rep ? `เซลล์: ${a.sales_rep} · ` : ""}ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {splitNames(a.vehicle_plate).join(" / ") || "-"} · {STATUS_LABEL[a.status] ?? a.status}
+                      </span>
+                      {a.customer_address && <span className="block break-words text-xs opacity-80">{a.customer_address}</span>}
+                      {a.job_detail && <span className="mt-1 block break-words text-sm">{a.job_detail}</span>}
+                    </span>
+                  </Button>
+                  {a.status !== "closed" && (
+                    <Button type="button" size="sm" variant="secondary" className="self-start" onClick={() => onCloseJob(a)}>
+                      <CheckCircle2 className="mr-1 h-4 w-4" /> ปิดใบงาน
+                    </Button>
+                  )}
+                </div>
               ))}
             </div>
             <DialogFooter>
@@ -1979,7 +2018,7 @@ function DayList({
                   )}
 
                   <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
-                    {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดงาน"}
+                    {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดใบงาน"}
                   </Button>
                   {isAdmin && (
                     <ConfirmButton onConfirm={() => remove(a)} description="ลบนัดหมายนี้?">
@@ -2029,12 +2068,14 @@ function AppointmentDialog({
   onClose,
   onSaved,
   onDeleted,
+  onCloseJob,
 }: {
   value: Appointment;
   canEdit: boolean;
   onClose: () => void;
   onSaved: () => void;
   onDeleted?: () => void;
+  onCloseJob: (a: Appointment) => void;
 }) {
   const [form, setForm] = useState<Appointment>(value);
   const [editMode, setEditMode] = useState(!value.id);
@@ -2324,6 +2365,11 @@ function AppointmentDialog({
           <Button variant="outline" onClick={onClose}>
             ปิด
           </Button>
+          {form.id && form.status !== "closed" && !editMode && (
+            <Button variant="secondary" onClick={() => onCloseJob(form)}>
+              <CheckCircle2 className="mr-1 h-4 w-4" /> ปิดใบงาน
+            </Button>
+          )}
           {canEdit && !editMode && (
             <Button onClick={() => setEditMode(true)}>
               <Pencil className="mr-1 h-4 w-4" /> แก้ไขข้อมูลนัดหมาย

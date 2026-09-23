@@ -165,9 +165,9 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AccessProvider>
         <AccessGate>
-          <div className="min-h-screen bg-background">
+          <div className="min-h-dvh min-w-0 overflow-x-clip bg-background">
             <NavBar />
-            <main className="mx-auto max-w-6xl px-4 py-6">
+            <main className="mx-auto min-w-0 max-w-6xl px-3 py-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-4 sm:py-6 sm:pb-[calc(6rem+env(safe-area-inset-bottom))]">
               <Outlet />
             </main>
           </div>
