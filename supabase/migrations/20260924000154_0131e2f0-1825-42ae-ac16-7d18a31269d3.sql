@@ -1,0 +1,12 @@
+ALTER TABLE public.compressor_models ALTER COLUMN brand_id DROP NOT NULL;
+ALTER TABLE public.machine_parts ALTER COLUMN machine_unit_id DROP NOT NULL, ALTER COLUMN product_id DROP NOT NULL;
+ALTER TABLE public.part_bundle_items ALTER COLUMN bundle_id DROP NOT NULL, ALTER COLUMN product_id DROP NOT NULL;
+ALTER TABLE public.compressor_models DROP CONSTRAINT compressor_models_brand_id_fkey, ADD CONSTRAINT compressor_models_brand_id_fkey FOREIGN KEY (brand_id) REFERENCES public.brands(id) ON DELETE SET NULL;
+ALTER TABLE public.products DROP CONSTRAINT products_brand_id_fkey, ADD CONSTRAINT products_brand_id_fkey FOREIGN KEY (brand_id) REFERENCES public.brands(id) ON DELETE SET NULL;
+ALTER TABLE public.products DROP CONSTRAINT products_model_id_fkey, ADD CONSTRAINT products_model_id_fkey FOREIGN KEY (model_id) REFERENCES public.compressor_models(id) ON DELETE SET NULL;
+ALTER TABLE public.products DROP CONSTRAINT products_category_id_fkey, ADD CONSTRAINT products_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE SET NULL;
+ALTER TABLE public.machine_parts DROP CONSTRAINT machine_parts_machine_unit_id_fkey, ADD CONSTRAINT machine_parts_machine_unit_id_fkey FOREIGN KEY (machine_unit_id) REFERENCES public.machine_units(id) ON DELETE SET NULL;
+ALTER TABLE public.machine_parts DROP CONSTRAINT machine_parts_product_id_fkey, ADD CONSTRAINT machine_parts_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE SET NULL;
+ALTER TABLE public.maintenance_logs DROP CONSTRAINT maintenance_logs_machine_unit_id_fkey, ADD CONSTRAINT maintenance_logs_machine_unit_id_fkey FOREIGN KEY (machine_unit_id) REFERENCES public.machine_units(id) ON DELETE SET NULL;
+ALTER TABLE public.part_bundle_items DROP CONSTRAINT part_bundle_items_bundle_id_fkey, ADD CONSTRAINT part_bundle_items_bundle_id_fkey FOREIGN KEY (bundle_id) REFERENCES public.part_bundles(id) ON DELETE SET NULL;
+ALTER TABLE public.part_bundle_items DROP CONSTRAINT part_bundle_items_product_id_fkey, ADD CONSTRAINT part_bundle_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE SET NULL;

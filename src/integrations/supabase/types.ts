@@ -259,7 +259,7 @@ export type Database = {
       }
       compressor_models: {
         Row: {
-          brand_id: string
+          brand_id: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -267,7 +267,7 @@ export type Database = {
           pump_type: string | null
         }
         Insert: {
-          brand_id: string
+          brand_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -275,7 +275,7 @@ export type Database = {
           pump_type?: string | null
         }
         Update: {
-          brand_id?: string
+          brand_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -334,9 +334,9 @@ export type Database = {
           hours_used: number | null
           id: string
           last_changed_at: string | null
-          machine_unit_id: string
+          machine_unit_id: string | null
           note: string | null
-          product_id: string
+          product_id: string | null
           quantity: number
           service_interval_hours: number | null
           updated_at: string | null
@@ -346,9 +346,9 @@ export type Database = {
           hours_used?: number | null
           id?: string
           last_changed_at?: string | null
-          machine_unit_id: string
+          machine_unit_id?: string | null
           note?: string | null
-          product_id: string
+          product_id?: string | null
           quantity?: number
           service_interval_hours?: number | null
           updated_at?: string | null
@@ -358,9 +358,9 @@ export type Database = {
           hours_used?: number | null
           id?: string
           last_changed_at?: string | null
-          machine_unit_id?: string
+          machine_unit_id?: string | null
           note?: string | null
-          product_id?: string
+          product_id?: string | null
           quantity?: number
           service_interval_hours?: number | null
           updated_at?: string | null
@@ -555,24 +555,24 @@ export type Database = {
       }
       part_bundle_items: {
         Row: {
-          bundle_id: string
+          bundle_id: string | null
           created_at: string
           id: string
-          product_id: string
+          product_id: string | null
           quantity: number
         }
         Insert: {
-          bundle_id: string
+          bundle_id?: string | null
           created_at?: string
           id?: string
-          product_id: string
+          product_id?: string | null
           quantity?: number
         }
         Update: {
-          bundle_id?: string
+          bundle_id?: string | null
           created_at?: string
           id?: string
-          product_id?: string
+          product_id?: string | null
           quantity?: number
         }
         Relationships: [

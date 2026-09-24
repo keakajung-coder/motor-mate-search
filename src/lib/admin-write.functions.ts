@@ -14,6 +14,8 @@ const ALLOWED_TABLES = new Set([
   "part_bundle_items",
   "part_bundles",
   "products",
+  "sales_contacts",
+  "notifications",
   "service_staff",
   "troubleshooting_issues",
   "vehicles",
