@@ -2505,7 +2505,7 @@ function CloseJobDialog({
     if (!result) return toast.error("กรุณาเลือกผลสรุปงาน");
     setSaving(true);
     const doneDate = new Date().toISOString().slice(0, 10);
-    await ensureParts([...cats, ...quoteItems]);
+    await ensureParts([...cats, ...quoteItems].filter((c) => !PART_CATEGORIES.includes(c)));
 
     const { error } = await supabase
       .from("appointments")
