@@ -52,7 +52,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog, WorkOrderFormPrint } from "@/components/WorkOrderDialog";
 import { Combobox } from "@/components/ui/combobox";
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
-import { ensureDirectoryEntries, useDirectory } from "@/lib/directory";
+import { ensureDirectoryEntries, ensureParts, useDirectory } from "@/lib/directory";
 import { elementToPdfBlobPaged, formatDate, isMachineComplete, saveFile, shareOrDownload } from "@/lib/report";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { JobReportsPanel } from "@/components/JobReportsPanel";
@@ -89,6 +89,7 @@ export const Route = createFileRoute("/planner")({
 type Appointment = {
   id: string;
   work_order_id?: string | null;
+  cust_id?: string | null;
   customer_name: string | null;
   customer_address: string | null;
   contact_name: string | null;
@@ -791,6 +792,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
     const { error } = await supabase.from("appointments").insert({
       work_order_id: o.id,
       machine_unit_id: unit?.id ?? null,
+      cust_id: m.cust_id ?? null,
       customer_name: m.customer_name,
       customer_address: m.customer_address,
       contact_name: m.contact_name,
@@ -2099,6 +2101,7 @@ function AppointmentDialog({
       return {
         ...f,
         customer_name: name,
+        cust_id: c?.cust_id || m?.cust_id || (c ? null : f.cust_id),
         serial_number: joinNames(kept),
         customer_address: c?.address || m?.address || f.customer_address,
         contact_phone: c?.phone || m?.phone || f.contact_phone,
@@ -2114,9 +2117,18 @@ function AppointmentDialog({
       serial_number: joinNames(serials),
       machine_label: joinNames(Array.from(new Set(hits.map((h) => h.label).filter(Boolean)))) || f.machine_label,
       customer_name: first?.customer || f.customer_name,
+      cust_id: first?.cust_id || f.cust_id,
       customer_address: first?.address || f.customer_address,
       contact_phone: first?.phone || f.contact_phone,
     }));
+  };
+  /** เลือก/พิมพ์รหัสลูกค้า → เติมข้อมูลลูกค้าอัตโนมัติ */
+  const pickCustId = (id: string) => {
+    const c = dir.customers.find((x) => x.cust_id.toLowerCase() === id.trim().toLowerCase());
+    if (c) {
+      pickCustomer(c.name);
+      setForm((f) => ({ ...f, cust_id: c.cust_id }));
+    } else setForm((f) => ({ ...f, cust_id: id }));
   };
 
   const save = async () => {
@@ -2126,13 +2138,15 @@ function AppointmentDialog({
     const plates = splitNames(form.vehicle_plate);
     await ensureDirectoryEntries({
       customer_name: form.customer_name,
+      cust_id: form.cust_id,
+      machine_label: form.machine_label,
       customer_address: form.customer_address,
       contact_phone: form.contact_phone,
       serial_number: serials[0] ?? "",
       staff_name: form.staff_name,
       vehicle_plate: plates[0] ?? "",
     });
-    for (const s of serials.slice(1)) await ensureDirectoryEntries({ customer_name: form.customer_name, serial_number: s });
+    for (const s of serials.slice(1)) await ensureDirectoryEntries({ customer_name: form.customer_name, serial_number: s, machine_label: form.machine_label });
     for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
     await ensureSeller(form.sales_rep);
 
@@ -2142,6 +2156,7 @@ function AppointmentDialog({
       .eq("serial_number", serials[0] ?? "")
       .maybeSingle();
     const payload = {
+      cust_id: form.cust_id?.trim() || null,
       customer_name: form.customer_name,
       customer_address: form.customer_address,
       contact_name: form.contact_name,
@@ -2227,14 +2242,26 @@ function AppointmentDialog({
 
 
         <div className="grid gap-3 sm:grid-cols-2">
+          <F label="รหัสลูกค้า (cust_id)">
+            <Combobox
+              disabled={locked}
+              value={form.cust_id ?? ""}
+              onChange={pickCustId}
+              options={dir.customers.filter((c) => c.cust_id).map((c) => ({ value: c.cust_id, hint: c.name }))}
+              allowCustom
+              placeholder="เลือก / พิมพ์รหัสลูกค้า"
+              searchPlaceholder="ค้นหารหัสลูกค้า..."
+            />
+          </F>
           <F label="ชื่อลูกค้า *">
             <Combobox
               disabled={locked}
               value={form.customer_name ?? ""}
               onChange={pickCustomer}
+              allowCustom
               options={dir.customers.map((c) => ({
                 value: c.name,
-                hint: [c.phone, c.address].filter(Boolean).join(" · "),
+                hint: [c.cust_id && `รหัส ${c.cust_id}`, c.phone, c.address].filter(Boolean).join(" · "),
               }))}
               placeholder="เลือกลูกค้า"
               searchPlaceholder="ค้นหาลูกค้า..."
@@ -2478,6 +2505,7 @@ function CloseJobDialog({
     if (!result) return toast.error("กรุณาเลือกผลสรุปงาน");
     setSaving(true);
     const doneDate = new Date().toISOString().slice(0, 10);
+    await ensureParts([...cats, ...quoteItems]);
 
     const { error } = await supabase
       .from("appointments")
