@@ -299,7 +299,7 @@ function CustomersTab() {
   const { isAdmin } = useAccess();
   const [items, setItems] = useState<any[]>([]);
   const [machinesByCust, setMachinesByCust] = useState<Record<string, any[]>>({});
-  const emptyForm = { id: "", name: "", phone: "", line_contact: "", address: "", note: "" };
+  const emptyForm = { id: "", cust_id: "", name: "", phone: "", line_contact: "", address: "", note: "" };
   const [form, setForm] = useState(emptyForm);
   const [q, setQ] = useState("");
 
@@ -321,11 +321,17 @@ function CustomersTab() {
   const dup =
     form.name.trim() !== "" &&
     items.some((c) => c.name.trim().toLowerCase() === form.name.trim().toLowerCase() && c.id !== form.id);
+  const dupId =
+    form.cust_id.trim() !== "" &&
+    items.some((c) => (c.cust_id ?? "").trim().toLowerCase() === form.cust_id.trim().toLowerCase() && c.id !== form.id);
 
   async function save() {
     if (!form.name.trim()) return toast.error("กรอกชื่อลูกค้า");
     if (dup) return toast.error("ชื่อลูกค้านี้มีอยู่แล้ว");
+    if (dupId) return toast.error("รหัสลูกค้านี้มีอยู่แล้ว");
+    const custId = form.cust_id.trim() || null;
     const payload = {
+      cust_id: custId,
       name: form.name.trim(),
       phone: form.phone.trim() || null,
       line_contact: form.line_contact.trim() || null,
@@ -336,6 +342,13 @@ function CustomersTab() {
       ? await supabase.from("customers").update(payload).eq("id", form.id)
       : await supabase.from("customers").insert(payload);
     if (error) return toast.error(error.message);
+    // เชื่อมรหัสลูกค้ากลับไปยังใบงานและนัดหมายของลูกค้ารายนี้
+    if (custId) {
+      await Promise.all([
+        supabase.from("work_orders").update({ cust_id: custId }).eq("customer_name", payload.name),
+        supabase.from("appointments").update({ cust_id: custId }).eq("customer_name", payload.name),
+      ]);
+    }
     setForm(emptyForm);
     toast.success(form.id ? "บันทึกแล้ว" : "เพิ่มลูกค้าแล้ว");
     load();
@@ -344,7 +357,7 @@ function CustomersTab() {
   }
   function startEdit(c: any) {
     setForm({
-      id: c.id, name: c.name ?? "", phone: c.phone ?? "", line_contact: c.line_contact ?? "",
+      id: c.id, cust_id: c.cust_id ?? "", name: c.name ?? "", phone: c.phone ?? "", line_contact: c.line_contact ?? "",
       address: c.address ?? "", note: c.note ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -359,7 +372,7 @@ function CustomersTab() {
   const kw = q.trim().toLowerCase();
   const filtered = kw
     ? items.filter((c) =>
-        `${c.name ?? ""} ${c.phone ?? ""} ${c.address ?? ""} ${c.note ?? ""}`.toLowerCase().includes(kw),
+        `${c.cust_id ?? ""} ${c.name ?? ""} ${c.phone ?? ""} ${c.address ?? ""} ${c.note ?? ""}`.toLowerCase().includes(kw),
       )
     : items;
 
@@ -368,6 +381,11 @@ function CustomersTab() {
       <CardHeader><CardTitle>{form.id ? "แก้ไขลูกค้า" : "ลูกค้า"}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         <div className="grid gap-2 sm:grid-cols-2">
+          <div>
+            <Label>รหัสลูกค้า (cust_id)</Label>
+            <Input value={form.cust_id} placeholder="เช่น C0001" onChange={(e) => setForm({ ...form, cust_id: e.target.value })} />
+            {dupId && <p className="mt-1 text-xs text-destructive">รหัสลูกค้านี้มีอยู่แล้ว</p>}
+          </div>
           <div>
             <Label>ชื่อลูกค้า</Label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -405,10 +423,10 @@ function CustomersTab() {
         <SmartSearchBox
           value={q}
           onChange={setQ}
-          placeholder="ค้นหาชื่อลูกค้า / เบอร์ / ที่อยู่"
+          placeholder="ค้นหารหัสลูกค้า / ชื่อ / เบอร์ / ที่อยู่"
           suggestions={items.map((c) => ({
             id: c.id,
-            label: c.name,
+            label: c.cust_id ? `${c.cust_id} · ${c.name}` : c.name,
             sub: [c.phone, c.address].filter(Boolean).join(" • "),
             onSelect: () => { startEdit(c); setQ(""); },
           }))}
@@ -428,7 +446,10 @@ function CustomersTab() {
               <li key={c.id} className="px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="font-medium">{c.name}</div>
+                    <div className="font-medium">
+                      {c.cust_id && <Badge variant="outline" className="mr-1.5 font-mono text-xs">{c.cust_id}</Badge>}
+                      {c.name}
+                    </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       {c.phone && (
                         <a className="text-primary underline" href={telHref(c.phone)}>

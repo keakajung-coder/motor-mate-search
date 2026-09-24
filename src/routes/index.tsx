@@ -863,7 +863,7 @@ function SnView({
         `id, serial_number, customer_sn, install_date, daily_hours, note,
          site_name, address_line, district, province, seller, status, data_complete,
          warranty_end, contract_service,
-         customers ( id, name, phone ),
+         customers ( id, cust_id, name, phone ),
          compressor_models ( id, name, brands ( id, name ) ),
          machine_parts (
            id, quantity, note, hours_used, last_changed_at, service_interval_hours,
@@ -936,7 +936,7 @@ function SnView({
       if (!kw) return true;
       const brand = u.compressor_models?.brands?.name ?? "";
       const model = u.compressor_models?.name ?? "";
-      const cust = u.customers?.name ?? "";
+      const cust = `${(u.customers as any)?.cust_id ?? ""} ${u.customers?.name ?? ""}`;
       const phone = u.customers?.phone ?? "";
       const parts = (u.machine_parts ?? [])
         .map((mp) =>
@@ -1229,6 +1229,7 @@ function MachineCard({
             <Info label="สถานะเครื่อง" value={(unit as any).status ?? "-"} />
             <Info label="รุ่นเครื่อง" value={model} />
             <Info label="ลูกค้า" value={unit.customers?.name ?? "-"} />
+            <Info label="รหัสลูกค้า" value={(unit.customers as any)?.cust_id ?? "-"} />
             <Info label="เบอร์โทร" value={unit.customers?.phone ?? "-"} />
             <Info
               label="ชม.ทำงาน/วัน"
