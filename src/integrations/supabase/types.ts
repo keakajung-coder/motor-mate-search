@@ -48,6 +48,7 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           created_at: string
+          cust_id: string | null
           customer_address: string | null
           customer_name: string | null
           customer_sn: string | null
@@ -89,6 +90,7 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          cust_id?: string | null
           customer_address?: string | null
           customer_name?: string | null
           customer_sn?: string | null
@@ -130,6 +132,7 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          cust_id?: string | null
           customer_address?: string | null
           customer_name?: string | null
           customer_sn?: string | null
@@ -296,6 +299,7 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string | null
+          cust_id: string | null
           id: string
           line_contact: string | null
           line_id: string | null
@@ -307,6 +311,7 @@ export type Database = {
         Insert: {
           address?: string | null
           created_at?: string | null
+          cust_id?: string | null
           id?: string
           line_contact?: string | null
           line_id?: string | null
@@ -318,6 +323,7 @@ export type Database = {
         Update: {
           address?: string | null
           created_at?: string | null
+          cust_id?: string | null
           id?: string
           line_contact?: string | null
           line_id?: string | null
@@ -878,6 +884,7 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           created_at: string
+          cust_id: string | null
           customer_address: string | null
           customer_name: string
           customer_sn: string | null
@@ -910,6 +917,7 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          cust_id?: string | null
           customer_address?: string | null
           customer_name: string
           customer_sn?: string | null
@@ -942,6 +950,7 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          cust_id?: string | null
           customer_address?: string | null
           customer_name?: string
           customer_sn?: string | null
