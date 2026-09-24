@@ -38,6 +38,7 @@ export const SERVICE_TYPES = [
 ];
 
 export type WorkOrderDraft = {
+  cust_id: string;
   customer_name: string;
   customer_address: string;
   contact_name: string;
@@ -180,6 +181,7 @@ function autoJobNo() {
 }
 
 export const emptyDraft = (): WorkOrderDraft => ({
+  cust_id: "",
   customer_name: "",
   customer_address: "",
   contact_name: "",
@@ -247,6 +249,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       return {
         ...f,
         customer_name: name,
+        cust_id: c?.cust_id || m?.cust_id || (c ? "" : f.cust_id),
         serial_number: joinNames(kept),
         // ดึงข้อมูลที่ผูกกับลูกค้ารายนี้มาเติมอัตโนมัติ (แก้ไขต่อได้ทุกช่อง)
         customer_address: c?.address || m?.address || f.customer_address,
@@ -271,6 +274,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       customer_sn:
         joinNames(Array.from(new Set(hits.map((h) => h.customer_sn).filter(Boolean)))) || f.customer_sn,
       customer_name: first?.customer || f.customer_name,
+      cust_id: first?.cust_id || f.cust_id,
       customer_address: first?.address || f.customer_address,
       contact_phone: first?.phone || f.contact_phone,
       sales_rep: first?.seller || f.sales_rep,
@@ -280,8 +284,20 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
 
   const customerOptions = dir.customers.map((c) => ({
     value: c.name,
-    hint: [c.phone, c.address].filter(Boolean).join(" · "),
+    hint: [c.cust_id && `รหัส ${c.cust_id}`, c.phone, c.address].filter(Boolean).join(" · "),
   }));
+  const custIdOptions = dir.customers
+    .filter((c) => c.cust_id)
+    .map((c) => ({ value: c.cust_id, hint: c.name }));
+
+  /** เลือก/พิมพ์รหัสลูกค้า → เติมชื่อลูกค้าและข้อมูลที่ผูกไว้อัตโนมัติ */
+  const pickCustId = (id: string) => {
+    const c = dir.customers.find((x) => x.cust_id.toLowerCase() === id.trim().toLowerCase());
+    if (c) {
+      pickCustomer(c.name);
+      setForm((f) => ({ ...f, cust_id: c.cust_id }));
+    } else set("cust_id", id);
+  };
   const serialOptions = dir.machines
     .filter((m) => !form.customer_name || m.customer === form.customer_name)
     .map((m) => m.serial)
@@ -309,17 +325,20 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
     const plates = splitNames(form.vehicle_plate);
     await ensureDirectoryEntries({
       customer_name: form.customer_name,
+      cust_id: form.cust_id,
+      machine_label: form.machine_label,
       customer_address: form.customer_address,
       contact_phone: form.contact_phone,
       serial_number: serials[0] ?? "",
       staff_name: form.staff_name,
       vehicle_plate: plates[0] ?? "",
     });
-    for (const s of serials.slice(1)) await ensureDirectoryEntries({ customer_name: form.customer_name, serial_number: s });
+    for (const s of serials.slice(1)) await ensureDirectoryEntries({ customer_name: form.customer_name, serial_number: s, machine_label: form.machine_label });
     for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
     await ensureSeller(form.sales_rep);
 
     const { error } = await supabase.from("work_orders").insert({
+      cust_id: form.cust_id.trim() || null,
       customer_name: form.customer_name.trim(),
       customer_address: form.customer_address.trim() || null,
       contact_name: form.contact_name.trim() || null,
@@ -460,11 +479,22 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
           </Section>
 
           <Section title="ลูกค้า / เครื่องจักร">
+            <Field label="รหัสลูกค้า (cust_id)">
+              <Combobox
+                value={form.cust_id}
+                onChange={pickCustId}
+                options={custIdOptions}
+                allowCustom
+                placeholder="เลือก / พิมพ์รหัสลูกค้า"
+                searchPlaceholder="ค้นหารหัสลูกค้า..."
+              />
+            </Field>
             <Field label="ชื่อลูกค้า *">
               <Combobox
                 value={form.customer_name}
                 onChange={pickCustomer}
                 options={customerOptions}
+                allowCustom
                 placeholder="เลือกลูกค้า"
                 searchPlaceholder="ค้นหาลูกค้า..."
               />
