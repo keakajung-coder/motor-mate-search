@@ -291,11 +291,13 @@ export async function elementToPdfBlobPaged(
     }
     const offsetX = margin + (usableW - imgW) / 2;
 
-    const sourcePageHeight = (img.width * usableH) / usableW;
-    const sourceScale = img.width / (opts?.size?.width ?? el.scrollWidth || img.width);
+    const sourcePageHeight = (img.width * usableH) / imgW;
+    const renderedWidth = opts?.size?.width ?? el.scrollWidth ?? img.width;
+    const sourceScale = img.width / renderedWidth;
+    const rootTop = el.getBoundingClientRect().top;
     const candidates = opts?.pageBreakSelector
       ? Array.from(el.querySelectorAll<HTMLElement>(opts.pageBreakSelector))
-          .map((node) => (node.offsetTop + node.offsetHeight) * sourceScale)
+          .map((node) => (node.getBoundingClientRect().bottom - rootTop) * sourceScale)
           .filter((value) => value > 0 && value < img.height)
           .sort((a, b) => a - b)
       : [];
