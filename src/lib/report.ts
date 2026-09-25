@@ -308,6 +308,11 @@ export async function elementToPdfBlobPaged(
     const slices: Array<{ top: number; height: number }> = [];
     let sourceTop = 0;
     while (sourceTop < img.height - 1) {
+      const remaining = img.height - sourceTop;
+      if (slices.length > 0 && remaining <= Math.max(12, sourcePageHeight * 0.02)) {
+        slices[slices.length - 1].height += remaining;
+        break;
+      }
       const target = Math.min(img.height, sourceTop + sourcePageHeight);
       const safeBreak = candidates.filter((value) => value > sourceTop + sourcePageHeight * 0.55 && value <= target).at(-1);
       const bottom = safeBreak ?? target;
