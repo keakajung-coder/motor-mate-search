@@ -982,7 +982,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      replace_name_in_list: {
+        Args: { _list: string; _new: string; _old: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
