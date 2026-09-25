@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -24,6 +24,7 @@ export function Combobox({
   allowCustom = true,
   disabled = false,
   className,
+  onDelete,
 }: {
   value: string;
   onChange: (v: string, option?: ComboOption) => void;
@@ -33,6 +34,8 @@ export function Combobox({
   allowCustom?: boolean;
   disabled?: boolean;
   className?: string;
+  /** แอดมินเท่านั้น: ลบรายการออกจากฐานข้อมูลกลาง */
+  onDelete?: (value: string) => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
