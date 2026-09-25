@@ -104,6 +104,22 @@ export function Combobox({
                     {o.label ?? o.value}
                     {o.hint && <span className="ml-2 text-xs text-muted-foreground">{o.hint}</span>}
                   </span>
+                    {onDelete && options.some((x) => x === o) && (
+                      <button
+                        type="button"
+                        aria-label="ลบออกจากฐานข้อมูล"
+                        title="ลบออกจากฐานข้อมูล (แอดมิน)"
+                        className="ml-1 rounded p-1 text-destructive hover:bg-destructive/10"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (window.confirm(`ลบ "${o.value}" ออกจากฐานข้อมูลกลาง?`)) onDelete(o.value);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                 </CommandItem>
               ))}
             </CommandGroup>
