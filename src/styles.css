@@ -221,6 +221,11 @@
   line-height: 1.2;
 }
 
+.work-order-form-export,
+.work-order-form-export * {
+  box-sizing: border-box;
+}
+
 .work-order-form-export__eyebrow {
   margin: 0;
   color: #64748b;
@@ -295,6 +300,8 @@
   font-size: 11px;
   font-weight: 600;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .work-order-form-export__signatures {
@@ -379,6 +386,22 @@
   overflow-wrap: anywhere;
   word-break: break-word;
   vertical-align: top;
+  height: auto !important;
+  min-height: 32px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.job-report-export .job-report-table tr {
+  height: auto !important;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.job-report-export p,
+.job-report-export li,
+.job-report-export span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 .job-report-export--portrait .job-report-table {
   font-size: 9px !important;
@@ -544,6 +567,7 @@
   border-left-width: 8px;
   border-radius: 6px;
   padding: 18px 20px;
+  min-height: max-content;
 }
 .daily-queue-document__job--pending { border-left-color: var(--report-pending); }
 .daily-queue-document__job--active { border-left-color: var(--report-active); }
@@ -602,6 +626,8 @@
   overflow-wrap: anywhere;
   font-size: 16px;
   font-weight: 500;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 .daily-queue-document__wide { grid-column: 1 / -1; }
 .daily-queue-document__empty {

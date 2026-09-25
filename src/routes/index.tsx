@@ -1448,7 +1448,12 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
       // รอให้เบราว์เซอร์จัดเลย์เอาต์/โหลดรูปตามขนาดใหม่ก่อนจับภาพ
       await new Promise((r) => setTimeout(r, 120));
       const { elementToPdfBlobPaged, formatBytes } = await import("@/lib/report");
-      const b = await elementToPdfBlobPaged(el, p, { orientation: o });
+      const b = await elementToPdfBlobPaged(el, p, {
+        orientation: o,
+        pixelRatio: 3,
+        maxBytes: 12 * 1024 * 1024,
+        pageBreakSelector: ".rounded-lg.border",
+      });
       setBlob(b);
       setSize(formatBytes(b.size));
       setUrl((prev) => {
