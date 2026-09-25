@@ -221,3 +221,29 @@ export function useDirectory(): Directory {
 
   return dir;
 }
+
+export type DirectoryKind = "customer" | "cust_id" | "serial" | "staff" | "vehicle" | "seller";
+
+/** แอดมินเท่านั้น: ลบรายการที่ผิดออกจากฐานข้อมูลกลาง แล้วรีเฟรชตัวเลือกทุกหน้า */
+export async function deleteDirectoryEntry(kind: DirectoryKind, value: string) {
+  const { deleteAsAdmin } = await import("@/lib/access");
+  const { toast } = await import("sonner");
+  const map: Record<DirectoryKind, [string, string]> = {
+    customer: ["customers", "name"],
+    cust_id: ["customers", "cust_id"],
+    serial: ["machine_units", "serial_number"],
+    staff: ["service_staff", "name"],
+    vehicle: ["vehicles", "plate"],
+    seller: ["sales_contacts", "name"],
+  };
+  const [table, col] = map[kind];
+  const { error } = await deleteAsAdmin(table, { [col]: value });
+  if (error) {
+    toast.error(error.message);
+    return false;
+  }
+  if (kind === "seller") window.dispatchEvent(new Event("sales-contacts-changed"));
+  toast.success(`ลบ "${value}" แล้ว`);
+  await refreshDirectory();
+  return true;
+}
