@@ -319,6 +319,10 @@ export async function elementToPdfBlobPaged(
       slices.push({ top: sourceTop, height: Math.max(1, bottom - sourceTop) });
       sourceTop = bottom;
     }
+    if (slices.length > 1 && slices[slices.length - 1].height < sourcePageHeight * 0.08) {
+      const trailing = slices.pop();
+      if (trailing) slices[slices.length - 1].height += trailing.height;
+    }
     const total = slices.length;
     slices.forEach((slice, p) => {
       if (p > 0) pdf.addPage();
