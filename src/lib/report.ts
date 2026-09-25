@@ -234,6 +234,10 @@ export async function elementToPdfBlobPaged(
     import("html-to-image"),
     import("jspdf"),
   ]);
+  await document.fonts.ready;
+  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  const captureWidth = Math.ceil(Math.max(opts?.size?.width ?? 0, el.scrollWidth, el.getBoundingClientRect().width));
+  const captureHeight = Math.ceil(Math.max(opts?.size?.height ?? 0, el.scrollHeight, el.getBoundingClientRect().height));
 
   const steps: Array<{ pixelRatio: number; quality: number }> = [
     { pixelRatio: opts?.pixelRatio ?? EXPORT_PIXEL_RATIO, quality: 0.96 },
@@ -251,11 +255,11 @@ export async function elementToPdfBlobPaged(
       quality: step.quality,
       ...(opts?.size
         ? {
-            width: opts.size.width,
-            height: opts.size.height,
-            style: { width: `${opts.size.width}px`, height: `${opts.size.height}px` },
+            width: captureWidth,
+            height: captureHeight,
+            style: { width: `${captureWidth}px`, minHeight: `${captureHeight}px`, height: "auto" },
           }
-        : {}),
+        : { width: captureWidth, height: captureHeight }),
     });
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image();
@@ -292,7 +296,7 @@ export async function elementToPdfBlobPaged(
     const offsetX = margin + (usableW - imgW) / 2;
 
     const sourcePageHeight = (img.width * usableH) / imgW;
-    const renderedWidth = opts?.size?.width ?? el.scrollWidth ?? img.width;
+    const renderedWidth = captureWidth;
     const sourceScale = img.width / renderedWidth;
     const rootTop = el.getBoundingClientRect().top;
     const candidates = opts?.pageBreakSelector
