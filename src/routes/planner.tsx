@@ -364,15 +364,20 @@ function PlannerPage() {
     const full = { width: el.scrollWidth, height: el.scrollHeight };
     try {
       if (kind === "pdf") {
-        const blob = await elementToPdfBlobPaged(el, 1, { orientation: "landscape", size: full });
+        const blob = await elementToPdfBlobPaged(el, 1, {
+          orientation: "landscape",
+          size: full,
+          pixelRatio: 3,
+          maxBytes: 12 * 1024 * 1024,
+        });
         await saveFile(blob, `ตารางงาน-${fileLabel}.pdf`);
       } else {
         const { toJpeg } = await import("html-to-image");
         const dataUrl = await toJpeg(el, {
           backgroundColor: "#ffffff",
           cacheBust: true,
-          pixelRatio: 2,
-          quality: 0.9,
+          pixelRatio: 3,
+          quality: 0.96,
           width: full.width,
           height: full.height,
           style: { width: `${full.width}px`, height: `${full.height}px` },
@@ -1746,7 +1751,7 @@ function DayDetailDialog({
         document.body.append(stage);
         try {
           const { elementsToA4PdfBlob } = await import("@/lib/report");
-          blob = await elementsToA4PdfBlob(pages, { maxBytes: 8 * 1024 * 1024, pixelRatio: 2.5 });
+          blob = await elementsToA4PdfBlob(pages, { maxBytes: 12 * 1024 * 1024, pixelRatio: 3 });
         } finally {
           stage.remove();
         }
@@ -1755,7 +1760,7 @@ function DayDetailDialog({
         const dataUrl = await toPng(el, {
           backgroundColor: "#ffffff",
           cacheBust: true,
-          pixelRatio: 2,
+          pixelRatio: 3,
           width: el.scrollWidth,
           height: el.scrollHeight,
           style: { width: `${el.scrollWidth}px`, height: `${el.scrollHeight}px` },

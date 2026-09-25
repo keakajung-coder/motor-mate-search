@@ -217,7 +217,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
       return;
     }
     const pages = Math.ceil(h / pageHeight);
-    const scale = Math.max(0.6, Math.min(1, (pages * pageHeight * 0.96) / h));
+    const scale = Math.max(0.82, Math.min(1, (pages * pageHeight * 0.96) / h));
     el.style.setProperty("--jr-scale", scale.toFixed(3));
   };
 
@@ -236,6 +236,9 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
         const blob = await elementToPdfBlobPaged(el, 0, {
           orientation,
           size: { width: exportWidth, height: el.scrollHeight },
+          pixelRatio: 3,
+          maxBytes: 12 * 1024 * 1024,
+          pageBreakSelector: ".job-report-table tbody tr",
         });
         await saveFile(blob, `สรุปใบสั่งงาน-${scopeLabel}-${range.from}.pdf`);
       } else {
@@ -243,7 +246,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
         const dataUrl = await toPng(el, {
           backgroundColor: "#ffffff",
           cacheBust: true,
-          pixelRatio: 2,
+          pixelRatio: 3,
           width: el.scrollWidth,
           height: el.scrollHeight,
         });
