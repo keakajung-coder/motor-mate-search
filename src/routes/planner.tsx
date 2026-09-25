@@ -52,7 +52,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog, WorkOrderFormPrint } from "@/components/WorkOrderDialog";
 import { Combobox } from "@/components/ui/combobox";
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
-import { ensureDirectoryEntries, ensureParts, useDirectory } from "@/lib/directory";
+import { deleteDirectoryEntry, ensureDirectoryEntries, ensureParts, useDirectory, type DirectoryKind } from "@/lib/directory";
 import { elementToPdfBlobPaged, formatDate, isMachineComplete, saveFile, shareOrDownload } from "@/lib/report";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { JobReportsPanel } from "@/components/JobReportsPanel";
@@ -2085,6 +2085,7 @@ function AppointmentDialog({
   const { isAdmin: canDelete } = useAccess();
   const locked = !canEdit || !editMode;
   const dir = useDirectory();
+  const delDir = (k: DirectoryKind) => (canDelete ? (v: string) => void deleteDirectoryEntry(k, v) : undefined);
   const sellerNames = useSellerNames();
 
   const set = (k: keyof Appointment, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -2246,7 +2247,7 @@ function AppointmentDialog({
             <Combobox
               disabled={locked}
               value={form.cust_id ?? ""}
-              onChange={pickCustId}
+              onChange={pickCustId} onDelete={delDir("cust_id")}
               options={dir.customers.filter((c) => c.cust_id).map((c) => ({ value: c.cust_id, hint: c.name }))}
               allowCustom
               placeholder="เลือก / พิมพ์รหัสลูกค้า"
@@ -2257,7 +2258,7 @@ function AppointmentDialog({
             <Combobox
               disabled={locked}
               value={form.customer_name ?? ""}
-              onChange={pickCustomer}
+              onChange={pickCustomer} onDelete={delDir("customer")}
               allowCustom
               options={dir.customers.map((c) => ({
                 value: c.name,
@@ -2271,7 +2272,7 @@ function AppointmentDialog({
             <MultiCombobox
               disabled={locked}
               values={splitNames(form.serial_number)}
-              onChange={pickSerials}
+              onChange={pickSerials} onDelete={delDir("serial")}
               options={dir.machines
                 .filter((m) => !form.customer_name || m.customer === form.customer_name)
                 .map((m) => m.serial)
@@ -2332,7 +2333,7 @@ function AppointmentDialog({
             <MultiCombobox
               disabled={locked}
               values={splitNames(form.staff_name)}
-              onChange={(list) => set("staff_name", joinNames(list))}
+              onChange={(list) => set("staff_name", joinNames(list))} onDelete={delDir("staff")}
               options={dir.staff}
               placeholder="เลือกช่าง (ติ๊กได้หลายคน)"
               searchPlaceholder="ค้นหาช่าง..."
@@ -2342,7 +2343,7 @@ function AppointmentDialog({
             <MultiCombobox
               disabled={locked}
               values={splitNames(form.vehicle_plate)}
-              onChange={(list) => set("vehicle_plate", joinNames(list))}
+              onChange={(list) => set("vehicle_plate", joinNames(list))} onDelete={delDir("vehicle")}
               options={dir.vehicles}
               placeholder="ติ๊กเลือกทะเบียนรถ"
               searchPlaceholder="ค้นหาทะเบียนรถ..."
@@ -2352,7 +2353,7 @@ function AppointmentDialog({
             <Combobox
               disabled={locked}
               value={form.sales_rep ?? ""}
-              onChange={(v) => set("sales_rep", v)}
+              onChange={(v) => set("sales_rep", v)} onDelete={delDir("seller")}
               options={Array.from(new Set([...sellerNames, ...dir.machines.map((m) => m.seller)].filter(Boolean))).map((s) => ({ value: s }))}
               allowCustom
               placeholder="เลือกเซลล์ หรือพิมพ์ชื่อใหม่"

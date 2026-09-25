@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,6 +72,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
   const [scope, setScope] = useState<"all" | "open" | "closed">("all");
   const [tech, setTech] = useState<string | null>(null);
   const [rep, setRep] = useState<string | null>(null);
+  const [groupBy, setGroupBy] = useState<"none" | "seller" | "tech">("none");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState("");
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
@@ -139,6 +140,17 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
       }),
     [allRows, scope, tech, rep],
   );
+
+  const tableGroups = useMemo(() => {
+    if (groupBy === "none") return [["", rows]] as [string, Row[]][];
+    const m = new Map<string, Row[]>();
+    rows.forEach((r) => {
+      const keys =
+        groupBy === "seller" ? [(r.sales_rep ?? "").trim() || "ไม่ระบุเซลล์"] : splitNames(r.staff_name ?? "").length ? splitNames(r.staff_name ?? "") : ["ไม่ระบุช่าง"];
+      keys.forEach((k) => m.set(k, [...(m.get(k) ?? []), r]));
+    });
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0], "th"));
+  }, [rows, groupBy]);
 
   const done = rows.filter((r) => r.status === "closed");
   const pendingRows = rows.filter((r) => r.status !== "closed");
@@ -335,6 +347,19 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-semibold text-muted-foreground">แยกรายงาน:</span>
+          {([
+            ["none", "ดูทั้งหมด"],
+            ["seller", "แยกตามผู้ขาย/เซลล์"],
+            ["tech", "แยกตามช่าง"],
+          ] as const).map(([k, l]) => (
+            <Button key={k} size="sm" variant={groupBy === k ? "default" : "outline"} onClick={() => setGroupBy(k)}>
+              {l}
+            </Button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="text-muted-foreground">ช่าง:</span>
           <Button size="sm" variant={tech === null ? "default" : "outline"} onClick={() => setTech(null)}>
             ทั้งหมด
@@ -385,6 +410,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
             สรุปใบสั่งงาน {modeLabel} · {label} · {scopeLabel}
             {tech ? ` · ช่าง ${tech}` : ""}
             {rep ? ` · เซลล์ ${rep}` : ""}
+            {groupBy === "seller" ? " · แยกตามเซลล์" : groupBy === "tech" ? " · แยกตามช่าง" : ""}
           </p>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -431,8 +457,17 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
                     </td>
                   </tr>
                 ) : (
-                  rows.map((r) => (
-                    <tr key={r.id} className="align-top">
+                  tableGroups.map(([g, list]) => (
+                  <Fragment key={g || "all"}>
+                    {g && (
+                      <tr className="bg-muted/60">
+                        <td className="border px-2 py-1 font-bold" colSpan={10}>
+                          {groupBy === "seller" ? "เซลล์" : "ช่าง"}: {g} — {list.length} งาน (ค้าง {list.filter((x) => x.status !== "closed").length})
+                        </td>
+                      </tr>
+                    )}
+                  {list.map((r) => (
+                    <tr key={g + r.id} className="align-top">
                       <td className="border px-2 py-1 font-semibold">
                         <button type="button" className="text-left" onClick={() => onPickDate?.(r.visit_date)}>
                           {r.customer_name || "-"}
@@ -456,6 +491,8 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
                         )}
                       </td>
                     </tr>
+                  ))}
+                  </Fragment>
                   ))
                 )}
               </tbody>

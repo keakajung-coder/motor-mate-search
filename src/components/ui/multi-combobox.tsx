@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { Check, ChevronsUpDown, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,7 @@ export function MultiCombobox({
   allowCustom = true,
   disabled = false,
   className,
+  onDelete,
 }: {
   values: string[];
   onChange: (v: string[]) => void;
@@ -41,6 +42,8 @@ export function MultiCombobox({
   allowCustom?: boolean;
   disabled?: boolean;
   className?: string;
+  /** แอดมินเท่านั้น: ลบรายการออกจากฐานข้อมูลกลาง */
+  onDelete?: (value: string) => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -111,6 +114,22 @@ export function MultiCombobox({
                   <CommandItem key={o} value={o} onSelect={() => toggle(o)}>
                     <Check className={cn("mr-2 h-4 w-4", picked ? "opacity-100" : "opacity-0")} />
                     <span className="flex-1 truncate">{o}</span>
+                    {onDelete && options.some((x) => x === o) && (
+                      <button
+                        type="button"
+                        aria-label="ลบออกจากฐานข้อมูล"
+                        title="ลบออกจากฐานข้อมูล (แอดมิน)"
+                        className="ml-1 rounded p-1 text-destructive hover:bg-destructive/10"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (window.confirm(`ลบ "${o}" ออกจากฐานข้อมูลกลาง?`)) onDelete(o);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </CommandItem>
                 );
               })}

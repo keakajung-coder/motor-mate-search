@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CalendarCheck2, ClipboardPlus, Loader2 } from "lucide-react";
-import { ensureDirectoryEntries, refreshDirectory, useDirectory } from "@/lib/directory";
+import { deleteDirectoryEntry, ensureDirectoryEntries, refreshDirectory, useDirectory, type DirectoryKind } from "@/lib/directory";
+import { useAccess } from "@/lib/access";
 import { ensureSeller, useSellerNames } from "@/lib/sellers";
 import { JobAttachments } from "@/components/JobAttachments";
 
@@ -229,6 +230,8 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
   const [shareNames, setShareNames] = useState<string[]>([]);
   const [booked, setBooked] = useState(false);
   const dir = useDirectory();
+  const { isAdmin } = useAccess();
+  const delDir = (k: DirectoryKind) => (isAdmin ? (v: string) => void deleteDirectoryEntry(k, v) : undefined);
   const sellerNames = useSellerNames();
 
 
@@ -430,7 +433,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
             <Field label="พนักงานเซอร์วิสที่ต้องการ (เลือกได้หลายคน)">
               <MultiCombobox
                 values={splitNames(form.staff_name)}
-                onChange={(list) => set("staff_name", joinNames(list))}
+                onChange={(list) => set("staff_name", joinNames(list))} onDelete={delDir("staff")}
                 options={dir.staff}
                 placeholder="เลือกช่าง (ติ๊กได้หลายคน)"
                 searchPlaceholder="ค้นหาช่าง..."
@@ -439,7 +442,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
             <Field label="ทะเบียนรถที่ใช้เดินทาง (เลือกได้หลายคัน)">
               <MultiCombobox
                 values={splitNames(form.vehicle_plate)}
-                onChange={(list) => set("vehicle_plate", joinNames(list))}
+                onChange={(list) => set("vehicle_plate", joinNames(list))} onDelete={delDir("vehicle")}
                 options={dir.vehicles}
                 placeholder="ติ๊กเลือกทะเบียนรถ"
                 searchPlaceholder="ค้นหาทะเบียนรถ..."
@@ -454,7 +457,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
             <Field label="พนักงานขาย (เซลล์) ที่ดูแล">
               <Combobox
                 value={form.sales_rep}
-                onChange={(v) => set("sales_rep", v)}
+                onChange={(v) => set("sales_rep", v)} onDelete={delDir("seller")}
                 options={sellerOptions}
                 allowCustom
                 placeholder="ชื่อเซลล์ผู้ดูแลลูกค้า (เติมอัตโนมัติจากเครื่อง)"
@@ -482,7 +485,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
             <Field label="รหัสลูกค้า (cust_id)">
               <Combobox
                 value={form.cust_id}
-                onChange={pickCustId}
+                onChange={pickCustId} onDelete={delDir("cust_id")}
                 options={custIdOptions}
                 allowCustom
                 placeholder="เลือก / พิมพ์รหัสลูกค้า"
@@ -492,7 +495,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
             <Field label="ชื่อลูกค้า *">
               <Combobox
                 value={form.customer_name}
-                onChange={pickCustomer}
+                onChange={pickCustomer} onDelete={delDir("customer")}
                 options={customerOptions}
                 allowCustom
                 placeholder="เลือกลูกค้า"
@@ -502,7 +505,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
             <Field label={form.customer_name ? `หมายเลขเครื่อง (S/N) — ของ ${form.customer_name}` : "หมายเลขเครื่อง (S/N) (เลือกได้หลายเครื่อง)"}>
               <MultiCombobox
                 values={splitNames(form.serial_number)}
-                onChange={pickSerials}
+                onChange={pickSerials} onDelete={delDir("serial")}
                 options={serialOptions}
                 placeholder="ติ๊กเลือก S/N"
                 searchPlaceholder="ค้นหา S/N..."

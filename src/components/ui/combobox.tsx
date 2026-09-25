@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -24,6 +24,7 @@ export function Combobox({
   allowCustom = true,
   disabled = false,
   className,
+  onDelete,
 }: {
   value: string;
   onChange: (v: string, option?: ComboOption) => void;
@@ -33,6 +34,8 @@ export function Combobox({
   allowCustom?: boolean;
   disabled?: boolean;
   className?: string;
+  /** แอดมินเท่านั้น: ลบรายการออกจากฐานข้อมูลกลาง */
+  onDelete?: (value: string) => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -101,6 +104,22 @@ export function Combobox({
                     {o.label ?? o.value}
                     {o.hint && <span className="ml-2 text-xs text-muted-foreground">{o.hint}</span>}
                   </span>
+                    {onDelete && options.some((x) => x === o) && (
+                      <button
+                        type="button"
+                        aria-label="ลบออกจากฐานข้อมูล"
+                        title="ลบออกจากฐานข้อมูล (แอดมิน)"
+                        className="ml-1 rounded p-1 text-destructive hover:bg-destructive/10"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (window.confirm(`ลบ "${o.value}" ออกจากฐานข้อมูลกลาง?`)) onDelete(o.value);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                 </CommandItem>
               ))}
             </CommandGroup>
