@@ -2718,42 +2718,45 @@ function CloseJobDialog({
               แสดงทั้งคลัง
             </label>
           </div>
-          {Object.keys(grouped).length === 0 ? (
-            <div className="grid grid-cols-2 gap-1.5">
-              {PART_CATEGORIES.map((c) => (
-                <label key={c} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={cats.includes(c)} onChange={() => toggleCat(c)} />
-                  {c}
-                </label>
-              ))}
-            </div>
-          ) : (
-            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
-              {Object.entries(grouped)
-                .sort(([a], [b]) => a.localeCompare(b, "th"))
-                .map(([cat, items]) => (
-                  <div key={cat}>
-                    <p className="text-xs font-semibold text-muted-foreground">{cat}</p>
-                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                      {items.map((p) => (
-                        <label key={p.id} className="flex items-start gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            className="mt-1"
-                            checked={cats.includes(p.label)}
-                            onChange={() => toggleCat(p.label)}
-                          />
-                          <span className="break-words">
-                            {p.label}
-                            {linkedIds.includes(p.id) && <span className="ml-1 text-[10px] text-primary">(ผูกแล้ว)</span>}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
+          <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+            {Object.entries(grouped)
+              .sort(([a], [b]) => a.localeCompare(b, "th"))
+              .map(([cat, items]) => (
+                <div key={cat}>
+                  <p className="text-xs font-semibold text-muted-foreground">{cat}</p>
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                    {items.map((p) => (
+                      <label key={p.id} className="flex items-start gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="mt-1"
+                          checked={cats.includes(p.label)}
+                          onChange={() => toggleCat(p.label)}
+                        />
+                        <span className="break-words">
+                          {p.label}
+                          {linkedIds.includes(p.id) && <span className="ml-1 text-[10px] text-primary">(ผูกแล้ว)</span>}
+                        </span>
+                      </label>
+                    ))}
                   </div>
-                ))}
-            </div>
-          )}
+                </div>
+              ))}
+            {/* หมวดที่ยังไม่มีอะไหล่ในคลัง — แสดงชื่อหมวดให้ติ๊กไว้ก่อน จนกว่าจะเพิ่มอะไหล่จริงเข้าไป */}
+            {PART_CATEGORIES.filter((c) => !grouped[c]).length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground">หมวดที่ยังไม่มีอะไหล่ในระบบ (ติ๊กตามหมวดไว้ก่อน)</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {PART_CATEGORIES.filter((c) => !grouped[c]).map((c) => (
+                    <label key={c} className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={cats.includes(c)} onChange={() => toggleCat(c)} />
+                      {c}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex flex-wrap gap-1.5">
             <Input
               className="min-w-0 flex-1"
