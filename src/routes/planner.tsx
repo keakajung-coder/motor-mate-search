@@ -2469,49 +2469,124 @@ function CloseJobDialog({
     };
   }, [isEdit, appt.id]);
 
-  // อะไหล่ที่บันทึกไว้กับเครื่องเครื่องนี้ + คลังอะไหล่ทั้งหมด (สำหรับเลือก)
+  // คลังอะไหล่ทั้งหมด + อะไหล่ที่ผูกกับ S/N นี้ (แสดงเป็น Checkbox แยกตามหมวด)
+  type CatalogPart = { id: string; label: string; category: string; model_id: string | null };
+  const [products, setProducts] = useState<CatalogPart[]>([]);
+  const [unitInfo, setUnitInfo] = useState<{ id: string; model_id: string | null } | null>(null);
+  const [linkedIds, setLinkedIds] = useState<string[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [newPart, setNewPart] = useState("");
+  const [newCat, setNewCat] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
   useEffect(() => {
     let alive = true;
     (async () => {
-      const prodRes = await supabase.from("products").select("name, part_number").order("name").limit(500);
-      const names = (prodRes.data ?? []).map((p) => [p.part_number, p.name].filter(Boolean).join(" · "));
-      if (alive) setCatalog(names);
+      const [prodRes, catRes] = await Promise.all([
+        supabase.from("products").select("id, name, part_number, model_id, categories(name)").order("name").limit(1000),
+        supabase.from("categories").select("id, name").order("sort_order").order("name"),
+      ]);
+      if (!alive) return;
+      const list: CatalogPart[] = (prodRes.data ?? []).map((p: any) => ({
+        id: p.id,
+        label: [p.part_number, p.name].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" · "),
+        category: p.categories?.name ?? "อื่นๆ",
+        model_id: p.model_id,
+      }));
+      setProducts(list);
+      setCatalog(list.map((p) => p.label));
+      setCategories(catRes.data ?? []);
 
       if (!appt.serial_number) return;
       const { data: unit } = await supabase
         .from("machine_units")
-        .select("id")
+        .select("id, model_id")
         .eq("serial_number", appt.serial_number)
         .maybeSingle();
-      if (!unit?.id) return;
-      const { data: mp } = await supabase
-        .from("machine_parts")
-        .select("products(name, part_number)")
-        .eq("machine_unit_id", unit.id);
+      if (!alive || !unit?.id) return;
+      setUnitInfo(unit);
+      const { data: mp } = await supabase.from("machine_parts").select("product_id").eq("machine_unit_id", unit.id);
       if (!alive) return;
-      const logged = (mp ?? [])
-        .map((r) => {
-          const p = (r as { products: { name: string | null; part_number: string | null } | null }).products;
-          return p ? [p.part_number, p.name].filter(Boolean).join(" · ") : "";
-        })
-        .filter(Boolean);
-      setUnitParts(Array.from(new Set(logged)));
+      const ids = (mp ?? []).map((r) => r.product_id).filter(Boolean) as string[];
+      setLinkedIds(ids);
+      setUnitParts(list.filter((p) => ids.includes(p.id)).map((p) => p.label));
     })();
     return () => {
       alive = false;
     };
   }, [appt.serial_number]);
 
-  // อะไหล่ของเครื่องที่บันทึกไว้ ถ้าไม่มีให้ใช้ชื่อหมวดอะไหล่แทน
+  // อะไหล่ที่แสดงเป็น Checkbox: ผูกกับ S/N + ตรงรุ่นเครื่อง (หรือทั้งคลังเมื่อกด "แสดงทั้งหมด")
+  const visibleParts = products.filter(
+    (p) => showAll || linkedIds.includes(p.id) || (unitInfo?.model_id && p.model_id === unitInfo.model_id) || cats.includes(p.label),
+  );
+  const grouped = visibleParts.reduce<Record<string, CatalogPart[]>>((acc, p) => {
+    (acc[p.category] ??= []).push(p);
+    return acc;
+  }, {});
   const partOptions = unitParts.length > 0 ? unitParts : PART_CATEGORIES;
   const toggleCat = (c: string) =>
     setCats((list) => (list.includes(c) ? list.filter((x) => x !== c) : [...list, c]));
+
+  /** ผูกอะไหล่เข้ากับ S/N ของเครื่อง (ถ้ายังไม่ผูก) */
+  const linkToUnit = async (productIds: string[]) => {
+    if (!unitInfo) return;
+    const fresh = Array.from(new Set(productIds)).filter((id) => !linkedIds.includes(id));
+    if (!fresh.length) return;
+    const { error } = await supabase
+      .from("machine_parts")
+      .insert(fresh.map((product_id) => ({ machine_unit_id: unitInfo.id, product_id, quantity: 1 })));
+    if (!error) setLinkedIds((l) => [...l, ...fresh]);
+  };
+
+  const addNewPart = async () => {
+    const name = newPart.trim();
+    if (!name) return;
+    const exist = products.find((p) => p.label.toLowerCase().split(" · ").includes(name.toLowerCase()));
+    if (exist) {
+      if (!cats.includes(exist.label)) setCats((l) => [...l, exist.label]);
+      await linkToUnit([exist.id]);
+      setNewPart("");
+      return toast.success(`เลือก "${exist.label}" แล้ว`);
+    }
+    setAdding(true);
+    const { data, error } = await supabase
+      .from("products")
+      .insert({ name, part_number: name, category_id: newCat || null, model_id: unitInfo?.model_id ?? null })
+      .select("id")
+      .single();
+    if (error || !data) {
+      setAdding(false);
+      return toast.error(error?.message ?? "เพิ่มอะไหล่ไม่สำเร็จ");
+    }
+    const catName = categories.find((c) => c.id === newCat)?.name ?? "อื่นๆ";
+    setProducts((l) => [...l, { id: data.id, label: name, category: catName, model_id: unitInfo?.model_id ?? null }]);
+    setCatalog((l) => [...l, name]);
+    setCats((l) => [...l, name]);
+    await linkToUnit([data.id]);
+    setAdding(false);
+    setNewPart("");
+    toast.success(unitInfo ? `เพิ่ม "${name}" และผูกกับ S/N ${appt.serial_number} แล้ว` : `เพิ่ม "${name}" เข้าคลังแล้ว`);
+  };
 
   const submit = async () => {
     if (!result) return toast.error("กรุณาเลือกผลสรุปงาน");
     setSaving(true);
     const doneDate = new Date().toISOString().slice(0, 10);
     await ensureParts([...cats, ...quoteItems].filter((c) => !PART_CATEGORIES.includes(c)));
+    // ผูกอะไหล่ที่เลือกทั้งหมดเข้ากับ S/N อัตโนมัติ
+    if (unitInfo) {
+      const picked = cats.filter((c) => !PART_CATEGORIES.includes(c));
+      const known = products.filter((p) => picked.includes(p.label)).map((p) => p.id);
+      const unknown = picked.filter((c) => !products.some((p) => p.label === c));
+      let extra: string[] = [];
+      if (unknown.length) {
+        const { data } = await supabase.from("products").select("id").in("part_number", unknown);
+        extra = (data ?? []).map((r) => r.id);
+      }
+      await linkToUnit([...known, ...extra]);
+    }
 
     const { error } = await supabase
       .from("appointments")
@@ -2632,26 +2707,82 @@ function CloseJobDialog({
 
         <div className="space-y-2 rounded-xl border p-3">
           <p className="text-sm font-semibold">อะไหล่ที่เปลี่ยนในงานนี้</p>
-          <p className="text-xs text-muted-foreground">
-            {unitParts.length > 0
-              ? `อะไหล่ที่บันทึกไว้กับเครื่อง ${appt.serial_number ?? ""}`
-              : "ยังไม่มีอะไหล่บันทึกไว้กับเครื่องนี้ — เลือกจากหมวดอะไหล่ หรือพิมพ์เพิ่มเอง"}
-          </p>
-          <div className="grid grid-cols-2 gap-1.5">
-            {partOptions.map((c) => (
-              <label key={c} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={cats.includes(c)} onChange={() => toggleCat(c)} />
-                {c}
-              </label>
-            ))}
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              {appt.serial_number
+                ? `อะไหล่ของเครื่อง S/N ${appt.serial_number} (เลือกได้หลายรายการ)`
+                : "ไม่มี S/N — เลือกจากคลังอะไหล่"}
+            </p>
+            <label className="flex shrink-0 items-center gap-1 text-xs">
+              <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+              แสดงทั้งคลัง
+            </label>
           </div>
-          <MultiCombobox
-            values={cats}
-            onChange={setCats}
-            options={Array.from(new Set([...partOptions, ...catalog]))}
-            placeholder="เลือกอะไหล่จากคลัง หรือพิมพ์ชื่อใหม่"
-            searchPlaceholder="ค้นหาอะไหล่ในคลัง..."
-          />
+          {Object.keys(grouped).length === 0 ? (
+            <div className="grid grid-cols-2 gap-1.5">
+              {PART_CATEGORIES.map((c) => (
+                <label key={c} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={cats.includes(c)} onChange={() => toggleCat(c)} />
+                  {c}
+                </label>
+              ))}
+            </div>
+          ) : (
+            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+              {Object.entries(grouped)
+                .sort(([a], [b]) => a.localeCompare(b, "th"))
+                .map(([cat, items]) => (
+                  <div key={cat}>
+                    <p className="text-xs font-semibold text-muted-foreground">{cat}</p>
+                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                      {items.map((p) => (
+                        <label key={p.id} className="flex items-start gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={cats.includes(p.label)}
+                            onChange={() => toggleCat(p.label)}
+                          />
+                          <span className="break-words">
+                            {p.label}
+                            {linkedIds.includes(p.id) && <span className="ml-1 text-[10px] text-primary">(ผูกแล้ว)</span>}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-1.5">
+            <Input
+              className="min-w-0 flex-1"
+              placeholder="พิมพ์ชื่อ/รหัสอะไหล่ใหม่"
+              value={newPart}
+              onChange={(e) => setNewPart(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void addNewPart();
+                }
+              }}
+            />
+            <select
+              className="h-9 rounded-md border bg-background px-2 text-sm"
+              value={newCat}
+              onChange={(e) => setNewCat(e.target.value)}
+            >
+              <option value="">หมวด: อื่นๆ</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <Button type="button" size="sm" onClick={addNewPart} disabled={adding || !newPart.trim()}>
+              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "เพิ่ม+ผูก S/N"}
+            </Button>
+          </div>
           <Input
             placeholder="ระบุอะไหล่เพิ่มเติม / รายละเอียดอื่นๆ"
             value={partsNote}
