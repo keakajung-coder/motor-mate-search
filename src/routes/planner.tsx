@@ -1095,7 +1095,37 @@ function ApprovedOrders({
     reloadPlanner();
   };
 
-  const selected = rows.filter((o) => picked[o.id]);
+  const { isAdmin } = useAccess();
+  const [fDate, setFDate] = useState("");
+  const [fSeller, setFSeller] = useState("");
+  const [fStaff, setFStaff] = useState("");
+  const [showHidden, setShowHidden] = useState(false);
+  const sellerOpts = useMemo(() => Array.from(new Set(rows.map((o) => (o.sales_rep ?? "").trim()).filter(Boolean))).sort(), [rows]);
+  const staffOpts = useMemo(() => Array.from(new Set(rows.flatMap((o) => splitNames(o.staff_name)))).sort(), [rows]);
+  const visible = rows.filter((o) => {
+    if (!showHidden && (o as WorkOrder & { approved_hidden?: boolean }).approved_hidden) return false;
+    const date = appointments[o.id]?.visit_date ?? o.visit_date ?? "";
+    if (fDate && date !== fDate) return false;
+    if (fSeller && (o.sales_rep ?? "").trim() !== fSeller) return false;
+    if (fStaff && !splitNames(o.staff_name).includes(fStaff)) return false;
+    return true;
+  });
+  const selected = visible.filter((o) => picked[o.id]);
+
+  const toggleHidden = async (o: WorkOrder) => {
+    const next = !(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden;
+    const { error } = await supabase.from("work_orders").update({ approved_hidden: next } as never).eq("id", o.id);
+    if (error) return toast.error("บันทึกไม่สำเร็จ: " + error.message);
+    toast.success(next ? "ซ่อนใบงานแล้ว (งานในปฏิทินยังอยู่)" : "แสดงใบงานอีกครั้ง");
+    await loadApproved();
+  };
+
+  const removeOrder = async (o: WorkOrder) => {
+    const { error } = await deleteAsAdmin("work_orders", { id: o.id });
+    if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
+    toast.success("ลบใบงานแล้ว งานในปฏิทินยังเก็บไว้");
+    await loadApproved();
+  };
 
   const withExportMode = async <T,>(els: HTMLElement[], fn: () => Promise<T>): Promise<T> => {
     els.forEach((e) => e.classList.add("export-full"));
@@ -1310,6 +1340,20 @@ function ApprovedOrders({
               {busy === o.id + "formpdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
               PDF แบบฟอร์ม
             </Button>
+            <Button size="sm" variant="ghost" onClick={() => toggleHidden(o)}>
+              {(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? <Eye className="mr-1 h-4 w-4" /> : <EyeOff className="mr-1 h-4 w-4" />}
+              {(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? "แสดง" : "ซ่อน"}
+            </Button>
+            {isAdmin && (
+              <ConfirmButton
+                title="ลบใบงานนี้?"
+                description="ใบสั่งงานจะถูกลบ แต่งานในแพลนเนอร์/ปฏิทินยังคงเก็บไว้"
+                className="text-destructive"
+                onConfirm={() => removeOrder(o)}
+              >
+                <Trash2 className="mr-1 h-4 w-4" /> ลบใบงาน
+              </ConfirmButton>
+            )}
           </div>
         </div>
       ))}
