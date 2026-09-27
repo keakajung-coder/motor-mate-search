@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { formatDate } from "@/lib/report";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -263,6 +264,11 @@ export function SmartSearchDialog({
           </div>
         )}
 
+        {!(kw || seller !== null || status !== null) ? (
+          <p className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">
+            เริ่มพิมพ์หรือเลือกตัวกรองเพื่อแสดงผลการค้นหา
+          </p>
+        ) : (
         <div className="space-y-2 rounded-xl border bg-muted/30 p-2">
           {loading ? (
             <div className="flex justify-center py-6">
@@ -321,7 +327,7 @@ export function SmartSearchDialog({
                     className="block min-w-0 flex-1 px-1 py-2 text-sm"
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline">{a.visit_date}</Badge>
+                      <Badge variant="outline">{formatDate(a.visit_date)}</Badge>
                       <span className="font-semibold">{a.customer_name ?? "-"}</span>
                       {a.vehicle_plate && <Badge variant="secondary">{a.vehicle_plate}</Badge>}
                     </div>
@@ -364,6 +370,7 @@ export function SmartSearchDialog({
             ))
           )}
         </div>
+        )}
 
         {mode === "issue" && <ReportIssueButton title={kw} />}
 

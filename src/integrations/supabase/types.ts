@@ -878,6 +878,7 @@ export type Database = {
       work_orders: {
         Row: {
           admin_note: string | null
+          approved_hidden: boolean
           attachments: string | null
           billing_note: string | null
           billing_type: string | null
@@ -911,6 +912,7 @@ export type Database = {
         }
         Insert: {
           admin_note?: string | null
+          approved_hidden?: boolean
           attachments?: string | null
           billing_note?: string | null
           billing_type?: string | null
@@ -944,6 +946,7 @@ export type Database = {
         }
         Update: {
           admin_note?: string | null
+          approved_hidden?: boolean
           attachments?: string | null
           billing_note?: string | null
           billing_type?: string | null

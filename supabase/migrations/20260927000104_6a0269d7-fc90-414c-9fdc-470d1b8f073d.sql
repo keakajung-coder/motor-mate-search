@@ -1,0 +1,1 @@
+ALTER TABLE public.work_orders ADD COLUMN IF NOT EXISTS approved_hidden boolean NOT NULL DEFAULT false;

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatDate } from "@/lib/report";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,7 +103,7 @@ export function WorkOrderFormPrint({ order }: { order: WorkOrderPrintData }) {
         <PrintField label="เลขที่ใบสั่งงาน" value={order.job_no} />
         <PrintField label="พนักงานขาย (เซลล์) ที่ดูแล" value={order.sales_rep} />
         <PrintField label="ความเร่งด่วน" value={order.priority} />
-        <PrintField label="วันที่เข้าบริการ" value={order.visit_date} />
+        <PrintField label="วันที่เข้าบริการ" value={formatDate(order.visit_date)} />
         <PrintField label="เวลานัดหมาย" value={order.visit_time} />
       </PrintSection>
 
@@ -379,7 +380,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       body: [
         form.serial_number.trim() && `S/N ${form.serial_number.trim()}`,
         form.job_detail.trim(),
-        form.visit_date && `วันที่นัด ${form.visit_date}`,
+        form.visit_date && `วันที่นัด ${formatDate(form.visit_date)}`,
         form.staff_name.trim() && `ช่าง ${form.staff_name.trim()}`,
       ]
         .filter(Boolean)
@@ -393,7 +394,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
       body: [
         form.serial_number.trim() && `S/N ${form.serial_number.trim()}`,
         form.job_detail.trim(),
-        form.visit_date && `วันที่นัด ${form.visit_date}`,
+        form.visit_date && `วันที่นัด ${formatDate(form.visit_date)}`,
         form.staff_name.trim() && `ช่าง ${form.staff_name.trim()}`,
       ]
         .filter(Boolean)
