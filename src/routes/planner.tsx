@@ -143,6 +143,12 @@ const STATUS_STAGE_STYLE: Record<StatusStage, { rail: string; badge: string; lab
   completed: { rail: "bg-emerald-500", badge: "border-emerald-300 bg-emerald-50 text-emerald-700", label: "ปิดงานแล้ว" },
 };
 
+const STAGE_BG: Record<StatusStage, string> = {
+  pending: "border-red-200 bg-red-50/60",
+  active: "border-amber-200 bg-amber-50/60",
+  completed: "border-emerald-200 bg-emerald-50/60",
+};
+
 function StatusRail({ status }: { status?: string | null }) {
   const style = STATUS_STAGE_STYLE[statusStage(status)];
   return <span aria-hidden="true" className={`absolute inset-y-0 left-1 w-1.5 rounded-full ${style.rail}`} />;
