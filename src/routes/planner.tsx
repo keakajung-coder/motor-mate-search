@@ -138,9 +138,9 @@ type StatusStage = "pending" | "active" | "completed";
 const statusStage = (status?: string | null): StatusStage =>
   status === "closed" ? "completed" : status === "scheduled" || status === "in_progress" ? "active" : "pending";
 const STATUS_STAGE_STYLE: Record<StatusStage, { rail: string; badge: string; label: string }> = {
-  pending: { rail: "bg-red-500", badge: "border-red-300 bg-red-50 text-red-700", label: "รอดำเนินการ" },
-  active: { rail: "bg-amber-400", badge: "border-amber-300 bg-amber-50 text-amber-800", label: "นัดหมายแล้ว / กำลังดำเนินการ" },
-  completed: { rail: "bg-emerald-500", badge: "border-emerald-300 bg-emerald-50 text-emerald-700", label: "เสร็จสิ้น" },
+  pending: { rail: "bg-red-500", badge: "border-red-300 bg-red-50 text-red-700", label: "ยังไม่ไป" },
+  active: { rail: "bg-amber-400", badge: "border-amber-300 bg-amber-50 text-amber-800", label: "รอ / นัดหมายแล้ว" },
+  completed: { rail: "bg-emerald-500", badge: "border-emerald-300 bg-emerald-50 text-emerald-700", label: "ปิดงานแล้ว" },
 };
 
 function StatusRail({ status }: { status?: string | null }) {
@@ -1179,17 +1179,40 @@ function ApprovedOrders({
 
   return (
     <div className="space-y-3">
+      <div className="grid gap-2 rounded-lg border bg-card p-2 sm:grid-cols-4">
+        <DateInput size="sm" aria-label="กรองวันที่นัดหมาย" value={fDate} onChange={setFDate} />
+        <select className="h-8 rounded-md border bg-background px-2 text-xs" value={fSeller} onChange={(e) => setFSeller(e.target.value)} aria-label="กรองผู้ขาย">
+          <option value="">ผู้ขายทั้งหมด</option>
+          {sellerOpts.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select className="h-8 rounded-md border bg-background px-2 text-xs" value={fStaff} onChange={(e) => setFStaff(e.target.value)} aria-label="กรองช่าง">
+          <option value="">ช่างทั้งหมด</option>
+          {staffOpts.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="ghost" className="h-8" onClick={() => { setFDate(""); setFSeller(""); setFStaff(""); }}>ล้างตัวกรอง</Button>
+          <label className="flex items-center gap-1 text-xs">
+            <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} /> แสดงที่ซ่อน
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px] sm:col-span-4">
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> ปิดงาน</span>
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> รอ / นัดหมายแล้ว</span>
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> ยังไม่ไป</span>
+          <span className="ml-auto text-muted-foreground">แสดง {visible.length}/{rows.length} ใบ</span>
+        </div>
+      </div>
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
             className="h-4 w-4"
-            checked={selected.length === rows.length}
+            checked={visible.length > 0 && selected.length === visible.length}
             onChange={(e) =>
-              setPicked(e.target.checked ? Object.fromEntries(rows.map((r) => [r.id, true])) : {})
+              setPicked(e.target.checked ? Object.fromEntries(visible.map((r) => [r.id, true])) : {})
             }
           />
-          เลือกทั้งหมด ({selected.length}/{rows.length})
+          เลือกทั้งหมด ({selected.length}/{visible.length})
         </label>
         <div className="ml-auto flex flex-wrap gap-2">
           <Button size="sm" variant="outline" disabled={!!busy || selected.length === 0} onClick={() => exportSelected("image")}>
@@ -1207,8 +1230,9 @@ function ApprovedOrders({
         </div>
       </div>
 
-      {rows.map((o) => (
-        <div key={o.id} className="relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3">
+      {visible.length === 0 && <p className="text-sm text-muted-foreground">ไม่พบใบงานตามตัวกรอง</p>}
+      {visible.map((o) => (
+        <div key={o.id} className={`relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3 ${STAGE_BG[statusStage(appointments[o.id]?.status ?? o.status)]} ${(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? "opacity-60" : ""}`}>
           <StatusRail status={appointments[o.id]?.status ?? o.status} />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <JobStatusBadge status={appointments[o.id]?.status ?? o.status} />
