@@ -368,21 +368,38 @@ export function SmartSearchDialog({
             apptResults.length === 0 ? (
               <Empty />
             ) : (
-              apptResults.map((a) => (
-                <div key={a.id} className="flex items-center gap-1 rounded-lg bg-card px-2 hover:bg-accent">
+              apptResults.map((a) => {
+                const st = APPT_STAGE_STYLE[apptStage(a.status)];
+                return (
+                <div
+                  key={a.id}
+                  className="relative flex items-center gap-1 overflow-hidden rounded-lg bg-card py-2 pl-4 pr-2 hover:bg-accent"
+                >
+                  <span aria-hidden="true" className={`absolute inset-y-0 left-1 w-1.5 rounded-full ${st.rail}`} />
                   <Link
                     to="/planner"
                     search={{ date: a.visit_date }}
                     onClick={() => onOpenChange(false)}
-                    className="block min-w-0 flex-1 px-1 py-2 text-sm"
+                    className="block min-w-0 flex-1 px-1 text-sm"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline">{formatDate(a.visit_date)}</Badge>
                       <span className="font-semibold">{a.customer_name ?? "-"}</span>
                       {a.vehicle_plate && <Badge variant="secondary">{a.vehicle_plate}</Badge>}
+                      <Badge variant="outline" className={st.badge}>
+                        {st.label}
+                      </Badge>
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
-                      {[a.service_type, a.serial_number, a.visit_time].filter(Boolean).join(" • ")}
+                      {[
+                        a.service_type,
+                        a.serial_number,
+                        a.visit_time,
+                        a.staff_name ? `ช่าง: ${a.staff_name}` : null,
+                        a.sales_rep ? `ผู้ขาย: ${a.sales_rep}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" • ")}
                     </div>
                   </Link>
                   <AdminRowActions
