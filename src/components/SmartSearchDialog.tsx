@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatDate } from "@/lib/report";
+import { DateInput } from "@/components/ui/date-input";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,19 @@ type ApptLite = {
   visit_date: string;
   visit_time: string | null;
   vehicle_plate: string | null;
+  staff_name: string | null;
+  sales_rep: string | null;
+  status: string | null;
+};
+
+/** เขียว = ปิดงาน, เหลือง = รอ/นัดหมายแล้ว, แดง = ยังไม่ไป (เหมือนหน้าแพลนเนอร์) */
+type ApptStage = "pending" | "active" | "completed";
+const apptStage = (status?: string | null): ApptStage =>
+  status === "closed" ? "completed" : status === "scheduled" || status === "in_progress" ? "active" : "pending";
+const APPT_STAGE_STYLE: Record<ApptStage, { rail: string; badge: string; label: string }> = {
+  pending: { rail: "bg-red-500", badge: "border-red-300 bg-red-50 text-red-700", label: "ยังไม่ไป" },
+  active: { rail: "bg-amber-400", badge: "border-amber-300 bg-amber-50 text-amber-800", label: "รอ / นัดหมายแล้ว" },
+  completed: { rail: "bg-emerald-500", badge: "border-emerald-300 bg-emerald-50 text-emerald-700", label: "ปิดงานแล้ว" },
 };
 
 /** ระยะห่างคำแบบง่าย (Levenshtein) สำหรับดักคำพิมพ์ผิด */
@@ -94,6 +108,8 @@ export function SmartSearchDialog({
   const [text, setText] = useState("");
   const [seller, setSeller] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState<string | null>(null);
+  const [dateTo, setDateTo] = useState<string | null>(null);
   const [units, setUnits] = useState<UnitLite[]>([]);
   const [appts, setAppts] = useState<ApptLite[]>([]);
   const [loading, setLoading] = useState(false);
@@ -112,7 +128,9 @@ export function SmartSearchDialog({
           .order("serial_number"),
         supabase
           .from("appointments")
-          .select("id, customer_name, serial_number, service_type, visit_date, visit_time, vehicle_plate")
+          .select(
+            "id, customer_name, serial_number, service_type, visit_date, visit_time, vehicle_plate, staff_name, sales_rep, status",
+          )
           .order("visit_date", { ascending: false }),
       ]);
       setUnits((u.data as unknown as UnitLite[]) ?? []);
@@ -157,12 +175,17 @@ export function SmartSearchDialog({
   }, [units, kw, seller, status]);
 
   const apptResults = useMemo(() => {
-    if (!kw) return appts.slice(0, 10);
-    return appts
+    const rows = appts.filter((a) => {
+      if (dateFrom && a.visit_date < dateFrom) return false;
+      if (dateTo && a.visit_date > dateTo) return false;
+      return true;
+    });
+    if (!kw) return rows.slice(0, 10);
+    return rows
       .map((a) => ({
         a,
         score: fuzzyScore(
-          `${a.customer_name ?? ""} ${a.serial_number ?? ""} ${a.vehicle_plate ?? ""} ${a.service_type ?? ""}`,
+          `${a.customer_name ?? ""} ${a.serial_number ?? ""} ${a.vehicle_plate ?? ""} ${a.service_type ?? ""} ${a.staff_name ?? ""} ${a.sales_rep ?? ""}`,
           kw,
         ),
       }))
@@ -170,7 +193,7 @@ export function SmartSearchDialog({
       .sort((x, y) => (x.score as number) - (y.score as number))
       .slice(0, 10)
       .map((r) => r.a);
-  }, [appts, kw]);
+  }, [appts, kw, dateFrom, dateTo]);
 
   const issueResults = useMemo(() => {
     if (!kw) return issues.slice(0, 6);
@@ -227,7 +250,9 @@ export function SmartSearchDialog({
               placeholder={
                 mode === "issue"
                   ? "พิมพ์อาการเสีย เช่น ลมไม่ขึ้น, ร้อนจัด"
-                  : "พิมพ์ชื่อลูกค้า, S/N, รุ่น หรืออะไหล่"
+                  : mode === "planner"
+                    ? "พิมพ์ชื่อลูกค้า, S/N, ช่าง หรือผู้ขาย"
+                    : "พิมพ์ชื่อลูกค้า, S/N, รุ่น หรืออะไหล่"
               }
               className="h-12 pl-9 text-base"
             />
@@ -236,6 +261,31 @@ export function SmartSearchDialog({
             ตกลง
           </Button>
         </div>
+
+        {mode === "planner" && (
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[140px] flex-1">
+              <label className="mb-1 block text-xs text-muted-foreground">จากวันที่</label>
+              <DateInput size="sm" value={dateFrom} onChange={(iso) => setDateFrom(iso || null)} aria-label="จากวันที่" />
+            </div>
+            <div className="min-w-[140px] flex-1">
+              <label className="mb-1 block text-xs text-muted-foreground">ถึงวันที่</label>
+              <DateInput size="sm" value={dateTo} onChange={(iso) => setDateTo(iso || null)} aria-label="ถึงวันที่" />
+            </div>
+            {(dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDateFrom(null);
+                  setDateTo(null);
+                }}
+              >
+                ล้างช่วงวันที่
+              </Button>
+            )}
+          </div>
+        )}
 
         {mode === "parts" && (
           <div className="space-y-2">
@@ -264,7 +314,7 @@ export function SmartSearchDialog({
           </div>
         )}
 
-        {!(kw || seller !== null || status !== null) ? (
+        {!(kw || seller !== null || status !== null || dateFrom || dateTo) ? (
           <p className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">
             เริ่มพิมพ์หรือเลือกตัวกรองเพื่อแสดงผลการค้นหา
           </p>
@@ -318,21 +368,38 @@ export function SmartSearchDialog({
             apptResults.length === 0 ? (
               <Empty />
             ) : (
-              apptResults.map((a) => (
-                <div key={a.id} className="flex items-center gap-1 rounded-lg bg-card px-2 hover:bg-accent">
+              apptResults.map((a) => {
+                const st = APPT_STAGE_STYLE[apptStage(a.status)];
+                return (
+                <div
+                  key={a.id}
+                  className="relative flex items-center gap-1 overflow-hidden rounded-lg bg-card py-2 pl-4 pr-2 hover:bg-accent"
+                >
+                  <span aria-hidden="true" className={`absolute inset-y-0 left-1 w-1.5 rounded-full ${st.rail}`} />
                   <Link
                     to="/planner"
                     search={{ date: a.visit_date }}
                     onClick={() => onOpenChange(false)}
-                    className="block min-w-0 flex-1 px-1 py-2 text-sm"
+                    className="block min-w-0 flex-1 px-1 text-sm"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline">{formatDate(a.visit_date)}</Badge>
                       <span className="font-semibold">{a.customer_name ?? "-"}</span>
                       {a.vehicle_plate && <Badge variant="secondary">{a.vehicle_plate}</Badge>}
+                      <Badge variant="outline" className={st.badge}>
+                        {st.label}
+                      </Badge>
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
-                      {[a.service_type, a.serial_number, a.visit_time].filter(Boolean).join(" • ")}
+                      {[
+                        a.service_type,
+                        a.serial_number,
+                        a.visit_time,
+                        a.staff_name ? `ช่าง: ${a.staff_name}` : null,
+                        a.sales_rep ? `ผู้ขาย: ${a.sales_rep}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" • ")}
                     </div>
                   </Link>
                   <AdminRowActions
@@ -346,7 +413,8 @@ export function SmartSearchDialog({
                     }}
                   />
                 </div>
-              ))
+                );
+              })
             )
           ) : issueResults.length === 0 ? (
             <div className="space-y-2 px-3 py-4 text-sm text-muted-foreground">
