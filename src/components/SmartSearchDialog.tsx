@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatDate } from "@/lib/report";
+import { DateInput } from "@/components/ui/date-input";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,19 @@ type ApptLite = {
   visit_date: string;
   visit_time: string | null;
   vehicle_plate: string | null;
+  staff_name: string | null;
+  sales_rep: string | null;
+  status: string | null;
+};
+
+/** เขียว = ปิดงาน, เหลือง = รอ/นัดหมายแล้ว, แดง = ยังไม่ไป (เหมือนหน้าแพลนเนอร์) */
+type ApptStage = "pending" | "active" | "completed";
+const apptStage = (status?: string | null): ApptStage =>
+  status === "closed" ? "completed" : status === "scheduled" || status === "in_progress" ? "active" : "pending";
+const APPT_STAGE_STYLE: Record<ApptStage, { rail: string; badge: string; label: string }> = {
+  pending: { rail: "bg-red-500", badge: "border-red-300 bg-red-50 text-red-700", label: "ยังไม่ไป" },
+  active: { rail: "bg-amber-400", badge: "border-amber-300 bg-amber-50 text-amber-800", label: "รอ / นัดหมายแล้ว" },
+  completed: { rail: "bg-emerald-500", badge: "border-emerald-300 bg-emerald-50 text-emerald-700", label: "ปิดงานแล้ว" },
 };
 
 /** ระยะห่างคำแบบง่าย (Levenshtein) สำหรับดักคำพิมพ์ผิด */
@@ -94,6 +108,8 @@ export function SmartSearchDialog({
   const [text, setText] = useState("");
   const [seller, setSeller] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState<string | null>(null);
+  const [dateTo, setDateTo] = useState<string | null>(null);
   const [units, setUnits] = useState<UnitLite[]>([]);
   const [appts, setAppts] = useState<ApptLite[]>([]);
   const [loading, setLoading] = useState(false);
@@ -112,7 +128,9 @@ export function SmartSearchDialog({
           .order("serial_number"),
         supabase
           .from("appointments")
-          .select("id, customer_name, serial_number, service_type, visit_date, visit_time, vehicle_plate")
+          .select(
+            "id, customer_name, serial_number, service_type, visit_date, visit_time, vehicle_plate, staff_name, sales_rep, status",
+          )
           .order("visit_date", { ascending: false }),
       ]);
       setUnits((u.data as unknown as UnitLite[]) ?? []);
@@ -157,12 +175,17 @@ export function SmartSearchDialog({
   }, [units, kw, seller, status]);
 
   const apptResults = useMemo(() => {
-    if (!kw) return appts.slice(0, 10);
-    return appts
+    const rows = appts.filter((a) => {
+      if (dateFrom && a.visit_date < dateFrom) return false;
+      if (dateTo && a.visit_date > dateTo) return false;
+      return true;
+    });
+    if (!kw) return rows.slice(0, 10);
+    return rows
       .map((a) => ({
         a,
         score: fuzzyScore(
-          `${a.customer_name ?? ""} ${a.serial_number ?? ""} ${a.vehicle_plate ?? ""} ${a.service_type ?? ""}`,
+          `${a.customer_name ?? ""} ${a.serial_number ?? ""} ${a.vehicle_plate ?? ""} ${a.service_type ?? ""} ${a.staff_name ?? ""} ${a.sales_rep ?? ""}`,
           kw,
         ),
       }))
@@ -170,7 +193,7 @@ export function SmartSearchDialog({
       .sort((x, y) => (x.score as number) - (y.score as number))
       .slice(0, 10)
       .map((r) => r.a);
-  }, [appts, kw]);
+  }, [appts, kw, dateFrom, dateTo]);
 
   const issueResults = useMemo(() => {
     if (!kw) return issues.slice(0, 6);
