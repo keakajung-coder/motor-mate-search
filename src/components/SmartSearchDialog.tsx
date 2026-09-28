@@ -413,7 +413,8 @@ export function SmartSearchDialog({
                     }}
                   />
                 </div>
-              ))
+                );
+              })
             )
           ) : issueResults.length === 0 ? (
             <div className="space-y-2 px-3 py-4 text-sm text-muted-foreground">
