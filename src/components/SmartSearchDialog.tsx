@@ -250,7 +250,9 @@ export function SmartSearchDialog({
               placeholder={
                 mode === "issue"
                   ? "พิมพ์อาการเสีย เช่น ลมไม่ขึ้น, ร้อนจัด"
-                  : "พิมพ์ชื่อลูกค้า, S/N, รุ่น หรืออะไหล่"
+                  : mode === "planner"
+                    ? "พิมพ์ชื่อลูกค้า, S/N, ช่าง หรือผู้ขาย"
+                    : "พิมพ์ชื่อลูกค้า, S/N, รุ่น หรืออะไหล่"
               }
               className="h-12 pl-9 text-base"
             />
@@ -259,6 +261,31 @@ export function SmartSearchDialog({
             ตกลง
           </Button>
         </div>
+
+        {mode === "planner" && (
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[140px] flex-1">
+              <label className="mb-1 block text-xs text-muted-foreground">จากวันที่</label>
+              <DateInput size="sm" value={dateFrom} onChange={(iso) => setDateFrom(iso || null)} aria-label="จากวันที่" />
+            </div>
+            <div className="min-w-[140px] flex-1">
+              <label className="mb-1 block text-xs text-muted-foreground">ถึงวันที่</label>
+              <DateInput size="sm" value={dateTo} onChange={(iso) => setDateTo(iso || null)} aria-label="ถึงวันที่" />
+            </div>
+            {(dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDateFrom(null);
+                  setDateTo(null);
+                }}
+              >
+                ล้างช่วงวันที่
+              </Button>
+            )}
+          </div>
+        )}
 
         {mode === "parts" && (
           <div className="space-y-2">
@@ -287,7 +314,7 @@ export function SmartSearchDialog({
           </div>
         )}
 
-        {!(kw || seller !== null || status !== null) ? (
+        {!(kw || seller !== null || status !== null || dateFrom || dateTo) ? (
           <p className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">
             เริ่มพิมพ์หรือเลือกตัวกรองเพื่อแสดงผลการค้นหา
           </p>
