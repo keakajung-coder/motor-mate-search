@@ -43,6 +43,7 @@ export type Database = {
           attachments: string | null
           billing_note: string | null
           billing_type: string | null
+          checklist: Json | null
           close_note: string | null
           closed_at: string | null
           contact_name: string | null
@@ -85,6 +86,7 @@ export type Database = {
           attachments?: string | null
           billing_note?: string | null
           billing_type?: string | null
+          checklist?: Json | null
           close_note?: string | null
           closed_at?: string | null
           contact_name?: string | null
@@ -127,6 +129,7 @@ export type Database = {
           attachments?: string | null
           billing_note?: string | null
           billing_type?: string | null
+          checklist?: Json | null
           close_note?: string | null
           closed_at?: string | null
           contact_name?: string | null
@@ -257,6 +260,36 @@ export type Database = {
           id?: string
           name?: string
           sort_order?: number | null
+        }
+        Relationships: []
+      }
+      checklist_templates: {
+        Row: {
+          created_at: string
+          id: string
+          items: Json
+          machine_types: string | null
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          items?: Json
+          machine_types?: string | null
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          items?: Json
+          machine_types?: string | null
+          name?: string
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }
