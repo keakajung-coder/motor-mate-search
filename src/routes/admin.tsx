@@ -28,6 +28,7 @@ import { PasscodeSettings } from "@/components/admin/PasscodeSettings";
 import { BackupRestore } from "@/components/admin/BackupRestore";
 import { AlertSettings } from "@/components/admin/AlertSettings";
 import { ReadOnlyScope } from "@/components/AccessGate";
+import { ChecklistTemplatesTab } from "@/components/admin/ChecklistTemplatesTab";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { lineHref, telHref, visibleLineId } from "@/lib/contact";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -77,6 +78,7 @@ function AdminPage() {
           <TabsTrigger value="staff" className="shrink-0">ช่าง / รถ</TabsTrigger>
           <TabsTrigger value="lists" className="shrink-0">ผู้ขาย / สถานะ</TabsTrigger>
           <TabsTrigger value="bundles" className="shrink-0">ชุดอะไหล่</TabsTrigger>
+          <TabsTrigger value="checklist" className="shrink-0">เทมเพลต Checklist</TabsTrigger>
           <TabsTrigger value="issues" className="shrink-0">คลังอาการเสีย (AI)</TabsTrigger>
           {isAdmin && <TabsTrigger value="io" className="shrink-0">นำเข้า / ส่งออก</TabsTrigger>}
           <TabsTrigger value="audit" className="shrink-0">ประวัติการแก้ไข</TabsTrigger>
@@ -103,6 +105,7 @@ function AdminPage() {
 
 
         <TabsContent value="bundles"><ReadOnlyScope><BundlesTab /></ReadOnlyScope></TabsContent>
+        <TabsContent value="checklist"><ReadOnlyScope><ChecklistTemplatesTab /></ReadOnlyScope></TabsContent>
         <TabsContent value="issues"><ReadOnlyScope><TroubleshootTab /></ReadOnlyScope></TabsContent>
         {isAdmin && <TabsContent value="io"><ImportExportTab /></TabsContent>}
         <TabsContent value="audit"><ReadOnlyScope><AuditLogTab /></ReadOnlyScope></TabsContent>
