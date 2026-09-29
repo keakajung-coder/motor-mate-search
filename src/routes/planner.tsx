@@ -58,6 +58,8 @@ import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { JobReportsPanel } from "@/components/JobReportsPanel";
 import { PART_CATEGORIES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
+import { ChecklistForm } from "@/components/ChecklistForm";
+import { loadTemplates, matchesType, newResult, type ChecklistResult, type ChecklistTemplate } from "@/lib/checklist";
 
 
 export const Route = createFileRoute("/planner")({
@@ -2517,6 +2519,46 @@ function CloseJobDialog({
   const [quoteItems, setQuoteItems] = useState<string[]>([]);
   const [unitParts, setUnitParts] = useState<string[]>([]);
   const [catalog, setCatalog] = useState<string[]>([]);
+  const [useChecklist, setUseChecklist] = useState(false);
+  const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
+  const [checklist, setChecklist] = useState<ChecklistResult | null>(null);
+  const [pumpType, setPumpType] = useState<string | null>(null);
+
+  // โหลดเทมเพลต + ผลเช็คลิสต์เดิม แล้วเลือกชุดตามประเภทเครื่องอัตโนมัติ
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const [tpls, prevRes, unitRes] = await Promise.all([
+        loadTemplates(),
+        appt.id
+          ? supabase.from("appointments").select("checklist").eq("id", appt.id).maybeSingle()
+          : Promise.resolve({ data: null } as any),
+        appt.serial_number
+          ? supabase
+              .from("machine_units")
+              .select("compressor_models(pump_type)")
+              .eq("serial_number", appt.serial_number)
+              .maybeSingle()
+          : Promise.resolve({ data: null } as any),
+      ]);
+      if (!alive) return;
+      setTemplates(tpls);
+      const pt = (unitRes.data as any)?.compressor_models?.pump_type ?? null;
+      setPumpType(pt);
+      const prev = ((prevRes.data as any)?.checklist ?? null) as ChecklistResult | null;
+      if (prev) {
+        const t = tpls.find((x) => x.id === prev.template_id);
+        setChecklist(t ? newResult(t, prev) : prev);
+        setUseChecklist(true);
+      } else {
+        const t = tpls.find((x) => matchesType(x, pt)) ?? tpls[0];
+        if (t) setChecklist(newResult(t));
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [appt.id, appt.serial_number]);
 
   // โหลดรายละเอียดปิดงานเดิมเมื่อเข้ามาแก้ไข
   useEffect(() => {
@@ -2674,6 +2716,7 @@ function CloseJobDialog({
         parts_note: partsNote.trim() || null,
         parts_replaced: [cats.join(", "), partsNote.trim()].filter(Boolean).join(" · ") || null,
         quotation_items: quoteItems.join(", ") || null,
+        checklist: (useChecklist && checklist ? checklist : null) as never,
       })
       .eq("id", appt.id);
     if (error) {
@@ -2777,6 +2820,34 @@ function CloseJobDialog({
             <input type="checkbox" checked={quotation} onChange={(e) => setQuotation(e.target.checked)} />
             ต้องออกใบเสนอราคาให้ลูกค้า
           </label>
+        </div>
+
+        <div className="space-y-2 rounded-xl border p-3">
+          <label className="flex items-center justify-between gap-2 text-sm font-semibold">
+            ต้องการมี Checklist การตรวจสอบหรือไม่
+            <Switch checked={useChecklist} onCheckedChange={setUseChecklist} />
+          </label>
+          {useChecklist && (
+            <>
+              <select
+                className="h-9 w-full rounded border bg-background px-2 text-sm"
+                value={checklist?.template_id ?? ""}
+                onChange={(e) => {
+                  const t = templates.find((x) => x.id === e.target.value);
+                  if (t) setChecklist(newResult(t, checklist));
+                }}
+              >
+                <option value="" disabled>เลือกชุดเช็คลิสต์</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}{t.machine_types ? ` (${t.machine_types})` : ""}
+                  </option>
+                ))}
+              </select>
+              {pumpType && <p className="text-xs text-muted-foreground">ประเภทเครื่องนี้: {pumpType}</p>}
+              {checklist && <ChecklistForm value={checklist} onChange={setChecklist} />}
+            </>
+          )}
         </div>
 
         <div className="space-y-2 rounded-xl border p-3">

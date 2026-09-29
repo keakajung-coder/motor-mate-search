@@ -6,6 +6,7 @@ const ALLOWED_TABLES = new Set([
   "appointments",
   "brands",
   "categories",
+  "checklist_templates",
   "compressor_models",
   "customers",
   "machine_parts",
