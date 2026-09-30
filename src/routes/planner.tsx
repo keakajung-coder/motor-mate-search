@@ -2647,6 +2647,8 @@ function CloseJobDialog({
     (acc[p.category] ??= []).push(p);
     return acc;
   }, {});
+  const quoteCategoryNames = Array.from(new Set([...categories.map((c) => c.name), ...PART_CATEGORIES]));
+  const emptyQuoteCategories = quoteCategoryNames.filter((c) => !quoteGrouped[c]);
   const toggleCat = (c: string) =>
     setCats((list) => (list.includes(c) ? list.filter((x) => x !== c) : [...list, c]));
   const toggleQuote = (value: string) =>
@@ -2701,7 +2703,7 @@ function CloseJobDialog({
     if (!result) return toast.error("กรุณาเลือกผลสรุปงาน");
     setSaving(true);
     const doneDate = new Date().toISOString().slice(0, 10);
-    const chosenParts = [...cats, ...quoteItems].filter((c) => !PART_CATEGORIES.includes(c));
+    const chosenParts = [...cats, ...quoteItems].filter((c) => !quoteCategoryNames.includes(c));
     await ensureParts(chosenParts.filter((c) => !products.some((p) => p.label === c)));
     // ผูกอะไหล่ที่เลือกทั้งหมดเข้ากับ S/N อัตโนมัติ
     if (unitInfo) {
@@ -2974,11 +2976,11 @@ function CloseJobDialog({
                 </div>
               </div>
             ))}
-            {PART_CATEGORIES.filter((c) => !quoteGrouped[c]).length > 0 && (
+            {emptyQuoteCategories.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-muted-foreground">หมวดที่ยังไม่มีอะไหล่ในระบบ (ติ๊กตามหมวดไว้ก่อน)</p>
                 <div className="grid grid-cols-2 gap-1.5">
-                  {PART_CATEGORIES.filter((c) => !quoteGrouped[c]).map((c) => (
+                  {emptyQuoteCategories.map((c) => (
                     <label key={c} className="flex items-center gap-2 text-sm">
                       <input type="checkbox" checked={quoteItems.includes(c)} onChange={() => toggleQuote(c)} />
                       {c}
@@ -2987,7 +2989,7 @@ function CloseJobDialog({
                 </div>
               </div>
             )}
-            {quoteItems.filter((item) => !PART_CATEGORIES.includes(item) && !products.some((p) => p.label === item)).map((item) => (
+            {quoteItems.filter((item) => !quoteCategoryNames.includes(item) && !products.some((p) => p.label === item)).map((item) => (
               <label key={item} className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked onChange={() => toggleQuote(item)} />{item}
               </label>
