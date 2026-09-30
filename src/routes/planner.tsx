@@ -2517,8 +2517,9 @@ function CloseJobDialog({
   const [cats, setCats] = useState<string[]>([]);
   const [partsNote, setPartsNote] = useState("");
   const [quoteItems, setQuoteItems] = useState<string[]>([]);
-  const [unitParts, setUnitParts] = useState<string[]>([]);
-  const [catalog, setCatalog] = useState<string[]>([]);
+  const [quotePart, setQuotePart] = useState("");
+  const [quoteCat, setQuoteCat] = useState("");
+  const [showAllQuote, setShowAllQuote] = useState(false);
   const [useChecklist, setUseChecklist] = useState(false);
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [checklist, setChecklist] = useState<ChecklistResult | null>(null);
@@ -2611,7 +2612,6 @@ function CloseJobDialog({
         model_id: p.model_id,
       }));
       setProducts(list);
-      setCatalog(list.map((p) => p.label));
       setCategories(catRes.data ?? []);
 
       if (!appt.serial_number) return;
@@ -2626,7 +2626,6 @@ function CloseJobDialog({
       if (!alive) return;
       const ids = (mp ?? []).map((r) => r.product_id).filter(Boolean) as string[];
       setLinkedIds(ids);
-      setUnitParts(list.filter((p) => ids.includes(p.id)).map((p) => p.label));
     })();
     return () => {
       alive = false;
@@ -2635,15 +2634,23 @@ function CloseJobDialog({
 
   // อะไหล่ที่แสดงเป็น Checkbox: ผูกกับ S/N + ตรงรุ่นเครื่อง (หรือทั้งคลังเมื่อกด "แสดงทั้งหมด")
   const visibleParts = products.filter(
-    (p) => showAll || linkedIds.includes(p.id) || (unitInfo?.model_id && p.model_id === unitInfo.model_id) || cats.includes(p.label),
+    (p) => showAll || !unitInfo || linkedIds.includes(p.id) || (unitInfo.model_id && p.model_id === unitInfo.model_id) || cats.includes(p.label),
   );
   const grouped = visibleParts.reduce<Record<string, CatalogPart[]>>((acc, p) => {
     (acc[p.category] ??= []).push(p);
     return acc;
   }, {});
-  const partOptions = unitParts.length > 0 ? unitParts : PART_CATEGORIES;
+  const quoteParts = products.filter(
+    (p) => showAllQuote || !unitInfo || linkedIds.includes(p.id) || (unitInfo.model_id && p.model_id === unitInfo.model_id) || quoteItems.includes(p.label),
+  );
+  const quoteGrouped = quoteParts.reduce<Record<string, CatalogPart[]>>((acc, p) => {
+    (acc[p.category] ??= []).push(p);
+    return acc;
+  }, {});
   const toggleCat = (c: string) =>
     setCats((list) => (list.includes(c) ? list.filter((x) => x !== c) : [...list, c]));
+  const toggleQuote = (value: string) =>
+    setQuoteItems((list) => (list.includes(value) ? list.filter((x) => x !== value) : [...list, value]));
 
   /** ผูกอะไหล่เข้ากับ S/N ของเครื่อง (ถ้ายังไม่ผูก) */
   const linkToUnit = async (productIds: string[]) => {
@@ -2656,33 +2663,37 @@ function CloseJobDialog({
     if (!error) setLinkedIds((l) => [...l, ...fresh]);
   };
 
-  const addNewPart = async () => {
-    const name = newPart.trim();
+  const addNewPart = async (target: "replaced" | "quote") => {
+    const name = (target === "quote" ? quotePart : newPart).trim();
+    const categoryId = target === "quote" ? quoteCat : newCat;
     if (!name) return;
     const exist = products.find((p) => p.label.toLowerCase().split(" · ").includes(name.toLowerCase()));
     if (exist) {
-      if (!cats.includes(exist.label)) setCats((l) => [...l, exist.label]);
+      const select = target === "quote" ? setQuoteItems : setCats;
+      select((list) => (list.includes(exist.label) ? list : [...list, exist.label]));
       await linkToUnit([exist.id]);
-      setNewPart("");
+      if (target === "quote") setQuotePart("");
+      else setNewPart("");
       return toast.success(`เลือก "${exist.label}" แล้ว`);
     }
     setAdding(true);
     const { data, error } = await supabase
       .from("products")
-      .insert({ name, part_number: name, category_id: newCat || null, model_id: unitInfo?.model_id ?? null })
+      .insert({ name, part_number: name, category_id: categoryId || null, model_id: unitInfo?.model_id ?? null })
       .select("id")
       .single();
     if (error || !data) {
       setAdding(false);
       return toast.error(error?.message ?? "เพิ่มอะไหล่ไม่สำเร็จ");
     }
-    const catName = categories.find((c) => c.id === newCat)?.name ?? "อื่นๆ";
+    const catName = categories.find((c) => c.id === categoryId)?.name ?? "อื่นๆ";
     setProducts((l) => [...l, { id: data.id, label: name, category: catName, model_id: unitInfo?.model_id ?? null }]);
-    setCatalog((l) => [...l, name]);
-    setCats((l) => [...l, name]);
+    if (target === "quote") setQuoteItems((l) => [...l, name]);
+    else setCats((l) => [...l, name]);
     await linkToUnit([data.id]);
     setAdding(false);
-    setNewPart("");
+    if (target === "quote") setQuotePart("");
+    else setNewPart("");
     toast.success(unitInfo ? `เพิ่ม "${name}" และผูกกับ S/N ${appt.serial_number} แล้ว` : `เพิ่ม "${name}" เข้าคลังแล้ว`);
   };
 
@@ -2693,7 +2704,7 @@ function CloseJobDialog({
     await ensureParts([...cats, ...quoteItems].filter((c) => !PART_CATEGORIES.includes(c)));
     // ผูกอะไหล่ที่เลือกทั้งหมดเข้ากับ S/N อัตโนมัติ
     if (unitInfo) {
-      const picked = cats.filter((c) => !PART_CATEGORIES.includes(c));
+      const picked = [...cats, ...quoteItems].filter((c) => !PART_CATEGORIES.includes(c));
       const known = products.filter((p) => picked.includes(p.label)).map((p) => p.id);
       const unknown = picked.filter((c) => !products.some((p) => p.label === c));
       let extra: string[] = [];
@@ -2911,7 +2922,7 @@ function CloseJobDialog({
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  void addNewPart();
+                  void addNewPart("replaced");
                 }
               }}
             />
@@ -2927,7 +2938,7 @@ function CloseJobDialog({
                 </option>
               ))}
             </select>
-            <Button type="button" size="sm" onClick={addNewPart} disabled={adding || !newPart.trim()}>
+            <Button type="button" size="sm" onClick={() => void addNewPart("replaced")} disabled={adding || !newPart.trim()}>
               {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "เพิ่ม+ผูก S/N"}
             </Button>
           </div>
@@ -2940,13 +2951,64 @@ function CloseJobDialog({
 
         <div className="space-y-2 rounded-xl border p-3">
           <p className="text-sm font-semibold">รายการที่ต้องเสนอราคาเพิ่มเติม</p>
-          <MultiCombobox
-            values={quoteItems}
-            onChange={setQuoteItems}
-            options={Array.from(new Set([...catalog, ...partOptions]))}
-            placeholder="เลือกอะไหล่ที่ต้องเสนอราคา หรือพิมพ์เอง"
-            searchPlaceholder="ค้นหาอะไหล่ในคลัง..."
-          />
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              {appt.serial_number ? `อะไหล่ของเครื่อง S/N ${appt.serial_number}` : "อะไหล่จากคลัง"} (เลือกได้หลายรายการ)
+            </p>
+            <label className="flex shrink-0 items-center gap-1 text-xs">
+              <input type="checkbox" checked={showAllQuote} onChange={(e) => setShowAllQuote(e.target.checked)} />
+              แสดงทั้งคลัง
+            </label>
+          </div>
+          <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+            {Object.entries(quoteGrouped).sort(([a], [b]) => a.localeCompare(b, "th")).map(([cat, items]) => (
+              <div key={cat}>
+                <p className="text-xs font-semibold text-muted-foreground">{cat}</p>
+                <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                  {items.map((p) => (
+                    <label key={p.id} className="flex items-start gap-2 text-sm">
+                      <input type="checkbox" className="mt-1" checked={quoteItems.includes(p.label)} onChange={() => toggleQuote(p.label)} />
+                      <span className="break-words">{p.label}{linkedIds.includes(p.id) && <span className="ml-1 text-[10px] text-primary">(ผูกแล้ว)</span>}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {PART_CATEGORIES.filter((c) => !quoteGrouped[c]).length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground">หมวดที่ยังไม่มีอะไหล่ในระบบ (ติ๊กตามหมวดไว้ก่อน)</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {PART_CATEGORIES.filter((c) => !quoteGrouped[c]).map((c) => (
+                    <label key={c} className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={quoteItems.includes(c)} onChange={() => toggleQuote(c)} />
+                      {c}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            {quoteItems.filter((item) => !PART_CATEGORIES.includes(item) && !products.some((p) => p.label === item)).map((item) => (
+              <label key={item} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked onChange={() => toggleQuote(item)} />{item}
+              </label>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <Input
+              className="min-w-0 flex-1"
+              placeholder="พิมพ์ชื่อ/รหัสอะไหล่ที่ต้องเสนอราคา"
+              value={quotePart}
+              onChange={(e) => setQuotePart(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addNewPart("quote"); } }}
+            />
+            <select className="h-9 rounded-md border bg-background px-2 text-sm" value={quoteCat} onChange={(e) => setQuoteCat(e.target.value)} aria-label="หมวดอะไหล่เสนอราคา">
+              <option value="">หมวด: อื่นๆ</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <Button type="button" size="sm" onClick={() => void addNewPart("quote")} disabled={adding || !quotePart.trim()}>
+              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "เพิ่ม+ผูก S/N"}
+            </Button>
+          </div>
         </div>
 
         <label className="flex items-center gap-2 text-sm">
