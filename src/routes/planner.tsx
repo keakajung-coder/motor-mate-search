@@ -2701,12 +2701,12 @@ function CloseJobDialog({
     if (!result) return toast.error("กรุณาเลือกผลสรุปงาน");
     setSaving(true);
     const doneDate = new Date().toISOString().slice(0, 10);
-    await ensureParts([...cats, ...quoteItems].filter((c) => !PART_CATEGORIES.includes(c)));
+    const chosenParts = [...cats, ...quoteItems].filter((c) => !PART_CATEGORIES.includes(c));
+    await ensureParts(chosenParts.filter((c) => !products.some((p) => p.label === c)));
     // ผูกอะไหล่ที่เลือกทั้งหมดเข้ากับ S/N อัตโนมัติ
     if (unitInfo) {
-      const picked = [...cats, ...quoteItems].filter((c) => !PART_CATEGORIES.includes(c));
-      const known = products.filter((p) => picked.includes(p.label)).map((p) => p.id);
-      const unknown = picked.filter((c) => !products.some((p) => p.label === c));
+      const known = products.filter((p) => chosenParts.includes(p.label)).map((p) => p.id);
+      const unknown = chosenParts.filter((c) => !products.some((p) => p.label === c));
       let extra: string[] = [];
       if (unknown.length) {
         const { data } = await supabase.from("products").select("id").in("part_number", unknown);
