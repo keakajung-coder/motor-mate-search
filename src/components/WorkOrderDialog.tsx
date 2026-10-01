@@ -423,14 +423,14 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
         <ClipboardPlus className="mr-1 h-4 w-4" /> เขียนใบสั่งงานใหม่
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+        <DialogContent className="md:w-[min(96vw,72rem)] md:max-w-none">
           <DialogHeader>
             <DialogTitle>ใบสั่งงานใหม่</DialogTitle>
             <DialogDescription>เลือกข้อมูลจากรายการที่มีในระบบ ระบบจะส่งให้แอดมินตรวจสอบก่อนขึ้นปฏิทิน</DialogDescription>
           </DialogHeader>
 
           {/* แถวบน: ช่าง / รถ (อัปเดตอัตโนมัติจากฐานข้อมูล) */}
-          <div className="grid gap-3 rounded-xl border bg-muted/30 p-3 sm:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border bg-muted/30 p-3 md:grid-cols-2">
             <Field label="พนักงานเซอร์วิสที่ต้องการ (เลือกได้หลายคน)">
               <MultiCombobox
                 values={splitNames(form.staff_name)}
@@ -565,7 +565,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
             <Field label="เลขที่ PO / อ้างอิง">
               <Input value={form.po_number} onChange={(e) => set("po_number", e.target.value)} />
             </Field>
-            <div className="sm:col-span-2">
+            <div className="md:col-span-2">
               <Field label="หมายเหตุการเงิน">
                 <Input value={form.billing_note} onChange={(e) => set("billing_note", e.target.value)} />
               </Field>
@@ -591,7 +591,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
                 searchPlaceholder="ค้นหาลักษณะงาน..."
               />
             </Field>
-            <div className="sm:col-span-2">
+            <div className="md:col-span-2">
               <Field label="งานที่ทำ / รายละเอียดปัญหา *">
                 <Textarea rows={3} value={form.job_detail} onChange={(e) => set("job_detail", e.target.value)} />
               </Field>
@@ -605,7 +605,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
             <Field label="เวลากลับถึงบริษัท (โดยประมาณ)">
               <Input type="time" value={form.return_time} onChange={(e) => set("return_time", e.target.value)} />
             </Field>
-            <div className="sm:col-span-2">
+            <div className="md:col-span-2">
               <Field label="หมายเหตุการเดินทาง / เส้นทาง">
                 <Input value={form.logistics_note} onChange={(e) => set("logistics_note", e.target.value)} />
               </Field>
@@ -613,14 +613,14 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
           </Section>
 
           <Section title="รูปภาพ / คลิปหน้างาน (ไฟล์แนบ)">
-            <div className="sm:col-span-2">
+            <div className="md:col-span-2">
               <JobAttachments value={form.attachments} onChange={(v) => set("attachments", v ?? "")} />
             </div>
           </Section>
 
           <Section title="อุปกรณ์เซฟตี้ที่ต้องเตรียม">
 
-            <div className="sm:col-span-2">
+            <div className="md:col-span-2">
               <Field label="อุปกรณ์เซฟตี้ (เลือกได้หลายอย่าง)">
                 <MultiCombobox
                   values={splitNames(form.safety_gear)}
@@ -640,10 +640,10 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
             title={`ผู้ติดต่อสำหรับงาน: ${form.customer_name.trim() || "ใบสั่งงานใหม่"}`}
           />
 
-          <DialogFooter className="gap-2 sm:justify-between">
+          <DialogFooter className="gap-3 md:items-center md:justify-between">
             <label
               className={
-                "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium " +
+                "flex min-w-0 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium " +
                 (booked ? "border-amber-400 bg-amber-50 text-amber-700" : "text-muted-foreground")
               }
             >
@@ -653,14 +653,14 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
                 checked={booked}
                 onChange={(e) => setBooked(e.target.checked)}
               />
-              <CalendarCheck2 className="h-4 w-4" />
+              <CalendarCheck2 className="h-4 w-4 shrink-0" />
               นัดหมายแล้ว (งานจะขึ้นสีเหลือง)
             </label>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>
+            <div className="grid grid-cols-2 gap-2 md:flex md:shrink-0">
+              <Button className="min-w-0" variant="outline" onClick={() => setOpen(false)}>
                 ยกเลิก
               </Button>
-              <Button onClick={submit} disabled={saving}>
+              <Button className="min-w-0" onClick={submit} disabled={saving}>
                 {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} ส่งใบสั่งงาน
               </Button>
             </div>
@@ -674,16 +674,16 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
 /** กล่องหัวข้อย่อยแบบ 2 คอลัมน์ */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-2 rounded-xl border p-3">
+    <div className="min-w-0 space-y-2 rounded-lg border p-3">
       <p className="text-sm font-semibold">{title}</p>
-      <div className="grid gap-3 sm:grid-cols-2">{children}</div>
+      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2">{children}</div>
     </div>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1">
+    <div className="min-w-0 space-y-1">
       <Label className="text-xs">{label}</Label>
       {children}
     </div>

@@ -49,7 +49,9 @@ import { DateInput } from "@/components/ui/date-input";
 const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "จัดการข้อมูล - อะไหล่ปั๊มลม" }] }),
+  head: () => ({ meta: [
+    { title: "จัดการข้อมูล - อะไหล่ปั๊มลม" },
+  ] }),
   component: AdminPage,
 });
 
