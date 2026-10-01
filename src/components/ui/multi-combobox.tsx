@@ -65,20 +65,20 @@ export function MultiCombobox({
           role="combobox"
           disabled={disabled}
           className={cn(
-            "h-auto min-h-11 w-full justify-between whitespace-normal py-2 text-left font-normal",
+            "h-auto min-h-11 min-w-0 w-full justify-between whitespace-normal py-2 text-left font-normal",
             values.length === 0 && "text-muted-foreground",
             className,
           )}
         >
-          <span className="flex flex-wrap gap-1">
+          <span className="flex min-w-0 flex-wrap gap-1 overflow-hidden">
             {values.length === 0 ? (
               placeholder
             ) : (
               values.map((v) => (
-                <Badge key={v} variant="secondary" className="gap-1">
-                  {v}
+                <Badge key={v} variant="secondary" className="min-w-0 max-w-full gap-1">
+                  <span className="min-w-0 truncate">{v}</span>
                   <X
-                    className="h-3 w-3"
+                    className="h-3 w-3 shrink-0"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!disabled) toggle(v);

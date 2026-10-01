@@ -17,7 +17,7 @@ export function ChecklistForm({ value, onChange }: { value: ChecklistResult; onC
         {f && <span className="shrink-0 text-xs text-muted-foreground">{f}</span>}
         <Input
           inputMode="decimal"
-          className="h-8 min-w-[4rem]"
+          className="h-8 min-w-0 w-full"
           value={it.values[fi] ?? ""}
           onChange={(e) => {
             const values = [...it.values];
@@ -29,7 +29,7 @@ export function ChecklistForm({ value, onChange }: { value: ChecklistResult; onC
     ));
 
   return (
-    <div className="space-y-3 rounded-md border p-3">
+    <div className="min-w-0 space-y-3 rounded-md border p-3">
       <div className="text-sm font-semibold">{value.template_name}</div>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         การตรวจเช็คครั้งที่
@@ -42,7 +42,7 @@ export function ChecklistForm({ value, onChange }: { value: ChecklistResult; onC
           {numeric.map(({ it, i }) => (
             <div key={it.id} className="flex flex-col gap-1 sm:flex-row sm:items-center">
               <span className="text-sm sm:w-56 sm:shrink-0">{it.label}</span>
-              <div className="flex flex-1 gap-2">{valueInputs(it, i)}</div>
+               <div className="flex min-w-0 flex-1 flex-wrap gap-2">{valueInputs(it, i)}</div>
             </div>
           ))}
         </div>
@@ -71,7 +71,7 @@ export function ChecklistForm({ value, onChange }: { value: ChecklistResult; onC
                   </button>
                 ))}
               </div>
-              {it.kind === "status_number" && <div className="flex flex-1 gap-2">{valueInputs(it, i)}</div>}
+               {it.kind === "status_number" && <div className="flex min-w-0 flex-1 flex-wrap gap-2">{valueInputs(it, i)}</div>}
             </div>
           ))}
         </div>

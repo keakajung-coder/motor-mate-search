@@ -52,9 +52,9 @@ export function Combobox({
           variant="outline"
           role="combobox"
           disabled={disabled}
-          className={cn("h-11 w-full justify-between font-normal", !value && "text-muted-foreground", className)}
+          className={cn("h-11 min-w-0 w-full justify-between font-normal", !value && "text-muted-foreground", className)}
         >
-          <span className="truncate">{value ? current?.label ?? value : placeholder}</span>
+          <span className="min-w-0 truncate">{value ? current?.label ?? value : placeholder}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
