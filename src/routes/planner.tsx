@@ -2285,7 +2285,7 @@ function AppointmentDialog({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="md:w-[min(96vw,68rem)] md:max-w-none">
         <DialogHeader>
           <DialogTitle>{form.id ? "รายละเอียดนัดหมาย" : "เพิ่มนัดหมายลงปฏิทิน"}</DialogTitle>
           <DialogDescription>
@@ -2323,7 +2323,7 @@ function AppointmentDialog({
 
 
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2">
           <F label="รหัสลูกค้า (cust_id)">
             <Combobox
               disabled={locked}
@@ -2402,7 +2402,7 @@ function AppointmentDialog({
               searchPlaceholder="ค้นหาประเภทงาน..."
             />
           </F>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
             <F label="วันที่">
               <DateInput disabled={locked} value={form.visit_date} onChange={(v) => set("visit_date", v)} />
             </F>
@@ -2441,12 +2441,12 @@ function AppointmentDialog({
             />
           </F>
 
-          <div className="sm:col-span-2">
+          <div className="md:col-span-2">
             <F label="รายละเอียดงาน / บันทึกให้ช่าง">
               <Textarea disabled={locked} rows={3} value={form.job_detail ?? ""} onChange={(e) => set("job_detail", e.target.value)} />
             </F>
           </div>
-          <div className="sm:col-span-2">
+          <div className="md:col-span-2">
             <F label="รูปภาพ / คลิปหน้างาน">
               <JobAttachments
                 value={form.attachments}
@@ -2458,7 +2458,7 @@ function AppointmentDialog({
 
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 [&>button]:w-full sm:[&>button]:w-auto">
           {canDelete && form.id && (
             <ConfirmButton
               variant="destructive"
@@ -2802,7 +2802,7 @@ function CloseJobDialog({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="md:w-[min(96vw,72rem)] md:max-w-none">
         <DialogHeader>
           <DialogTitle>{isEdit ? "แก้ไขรายละเอียดงานที่ปิดแล้ว" : "สรุปผลปิดงาน"}</DialogTitle>
           <DialogDescription>
@@ -2811,7 +2811,7 @@ function CloseJobDialog({
               : "เลือกผลสรุปและบันทึกรายละเอียดเข้าประวัติซ่อมบำรุงของเครื่อง"}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
           <Button
             variant={result === "ok" ? "default" : "outline"}
             className={result === "ok" ? "bg-emerald-600 hover:bg-emerald-600/90" : ""}
@@ -2826,7 +2826,8 @@ function CloseJobDialog({
             <XCircle className="mr-1 h-4 w-4" /> ไม่เรียบร้อย
           </Button>
         </div>
-        <div className="space-y-2 rounded-xl border p-3">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2">
+        <div className="min-w-0 space-y-2 rounded-lg border p-3">
           <p className="text-sm font-semibold">รายละเอียดการปิดงาน</p>
           <Textarea rows={3} placeholder="บันทึกสรุปงานสั้นๆ" value={note} onChange={(e) => setNote(e.target.value)} />
           <label className="flex items-center gap-2 text-sm">
@@ -2835,7 +2836,7 @@ function CloseJobDialog({
           </label>
         </div>
 
-        <div className="space-y-2 rounded-xl border p-3">
+        <div className="min-w-0 space-y-2 rounded-lg border p-3">
           <label className="flex items-center justify-between gap-2 text-sm font-semibold">
             ต้องการมี Checklist การตรวจสอบหรือไม่
             <Switch checked={useChecklist} onCheckedChange={setUseChecklist} />
@@ -2863,9 +2864,9 @@ function CloseJobDialog({
           )}
         </div>
 
-        <div className="space-y-2 rounded-xl border p-3">
+        <div className="min-w-0 space-y-2 rounded-lg border p-3">
           <p className="text-sm font-semibold">อะไหล่ที่เปลี่ยนในงานนี้</p>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
               {appt.serial_number
                 ? `อะไหล่ของเครื่อง S/N ${appt.serial_number} (เลือกได้หลายรายการ)`
@@ -2904,7 +2905,7 @@ function CloseJobDialog({
             {PART_CATEGORIES.filter((c) => !grouped[c]).length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-muted-foreground">หมวดที่ยังไม่มีอะไหล่ในระบบ (ติ๊กตามหมวดไว้ก่อน)</p>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                   {PART_CATEGORIES.filter((c) => !grouped[c]).map((c) => (
                     <label key={c} className="flex items-center gap-2 text-sm">
                       <input type="checkbox" checked={cats.includes(c)} onChange={() => toggleCat(c)} />
@@ -2915,9 +2916,9 @@ function CloseJobDialog({
               </div>
             )}
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="grid min-w-0 grid-cols-1 gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <Input
-              className="min-w-0 flex-1"
+              className="min-w-0"
               placeholder="พิมพ์ชื่อ/รหัสอะไหล่ใหม่"
               value={newPart}
               onChange={(e) => setNewPart(e.target.value)}
@@ -2929,7 +2930,7 @@ function CloseJobDialog({
               }}
             />
             <select
-              className="h-9 rounded-md border bg-background px-2 text-sm"
+              className="h-9 min-w-0 w-full rounded-md border bg-background px-2 text-sm sm:w-auto"
               value={newCat}
               onChange={(e) => setNewCat(e.target.value)}
             >
@@ -2940,7 +2941,7 @@ function CloseJobDialog({
                 </option>
               ))}
             </select>
-            <Button type="button" size="sm" onClick={() => void addNewPart("replaced")} disabled={adding || !newPart.trim()}>
+            <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => void addNewPart("replaced")} disabled={adding || !newPart.trim()}>
               {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "เพิ่ม+ผูก S/N"}
             </Button>
           </div>
@@ -2951,9 +2952,9 @@ function CloseJobDialog({
           />
         </div>
 
-        <div className="space-y-2 rounded-xl border p-3">
+        <div className="min-w-0 space-y-2 rounded-lg border p-3">
           <p className="text-sm font-semibold">รายการที่ต้องเสนอราคาเพิ่มเติม</p>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
               {appt.serial_number ? `อะไหล่ของเครื่อง S/N ${appt.serial_number}` : "อะไหล่จากคลัง"} (เลือกได้หลายรายการ)
             </p>
@@ -2979,7 +2980,7 @@ function CloseJobDialog({
             {emptyQuoteCategories.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-muted-foreground">หมวดที่ยังไม่มีอะไหล่ในระบบ (ติ๊กตามหมวดไว้ก่อน)</p>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                   {emptyQuoteCategories.map((c) => (
                     <label key={c} className="flex items-center gap-2 text-sm">
                       <input type="checkbox" checked={quoteItems.includes(c)} onChange={() => toggleQuote(c)} />
@@ -2995,29 +2996,30 @@ function CloseJobDialog({
               </label>
             ))}
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="grid min-w-0 grid-cols-1 gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <Input
-              className="min-w-0 flex-1"
+              className="min-w-0"
               placeholder="พิมพ์ชื่อ/รหัสอะไหล่ที่ต้องเสนอราคา"
               value={quotePart}
               onChange={(e) => setQuotePart(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addNewPart("quote"); } }}
             />
-            <select className="h-9 rounded-md border bg-background px-2 text-sm" value={quoteCat} onChange={(e) => setQuoteCat(e.target.value)} aria-label="หมวดอะไหล่เสนอราคา">
+            <select className="h-9 min-w-0 w-full rounded-md border bg-background px-2 text-sm sm:w-auto" value={quoteCat} onChange={(e) => setQuoteCat(e.target.value)} aria-label="หมวดอะไหล่เสนอราคา">
               <option value="">หมวด: อื่นๆ</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <Button type="button" size="sm" onClick={() => void addNewPart("quote")} disabled={adding || !quotePart.trim()}>
+            <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => void addNewPart("quote")} disabled={adding || !quotePart.trim()}>
               {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "เพิ่ม+ผูก S/N"}
             </Button>
           </div>
         </div>
 
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-w-0 items-start gap-2 text-sm md:col-span-2">
           <input type="checkbox" checked={resetParts} onChange={(e) => setResetParts(e.target.checked)} />
           รีเซ็ตอายุอะไหล่ของเครื่อง {appt.serial_number || "-"} เริ่มนับใหม่
         </label>
-        <DialogFooter>
+        </div>
+        <DialogFooter className="[&>button]:w-full sm:[&>button]:w-auto">
           <Button variant="outline" onClick={onClose}>
             ยกเลิก
           </Button>
@@ -3033,7 +3035,7 @@ function CloseJobDialog({
 
 function F({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1">
+    <div className="min-w-0 space-y-1">
       <Label className="text-xs">{label}</Label>
       {children}
     </div>
