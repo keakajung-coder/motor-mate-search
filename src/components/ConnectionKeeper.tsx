@@ -21,7 +21,7 @@ export function ConnectionKeeper() {
           await supabase.auth.refreshSession();
         }
 
-        const { error } = await supabase.from("categories").select("id").limit(1);
+        const { error } = await supabase.from("categories").select("id").limit(1).abortSignal(AbortSignal.timeout(10_000));
         const connected = !error || !!error.code;
         if (disposed) return;
         window.dispatchEvent(new CustomEvent("app:connection-status", { detail: { online: connected } }));
