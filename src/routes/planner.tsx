@@ -462,11 +462,11 @@ function PlannerPage() {
 
       <Card className="h-fit">
         <CardHeader className="gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CalendarDays className="h-4 w-4" /> {title}
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+            <CardTitle className="flex min-w-0 items-center gap-2 break-words text-base">
+              <CalendarDays className="h-4 w-4 shrink-0" /> {title}
             </CardTitle>
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <Button variant="outline" size="icon" onClick={() => shift(-1)}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -1856,7 +1856,7 @@ function DayDetailDialog({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className={preview ? "max-h-[94vh] max-w-[96vw] overflow-hidden p-3 sm:max-w-5xl sm:p-5" : "max-h-[90vh] overflow-y-auto sm:max-w-xl"}>
+      <DialogContent className={preview ? "w-[calc(100vw-1rem)] max-w-none overflow-hidden p-3 sm:w-[calc(100vw-2rem)] sm:p-5" : "w-[calc(100vw-1rem)] max-w-none overflow-y-auto sm:w-[calc(100vw-2rem)]"}>
         {!preview ? (
           <>
             <DialogHeader className="pr-8">
@@ -2285,7 +2285,7 @@ function AppointmentDialog({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="md:w-[min(96vw,68rem)] md:max-w-none">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-none sm:w-[calc(100vw-2rem)]">
         <DialogHeader>
           <DialogTitle>{form.id ? "รายละเอียดนัดหมาย" : "เพิ่มนัดหมายลงปฏิทิน"}</DialogTitle>
           <DialogDescription>
@@ -2802,7 +2802,7 @@ function CloseJobDialog({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="md:w-[min(96vw,72rem)] md:max-w-none">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-none sm:w-[calc(100vw-2rem)]">
         <DialogHeader>
           <DialogTitle>{isEdit ? "แก้ไขรายละเอียดงานที่ปิดแล้ว" : "สรุปผลปิดงาน"}</DialogTitle>
           <DialogDescription>

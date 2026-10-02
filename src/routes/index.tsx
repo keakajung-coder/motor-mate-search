@@ -178,7 +178,7 @@ function HomePage() {
 
       {/* ปุ่มเขียนใบสั่งงานใหม่ — ขอบล่างสุดของหน้าจอ */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 py-2 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl justify-center">
+        <div className="flex w-full min-w-0 justify-center">
           <WorkOrderDialog />
         </div>
       </div>
@@ -341,7 +341,7 @@ function ShareAppButton() {
         <QrCode className="mr-1 h-4 w-4" /> แชร์แอป
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-md">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-none overflow-y-auto sm:w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>แชร์แอปให้ผู้อื่นใช้งาน</DialogTitle>
             <DialogDescription>
@@ -717,7 +717,7 @@ function ProductModal({
 }) {
   return (
     <Dialog open={!!product} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-none overflow-y-auto sm:w-[calc(100vw-2rem)]">
         {product && (
           <>
             <DialogHeader>
@@ -731,7 +731,7 @@ function ProductModal({
                 className="w-full rounded-lg object-cover"
               />
             )}
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid min-w-0 grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <Info
                 label="สถานะ"
                 value={(product.stock_quantity ?? 0) > 0 ? `มีสินค้า (${product.stock_quantity})` : "สินค้าหมด"}
@@ -893,7 +893,11 @@ function SnView({
     setUnits(rows);
     saveOffline("machine_units", rows);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    void load();
+    window.addEventListener("app:connection-restored", load);
+    return () => window.removeEventListener("app:connection-restored", load);
+  }, []);
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const sn = sp.get("sn");
@@ -1490,7 +1494,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-none sm:w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>พรีวิว PDF — {serial}</DialogTitle>
             <DialogDescription>
