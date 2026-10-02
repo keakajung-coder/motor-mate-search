@@ -102,13 +102,10 @@ export function useAlertPrefs() {
 export function useOnlineStatus() {
   const [online, setOnline] = useState(true);
   useEffect(() => {
-    const sync = () => setOnline(navigator.onLine);
-    sync();
-    window.addEventListener("online", sync);
-    window.addEventListener("offline", sync);
+    const sync = (event: Event) => setOnline((event as CustomEvent<{ online: boolean }>).detail.online);
+    window.addEventListener("app:connection-status", sync);
     return () => {
-      window.removeEventListener("online", sync);
-      window.removeEventListener("offline", sync);
+      window.removeEventListener("app:connection-status", sync);
     };
   }, []);
   return online;

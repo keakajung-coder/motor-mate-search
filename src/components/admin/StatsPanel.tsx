@@ -51,6 +51,8 @@ export function StatsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
   useEffect(() => {
     load();
+    window.addEventListener("app:connection-restored", load);
+    return () => window.removeEventListener("app:connection-restored", load);
   }, [load, refreshKey]);
 
   // อัปเดตทันทีเมื่อมีการเพิ่ม/แก้ไข/ลบเครื่องจากที่ใดก็ตาม

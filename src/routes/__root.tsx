@@ -19,11 +19,12 @@ import { AccessGate, AdminLockButton } from "@/components/AccessGate";
 import { setupPwa } from "@/lib/pwa";
 import { useMyIssueReplies } from "@/lib/issue-watch";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ConnectionKeeper } from "@/components/ConnectionKeeper";
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
+      <div className="w-full text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">ไม่พบหน้านี้</h2>
         <p className="mt-2 text-sm text-muted-foreground">หน้าที่คุณค้นหาไม่มีอยู่หรือถูกย้ายไปแล้ว</p>
@@ -49,7 +50,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
+      <div className="w-full text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">โหลดหน้านี้ไม่สำเร็จ</h1>
         <p className="mt-2 text-sm text-muted-foreground">เกิดข้อผิดพลาด ลองรีเฟรชหรือกลับหน้าแรก</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -119,13 +120,13 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function NavBar() {
   return (
-    <header className="border-b bg-card">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3">
+    <header className="min-w-0 border-b bg-card">
+      <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 px-3 py-3 sm:px-5">
         <Link to="/" className="flex items-center gap-2 font-semibold">
           <Wrench className="h-5 w-5 text-primary" />
           <span className="hidden sm:inline">อะไหล่ปั๊มลม</span>
         </Link>
-        <nav className="flex items-center gap-1 text-sm">
+        <nav className="flex min-w-0 flex-wrap items-center gap-1 text-sm">
           <Link
             to="/"
             className="rounded-md px-3 py-2 hover:bg-accent [&.active]:bg-accent [&.active]:font-medium"
@@ -167,8 +168,9 @@ function RootComponent() {
       <AccessProvider>
         <AccessGate>
           <div className="min-h-dvh min-w-0 overflow-x-clip bg-background">
+            <ConnectionKeeper />
             <NavBar />
-            <main className="mx-auto min-w-0 max-w-6xl px-3 py-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-4 sm:py-6 sm:pb-[calc(6rem+env(safe-area-inset-bottom))]">
+            <main className="w-full min-w-0 max-w-none px-3 py-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-6 sm:pb-[calc(6rem+env(safe-area-inset-bottom))]">
               <Outlet />
             </main>
           </div>

@@ -33,6 +33,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     load();
+    window.addEventListener("app:connection-restored", load);
     const ch = supabase
       .channel("notifications-bell")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, () => {
@@ -41,6 +42,7 @@ export function NotificationBell() {
       })
       .subscribe();
     return () => {
+      window.removeEventListener("app:connection-restored", load);
       supabase.removeChannel(ch);
     };
   }, [load]);

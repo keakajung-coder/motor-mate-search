@@ -423,7 +423,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
         <ClipboardPlus className="mr-1 h-4 w-4" /> เขียนใบสั่งงานใหม่
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:w-[min(96vw,72rem)] md:max-w-none">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-none sm:w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>ใบสั่งงานใหม่</DialogTitle>
             <DialogDescription>เลือกข้อมูลจากรายการที่มีในระบบ ระบบจะส่งให้แอดมินตรวจสอบก่อนขึ้นปฏิทิน</DialogDescription>

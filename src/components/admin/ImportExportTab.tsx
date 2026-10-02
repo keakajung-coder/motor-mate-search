@@ -662,7 +662,7 @@ export function ImportExportTab() {
         <CardHeader><CardTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" />เลือกข้อมูล</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="max-w-xs flex-1">
+            <div className="min-w-0 flex-1">
               <Label>ตารางข้อมูล</Label>
               <Select value={dsKey} onValueChange={changeDataset}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -717,7 +717,7 @@ export function ImportExportTab() {
               {allRows && (
                 <>
                   <Input
-                    className="h-8 max-w-52"
+                    className="h-8 min-w-0 w-full sm:w-52"
                     placeholder="ค้นหาในรายการ…"
                     value={rowQ}
                     onChange={(e) => setRowQ(e.target.value)}

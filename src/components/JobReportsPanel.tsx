@@ -627,7 +627,7 @@ function EditJobDialog({ row, onClose, onSaved }: { row: Row | null; onClose: ()
 
   return (
     <Dialog open={!!row} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-none overflow-y-auto sm:w-[calc(100vw-2rem)]">
         <DialogHeader>
           <DialogTitle>แก้ไขใบสั่งงาน</DialogTitle>
         </DialogHeader>

@@ -125,7 +125,7 @@ export function AdminLockButton() {
         <KeyRound className="h-4 w-4 text-muted-foreground" />
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-xs">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-none sm:w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Lock className="h-4 w-4" /> โหมดผู้ดูแลระบบ
