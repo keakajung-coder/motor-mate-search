@@ -50,13 +50,19 @@ export function ConnectionKeeper() {
     void check();
     const timer = window.setInterval(() => { void check(); }, 60_000);
     const onWake = () => { void check(); };
+    const onOffline = () => {
+      wasOffline = true;
+      window.dispatchEvent(new CustomEvent("app:connection-status", { detail: { online: false } }));
+    };
     window.addEventListener("online", onWake);
+    window.addEventListener("offline", onOffline);
     window.addEventListener("focus", onWake);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       disposed = true;
       window.clearInterval(timer);
       window.removeEventListener("online", onWake);
+      window.removeEventListener("offline", onOffline);
       window.removeEventListener("focus", onWake);
       document.removeEventListener("visibilitychange", onVisible);
     };
