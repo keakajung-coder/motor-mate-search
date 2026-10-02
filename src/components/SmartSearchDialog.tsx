@@ -211,13 +211,13 @@ export function SmartSearchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-none overflow-y-auto sm:w-[calc(100vw-2rem)]">
         <DialogHeader>
           <DialogTitle>🔍 ค้นหาทางลัดอัจฉริยะ</DialogTitle>
           <DialogDescription>เลือกโหมดก่อน แล้วพิมพ์คำค้นหา ระบบดักคำพิมพ์ผิดให้อัตโนมัติ</DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
           {(
             [
               { k: "parts", label: "⚙️ ค้นหาอะไหล่", icon: Package },
