@@ -10,8 +10,9 @@ export function ConnectionKeeper() {
     let disposed = false;
     let inFlight = false;
     let wasOffline = false;
+    let hiddenAt = 0;
 
-    const check = async () => {
+    const check = async (refresh = false) => {
       if (disposed || inFlight || document.visibilityState === "hidden") return;
       inFlight = true;
       try {
@@ -20,14 +21,13 @@ export function ConnectionKeeper() {
           await supabase.auth.refreshSession();
         }
 
-        // A database response (even an authorization error) proves the connection is alive.
         const { error } = await supabase.from("categories").select("id").limit(1);
         const connected = !error || !!error.code;
         if (disposed) return;
         window.dispatchEvent(new CustomEvent("app:connection-status", { detail: { online: connected } }));
         if (connected) {
-          supabase.realtime.connect();
-          if (wasOffline) {
+          if (supabase.getChannels().length > 0 && !supabase.realtime.isConnected()) supabase.realtime.connect();
+          if (wasOffline || refresh) {
             void queryClient.invalidateQueries();
             window.dispatchEvent(new Event("app:connection-restored"));
           }
@@ -43,17 +43,21 @@ export function ConnectionKeeper() {
       }
     };
 
-    const onVisible = () => { if (document.visibilityState === "visible") void check(); };
+    const onVisible = () => {
+      if (document.visibilityState === "hidden") hiddenAt = Date.now();
+      else void check(hiddenAt > 0 && Date.now() - hiddenAt > 60_000);
+    };
     void check();
     const timer = window.setInterval(() => { void check(); }, 60_000);
-    window.addEventListener("online", check);
-    window.addEventListener("focus", check);
+    const onWake = () => { void check(); };
+    window.addEventListener("online", onWake);
+    window.addEventListener("focus", onWake);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       disposed = true;
       window.clearInterval(timer);
-      window.removeEventListener("online", check);
-      window.removeEventListener("focus", check);
+      window.removeEventListener("online", onWake);
+      window.removeEventListener("focus", onWake);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [queryClient]);

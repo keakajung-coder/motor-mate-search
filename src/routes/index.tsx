@@ -68,6 +68,10 @@ export const Route = createFileRoute("/")({
         name: "description",
         content: "ค้นหาอะไหล่ปั๊มลมด้วยรหัส ชื่อ หรือรุ่น พร้อมกรองตามหมวดหมู่และเช็กสต็อก",
       },
+      { property: "og:title", content: "ค้นหาอะไหล่ปั๊มลม" },
+      { property: "og:description", content: "ค้นหาอะไหล่ปั๊มลมตามรุ่นและ S/N พร้อมเช็กสต็อก" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: HomePage,
@@ -487,7 +491,7 @@ function CatalogView() {
   const [contact, setContact] = useState("");
 
   useEffect(() => {
-    (async () => {
+    const load = async () => {
       const [cats, prods, settings] = await Promise.all([
         supabase.from("categories").select("id, name, sort_order").order("sort_order"),
         supabase
@@ -509,7 +513,10 @@ function CatalogView() {
         setContact(m.get("purchase_contact") || "");
       }
       setLoading(false);
-    })();
+    };
+    void load();
+    window.addEventListener("app:connection-restored", load);
+    return () => window.removeEventListener("app:connection-restored", load);
   }, []);
 
   const filtered = useMemo(() => {

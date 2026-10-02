@@ -51,6 +51,11 @@ const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลม
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [
     { title: "จัดการข้อมูล - อะไหล่ปั๊มลม" },
+    { name: "description", content: "จัดการข้อมูลเครื่องจักร ลูกค้า อะไหล่ และรายการบริการปั๊มลม" },
+    { property: "og:title", content: "จัดการข้อมูลอะไหล่ปั๊มลม" },
+    { property: "og:description", content: "จัดการข้อมูลเครื่องจักร ลูกค้า และอะไหล่ปั๊มลม" },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
   ] }),
   component: AdminPage,
 });

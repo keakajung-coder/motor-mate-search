@@ -321,6 +321,8 @@ function PlannerPage() {
 
   useEffect(() => {
     load();
+    window.addEventListener("app:connection-restored", load);
+    return () => window.removeEventListener("app:connection-restored", load);
   }, [load]);
 
   const staffNames = useMemo(
