@@ -40,12 +40,16 @@ export function useMyIssueReplies(onReplied?: (id: string) => void) {
     };
 
     // ตรวจย้อนหลังเผื่อแอดมินตอบตอนที่ปิดแอปอยู่
-    void supabase
-      .from("troubleshooting_issues")
-      .select("id, title, status")
-      .in("id", ids)
-      .eq("status", "published")
-      .then(({ data }) => (data ?? []).forEach(announce));
+    const checkMissed = () => {
+      void supabase
+        .from("troubleshooting_issues")
+        .select("id, title, status")
+        .in("id", ids)
+        .eq("status", "published")
+        .then(({ data }) => (data ?? []).forEach(announce));
+    };
+    checkMissed();
+    window.addEventListener("app:connection-restored", checkMissed);
 
     const ch = supabase
       .channel("my_issue_replies")
@@ -56,6 +60,7 @@ export function useMyIssueReplies(onReplied?: (id: string) => void) {
       )
       .subscribe();
     return () => {
+      window.removeEventListener("app:connection-restored", checkMissed);
       supabase.removeChannel(ch);
     };
   }, [onReplied]);
