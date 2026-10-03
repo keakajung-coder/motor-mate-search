@@ -1119,7 +1119,7 @@ function BundleApply({ unitId, onApplied }: { unitId: string; onApplied: () => v
     <div className="no-print mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-2">
       <span className="text-xs text-muted-foreground">📦 ใส่ชุดอะไหล่สำเร็จรูป:</span>
       <select
-        className="h-9 min-w-[12rem] rounded-md border bg-background px-2 text-sm"
+        className="h-9 min-w-0 w-full rounded-md border bg-background px-2 text-sm lg:w-auto"
         value={pick}
         onChange={(e) => setPick(e.target.value)}
       >

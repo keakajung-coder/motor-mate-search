@@ -135,7 +135,7 @@ export function SalesContactsCard() {
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : (
           <section className="space-y-3">
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(9rem,1fr)_minmax(8rem,0.8fr)_minmax(10rem,1fr)_auto]">
+            <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1fr)_auto]">
               <Input
                 placeholder="ชื่อ"
                 value={draft.name}
@@ -168,7 +168,7 @@ export function SalesContactsCard() {
                 return (
                   <div key={row.id} className="rounded-md border p-3">
                     {isEditing ? (
-                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(9rem,1fr)_minmax(8rem,0.8fr)_minmax(10rem,1fr)_auto]">
+                      <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1fr)_auto]">
                         <Input
                           aria-label="ชื่อ"
                           value={editDraft.name}
@@ -197,7 +197,7 @@ export function SalesContactsCard() {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid min-w-0 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-[minmax(9rem,1fr)_minmax(8rem,0.8fr)_minmax(10rem,1fr)_auto_auto_auto] lg:items-center">
+                      <div className="grid min-w-0 grid-cols-1 gap-3 text-sm lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1fr)_auto_auto_auto] lg:items-center">
                         <div className="min-w-0">
                           <span className="block text-xs text-muted-foreground">ชื่อ</span>
                           <span className="block truncate font-medium" title={row.name}>{row.name}</span>

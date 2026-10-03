@@ -1219,7 +1219,7 @@ function ApprovedOrders({
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 rounded-lg border bg-card p-2 sm:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-1 gap-2 rounded-lg border bg-card p-2 lg:grid-cols-4">
         <DateInput size="sm" aria-label="กรองวันที่นัดหมาย" value={fDate} onChange={setFDate} />
         <select className="h-8 rounded-md border bg-background px-2 text-xs" value={fSeller} onChange={(e) => setFSeller(e.target.value)} aria-label="กรองผู้ขาย">
           <option value="">ผู้ขายทั้งหมด</option>
@@ -1229,13 +1229,13 @@ function ApprovedOrders({
           <option value="">ช่างทั้งหมด</option>
           {staffOpts.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Button size="sm" variant="ghost" className="h-8" onClick={() => { setFDate(""); setFSeller(""); setFStaff(""); }}>ล้างตัวกรอง</Button>
           <label className="flex items-center gap-1 text-xs">
             <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} /> แสดงที่ซ่อน
           </label>
         </div>
-        <div className="flex flex-wrap gap-2 text-[11px] sm:col-span-4">
+        <div className="flex flex-wrap gap-2 text-[11px] lg:col-span-4">
           <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> ปิดงาน</span>
           <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> รอ / นัดหมายแล้ว</span>
           <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> ยังไม่ไป</span>
@@ -1278,7 +1278,7 @@ function ApprovedOrders({
             <JobStatusBadge status={appointments[o.id]?.status ?? o.status} />
             <span className="text-xs text-muted-foreground">เซลล์: {o.sales_rep || "ยังไม่ระบุ"}</span>
           </div>
-          <div className="grid gap-2 rounded-md border bg-muted/30 p-2 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
+          <div className="grid min-w-0 grid-cols-1 gap-2 rounded-md border bg-muted/30 p-2 lg:grid-cols-[minmax(0,1fr)_8rem_auto]">
             <DateInput
               aria-label={`วันที่นัดหมาย ${o.customer_name}`}
               value={schedule[o.id]?.date ?? ""}
@@ -1862,7 +1862,7 @@ function DayDetailDialog({
         {!preview ? (
           <>
             <DialogHeader className="pr-8">
-              <div className="flex items-start justify-between gap-3">
+               <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
                 <div>
                   <DialogTitle>คิวงานวันที่ {formatDate(date)}</DialogTitle>
                   <DialogDescription className="mt-1">ทั้งหมด {list.length} งาน · แตะรายการเพื่อดูรายละเอียดเชิงลึก</DialogDescription>
@@ -2325,7 +2325,7 @@ function AppointmentDialog({
 
 
 
-        <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
           <F label="รหัสลูกค้า (cust_id)">
             <Combobox
               disabled={locked}
@@ -2404,7 +2404,7 @@ function AppointmentDialog({
               searchPlaceholder="ค้นหาประเภทงาน..."
             />
           </F>
-          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
             <F label="วันที่">
               <DateInput disabled={locked} value={form.visit_date} onChange={(v) => set("visit_date", v)} />
             </F>
@@ -2813,7 +2813,7 @@ function CloseJobDialog({
               : "เลือกผลสรุปและบันทึกรายละเอียดเข้าประวัติซ่อมบำรุงของเครื่อง"}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2">
           <Button
             variant={result === "ok" ? "default" : "outline"}
             className={result === "ok" ? "bg-emerald-600 hover:bg-emerald-600/90" : ""}
@@ -2828,7 +2828,7 @@ function CloseJobDialog({
             <XCircle className="mr-1 h-4 w-4" /> ไม่เรียบร้อย
           </Button>
         </div>
-        <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <div className="min-w-0 space-y-2 rounded-lg border p-3">
           <p className="text-sm font-semibold">รายละเอียดการปิดงาน</p>
           <Textarea rows={3} placeholder="บันทึกสรุปงานสั้นๆ" value={note} onChange={(e) => setNote(e.target.value)} />
