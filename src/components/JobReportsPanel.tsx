@@ -270,7 +270,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
           <BarChart3 className="h-4 w-4" /> สรุปใบสั่งงาน
         </CardTitle>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-col items-stretch gap-2 lg:flex-row lg:flex-wrap lg:items-center">
           <div className="flex flex-wrap gap-1">
             {([
               ["day", "รายวัน"],
@@ -297,31 +297,34 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
           </div>
 
           {mode === "custom" ? (
-            <div className="flex items-center gap-1">
+            <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2">
+              <label className="min-w-0 text-xs text-muted-foreground">จากวันที่
               <DateInput
                 aria-label="ตั้งแต่วันที่"
-                className="w-36"
+                className="w-full"
                 value={customFrom}
                 onChange={(v) => v && setCustomFrom(v)}
               />
-              <span className="text-xs text-muted-foreground">ถึง</span>
+              </label>
+              <label className="min-w-0 text-xs text-muted-foreground">ถึงวันที่
               <DateInput
                 aria-label="ถึงวันที่"
-                className="w-36"
+                className="w-full"
                 value={customTo}
                 onChange={(v) => v && setCustomTo(v)}
               />
+              </label>
             </div>
           ) : (
             <DateInput
               aria-label="เลือกวันที่รายงาน"
-              className="w-36"
+              className="w-full lg:w-40"
               value={day}
               onChange={(v) => v && setDay(v)}
             />
           )}
 
-          <div className="ml-auto flex flex-wrap items-center gap-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-1 lg:ml-auto">
             <div className="flex gap-1" aria-label="แนวกระดาษ">
               <Button
                 size="sm"
@@ -416,7 +419,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
             {groupBy === "seller" ? " · แยกตามเซลล์" : groupBy === "tech" ? " · แยกตามช่าง" : ""}
           </p>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-4">
             <Metric label="งานทั้งหมด" value={rows.length} />
             <Metric label="ปิดงานแล้ว" value={done.length} tone="ok" />
             <Metric label="ค้างอยู่" value={pendingRows.length} tone="warn" />
@@ -424,7 +427,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
           </div>
 
           {show.table && (
-          <div className="job-report-table-wrap overflow-x-auto">
+          <div className="job-report-table-wrap w-full min-w-0 max-w-full overflow-x-auto">
             <table className="job-report-table w-full min-w-[1100px] border-collapse text-xs">
               <thead>
                 <tr className="bg-muted/50 text-left">

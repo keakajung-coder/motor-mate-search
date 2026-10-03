@@ -31,18 +31,20 @@ export function ChecklistForm({ value, onChange }: { value: ChecklistResult; onC
   return (
     <div className="min-w-0 space-y-3 rounded-md border p-3">
       <div className="text-sm font-semibold">{value.template_name}</div>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        การตรวจเช็คครั้งที่
-        <Input className="h-8 w-16" inputMode="numeric" value={value.check_no} onChange={(e) => onChange({ ...value, check_no: e.target.value })} />
-        ปี
-        <Input className="h-8 w-20" inputMode="numeric" value={value.year} onChange={(e) => onChange({ ...value, year: e.target.value })} />
+      <div className="grid min-w-0 grid-cols-1 gap-2 text-sm lg:grid-cols-2">
+        <label className="min-w-0">การตรวจเช็คครั้งที่
+          <Input className="h-8 w-full" inputMode="numeric" value={value.check_no} onChange={(e) => onChange({ ...value, check_no: e.target.value })} />
+        </label>
+        <label className="min-w-0">ปี
+          <Input className="h-8 w-full" inputMode="numeric" value={value.year} onChange={(e) => onChange({ ...value, year: e.target.value })} />
+        </label>
       </div>
       {numeric.length > 0 && (
         <div className="space-y-1.5">
           {numeric.map(({ it, i }) => (
             <div key={it.id} className="flex min-w-0 flex-col gap-1 xl:flex-row xl:items-center">
               <span className="text-sm xl:w-40 xl:shrink-0">{it.label}</span>
-              <div className="flex min-w-0 flex-1 flex-wrap gap-2">{valueInputs(it, i)}</div>
+              <div className="flex min-w-0 flex-1 flex-col gap-2 lg:flex-row">{valueInputs(it, i)}</div>
             </div>
           ))}
         </div>
@@ -71,7 +73,7 @@ export function ChecklistForm({ value, onChange }: { value: ChecklistResult; onC
                   </button>
                 ))}
               </div>
-              {it.kind === "status_number" && <div className="flex min-w-0 flex-1 flex-wrap gap-2">{valueInputs(it, i)}</div>}
+              {it.kind === "status_number" && <div className="flex min-w-0 flex-1 flex-col gap-2 lg:flex-row">{valueInputs(it, i)}</div>}
             </div>
           ))}
         </div>

@@ -656,7 +656,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
               <CalendarCheck2 className="h-4 w-4 shrink-0" />
               นัดหมายแล้ว (งานจะขึ้นสีเหลือง)
             </label>
-            <div className="grid grid-cols-2 gap-2 md:flex md:shrink-0">
+            <div className="grid w-full grid-cols-1 gap-2 lg:flex lg:w-auto lg:shrink-0">
               <Button className="min-w-0" variant="outline" onClick={() => setOpen(false)}>
                 ยกเลิก
               </Button>

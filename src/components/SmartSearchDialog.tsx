@@ -239,7 +239,7 @@ export function SmartSearchDialog({
           ))}
         </div>
 
-        <div className="flex gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -263,12 +263,12 @@ export function SmartSearchDialog({
         </div>
 
         {mode === "planner" && (
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="min-w-[140px] flex-1">
+          <div className="grid min-w-0 grid-cols-1 items-end gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <div className="min-w-0">
               <label className="mb-1 block text-xs text-muted-foreground">จากวันที่</label>
               <DateInput size="sm" value={dateFrom} onChange={(iso) => setDateFrom(iso || null)} aria-label="จากวันที่" />
             </div>
-            <div className="min-w-[140px] flex-1">
+            <div className="min-w-0">
               <label className="mb-1 block text-xs text-muted-foreground">ถึงวันที่</label>
               <DateInput size="sm" value={dateTo} onChange={(iso) => setDateTo(iso || null)} aria-label="ถึงวันที่" />
             </div>
