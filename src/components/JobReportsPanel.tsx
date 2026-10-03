@@ -634,18 +634,18 @@ function EditJobDialog({ row, onClose, onSaved }: { row: Row | null; onClose: ()
         <DialogHeader>
           <DialogTitle>แก้ไขใบสั่งงาน</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
           <Field label="ลูกค้า" value={form.customer_name} onChange={(v) => set("customer_name", v)} />
           <Field label="ช่าง" value={form.staff_name} onChange={(v) => set("staff_name", v)} />
           <Field label="S/N เครื่อง" value={form.serial_number} onChange={(v) => set("serial_number", v)} />
           <Field label="S/N ลูกค้า" value={form.customer_sn} onChange={(v) => set("customer_sn", v)} />
           <Field label="ทะเบียนรถ" value={form.vehicle_plate} onChange={(v) => set("vehicle_plate", v)} />
           <Field label="เซลล์" value={form.sales_rep} onChange={(v) => set("sales_rep", v)} />
-          <div className="sm:col-span-2">
+          <div className="lg:col-span-2">
             <Label>งานที่ต้องทำ</Label>
             <Textarea value={form.job_detail ?? ""} onChange={(e) => set("job_detail", e.target.value)} />
           </div>
-          <div className="sm:col-span-2">
+          <div className="lg:col-span-2">
             <Label>งานที่ทำจริง / บันทึกปิดงาน</Label>
             <Textarea value={form.close_note ?? ""} onChange={(e) => set("close_note", e.target.value)} />
           </div>

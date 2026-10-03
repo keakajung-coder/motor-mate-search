@@ -149,7 +149,7 @@ function IssueEditor({ issue, onSaved }: { issue: Issue; onSaved: () => void }) 
         <Label className="text-xs">สาเหตุ</Label>
         <Input value={form.causes} onChange={(e) => set("causes", e.target.value)} />
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="space-y-1">
           <Label className="text-xs">วิธีการตรวจสอบ (AI Draft — แก้ไขได้)</Label>
           <Textarea rows={8} value={form.check_steps} onChange={(e) => set("check_steps", e.target.value)} />

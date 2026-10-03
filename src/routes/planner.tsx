@@ -913,7 +913,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
 
             <p className="whitespace-pre-wrap break-words text-sm">{val(o, "job_detail")}</p>
 
-            <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2 2xl:grid-cols-4">
               <div className="min-w-0 space-y-1">
                 <Label className="text-xs">วันที่เข้าบริการ</Label>
                 <DateInput
@@ -964,7 +964,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
             </Button>
 
             {openEdit[o.id] && (
-              <div className="grid min-w-0 gap-2 rounded-lg border bg-muted/30 p-3 sm:grid-cols-2">
+              <div className="grid min-w-0 grid-cols-1 gap-2 rounded-lg border bg-muted/30 p-3 lg:grid-cols-2">
                 <EditField label="ชื่อลูกค้า">
                   <Input value={val(o, "customer_name")} onChange={(e) => patch(o.id, "customer_name", e.target.value)} />
                 </EditField>
@@ -2918,7 +2918,7 @@ function CloseJobDialog({
               </div>
             )}
           </div>
-          <div className="grid min-w-0 grid-cols-1 gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <div className="grid min-w-0 grid-cols-1 gap-1.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
             <Input
               className="min-w-0"
               placeholder="พิมพ์ชื่อ/รหัสอะไหล่ใหม่"
@@ -2932,7 +2932,7 @@ function CloseJobDialog({
               }}
             />
             <select
-              className="h-9 min-w-0 w-full rounded-md border bg-background px-2 text-sm sm:w-auto"
+              className="h-9 min-w-0 w-full rounded-md border bg-background px-2 text-sm"
               value={newCat}
               onChange={(e) => setNewCat(e.target.value)}
             >
@@ -2943,7 +2943,7 @@ function CloseJobDialog({
                 </option>
               ))}
             </select>
-            <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => void addNewPart("replaced")} disabled={adding || !newPart.trim()}>
+            <Button type="button" size="sm" className="w-full lg:w-auto" onClick={() => void addNewPart("replaced")} disabled={adding || !newPart.trim()}>
               {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "เพิ่ม+ผูก S/N"}
             </Button>
           </div>
@@ -2998,7 +2998,7 @@ function CloseJobDialog({
               </label>
             ))}
           </div>
-          <div className="grid min-w-0 grid-cols-1 gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <div className="grid min-w-0 grid-cols-1 gap-1.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
             <Input
               className="min-w-0"
               placeholder="พิมพ์ชื่อ/รหัสอะไหล่ที่ต้องเสนอราคา"
