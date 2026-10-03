@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] ปรับเลย์เอาต์ทั่วระบบ: ทุกหน้าเต็มพื้นที่, ฟิลด์คู่เรียงแนวตั้งบนจอแคบ/แท็บเล็ตแนวตั้ง, หมุนจอแล้วจัดใหม่ทันที และตรวจหน้าจอหลายขนาด
+
 - [x] แก้ finding: business_tables_anon_write_access — ตัดสิทธิ์ anon แบบ ALL เหลือ SELECT/INSERT/UPDATE, การลบผ่าน server fn ตรวจรหัสแอดมิน (adminDelete) ทุกหน้า
 - [x] แก้ finding: customers_public_exposure — เหลือ SELECT เท่านั้นสำหรับ anon
 - [x] แก้ finding: storage_objects_no_rls_policies — เพิ่ม policy SELECT/INSERT ให้ product-images, ปิด UPDATE/DELETE

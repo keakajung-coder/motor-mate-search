@@ -79,7 +79,7 @@ export function DateInput({ value, onChange, disabled, className, id, size = "de
   };
 
   return (
-    <div className={cn("relative w-full", className)}>
+    <div className={cn("relative min-w-0 w-full", className)}>
       <input
         id={id}
         type="text"
@@ -98,7 +98,7 @@ export function DateInput({ value, onChange, disabled, className, id, size = "de
         }}
         title={bad ? "รูปแบบวันที่ไม่ถูกต้อง เช่น 27-09-2569 หรือ 27/09/2026" : undefined}
         className={cn(
-          "flex w-full rounded-md border border-input bg-background pl-3 pr-9 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+          "flex min-w-0 w-full rounded-md border border-input bg-background pl-3 pr-9 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
           size === "sm" ? "h-8 text-xs" : "h-10 text-sm",
           bad && "border-destructive",
         )}
