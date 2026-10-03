@@ -173,7 +173,7 @@ function BrandsTab() {
     <Card>
       <CardHeader><CardTitle>ยี่ห้อปั๊มลม</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
           <Input placeholder="ชื่อยี่ห้อ เช่น Atlas Copco" value={name} onChange={(e) => setName(e.target.value)} />
           <Button onClick={save}>{editId ? "บันทึก" : <Plus className="h-4 w-4" />}</Button>
           {editId && <Button variant="outline" onClick={() => { setEditId(null); setName(""); }}>ยกเลิก</Button>}
@@ -198,8 +198,8 @@ function BrandsTab() {
         <CollapsibleSection title="กลุ่มข้อมูลยี่ห้อ" subtitle={`ทั้งหมด ${filtered.length} ยี่ห้อ`}>
         <ul className="divide-y rounded border">
           {filtered.map((b) => (
-            <li key={b.id} className="flex items-center justify-between px-3 py-2">
-              <span>{b.name}</span>
+            <li key={b.id} className="grid min-w-0 grid-cols-1 gap-2 px-3 py-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <span className="min-w-0 break-words">{b.name}</span>
               <div className="flex gap-1">
                 <Button size="sm" variant="ghost" onClick={() => { setEditId(b.id); setName(b.name); }}><Pencil className="h-4 w-4" /></Button>
                 <ConfirmButton title={`ลบยี่ห้อ "${b.name}"?`} onConfirm={() => del(b.id)}><Trash2 className="h-4 w-4" /></ConfirmButton>
@@ -260,7 +260,7 @@ function ModelsTab() {
     <Card>
       <CardHeader><CardTitle>รุ่นเครื่อง</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+        <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
           <Select value={brandId} onValueChange={setBrandId}>
             <SelectTrigger><SelectValue placeholder="เลือกยี่ห้อ" /></SelectTrigger>
             <SelectContent>
@@ -285,7 +285,7 @@ function ModelsTab() {
         <CollapsibleSection title="กลุ่มข้อมูลรุ่นเครื่องจักร" subtitle={`ทั้งหมด ${items.length} รุ่น`}>
         <ul className="divide-y rounded border">
           {items.map((m) => (
-            <li key={m.id} className="flex items-center justify-between px-3 py-2">
+            <li key={m.id} className="grid min-w-0 grid-cols-1 gap-2 px-3 py-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
               <div>
                 <div>{m.brands?.name} - {m.name}</div>
                 {m.pump_type && <div className="text-xs text-muted-foreground">{m.pump_type}</div>}
@@ -454,7 +454,7 @@ function CustomersTab() {
             const machines = machinesByCust[c.id] ?? [];
             return (
               <li key={c.id} className="px-3 py-2">
-                <div className="flex items-center justify-between gap-2">
+                <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                   <div className="min-w-0">
                     <div className="font-medium">
                       {c.cust_id && <Badge variant="outline" className="mr-1.5 font-mono text-xs">{c.cust_id}</Badge>}
@@ -651,7 +651,7 @@ function ProductsTab() {
           </div>
           <div className="sm:col-span-2">
             <Label>รูปสินค้า</Label>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center">
               <Input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); }} />
               {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
               {form.image_url && <img src={form.image_url} alt="" className="h-10 w-10 rounded object-cover" />}
@@ -700,16 +700,16 @@ function ProductsTab() {
             const machines = machinesByProduct[p.id] ?? [];
             return (
               <li key={p.id} className="px-3 py-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
+                <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                  <div className="flex min-w-0 items-center gap-3">
                     {p.image_url ? (
                       <img src={p.image_url} alt="" className="h-10 w-10 rounded object-cover" />
                     ) : (
                       <div className="h-10 w-10 rounded bg-muted" />
                     )}
-                    <div>
-                      <div className="font-medium">{p.name}</div>
-                      <div className="text-xs text-muted-foreground">
+                    <div className="min-w-0">
+                      <div className="break-words font-medium">{p.name}</div>
+                      <div className="break-words text-xs text-muted-foreground">
                         {p.part_number} {p.categories?.name && `• ${p.categories.name}`} {p.brands?.name && `• ${p.brands.name}`}
                       </div>
                     </div>

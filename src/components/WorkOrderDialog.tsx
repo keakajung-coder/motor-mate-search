@@ -430,7 +430,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
           </DialogHeader>
 
           {/* แถวบน: ช่าง / รถ (อัปเดตอัตโนมัติจากฐานข้อมูล) */}
-          <div className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border bg-muted/30 p-3 md:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border bg-muted/30 p-3 lg:grid-cols-2">
             <Field label="พนักงานเซอร์วิสที่ต้องการ (เลือกได้หลายคน)">
               <MultiCombobox
                 values={splitNames(form.staff_name)}
@@ -656,7 +656,7 @@ export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
               <CalendarCheck2 className="h-4 w-4 shrink-0" />
               นัดหมายแล้ว (งานจะขึ้นสีเหลือง)
             </label>
-            <div className="grid grid-cols-2 gap-2 md:flex md:shrink-0">
+            <div className="grid w-full grid-cols-1 gap-2 lg:flex lg:w-auto lg:shrink-0">
               <Button className="min-w-0" variant="outline" onClick={() => setOpen(false)}>
                 ยกเลิก
               </Button>
@@ -676,7 +676,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div className="min-w-0 space-y-2 rounded-lg border p-3">
       <p className="text-sm font-semibold">{title}</p>
-      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2">{children}</div>
+      <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">{children}</div>
     </div>
   );
 }

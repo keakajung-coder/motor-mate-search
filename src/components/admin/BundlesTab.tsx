@@ -48,7 +48,7 @@ export function BundlesTab() {
         <CardHeader>
           <CardTitle className="text-base">➕ สร้างชุดอะไหล่ใหม่</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <CardContent className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
           <div className="space-y-1">
             <Label className="text-xs">ชื่อชุด เช่น "ชุดเช็ค 2,000 ชม."</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
@@ -125,7 +125,7 @@ function BundleEditor({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
+        <CardHeader className="flex flex-col gap-2 space-y-0 lg:flex-row lg:items-center lg:justify-between">
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
           <PackagePlus className="h-4 w-4 text-primary" />
           {bundle.name}
@@ -147,7 +147,7 @@ function BundleEditor({
             </span>
           ))}
         </div>
-        <div className="grid gap-2 sm:grid-cols-[1fr_6rem_auto] sm:items-end">
+        <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_6rem_auto] lg:items-end">
           <div className="space-y-1">
             <Label className="text-xs">เพิ่มอะไหล่เข้าชุด (พิมพ์ค้นหาได้)</Label>
             <Input list={`prod-${bundle.id}`} value={pick} onChange={(e) => setPick(e.target.value)} />

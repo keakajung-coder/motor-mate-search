@@ -34,9 +34,9 @@ export function TroubleshootTab() {
   return (
     <div className="space-y-4">
       <CollapsibleSection title="➕ เพิ่มอาการเสียใหม่" subtitle="พิมพ์อาการ แล้วให้ AI ช่วยร่างคำตอบ">
-        <div className="flex flex-wrap gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
           <Input
-            className="min-w-[14rem] flex-1"
+            className="min-w-0"
             placeholder="เช่น ปั๊มลมมีเสียงดังผิดปกติ"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
@@ -139,7 +139,7 @@ function IssueEditor({ issue, onSaved }: { issue: Issue; onSaved: () => void }) 
         <Badge variant={issue.status === "published" ? "default" : "secondary"}>
           {issue.status === "published" ? "เผยแพร่แล้ว" : "รออนุมัติ"}
         </Badge>
-        <Input className="min-w-[12rem] flex-1" value={form.title} onChange={(e) => set("title", e.target.value)} />
+        <Input className="min-w-0 flex-1" value={form.title} onChange={(e) => set("title", e.target.value)} />
       </div>
       <div className="space-y-1">
         <Label className="text-xs">คำค้นหา (คั่นด้วย , )</Label>
@@ -149,7 +149,7 @@ function IssueEditor({ issue, onSaved }: { issue: Issue; onSaved: () => void }) 
         <Label className="text-xs">สาเหตุ</Label>
         <Input value={form.causes} onChange={(e) => set("causes", e.target.value)} />
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="space-y-1">
           <Label className="text-xs">วิธีการตรวจสอบ (AI Draft — แก้ไขได้)</Label>
           <Textarea rows={8} value={form.check_steps} onChange={(e) => set("check_steps", e.target.value)} />

@@ -661,7 +661,7 @@ export function ImportExportTab() {
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" />เลือกข้อมูล</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="grid min-w-0 grid-cols-1 items-end gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
             <div className="min-w-0 flex-1">
               <Label>ตารางข้อมูล</Label>
               <Select value={dsKey} onValueChange={changeDataset}>
@@ -671,7 +671,7 @@ export function ImportExportTab() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="min-w-52">
+            <div className="min-w-0">
               <Label>เรียงลำดับข้อมูล (Sort by)</Label>
               <Select value={sortCol} onValueChange={(v) => applySort(v, sortDir)}>
                 <SelectTrigger><SelectValue placeholder="ค่าเริ่มต้นของตาราง" /></SelectTrigger>
@@ -766,8 +766,8 @@ export function ImportExportTab() {
             <p className="text-sm text-muted-foreground">ตารางนี้ยังไม่รองรับการนำเข้า</p>
           ) : (
             <>
-              <div className="flex flex-wrap items-end gap-2">
-                <div className="min-w-52">
+              <div className="grid min-w-0 grid-cols-1 items-end gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                <div className="min-w-0">
                   <Label>ไฟล์ Excel / CSV</Label>
                   <Input
                     type="file"
@@ -775,7 +775,7 @@ export function ImportExportTab() {
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) pickFile(f); }}
                   />
                 </div>
-                <div className="min-w-48">
+                <div className="min-w-0">
                   <Label>วิธีนำเข้า</Label>
                   <Select value={mode} onValueChange={(v: any) => setMode(v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>

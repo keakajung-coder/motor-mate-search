@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] ปรับเลย์เอาต์ทั่วระบบ: หน้า/โมดอลเต็มพื้นที่, ฟิลด์คู่เรียงแนวตั้งบนจอแคบ/แท็บเล็ตแนวตั้ง และใช้ breakpoint ให้หมุนจอแล้วจัดใหม่ทันที; ตารางและปฏิทินที่ข้อมูลหนาแน่นเลื่อนภายในได้ (หน้าภายในยังทดสอบจริงไม่ได้เพราะไม่มีผู้ใช้สำหรับเซสชันทดสอบ)
+
 - [x] แก้ finding: business_tables_anon_write_access — ตัดสิทธิ์ anon แบบ ALL เหลือ SELECT/INSERT/UPDATE, การลบผ่าน server fn ตรวจรหัสแอดมิน (adminDelete) ทุกหน้า
 - [x] แก้ finding: customers_public_exposure — เหลือ SELECT เท่านั้นสำหรับ anon
 - [x] แก้ finding: storage_objects_no_rls_policies — เพิ่ม policy SELECT/INSERT ให้ product-images, ปิด UPDATE/DELETE

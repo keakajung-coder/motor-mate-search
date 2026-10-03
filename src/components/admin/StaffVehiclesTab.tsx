@@ -13,7 +13,7 @@ type Vehicle = { id: string; plate: string; note: string | null };
 
 export function StaffVehiclesTab() {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid min-w-0 gap-4 xl:grid-cols-2">
       <StaffCard />
       <VehicleCard />
     </div>
@@ -70,11 +70,10 @@ function StaffCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap gap-2">
-          <Input className="min-w-40 flex-1" placeholder="ชื่อพนักงาน" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input className="w-36" placeholder="เบอร์โทร" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
+          <Input placeholder="ชื่อพนักงาน" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input placeholder="เบอร์โทร" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <Input
-            className="w-44"
             placeholder="LINE ID (เช่น @service หรือ 0812345678)"
             value={lineId}
             onChange={(e) => setLineId(e.target.value)}
@@ -88,20 +87,17 @@ function StaffCard() {
         ) : (
           <div className="space-y-2">
             {rows.map((r) => (
-              <div key={r.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
+              <div key={r.id} className="grid min-w-0 grid-cols-1 items-center gap-2 rounded-md border p-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
                 <Input
-                  className="flex-1"
                   defaultValue={r.name}
                   onBlur={(e) => e.target.value.trim() && update(r.id, { name: e.target.value.trim() })}
                 />
                 <Input
-                  className="w-32"
                   defaultValue={r.phone ?? ""}
                   placeholder="เบอร์โทร"
                   onBlur={(e) => update(r.id, { phone: e.target.value.trim() || null })}
                 />
                 <Input
-                  className="w-40"
                   defaultValue={r.line_contact ?? ""}
                   placeholder="LINE ID (เช่น @service หรือ 0812345678)"
                   onBlur={(e) => update(r.id, { line_contact: e.target.value.trim() || null })}
@@ -171,9 +167,9 @@ function VehicleCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap gap-2">
-          <Input className="w-36" placeholder="ทะเบียนรถ" value={plate} onChange={(e) => setPlate(e.target.value)} />
-          <Input className="min-w-32 flex-1" placeholder="หมายเหตุ" value={note} onChange={(e) => setNote(e.target.value)} />
+        <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <Input placeholder="ทะเบียนรถ" value={plate} onChange={(e) => setPlate(e.target.value)} />
+          <Input placeholder="หมายเหตุ" value={note} onChange={(e) => setNote(e.target.value)} />
           <Button onClick={add}>
             <Plus className="mr-1 h-4 w-4" /> เพิ่ม
           </Button>
@@ -183,14 +179,12 @@ function VehicleCard() {
         ) : (
           <div className="space-y-2">
             {rows.map((r) => (
-              <div key={r.id} className="flex items-center gap-2 rounded-md border p-2">
+              <div key={r.id} className="grid min-w-0 grid-cols-1 items-center gap-2 rounded-md border p-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                 <Input
-                  className="w-36"
                   defaultValue={r.plate}
                   onBlur={(e) => e.target.value.trim() && update(r.id, { plate: e.target.value.trim() })}
                 />
                 <Input
-                  className="flex-1"
                   defaultValue={r.note ?? ""}
                   placeholder="หมายเหตุ"
                   onBlur={(e) => update(r.id, { note: e.target.value.trim() || null })}

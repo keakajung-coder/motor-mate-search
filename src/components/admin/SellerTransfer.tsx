@@ -70,12 +70,12 @@ export function SellerTransfer({ onChanged }: { onChanged?: () => void }) {
         <p className="text-sm text-muted-foreground">
           ใช้เมื่อพนักงานขายลาออกหรือจัดสรรทีมใหม่ — ระบบจะย้ายลูกค้าและเครื่องจักรทั้งหมดของคนเดิมไปอยู่กับคนใหม่ทันที
         </p>
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
+        <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-end">
           <div className="space-y-1">
             <Label className="text-xs">จากผู้ขาย (คนเดิม)</Label>
             <Combobox value={from} onChange={setFrom} options={options} placeholder="เลือกผู้ขายคนเดิม" />
           </div>
-          <ArrowRight className="mx-auto hidden h-5 w-5 text-muted-foreground sm:block" />
+          <ArrowRight className="mx-auto hidden h-5 w-5 text-muted-foreground lg:block" />
           <div className="space-y-1">
             <Label className="text-xs">ไปยังผู้ขาย (คนใหม่)</Label>
             <Combobox value={to} onChange={setTo} options={options} allowCustom placeholder="เลือก / พิมพ์ผู้ขายคนใหม่" />

@@ -121,12 +121,12 @@ function RootShell({ children }: { children: ReactNode }) {
 function NavBar() {
   return (
     <header className="min-w-0 border-b bg-card">
-      <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 px-3 py-3 sm:px-5">
-        <Link to="/" className="flex items-center gap-2 font-semibold">
+      <div className="grid w-full min-w-0 grid-cols-1 gap-2 px-3 py-3 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <Link to="/" className="flex min-w-0 items-center gap-2 font-semibold">
           <Wrench className="h-5 w-5 text-primary" />
           <span className="hidden sm:inline">อะไหล่ปั๊มลม</span>
         </Link>
-        <nav className="flex min-w-0 flex-wrap items-center gap-1 text-sm">
+        <nav className="flex min-w-0 flex-wrap items-center gap-1 text-sm lg:justify-end">
           <Link
             to="/"
             className="rounded-md px-3 py-2 hover:bg-accent [&.active]:bg-accent [&.active]:font-medium"

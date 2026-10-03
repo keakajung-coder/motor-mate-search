@@ -113,7 +113,7 @@ export function OptionListManager({
     <Card>
       <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
           <Input
             placeholder={`เพิ่ม${title}ใหม่`}
             value={newName}
@@ -124,7 +124,7 @@ export function OptionListManager({
         </div>
         <ul className="divide-y rounded border">
           {all.map((s) => (
-            <li key={s} className="flex items-center justify-between gap-2 px-3 py-2">
+            <li key={s} className="grid min-w-0 grid-cols-1 gap-2 px-3 py-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
               {editing === s ? (
                 <>
                   <Input
@@ -141,8 +141,8 @@ export function OptionListManager({
                 </>
               ) : (
                 <>
-                  <span className="flex flex-col gap-0.5">
-                    <span className="flex items-center gap-2">
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="flex min-w-0 flex-wrap items-center gap-2 break-words">
                       {s}
                       <Badge variant="outline">{counts[s] ?? 0} เครื่อง</Badge>
                     </span>

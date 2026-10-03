@@ -108,7 +108,7 @@ export function StatsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+      <CardHeader className="flex flex-col gap-2 space-y-0 lg:flex-row lg:items-center lg:justify-between">
         <CardTitle className="text-sm sm:text-base">📊 บอร์ดนับสถิติจำนวนรวมเรียลไทม์</CardTitle>
         <div className="flex items-center gap-1">
           <Button size="sm" variant="outline" onClick={() => setOpen((o) => !o)}>
@@ -160,7 +160,7 @@ export function StatsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-5">
             <Stat label="ปั๊มลมทั้งหมด" value={stats.total} tone="primary" />
             <Stat label="ข้อมูลครบถ้วน (เขียว)" value={stats.complete} tone="green" />
             <Stat label="ข้อมูลไม่ครบ (แดง)" value={stats.incomplete} tone="red" />
