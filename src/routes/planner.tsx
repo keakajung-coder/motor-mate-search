@@ -414,13 +414,13 @@ function PlannerPage() {
         : formatDate(iso(cursor));
 
   return (
-    <div className="min-w-0 space-y-5 p-1 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(5rem+env(safe-area-inset-bottom))]">
-      <header className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+    <div className="w-full min-w-0 space-y-5 p-1 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <header className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">ปฏิทินนัดหมายบริการ</h1>
           <p className="text-sm text-muted-foreground">วางแผนงานเข้าบริการ ตรวจใบสั่งงาน และแจ้งเตือนอะไหล่ล่วงหน้า</p>
         </div>
-        <div className="flex min-w-0 flex-wrap gap-2 sm:justify-end">
+        <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:flex-wrap lg:justify-end">
           <WorkOrderDialog onCreated={load} />
           <Button variant="outline" className="h-11" onClick={() => setEditing(newAppointment(iso(cursor)))}>
             <CalendarPlus className="mr-1 h-4 w-4" /> เพิ่มนัดหมายลงปฏิทินโดยตรง
@@ -429,15 +429,15 @@ function PlannerPage() {
       </header>
 
       {/* แผงด้านข้างย้ายมาอยู่ด้านบน เพื่อให้ปฏิทินขยายเต็มความกว้าง */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <div className="hidden md:block">
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+        <div className="hidden min-w-0 lg:block">
           <FoldSection title="แผงสถิติภาพรวม">
             <StatsPanel appts={appts} pending={orders.length} />
           </FoldSection>
         </div>
 
         {isAdmin && (
-          <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} className="md:col-span-2 xl:col-span-1">
+          <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} className="lg:col-span-2 2xl:col-span-1">
             <PendingOrders orders={orders} reload={load} />
           </FoldSection>
         )}
@@ -450,7 +450,7 @@ function PlannerPage() {
           <PartsAlertPanel withActions={isAdmin} />
         </FoldSection>
 
-        <FoldSection title="สรุปใบสั่งงาน (วัน/สัปดาห์/เดือน/ช่วงวันที่)" className="md:col-span-2 xl:col-span-1">
+        <FoldSection title="สรุปใบสั่งงาน (วัน/สัปดาห์/เดือน/ช่วงวันที่)" className="lg:col-span-2 2xl:col-span-1">
           <JobReportsPanel
             onPickDate={(d) => {
               const [y, m, dd] = d.split("-").map(Number);
@@ -480,8 +480,8 @@ function PlannerPage() {
               </Button>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex overflow-x-auto whitespace-nowrap scrollbar-none mb-4">
+          <div className="grid min-w-0 grid-cols-1 items-center gap-2 lg:grid-cols-[repeat(4,minmax(0,1fr))] 2xl:flex 2xl:flex-wrap">
+            <div className="flex min-w-0 overflow-x-auto whitespace-nowrap scrollbar-none lg:col-span-2 2xl:mb-0">
               {(["month", "week", "day"] as const).map((v) => (
                 <Button
                   key={v}
@@ -496,7 +496,7 @@ function PlannerPage() {
             </div>
             <DateInput
               aria-label="ค้นหาวันที่"
-              className="w-40"
+              className="w-full 2xl:w-40"
               value={iso(cursor)}
               onChange={(v) => {
                 if (!v) return;
@@ -507,7 +507,7 @@ function PlannerPage() {
               }}
             />
             <select
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm 2xl:w-auto"
               value={staffFilter}
               onChange={(e) => setStaffFilter(e.target.value)}
             >
@@ -519,7 +519,7 @@ function PlannerPage() {
               ))}
             </select>
             <select
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm 2xl:w-auto"
               value={vehicleFilter}
               onChange={(e) => setVehicleFilter(e.target.value)}
             >
@@ -531,7 +531,7 @@ function PlannerPage() {
               ))}
             </select>
             <select
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm 2xl:w-auto"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               aria-label="เรียงลำดับข้อมูล"
@@ -733,7 +733,7 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
       {items.map((i) => (
         <div
           key={i.label}

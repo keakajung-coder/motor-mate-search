@@ -548,8 +548,8 @@ function CatalogView() {
 
   return (
     <div className="space-y-5">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="relative min-w-0">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
@@ -1377,8 +1377,8 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
             </Badge>
           )}
         </div>
-        <div className="mt-1 flex flex-wrap gap-2 text-xs">
-          <div className="no-print flex flex-1 min-w-[10rem] flex-wrap items-center gap-1 rounded bg-muted/50 px-2 py-1">
+        <div className="mt-1 grid min-w-0 grid-cols-1 gap-2 text-xs lg:grid-cols-2">
+          <div className="no-print grid min-w-0 grid-cols-1 items-center gap-1 rounded bg-muted/50 px-2 py-1 lg:grid-cols-[auto_auto_minmax(0,1fr)_auto]">
             <CalendarClock className="h-3 w-3 shrink-0 text-muted-foreground" />
             <span className="shrink-0 text-muted-foreground">เปลี่ยนล่าสุด:</span>
             <DateInput
@@ -1386,7 +1386,7 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
               onChange={(v) => saveDate(v || null)}
               disabled={savingDate}
               size="sm"
-              className="min-w-[8rem] flex-1"
+              className="min-w-0 w-full"
             />
             <Button
               size="sm"
@@ -1398,11 +1398,11 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
               วันนี้
             </Button>
           </div>
-          <div className="hidden flex-1 min-w-[10rem] flex-wrap items-center gap-1 rounded bg-muted/50 px-2 py-1 print:flex">
+          <div className="hidden min-w-0 flex-wrap items-center gap-1 rounded bg-muted/50 px-2 py-1 print:flex">
             <span className="shrink-0 text-muted-foreground">เปลี่ยนล่าสุด:</span>
             <span className="flex-1 font-medium">{formatDate(lastChanged)}</span>
           </div>
-          <div className="flex flex-1 min-w-[10rem] flex-wrap items-center gap-1 rounded bg-primary/10 px-2 py-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-1 rounded bg-primary/10 px-2 py-1">
             <CalendarClock className="h-3 w-3 shrink-0 text-primary" />
             <span className="shrink-0 text-muted-foreground">ครั้งถัดไป:</span>
             <span className="flex-1 font-medium text-primary">{formatDate(nextChange)}</span>
