@@ -42,7 +42,7 @@ export function AuditLogTab() {
         <CardTitle className="flex items-center gap-2 text-base">
           <History className="h-4 w-4" /> ประวัติการแก้ไขข้อมูล
         </CardTitle>
-        <div className="flex gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
           <Input placeholder="ค้นหาในประวัติ" value={q} onChange={(e) => setQ(e.target.value)} />
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
             <RefreshCw className="mr-1 h-4 w-4" /> รีเฟรช

@@ -73,7 +73,7 @@ export function ChecklistTemplatesTab() {
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-[240px_1fr]">
+    <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
       <Card>
         <CardHeader><CardTitle className="text-base">ชุดเช็คลิสต์</CardTitle></CardHeader>
         <CardContent className="space-y-2">
@@ -105,8 +105,8 @@ export function ChecklistTemplatesTab() {
             <p className="text-xs text-muted-foreground">ระบบจะเลือกชุดนี้อัตโนมัติเมื่อ "ประเภทปั๊ม" ของรุ่นเครื่องตรงกับคำที่ใส่ไว้</p>
             <div className="space-y-2">
               {sel.items.map((it, i) => (
-                <div key={it.id} className="flex flex-wrap items-center gap-2 rounded border p-2">
-                  <Input className="h-8 min-w-[10rem] flex-1" value={it.label} placeholder="ชื่อหัวข้อ" onChange={(e) => setItem(i, { label: e.target.value })} />
+                <div key={it.id} className="grid min-w-0 grid-cols-1 items-center gap-2 rounded border p-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+                  <Input className="h-8" value={it.label} placeholder="ชื่อหัวข้อ" onChange={(e) => setItem(i, { label: e.target.value })} />
                   <select
                     className="h-8 rounded border bg-background px-2 text-sm"
                     value={it.kind}
@@ -119,7 +119,7 @@ export function ChecklistTemplatesTab() {
                   </select>
                   {it.kind !== "status" && (
                     <Input
-                      className="h-8 w-44"
+                       className="h-8 w-full"
                       placeholder="ชื่อช่องย่อย เช่น Load, Unload"
                       value={it.fields.join(", ")}
                       onChange={(e) => setItem(i, { fields: e.target.value.split(",").map((s) => s.trimStart()) })}
