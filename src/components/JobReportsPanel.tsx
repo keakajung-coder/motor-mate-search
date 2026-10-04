@@ -19,6 +19,7 @@ import { DateInput } from "@/components/ui/date-input";
 type Row = {
   id: string;
   customer_name: string | null;
+  cust_id?: string | null;
   job_detail: string | null;
   staff_name: string | null;
   sales_rep: string | null;
@@ -91,7 +92,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
       supabase
         .from("appointments")
         .select(
-          "id, customer_name, job_detail, staff_name, sales_rep, vehicle_plate, serial_number, customer_sn, visit_date, visit_time, status, result, close_note, quotation_required, parts_categories, parts_note, parts_replaced, quotation_items",
+          "id, customer_name, cust_id, job_detail, staff_name, sales_rep, vehicle_plate, serial_number, customer_sn, visit_date, visit_time, status, result, close_note, quotation_required, parts_categories, parts_note, parts_replaced, quotation_items",
         )
         .gte("visit_date", range.from)
         .lte("visit_date", range.to)
@@ -477,6 +478,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
                       <td className="border px-2 py-1 font-semibold">
                         <button type="button" className="text-left" onClick={() => onPickDate?.(r.visit_date)}>
                           {r.customer_name || "-"}
+                          {r.cust_id && <span className="block font-mono font-normal">รหัส {r.cust_id}</span>}
                           <span className="block font-normal text-muted-foreground">{formatDate(r.visit_date)}</span>
                         </button>
                       </td>
@@ -523,7 +525,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
                       onClick={() => onPickDate?.(r.visit_date)}
                       className="w-full rounded-lg border p-2 text-left text-xs hover:bg-accent/50"
                     >
-                      <span className="font-semibold">{r.customer_name || "-"}</span>{" "}
+                      <span className="font-semibold">{r.cust_id ? `[${r.cust_id}] ` : ""}{r.customer_name || "-"}</span>{" "}
                       <span className="text-muted-foreground">
                         {formatDate(r.visit_date)} {r.visit_time?.slice(0, 5) ?? ""}
                       </span>
@@ -604,6 +606,7 @@ function EditJobDialog({ row, onClose, onSaved }: { row: Row | null; onClose: ()
     setSaving(true);
     const payload = {
       customer_name: form.customer_name,
+      cust_id: form.cust_id?.trim() || null,
       job_detail: form.job_detail,
       close_note: form.close_note,
       staff_name: form.staff_name,
@@ -635,6 +638,7 @@ function EditJobDialog({ row, onClose, onSaved }: { row: Row | null; onClose: ()
           <DialogTitle>แก้ไขใบสั่งงาน</DialogTitle>
         </DialogHeader>
         <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
+          <Field label="รหัสลูกค้า (cust_id)" value={form.cust_id ?? null} onChange={(v) => set("cust_id", v)} />
           <Field label="ลูกค้า" value={form.customer_name} onChange={(v) => set("customer_name", v)} />
           <Field label="ช่าง" value={form.staff_name} onChange={(v) => set("staff_name", v)} />
           <Field label="S/N เครื่อง" value={form.serial_number} onChange={(v) => set("serial_number", v)} />

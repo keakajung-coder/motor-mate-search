@@ -24,6 +24,7 @@ export type AlertRow = {
   id: string;
   serial: string;
   customer: string;
+  cust_id: string;
   phone: string;
   part: string;
   nextDate: string;
@@ -45,7 +46,7 @@ export function PartsAlertPanel({ withActions = false }: { withActions?: boolean
       .select(
         `id, hours_used, last_changed_at, service_interval_hours,
          products ( name, part_number, service_interval_hours ),
-         machine_units ( serial_number, daily_hours, install_date, customers ( name, phone ) )`
+         machine_units ( serial_number, daily_hours, install_date, customers ( name, phone, cust_id ) )`
       );
     const today = new Date();
     const out: AlertRow[] = [];
@@ -67,6 +68,7 @@ export function PartsAlertPanel({ withActions = false }: { withActions?: boolean
         id: mp.id,
         serial: unit.serial_number,
         customer: unit.customers?.name ?? "-",
+        cust_id: unit.customers?.cust_id ?? "",
         phone: unit.customers?.phone ?? "",
         part: `${mp.products?.name ?? "อะไหล่"} (${mp.products?.part_number ?? "-"})`,
         nextDate: usage.nextDate,
@@ -124,7 +126,7 @@ export function PartsAlertPanel({ withActions = false }: { withActions?: boolean
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="font-medium">
-                      {r.serial} · {r.customer}
+                      {r.serial} · {r.cust_id ? `[${r.cust_id}] ` : ""}{r.customer}
                     </p>
                     <p className="text-xs text-muted-foreground">{r.part}</p>
                   </div>
