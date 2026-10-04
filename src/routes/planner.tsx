@@ -53,7 +53,7 @@ import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog, WorkOrderFormPrint }
 import { Combobox } from "@/components/ui/combobox";
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { deleteDirectoryEntry, ensureDirectoryEntries, ensureParts, useDirectory, type DirectoryKind } from "@/lib/directory";
-import { elementToPdfBlobPaged, formatDate, isMachineComplete, saveFile, shareOrDownload } from "@/lib/report";
+import { elementToPdfBlobPaged, formatDate, safePixelRatio, waitForPaint, isMachineComplete, saveFile, shareOrDownload } from "@/lib/report";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { JobReportsPanel } from "@/components/JobReportsPanel";
 import { PART_CATEGORIES } from "@/lib/job-fields";
@@ -1835,10 +1835,11 @@ function DayDetailDialog({
         }
       } else {
         const { toPng } = await import("html-to-image");
+        await waitForPaint();
         const dataUrl = await toPng(el, {
           backgroundColor: "#ffffff",
           cacheBust: true,
-          pixelRatio: 3,
+          pixelRatio: safePixelRatio(el.scrollWidth, el.scrollHeight, 3),
           width: el.scrollWidth,
           height: el.scrollHeight,
           style: { width: `${el.scrollWidth}px`, height: `${el.scrollHeight}px` },
