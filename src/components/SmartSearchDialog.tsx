@@ -30,13 +30,14 @@ type UnitLite = {
   customer_sn?: string | null;
   seller: string | null;
   status: string | null;
-  customers: { name: string | null } | null;
+  customers: { name: string | null; cust_id?: string | null } | null;
   compressor_models: { name: string | null; brands: { name: string | null } | null } | null;
 };
 
 type ApptLite = {
   id: string;
   customer_name: string | null;
+  cust_id?: string | null;
   serial_number: string | null;
   service_type: string | null;
   visit_date: string;
@@ -123,13 +124,13 @@ export function SmartSearchDialog({
         supabase
           .from("machine_units")
           .select(
-            "id, serial_number, customer_sn, seller, status, customers ( name ), compressor_models ( name, brands ( name ) )",
+            "id, serial_number, customer_sn, seller, status, customers ( name, cust_id ), compressor_models ( name, brands ( name ) )",
           )
           .order("serial_number"),
         supabase
           .from("appointments")
           .select(
-            "id, customer_name, serial_number, service_type, visit_date, visit_time, vehicle_plate, staff_name, sales_rep, status",
+            "id, customer_name, cust_id, serial_number, service_type, visit_date, visit_time, vehicle_plate, staff_name, sales_rep, status",
           )
           .order("visit_date", { ascending: false }),
       ]);
@@ -166,7 +167,7 @@ export function SmartSearchDialog({
     if (!kw) return rows.slice(0, 12).map((u) => ({ u, score: 0 }));
     return rows
       .map((u) => {
-        const hay = `${u.serial_number} ${u.customer_sn ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.seller ?? ""}`;
+        const hay = `${u.serial_number} ${u.customer_sn ?? ""} ${u.customers?.cust_id ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.seller ?? ""}`;
         return { u, score: fuzzyScore(hay, kw) };
       })
       .filter((r) => r.score != null)
@@ -185,7 +186,7 @@ export function SmartSearchDialog({
       .map((a) => ({
         a,
         score: fuzzyScore(
-          `${a.customer_name ?? ""} ${a.serial_number ?? ""} ${a.vehicle_plate ?? ""} ${a.service_type ?? ""} ${a.staff_name ?? ""} ${a.sales_rep ?? ""}`,
+          `${a.cust_id ?? ""} ${a.customer_name ?? ""} ${a.serial_number ?? ""} ${a.vehicle_plate ?? ""} ${a.service_type ?? ""} ${a.staff_name ?? ""} ${a.sales_rep ?? ""}`,
           kw,
         ),
       }))
@@ -339,6 +340,7 @@ export function SmartSearchDialog({
                     className="block min-w-0 flex-1 px-1 py-2 text-left text-sm"
                   >
                     <div className="flex flex-wrap items-center gap-2">
+                      {u.customers?.cust_id && <Badge variant="outline" className="font-mono">รหัส {u.customers.cust_id}</Badge>}
                       <span className="font-semibold">{u.customers?.name ?? "-"}</span>
                       <Badge variant="outline">{u.serial_number}</Badge>
                       {u.customer_sn && <Badge variant="secondary">S/N ลูกค้า: {u.customer_sn}</Badge>}
@@ -384,6 +386,7 @@ export function SmartSearchDialog({
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline">{formatDate(a.visit_date)}</Badge>
+                      {a.cust_id && <Badge variant="outline" className="font-mono">รหัส {a.cust_id}</Badge>}
                       <span className="font-semibold">{a.customer_name ?? "-"}</span>
                       {a.vehicle_plate && <Badge variant="secondary">{a.vehicle_plate}</Badge>}
                       <Badge variant="outline" className={st.badge}>
@@ -538,6 +541,7 @@ function AdminQuickAdd({
   const { isAdmin } = useAccess();
   const [open, setOpen] = useState(false);
   const [customer, setCustomer] = useState("");
+  const [custId, setCustId] = useState("");
   const [serial, setSerial] = useState("");
   const [phone, setPhone] = useState("");
   const [partName, setPartName] = useState("");
@@ -556,6 +560,7 @@ function AdminQuickAdd({
       if (customer.trim() || serial.trim()) {
         await ensureDirectoryEntries({
           customer_name: customer.trim() || null,
+          cust_id: custId.trim() || null,
           contact_phone: phone.trim() || null,
           serial_number: serial.trim() || null,
         });
@@ -577,6 +582,7 @@ function AdminQuickAdd({
       toast.success("บันทึกข้อมูลใหม่เข้าระบบแล้ว");
       onAdded(serial.trim() || customer.trim() || undefined);
       setCustomer("");
+      setCustId("");
       setSerial("");
       setPhone("");
       setPartName("");
@@ -599,6 +605,7 @@ function AdminQuickAdd({
       </button>
       {open && (
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <Input placeholder="รหัสลูกค้า (cust_id)" value={custId} onChange={(e) => setCustId(e.target.value)} />
           <Input placeholder="ชื่อลูกค้าใหม่" value={customer} onChange={(e) => setCustomer(e.target.value)} />
           <Input placeholder="เบอร์โทรลูกค้า" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <Input placeholder="S/N เครื่องใหม่" value={serial} onChange={(e) => setSerial(e.target.value)} />
