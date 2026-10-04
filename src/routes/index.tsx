@@ -988,6 +988,7 @@ function SnView({
             u.customer_sn ? `S/N ลูกค้า ${u.customer_sn}` : null,
             u.compressor_models?.brands?.name,
             u.compressor_models?.name,
+            u.customers?.cust_id ? `รหัส ${u.customers.cust_id}` : null,
             u.customers?.name,
           ].filter(Boolean).join(" • ");
           return <option key={u.id} value={u.serial_number}>{label}</option>;
