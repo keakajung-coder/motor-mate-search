@@ -144,6 +144,23 @@ export function formatBytes(n: number) {
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB — รักษาความคมชัดของตัวอักษรไทยในเอกสาร A4
 const EXPORT_PIXEL_RATIO = 3;
 
+/** จำกัดความละเอียดไม่ให้เกินขนาด canvas สูงสุดของเบราว์เซอร์ (iOS/Safari ~16.7M px) — เกินแล้วภาพจะว่างหรือค้าง */
+export function safePixelRatio(width: number, height: number, desired = EXPORT_PIXEL_RATIO): number {
+  const isIOS = typeof navigator !== "undefined" && /iP(hone|ad|od)|Macintosh.*Mobile/.test(navigator.userAgent);
+  const maxArea = isIOS ? 16_000_000 : 60_000_000;
+  const maxDim = isIOS ? 4096 * 4 : 16_000;
+  const w = Math.max(1, width), h = Math.max(1, height);
+  const byArea = Math.sqrt(maxArea / (w * h));
+  const byDim = Math.min(maxDim / w, maxDim / h);
+  return Math.max(1, Math.min(desired, byArea, byDim));
+}
+
+/** รอฟอนต์และการวาดเฟรมให้เสร็จก่อนจับภาพ เพื่อไม่ให้ตัวหนังสือหายหรือทับกัน */
+export async function waitForPaint(): Promise<void> {
+  try { await document.fonts.ready; } catch { /* ignore */ }
+  await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+}
+
 /**
  * แปลง element เป็น PDF โดยบีบอัดจนไฟล์ไม่เกิน 1 MB
  * ใช้ JPEG (บีบอัดได้) แทน PNG และลดคุณภาพ/ความละเอียดเป็นขั้นๆ
@@ -161,12 +178,13 @@ export async function elementToPdfBlob(el: HTMLElement): Promise<Blob> {
     { pixelRatio: 1.5, quality: 0.82 },
   ];
 
+  await waitForPaint();
   let last: Blob | null = null;
   for (const step of steps) {
     const dataUrl = await toJpeg(el, {
       backgroundColor: "#ffffff",
       cacheBust: true,
-      pixelRatio: step.pixelRatio,
+      pixelRatio: safePixelRatio(el.scrollWidth, el.scrollHeight, step.pixelRatio),
       quality: step.quality,
       width: el.scrollWidth || undefined,
       height: el.scrollHeight || undefined,
@@ -247,11 +265,14 @@ export async function elementToPdfBlobPaged(
   ];
 
   let last: Blob | null = null;
+  let lastError: unknown = null;
   for (const step of steps) {
-    const dataUrl = await toJpeg(el, {
+    let dataUrl: string;
+    try {
+    dataUrl = await toJpeg(el, {
       backgroundColor: "#ffffff",
       cacheBust: true,
-      pixelRatio: step.pixelRatio,
+      pixelRatio: safePixelRatio(captureWidth, captureHeight, step.pixelRatio),
       quality: step.quality,
       ...(opts?.size
         ? {
@@ -261,6 +282,10 @@ export async function elementToPdfBlobPaged(
           }
         : { width: captureWidth, height: captureHeight }),
     });
+    } catch (e) {
+      lastError = e;
+      continue;
+    }
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image();
       i.onload = () => resolve(i);
@@ -344,7 +369,8 @@ export async function elementToPdfBlobPaged(
     last = pdf.output("blob");
     if (last.size <= (opts?.maxBytes ?? MAX_BYTES)) return last;
   }
-  return last!;
+  if (!last) throw lastError instanceof Error ? lastError : new Error("สร้างไฟล์ไม่สำเร็จ");
+  return last;
 }
 
 /* ---------- ส่งออกใบสั่งงานให้พอดีกระดาษ A4 หน้าเดียว ---------- */
@@ -358,6 +384,8 @@ async function captureElement(el: HTMLElement, pixelRatio = EXPORT_PIXEL_RATIO):
   const { toJpeg } = await import("html-to-image");
   const width = el.scrollWidth || el.offsetWidth;
   const height = el.scrollHeight || el.offsetHeight;
+  await waitForPaint();
+  pixelRatio = safePixelRatio(width, height, pixelRatio);
   const dataUrl = await toJpeg(el, {
     backgroundColor: "#ffffff",
     cacheBust: true,

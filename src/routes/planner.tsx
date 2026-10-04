@@ -53,7 +53,7 @@ import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog, WorkOrderFormPrint }
 import { Combobox } from "@/components/ui/combobox";
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { deleteDirectoryEntry, ensureDirectoryEntries, ensureParts, useDirectory, type DirectoryKind } from "@/lib/directory";
-import { elementToPdfBlobPaged, formatDate, isMachineComplete, saveFile, shareOrDownload } from "@/lib/report";
+import { elementToPdfBlobPaged, formatDate, safePixelRatio, waitForPaint, isMachineComplete, saveFile, shareOrDownload } from "@/lib/report";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { JobReportsPanel } from "@/components/JobReportsPanel";
 import { PART_CATEGORIES } from "@/lib/job-fields";
@@ -370,7 +370,7 @@ function PlannerPage() {
     setExporting(kind);
     // คลายการตัดขอบ (scroll) ชั่วคราว เพื่อให้จับภาพได้เต็มตารางทุกมุมมอง
     el.classList.add("export-full");
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await waitForPaint();
     const full = { width: el.scrollWidth, height: el.scrollHeight };
     try {
       if (kind === "pdf") {
@@ -386,7 +386,7 @@ function PlannerPage() {
         const dataUrl = await toJpeg(el, {
           backgroundColor: "#ffffff",
           cacheBust: true,
-          pixelRatio: 3,
+          pixelRatio: safePixelRatio(full.width, full.height, 3),
           quality: 0.96,
           width: full.width,
           height: full.height,
@@ -1835,10 +1835,11 @@ function DayDetailDialog({
         }
       } else {
         const { toPng } = await import("html-to-image");
+        await waitForPaint();
         const dataUrl = await toPng(el, {
           backgroundColor: "#ffffff",
           cacheBust: true,
-          pixelRatio: 3,
+          pixelRatio: safePixelRatio(el.scrollWidth, el.scrollHeight, 3),
           width: el.scrollWidth,
           height: el.scrollHeight,
           style: { width: `${el.scrollWidth}px`, height: `${el.scrollHeight}px` },
