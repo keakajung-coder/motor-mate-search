@@ -965,6 +965,9 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
 
             {openEdit[o.id] && (
               <div className="grid min-w-0 grid-cols-1 gap-2 rounded-lg border bg-muted/30 p-3 lg:grid-cols-2">
+                <EditField label="รหัสลูกค้า (cust_id)">
+                  <Input value={val(o, "cust_id")} onChange={(e) => patch(o.id, "cust_id", e.target.value)} />
+                </EditField>
                 <EditField label="ชื่อลูกค้า">
                   <Input value={val(o, "customer_name")} onChange={(e) => patch(o.id, "customer_name", e.target.value)} />
                 </EditField>

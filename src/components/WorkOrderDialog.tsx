@@ -108,6 +108,7 @@ export function WorkOrderFormPrint({ order }: { order: WorkOrderPrintData }) {
       </PrintSection>
 
       <PrintSection title="ลูกค้า / เครื่องจักร">
+        <PrintField label="รหัสลูกค้า (cust_id)" value={order.cust_id} />
         <PrintField label="ชื่อลูกค้า" value={order.customer_name} />
         <PrintField label="หมายเลขเครื่อง (S/N)" value={order.serial_number} />
         <PrintField label="ที่อยู่ลูกค้า" value={order.customer_address} wide />
