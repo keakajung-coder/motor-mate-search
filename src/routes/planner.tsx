@@ -900,7 +900,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
             <StatusRail status="pending" />
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="break-words font-semibold leading-snug">{val(o, "customer_name")}</p>
+                <p className="break-words font-semibold leading-snug">{o.cust_id ? `[${o.cust_id}] ` : ""}{val(o, "customer_name")}</p>
                 <p className="break-words text-xs leading-snug text-muted-foreground">
                   {[val(o, "machine_label"), val(o, "serial_number"), val(o, "service_type")].filter(Boolean).join(" · ")}
                 </p>
@@ -1314,7 +1314,7 @@ function ApprovedOrders({
               <p className="text-base font-bold">ใบสั่งงานบริการ</p>
               <JobStatusBadge status={appointments[o.id]?.status ?? o.status} />
             </div>
-            <p className="font-semibold">{o.customer_name}</p>
+            <p className="font-semibold">{o.cust_id ? `[${o.cust_id}] ` : ""}{o.customer_name}</p>
             <p className="text-xs">{[o.contact_name, o.contact_phone, o.customer_address].filter(Boolean).join(" · ")}</p>
             <p className="text-xs">{[o.machine_label, o.serial_number, o.service_type].filter(Boolean).join(" · ")}</p>
             <p className="text-xs">
@@ -1375,7 +1375,7 @@ function ApprovedOrders({
 /** ข้อความสรุปบนบล็อกปฏิทิน: [ลูกค้า] - [งานที่ไปทำ] - [ทะเบียนรถ] */
 function apptSummary(a: Appointment) {
   return [
-    a.customer_name || "ไม่ระบุลูกค้า",
+    (a.cust_id ? `[${a.cust_id}] ` : "") + (a.customer_name || "ไม่ระบุลูกค้า"),
     a.service_type || a.job_detail || "-",
     a.vehicle_plate || "ยังไม่ระบุรถ",
     splitNames(a.staff_name).join(", "),
@@ -1581,7 +1581,7 @@ function MonthGrid({
                     title={apptSummary(a)}
                   >
                     <StatusRail status={a.status} />
-                    <span className="block truncate">{a.customer_name || "ไม่ระบุลูกค้า"}</span>
+                    <span className="block truncate">{a.cust_id ? `[${a.cust_id}] ` : ""}{a.customer_name || "ไม่ระบุลูกค้า"}</span>
                     <span className="block truncate text-xs opacity-80">
                       👤 {splitNames(a.staff_name).join(", ") || "-"}
                     </span>
@@ -1693,7 +1693,7 @@ function TimeGrid({
                   <span className="font-semibold">{a.visit_time?.slice(0, 5) || "--:--"}</span>
                   <span className="truncate text-xs opacity-70">{splitNames(a.staff_name).join(", ") || "-"}</span>
                 </span>
-                <span className="block truncate text-xs font-bold">{a.customer_name || "ไม่ระบุลูกค้า"}</span>
+                <span className="block truncate text-xs font-bold">{a.cust_id ? `[${a.cust_id}] ` : ""}{a.customer_name || "ไม่ระบุลูกค้า"}</span>
                 <span className="block truncate text-[10px] opacity-80">
                   {splitNames(a.service_type).join(" / ") || a.job_detail || "-"}
                 </span>
@@ -1891,7 +1891,7 @@ function DayDetailDialog({
                   >
                     <span className="min-w-0 space-y-0.5">
                       <span className="block break-words font-medium">
-                        {a.visit_time?.slice(0, 5) || "-"} · {a.customer_name || "ไม่ระบุลูกค้า"}
+                        {a.visit_time?.slice(0, 5) || "-"} · {a.cust_id ? `[${a.cust_id}] ` : ""}{a.customer_name || "ไม่ระบุลูกค้า"}
                       </span>
                       <span className="block break-words text-xs opacity-80">เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}{a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}</span>
                       <span className="block break-words text-xs opacity-80">ประเภทงาน: {splitNames(a.service_type).join(" / ") || "-"}</span>
@@ -1989,7 +1989,7 @@ const DailyQueueDocument = ({ ref, date, list }: { ref: React.Ref<HTMLDivElement
             <div className="daily-queue-document__sequence">{index + 1}</div>
             <div>
               <p className="daily-queue-document__time">{a.visit_time?.slice(0, 5) || "ไม่ระบุเวลา"}</p>
-              <h3>{a.customer_name || "ไม่ระบุลูกค้า"}</h3>
+              <h3>{a.cust_id ? `[${a.cust_id}] ` : ""}{a.customer_name || "ไม่ระบุลูกค้า"}</h3>
             </div>
             <span className="daily-queue-document__status">{STATUS_LABEL[a.status] ?? a.status}</span>
           </div>
@@ -2061,7 +2061,7 @@ function DayList({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">
-                      {a.visit_time?.slice(0, 5)} · {a.customer_name}
+                      {a.visit_time?.slice(0, 5)} · {a.cust_id ? `[${a.cust_id}] ` : ""}{a.customer_name}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {[a.serial_number, a.machine_label, a.service_type].filter(Boolean).join(" · ")}
