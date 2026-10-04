@@ -831,7 +831,7 @@ type MachineResult = {
   install_date: string | null;
   daily_hours: number | null;
   note: string | null;
-  customers: { id: string; name: string; phone: string | null } | null;
+  customers: { id: string; cust_id?: string | null; name: string; phone: string | null } | null;
   compressor_models:
     | { id: string; name: string; brands: { id: string; name: string } | null }
     | null;
@@ -988,6 +988,7 @@ function SnView({
             u.customer_sn ? `S/N ลูกค้า ${u.customer_sn}` : null,
             u.compressor_models?.brands?.name,
             u.compressor_models?.name,
+            u.customers?.cust_id ? `รหัส ${u.customers.cust_id}` : null,
             u.customers?.name,
           ].filter(Boolean).join(" • ");
           return <option key={u.id} value={u.serial_number}>{label}</option>;
@@ -1185,7 +1186,7 @@ function MachineCard({
         className="flex min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-accent/40"
       >
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          <span className="truncate text-sm font-semibold">{unit.customers?.name ?? "-"}</span>
+          <span className="truncate text-sm font-semibold">{unit.customers?.cust_id ? `[${unit.customers.cust_id}] ` : ""}{unit.customers?.name ?? "-"}</span>
           <Badge variant="outline" className="shrink-0 font-mono text-xs">
             {unit.serial_number}
           </Badge>
@@ -1619,6 +1620,7 @@ async function shareMachine(unit: MachineResult) {
     `S/N: ${unit.serial_number}`,
     `S/N ลูกค้า: ${unit.customer_sn || "-"}`,
     `รุ่น: ${model}`,
+    `รหัสลูกค้า: ${unit.customers?.cust_id || "-"}`,
     `ลูกค้า: ${unit.customers?.name ?? "-"}`,
     `เบอร์: ${unit.customers?.phone ?? "-"}`,
     `ติดตั้ง: ${formatDate(unit.install_date)}`,
