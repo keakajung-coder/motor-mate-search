@@ -753,6 +753,7 @@ function MachinesTab() {
     serial_number: "",
     customer_sn: "",
     customer_name: "",
+    cust_id: "",
     brand_name: "",
     model_name: "",
     pump_type: "",
@@ -805,7 +806,7 @@ function MachinesTab() {
 
   async function load() {
     const [u, c, b, m] = await Promise.all([
-      supabase.from("machine_units").select("*, customers(id,name), compressor_models(id,name,brand_id,pump_type, brands(id,name))").order("serial_number"),
+      supabase.from("machine_units").select("*, customers(id,name,cust_id), compressor_models(id,name,brand_id,pump_type, brands(id,name))").order("serial_number"),
       supabase.from("customers").select("*").order("name"),
       supabase.from("brands").select("*").order("name"),
       supabase.from("compressor_models").select("*, brands(name)").order("name"),
@@ -825,6 +826,7 @@ function MachinesTab() {
       serial_number: u.serial_number ?? "",
       customer_sn: u.customer_sn ?? "",
       customer_name: u.customers?.name ?? "",
+      cust_id: u.customers?.cust_id ?? "",
       brand_name: u.compressor_models?.brands?.name ?? "",
       model_name: u.compressor_models?.name ?? "",
       pump_type: u.compressor_models?.pump_type ?? "",
@@ -846,12 +848,23 @@ function MachinesTab() {
   }
 
   // Get-or-create helper for customer/brand/model by name (case-insensitive)
-  async function resolveCustomerId(name: string): Promise<string | null> {
+  async function resolveCustomerId(name: string, custId = ""): Promise<string | null> {
     const n = name.trim();
+    const cid = custId.trim();
+    if (!n && cid) {
+      const byId = customers.find((c) => (c.cust_id ?? "").toLowerCase() === cid.toLowerCase());
+      return byId?.id ?? null;
+    }
     if (!n) return null;
     const existing = customers.find((c) => c.name.toLowerCase() === n.toLowerCase());
-    if (existing) return existing.id;
-    const { data, error } = await supabase.from("customers").insert({ name: n }).select("id").single();
+    if (existing) {
+      if (cid && cid !== (existing.cust_id ?? "")) {
+        const { error } = await supabase.from("customers").update({ cust_id: cid }).eq("id", existing.id);
+        if (error) toast.error("บันทึกรหัสลูกค้าไม่สำเร็จ: " + error.message);
+      }
+      return existing.id;
+    }
+    const { data, error } = await supabase.from("customers").insert({ name: n, cust_id: cid || null }).select("id").single();
     if (error) { toast.error("เพิ่มลูกค้าไม่สำเร็จ: " + error.message); return null; }
     return data.id;
   }
@@ -887,7 +900,7 @@ function MachinesTab() {
     if (dupUnit) return toast.error(`S/N นี้มีอยู่แล้ว (${dupUnit.customers?.name ?? "ไม่ระบุลูกค้า"})`);
     setSaving(true);
     try {
-      const customer_id = await resolveCustomerId(form.customer_name);
+      const customer_id = await resolveCustomerId(form.customer_name, form.cust_id);
       const brand_id = await resolveBrandId(form.brand_name);
       const model_id = form.model_name ? await resolveModelId(form.model_name, brand_id, form.pump_type) : null;
 
@@ -1138,7 +1151,7 @@ function MachinesTab() {
                 if (completeFilter !== "all" && isMachineComplete(u) !== (completeFilter === "yes")) return false;
                 const kw = q.trim().toLowerCase();
                 if (!kw) return true;
-                return `${u.serial_number ?? ""} ${u.customer_sn ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller} ${u.status ?? ""}`
+                return `${u.serial_number ?? ""} ${u.customer_sn ?? ""} ${u.customers?.cust_id ?? ""} ${u.customers?.name ?? ""} ${u.compressor_models?.name ?? ""} ${u.compressor_models?.brands?.name ?? ""} ${u.site_name ?? ""} ${u.district ?? ""} ${u.province ?? ""} ${unitSeller} ${u.status ?? ""}`
                   .toLowerCase().includes(kw);
               })
               .map((u) => (
@@ -1167,7 +1180,7 @@ function MachinesTab() {
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.name ?? "-"}
+                      {u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.cust_id ? `[${u.customers.cust_id}] ` : ""}{u.customers?.name ?? "-"}
                     </div>
                     {(u.site_name || u.district || u.province) && (
                       <div className="text-xs text-muted-foreground">
@@ -1223,15 +1236,35 @@ function MachinesTab() {
               />
             </div>
             <div>
+              <Label>รหัสลูกค้า (cust_id)</Label>
+              <Input
+                list="custid-options"
+                value={form.cust_id}
+                placeholder="เช่น C0001"
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const hit = customers.find((c) => (c.cust_id ?? "").toLowerCase() === v.trim().toLowerCase());
+                  setForm({ ...form, cust_id: v, ...(hit ? { customer_name: hit.name } : {}) });
+                }}
+              />
+              <datalist id="custid-options">
+                {customers.filter((c) => c.cust_id).map((c) => <option key={c.id} value={c.cust_id}>{c.name}</option>)}
+              </datalist>
+            </div>
+            <div>
               <Label>ลูกค้า (พิมพ์เพิ่มหรือเลือก)</Label>
               <Input
                 list="customer-options"
                 value={form.customer_name}
-                onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const hit = customers.find((c) => c.name.toLowerCase() === v.trim().toLowerCase());
+                  setForm({ ...form, customer_name: v, ...(hit ? { cust_id: hit.cust_id ?? "" } : {}) });
+                }}
                 placeholder="เช่น บริษัท ABC"
               />
               <datalist id="customer-options">
-                {customers.map((c) => <option key={c.id} value={c.name} />)}
+                {customers.map((c) => <option key={c.id} value={c.name}>{c.cust_id ?? ""}</option>)}
               </datalist>
             </div>
             <div>
