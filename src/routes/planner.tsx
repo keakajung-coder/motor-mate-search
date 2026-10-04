@@ -370,7 +370,7 @@ function PlannerPage() {
     setExporting(kind);
     // คลายการตัดขอบ (scroll) ชั่วคราว เพื่อให้จับภาพได้เต็มตารางทุกมุมมอง
     el.classList.add("export-full");
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await waitForPaint();
     const full = { width: el.scrollWidth, height: el.scrollHeight };
     try {
       if (kind === "pdf") {
@@ -386,7 +386,7 @@ function PlannerPage() {
         const dataUrl = await toJpeg(el, {
           backgroundColor: "#ffffff",
           cacheBust: true,
-          pixelRatio: 3,
+          pixelRatio: safePixelRatio(full.width, full.height, 3),
           quality: 0.96,
           width: full.width,
           height: full.height,
