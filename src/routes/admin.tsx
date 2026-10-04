@@ -1011,6 +1011,7 @@ function MachinesTab() {
             id: u.id,
             label: u.serial_number ?? "",
             sub: [
+              u.customers?.cust_id,
               u.customers?.name,
               u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "",
               u.province,
