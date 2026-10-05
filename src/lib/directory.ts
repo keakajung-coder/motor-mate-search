@@ -133,7 +133,7 @@ export async function ensureDirectoryEntries(input: {
       } else if (existing) {
         customerId = existing.id;
         // เติมข้อมูลที่ยังว่างให้ลูกค้าเดิม (รหัส / เบอร์ / ที่อยู่)
-        const patch: { cust_id?: string; phone?: string; address?: string; customer_id?: string; model_id?: string } = {};
+        const patch: { cust_id?: string; phone?: string; address?: string } = {};
         if (custId && !existing.cust_id) patch.cust_id = custId;
         if (norm(input.contact_phone) && !existing.phone) patch.phone = norm(input.contact_phone);
         if (norm(input.customer_address) && !existing.address) patch.address = norm(input.customer_address);
@@ -157,7 +157,7 @@ export async function ensureDirectoryEntries(input: {
         changed = true;
       } else {
         // เชื่อมเครื่องเดิมกับลูกค้า/รุ่นที่ยังไม่ได้ผูก
-        const patch: { cust_id?: string; phone?: string; address?: string; customer_id?: string; model_id?: string } = {};
+        const patch: { customer_id?: string; model_id?: string } = {};
         if (!u.customer_id && customerId) patch.customer_id = customerId;
         if (!u.model_id) {
           const modelId = await ensureBrandModel(input.machine_label);
