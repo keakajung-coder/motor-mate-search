@@ -242,7 +242,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
           size: { width: exportWidth, height: el.scrollHeight },
           pixelRatio: 3,
           maxBytes: 12 * 1024 * 1024,
-          pageBreakSelector: ".job-report-table tbody tr",
+          pageBreakSelector: ".job-report-table tbody tr, .job-report-checklist-card",
         });
         await saveFile(blob, `สรุปใบสั่งงาน-${scopeLabel}-${range.from}.pdf`);
       } else {
@@ -597,7 +597,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
               {rows
                 .filter((r) => r.checklist && Array.isArray(r.checklist.items) && r.checklist.items.length)
                 .map((r) => (
-                  <div key={r.id} className="min-w-0 rounded-lg border p-2" style={{ breakInside: "avoid" }}>
+                  <div key={r.id} className="job-report-checklist-card min-w-0 rounded-lg border p-2" style={{ breakInside: "avoid" }}>
                     <p className="mb-1 break-words text-xs font-semibold">
                       {r.cust_id ? `[${r.cust_id}] ` : ""}{r.customer_name || "-"} · {formatDate(r.visit_date)} · S/N {r.serial_number || "-"}
                     </p>

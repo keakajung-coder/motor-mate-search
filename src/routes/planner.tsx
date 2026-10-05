@@ -59,6 +59,7 @@ import { JobReportsPanel } from "@/components/JobReportsPanel";
 import { PART_CATEGORIES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
 import { ChecklistForm } from "@/components/ChecklistForm";
+import { ChecklistView } from "@/components/ChecklistView";
 import { loadTemplates, matchesType, newResult, type ChecklistResult, type ChecklistTemplate } from "@/lib/checklist";
 
 
@@ -598,7 +599,7 @@ function PlannerPage() {
               <MonthGrid
                 cursor={cursor}
                 appts={visible}
-                onPick={(a) => setEditing(a)}
+                onPick={pickAppt}
                 onPickDate={(d) => setEditing(newAppointment(d))}
                 onPickDay={(d) => setDayDetail(d)}
               />
@@ -613,7 +614,7 @@ function PlannerPage() {
                       : [iso(cursor)]
                   }
                   appts={visible}
-                  onPick={(a) => setEditing(a)}
+                  onPick={pickAppt}
                   onPickSlot={(d, t) => setEditing({ ...newAppointment(d), visit_time: t })}
                 />
               </div>
@@ -642,7 +643,7 @@ function PlannerPage() {
           onClose={() => setDayDetail(null)}
           onPick={(a) => {
             setDayDetail(null);
-            setEditing(a);
+            pickAppt(a);
           }}
           onCloseJob={(a) => {
             setDayDetail(null);
@@ -664,6 +665,14 @@ function PlannerPage() {
             setEditing(null);
             setClosing(a);
           }}
+        />
+      )}
+      {viewing && (
+        <ClosedJobResultDialog
+          appt={viewing}
+          onClose={() => setViewing(null)}
+          onEditClose={(a) => { setViewing(null); setClosing(a); }}
+          onEditDetail={(a) => { setViewing(null); setEditing(a); }}
         />
       )}
       {closing && (
@@ -3063,5 +3072,71 @@ function BadgeRow({ label, items }: { label: string; items: string[] }) {
         ))
       )}
     </div>
+  );
+}
+
+
+/** ดูผลสรุปการปิดงานและผล Checklist ย้อนหลัง พร้อมปุ่มแก้ไขการปิดงาน */
+function ClosedJobResultDialog({
+  appt,
+  onClose,
+  onEditClose,
+  onEditDetail,
+}: {
+  appt: Appointment;
+  onClose: () => void;
+  onEditClose: (a: Appointment) => void;
+  onEditDetail: (a: Appointment) => void;
+}) {
+  const [row, setRow] = useState<Record<string, any> | null>(null);
+  useEffect(() => {
+    supabase
+      .from("appointments")
+      .select("*")
+      .eq("id", appt.id)
+      .maybeSingle()
+      .then(({ data }) => setRow(data ?? (appt as any)));
+  }, [appt.id]);
+  const r = row ?? (appt as any);
+  const line = (label: string, v?: string | null) =>
+    v ? (
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="whitespace-pre-wrap break-words text-sm">{v}</p>
+      </div>
+    ) : null;
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-none overflow-y-auto sm:w-[calc(100vw-2rem)] lg:w-[min(900px,calc(100vw-2rem))]">
+        <DialogHeader>
+          <DialogTitle>ผลสรุปการปิดงาน</DialogTitle>
+        </DialogHeader>
+        <div className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <JobStatusBadge status={r.status} />
+            <span className="font-semibold">{r.cust_id ? `[${r.cust_id}] ` : ""}{r.customer_name || "-"}</span>
+            <span className="text-sm text-muted-foreground">{formatDate(r.visit_date)} {r.visit_time?.slice(0, 5) ?? ""}</span>
+          </div>
+          <div className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border p-3 lg:grid-cols-2">
+            {line("เครื่อง / S/N", [r.machine_label, r.serial_number].filter(Boolean).join(" · "))}
+            {line("ช่าง / รถ", [r.staff_name, r.vehicle_plate].filter(Boolean).join(" · "))}
+            {line("งานที่ต้องทำ", r.job_detail)}
+            {line("ผลการทำงาน", r.result)}
+            {line("หมายเหตุปิดงาน", r.close_note)}
+            {line("อะไหล่ที่เปลี่ยน", r.parts_replaced)}
+            {line("รายการเสนอราคาเพิ่มเติม", r.quotation_items)}
+            {line("ปิดงานเมื่อ", r.closed_at ? formatDate(String(r.closed_at).slice(0, 10)) : null)}
+          </div>
+          <div className="rounded-lg border p-3">
+            <p className="mb-2 text-sm font-semibold">ผล Checklist</p>
+            <ChecklistView value={r.checklist} />
+          </div>
+        </div>
+        <DialogFooter className="grid grid-cols-1 gap-2 sm:flex">
+          <Button variant="outline" onClick={() => onEditDetail(appt)}>แก้ไขรายละเอียดงาน</Button>
+          <Button onClick={() => onEditClose({ ...(appt as any), ...(row ?? {}) })}>แก้ไขการปิดงาน</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
