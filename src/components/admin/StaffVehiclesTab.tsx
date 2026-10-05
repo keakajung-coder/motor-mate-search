@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
+import { refreshDirectory } from "@/lib/directory";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ function StaffCard() {
   const load = async () => {
     const { data } = await supabase.from("service_staff").select("id, name, phone, line_contact").order("name");
     setRows((data ?? []) as Staff[]);
+    refreshDirectory();
     setLoading(false);
   };
   useEffect(() => {
@@ -53,6 +55,7 @@ function StaffCard() {
   const update = async (id: string, patch: Partial<Staff>) => {
     const { error } = await supabase.from("service_staff").update(patch).eq("id", id);
     if (error) toast.error(error.message);
+    else refreshDirectory();
   };
 
   const remove = async (id: string) => {
@@ -131,6 +134,7 @@ function VehicleCard() {
   const load = async () => {
     const { data } = await supabase.from("vehicles").select("id, plate, note").order("plate");
     setRows((data ?? []) as Vehicle[]);
+    refreshDirectory();
     setLoading(false);
   };
   useEffect(() => {
@@ -150,6 +154,7 @@ function VehicleCard() {
   const update = async (id: string, patch: Partial<Vehicle>) => {
     const { error } = await supabase.from("vehicles").update(patch).eq("id", id);
     if (error) toast.error(error.message);
+    else refreshDirectory();
   };
 
   const remove = async (id: string) => {

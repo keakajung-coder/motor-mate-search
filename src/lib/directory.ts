@@ -106,9 +106,18 @@ export async function ensureDirectoryEntries(input: {
   let customerId: string | null = null;
 
   try {
-    if (customer) {
-      const hit = cache.customers.find((c) => eq(c.name, customer));
-      if (!hit) {
+    if (customer || custId) {
+      // หาลูกค้าจากรหัสก่อน แล้วค่อยหาจากชื่อ (เชื่อมโยงสองทาง)
+      let existing: { id: string; name: string; cust_id: string | null; phone: string | null; address: string | null } | null = null;
+      if (custId) {
+        const { data } = await supabase.from("customers").select("id, name, cust_id, phone, address").eq("cust_id", custId).maybeSingle();
+        existing = data ?? null;
+      }
+      if (!existing && customer) {
+        const { data } = await supabase.from("customers").select("id, name, cust_id, phone, address").ilike("name", customer).limit(1);
+        existing = data?.[0] ?? null;
+      }
+      if (!existing && customer) {
         const { data } = await supabase
           .from("customers")
           .insert({
@@ -121,24 +130,47 @@ export async function ensureDirectoryEntries(input: {
           .single();
         customerId = data?.id ?? null;
         changed = true;
-      } else {
-        const { data } = await supabase.from("customers").select("id, cust_id").eq("name", customer).maybeSingle();
-        customerId = data?.id ?? null;
-        // เชื่อมรหัสลูกค้าให้ลูกค้าเดิมที่ยังไม่มีรหัส
-        if (customerId && custId && !data?.cust_id) {
-          await supabase.from("customers").update({ cust_id: custId }).eq("id", customerId);
+      } else if (existing) {
+        customerId = existing.id;
+        // เติมข้อมูลที่ยังว่างให้ลูกค้าเดิม (รหัส / เบอร์ / ที่อยู่)
+        const patch: Record<string, string> = {};
+        if (custId && !existing.cust_id) patch.cust_id = custId;
+        if (norm(input.contact_phone) && !existing.phone) patch.phone = norm(input.contact_phone);
+        if (norm(input.customer_address) && !existing.address) patch.address = norm(input.customer_address);
+        if (Object.keys(patch).length) {
+          await supabase.from("customers").update(patch).eq("id", existing.id);
           changed = true;
         }
       }
     }
 
     if (serial) {
-      const hit = cache.machines.find((m) => eq(m.serial, serial));
-      if (!hit) {
+      const { data: unit } = await supabase
+        .from("machine_units")
+        .select("id, customer_id, model_id")
+        .ilike("serial_number", serial)
+        .limit(1);
+      const u = unit?.[0];
+      if (!u) {
         const modelId = await ensureBrandModel(input.machine_label);
         await supabase.from("machine_units").insert({ serial_number: serial, customer_id: customerId, model_id: modelId });
         changed = true;
+      } else {
+        // เชื่อมเครื่องเดิมกับลูกค้า/รุ่นที่ยังไม่ได้ผูก
+        const patch: Record<string, string> = {};
+        if (!u.customer_id && customerId) patch.customer_id = customerId;
+        if (!u.model_id) {
+          const modelId = await ensureBrandModel(input.machine_label);
+          if (modelId) patch.model_id = modelId;
+        }
+        if (Object.keys(patch).length) {
+          await supabase.from("machine_units").update(patch).eq("id", u.id);
+          changed = true;
+        }
       }
+    } else if (norm(input.machine_label)) {
+      // ไม่มี S/N แต่มียี่ห้อ/รุ่นใหม่ — บันทึกยี่ห้อ/รุ่นเข้าฐานกลาง
+      await ensureBrandModel(input.machine_label);
     }
 
     for (const staffName of staffNames) {
