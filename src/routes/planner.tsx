@@ -274,6 +274,8 @@ function PlannerPage() {
   const [sortBy, setSortBy] = useState("date-asc");
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
+  const [viewing, setViewing] = useState<Appointment | null>(null);
+  const pickAppt = (a: Appointment) => (a.status === "closed" ? setViewing(a) : setEditing(a));
   const [dayDetail, setDayDetail] = useState<string | null>(null);
   const monthRef = useRef<HTMLDivElement>(null);
   const weekRef = useRef<HTMLDivElement>(null);
