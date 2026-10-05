@@ -15,6 +15,8 @@ import { elementToPdfBlobPaged, formatDate, saveFile } from "@/lib/report";
 import { useAccess } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { DateInput } from "@/components/ui/date-input";
+import { ChecklistView } from "@/components/ChecklistView";
+import type { ChecklistResult } from "@/lib/checklist";
 
 type Row = {
   id: string;
@@ -36,6 +38,7 @@ type Row = {
   parts_note: string | null;
   parts_replaced: string | null;
   quotation_items: string | null;
+  checklist?: ChecklistResult | null;
 };
 
 const iso = (d: Date) => {
@@ -78,7 +81,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
   const [exporting, setExporting] = useState("");
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
   const [editRow, setEditRow] = useState<Row | null>(null);
-  const [show, setShow] = useState({ table: true, pending: true, customers: true, workload: true });
+  const [show, setShow] = useState({ table: true, pending: true, customers: true, workload: true, checklist: false });
   const ref = useRef<HTMLDivElement | null>(null);
 
   const range = useMemo(
@@ -92,7 +95,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
       supabase
         .from("appointments")
         .select(
-          "id, customer_name, cust_id, job_detail, staff_name, sales_rep, vehicle_plate, serial_number, customer_sn, visit_date, visit_time, status, result, close_note, quotation_required, parts_categories, parts_note, parts_replaced, quotation_items",
+          "id, customer_name, cust_id, job_detail, staff_name, sales_rep, vehicle_plate, serial_number, customer_sn, visit_date, visit_time, status, result, close_note, quotation_required, parts_categories, parts_note, parts_replaced, quotation_items, checklist",
         )
         .gte("visit_date", range.from)
         .lte("visit_date", range.to)
@@ -394,6 +397,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
             ["pending", "งานที่ยังค้าง"],
             ["customers", "สรุปตามลูกค้า"],
             ["workload", "ภาระงานรายช่าง"],
+            ["checklist", "แนบ Checklist การตรวจสอบ"],
           ] as const).map(([k, t]) => (
             <label key={k} className="flex cursor-pointer items-center gap-1.5">
               <Checkbox
@@ -579,6 +583,27 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
                 </Badge>
               ))}
               {workload.length === 0 && <p className="text-xs text-muted-foreground">ยังไม่มีข้อมูล</p>}
+            </div>
+          </div>
+          )}
+
+          {show.checklist && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">Checklist การตรวจสอบ</p>
+            {rows.filter((r) => r.checklist && Array.isArray(r.checklist.items) && r.checklist.items.length).length === 0 && (
+              <p className="text-xs text-muted-foreground">ไม่มีงานที่บันทึก Checklist ในช่วงนี้</p>
+            )}
+            <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2">
+              {rows
+                .filter((r) => r.checklist && Array.isArray(r.checklist.items) && r.checklist.items.length)
+                .map((r) => (
+                  <div key={r.id} className="min-w-0 rounded-lg border p-2" style={{ breakInside: "avoid" }}>
+                    <p className="mb-1 break-words text-xs font-semibold">
+                      {r.cust_id ? `[${r.cust_id}] ` : ""}{r.customer_name || "-"} · {formatDate(r.visit_date)} · S/N {r.serial_number || "-"}
+                    </p>
+                    <ChecklistView value={r.checklist} />
+                  </div>
+                ))}
             </div>
           </div>
           )}
