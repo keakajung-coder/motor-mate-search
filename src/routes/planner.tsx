@@ -41,6 +41,7 @@ import {
   Pencil,
   Phone,
   RotateCcw,
+  Search,
   Share2,
   Trash2,
   XCircle,
@@ -2537,6 +2538,8 @@ function CloseJobDialog({
   const [quotePart, setQuotePart] = useState("");
   const [quoteCat, setQuoteCat] = useState("");
   const [showAllQuote, setShowAllQuote] = useState(false);
+  const [partSearch, setPartSearch] = useState("");
+  const [quoteSearch, setQuoteSearch] = useState("");
   const [useChecklist, setUseChecklist] = useState(false);
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [checklist, setChecklist] = useState<ChecklistResult | null>(null);
@@ -2650,15 +2653,23 @@ function CloseJobDialog({
   }, [appt.serial_number]);
 
   // อะไหล่ที่แสดงเป็น Checkbox: ผูกกับ S/N + ตรงรุ่นเครื่อง (หรือทั้งคลังเมื่อกด "แสดงทั้งหมด")
+  // เมื่อพิมพ์ค้นหา ให้กรองจาก "ทั้งคลัง" ทันที (real-time) ตามรหัส/ชื่ออะไหล่
+  const partKw = partSearch.trim().toLowerCase();
+  const quoteKw = quoteSearch.trim().toLowerCase();
+  const matchKw = (p: CatalogPart, kw: string) => !kw || p.label.toLowerCase().includes(kw);
   const visibleParts = products.filter(
-    (p) => showAll || !unitInfo || linkedIds.includes(p.id) || (unitInfo.model_id && p.model_id === unitInfo.model_id) || cats.includes(p.label),
+    (p) =>
+      matchKw(p, partKw) &&
+      (partKw || showAll || !unitInfo || linkedIds.includes(p.id) || (unitInfo.model_id && p.model_id === unitInfo.model_id) || cats.includes(p.label)),
   );
   const grouped = visibleParts.reduce<Record<string, CatalogPart[]>>((acc, p) => {
     (acc[p.category] ??= []).push(p);
     return acc;
   }, {});
   const quoteParts = products.filter(
-    (p) => showAllQuote || !unitInfo || linkedIds.includes(p.id) || (unitInfo.model_id && p.model_id === unitInfo.model_id) || quoteItems.includes(p.label),
+    (p) =>
+      matchKw(p, quoteKw) &&
+      (quoteKw || showAllQuote || !unitInfo || linkedIds.includes(p.id) || (unitInfo.model_id && p.model_id === unitInfo.model_id) || quoteItems.includes(p.label)),
   );
   const quoteGrouped = quoteParts.reduce<Record<string, CatalogPart[]>>((acc, p) => {
     (acc[p.category] ??= []).push(p);
@@ -2894,6 +2905,20 @@ function CloseJobDialog({
               แสดงทั้งคลัง
             </label>
           </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="min-w-0 pl-9"
+              placeholder="ค้นหาอะไหล่จากฐานข้อมูล (พิมพ์รหัสหรือชื่อ เช่น 220099)"
+              value={partSearch}
+              onChange={(e) => setPartSearch(e.target.value)}
+            />
+          </div>
+          {partKw && (
+            <p className="text-xs text-muted-foreground">
+              พบ {visibleParts.length} รายการจากทั้งคลัง{visibleParts.length === 0 ? " — ไม่มีในระบบ สามารถพิมพ์เพิ่มใหม่ด้านล่างได้" : ""}
+            </p>
+          )}
           <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
             {Object.entries(grouped)
               .sort(([a], [b]) => a.localeCompare(b, "th"))
@@ -2980,6 +3005,20 @@ function CloseJobDialog({
               แสดงทั้งคลัง
             </label>
           </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="min-w-0 pl-9"
+              placeholder="ค้นหาอะไหล่จากฐานข้อมูล (พิมพ์รหัสหรือชื่อ เช่น 220099)"
+              value={quoteSearch}
+              onChange={(e) => setQuoteSearch(e.target.value)}
+            />
+          </div>
+          {quoteKw && (
+            <p className="text-xs text-muted-foreground">
+              พบ {quoteParts.length} รายการจากทั้งคลัง{quoteParts.length === 0 ? " — ไม่มีในระบบ สามารถพิมพ์เพิ่มใหม่ด้านล่างได้" : ""}
+            </p>
+          )}
           <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
             {Object.entries(quoteGrouped).sort(([a], [b]) => a.localeCompare(b, "th")).map(([cat, items]) => (
               <div key={cat}>
