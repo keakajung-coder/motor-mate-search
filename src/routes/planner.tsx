@@ -41,6 +41,7 @@ import {
   Pencil,
   Phone,
   RotateCcw,
+  Search,
   Share2,
   Trash2,
   XCircle,
