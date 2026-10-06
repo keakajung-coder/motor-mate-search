@@ -378,7 +378,7 @@ function PlannerPage() {
     const full = { width: el.scrollWidth, height: el.scrollHeight };
     try {
       if (kind === "pdf") {
-        const blob = await elementToPdfBlobPaged(el, 1, {
+        const blob = await elementToPdfBlobPaged(el, 0, {
           orientation: "landscape",
           size: full,
           pixelRatio: 3,
@@ -1174,7 +1174,7 @@ function ApprovedOrders({
         kind === "pdf" ? elementsToA4PdfBlob([el]) : elementToA4ImageBlob(el),
       );
       await saveFile(blob, `${name}.${kind === "pdf" ? "pdf" : "jpg"}`);
-      toast.success("บันทึกใบสั่งงานเรียบร้อย (A4 หน้าเดียว)");
+      toast.success("บันทึกใบสั่งงานเรียบร้อย");
     } catch (e) {
       toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
     } finally {
@@ -1200,7 +1200,7 @@ function ApprovedOrders({
           await saveFile(blob, `ใบสั่งงาน-${o.customer_name || o.id.slice(0, 6)}.jpg`);
         }
       }
-      toast.success(`บันทึก ${selected.length} ใบเรียบร้อย (A4 หน้าเดียวต่อใบ)`);
+      toast.success(`บันทึก ${selected.length} ใบเรียบร้อย`);
     } catch (e) {
       toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
     } finally {
@@ -1222,7 +1222,7 @@ function ApprovedOrders({
         ? `ใบสั่งงาน-แบบฟอร์ม-${orders[0].customer_name || orders[0].id.slice(0, 6)}.pdf`
         : `ใบสั่งงาน-แบบฟอร์ม-${orders.length}ใบ.pdf`;
       await saveFile(blob, filename);
-      toast.success(`บันทึก PDF แบบฟอร์ม ${orders.length} ใบเรียบร้อย (A4 หน้าเดียวต่อใบ)`);
+      toast.success(`บันทึก PDF แบบฟอร์ม ${orders.length} ใบเรียบร้อย`);
     } catch (e) {
       toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
     } finally {

@@ -1455,13 +1455,15 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
     setBusy(true);
     // โหมดส่งออก A4: บังคับความกว้างตามแนวกระดาษ + ตัวหนังสือใหญ่ขึ้น แล้วคืนค่าเดิมเมื่อจบ
     el.classList.add("export-a4");
-    if (o === "landscape") el.style.width = "1123px";
+    el.style.setProperty("width", o === "landscape" ? "1123px" : "794px", "important");
+    el.style.setProperty("max-width", "none", "important");
     try {
       // รอให้เบราว์เซอร์จัดเลย์เอาต์/โหลดรูปตามขนาดใหม่ก่อนจับภาพ
       await new Promise((r) => setTimeout(r, 120));
       const { elementToPdfBlobPaged, formatBytes } = await import("@/lib/report");
       const b = await elementToPdfBlobPaged(el, p, {
         orientation: o,
+        interactive: false,
         pixelRatio: 3,
         maxBytes: 12 * 1024 * 1024,
         pageBreakSelector: ".rounded-lg.border",
@@ -1478,6 +1480,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
     } finally {
       el.classList.remove("export-a4");
       el.style.width = "";
+      el.style.removeProperty("max-width");
       setBusy(false);
     }
   }
@@ -1518,13 +1521,15 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
                 min={0}
                 max={20}
                 value={pages}
-                onChange={(e) => setPages(Math.max(0, Math.min(20, Number(e.target.value) || 0)))}
+                onChange={(e) => { const n = Math.max(0, Math.min(20, Math.floor(Number(e.target.value) || 0))); setPages(n); build(n, orientation); }}
+                disabled={busy}
                 className="h-9 w-24"
               />
             </div>
             <div className="flex max-w-full gap-1 overflow-x-auto pb-1">
               <Button
                 size="sm"
+                disabled={busy}
                 variant={pages === 0 ? "default" : "outline"}
                 onClick={() => { setPages(0); build(0, orientation); }}
               >
@@ -1534,6 +1539,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
                 <Button
                   key={n}
                   size="sm"
+                  disabled={busy}
                   variant={pages === n ? "default" : "outline"}
                   onClick={() => { setPages(n); build(n, orientation); }}
                 >
@@ -1544,6 +1550,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
             <div className="flex max-w-full gap-1 overflow-x-auto pb-1">
               <Button
                 size="sm"
+                disabled={busy}
                 variant={orientation === "portrait" ? "default" : "outline"}
                 onClick={() => { setOrientation("portrait"); build(pages, "portrait"); }}
               >
@@ -1551,6 +1558,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
               </Button>
               <Button
                 size="sm"
+                disabled={busy}
                 variant={orientation === "landscape" ? "default" : "outline"}
                 onClick={() => { setOrientation("landscape"); build(pages, "landscape"); }}
               >
@@ -1579,7 +1587,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
 
           <DialogFooter className="flex-wrap gap-2 sm:justify-between">
             <span className="text-xs text-muted-foreground">
-              {size ? `ขนาดไฟล์: ${size} • ${pages} หน้า` : ""}
+              {size ? `ขนาดไฟล์: ${size} • ${pages === 0 ? "แบ่งหน้าอัตโนมัติ" : `ไม่เกิน ${pages} หน้า`}` : ""}
             </span>
             <div className="flex min-w-0 flex-wrap gap-2">
               <Button
