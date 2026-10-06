@@ -257,9 +257,9 @@ export async function elementToPdfBlobPaged(
         ? {
             width: captureWidth,
             height: captureHeight,
-            style: { width: `${captureWidth}px`, minHeight: `${captureHeight}px`, height: "auto", position: "relative", left: "0", top: "0", transform: "none" },
+            style: { width: `${captureWidth}px`, minHeight: `${captureHeight}px`, height: "auto", position: "relative", inset: "auto", insetBlock: "auto", insetInline: "auto", left: "0", top: "0", transform: "none" },
           }
-        : { width: captureWidth, height: captureHeight, style: { position: "relative", left: "0", top: "0", transform: "none" } }),
+        : { width: captureWidth, height: captureHeight, style: { position: "relative", inset: "auto", insetBlock: "auto", insetInline: "auto", left: "0", top: "0", transform: "none" } }),
     });
     } catch (e) {
       lastError = e;
@@ -329,7 +329,7 @@ async function captureElement(el: HTMLElement, pixelRatio = EXPORT_PIXEL_RATIO):
     quality: 0.96,
     width,
     height,
-    style: { width: `${width}px`, height: `${height}px` },
+    style: { width: `${width}px`, height: `${height}px`, position: "relative", inset: "auto", insetBlock: "auto", insetInline: "auto", left: "0", top: "0", transform: "none" },
   });
   return await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new Image();
