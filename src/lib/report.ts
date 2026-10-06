@@ -257,9 +257,9 @@ export async function elementToPdfBlobPaged(
         ? {
             width: captureWidth,
             height: captureHeight,
-            style: { width: `${captureWidth}px`, minHeight: `${captureHeight}px`, height: "auto" },
+            style: { width: `${captureWidth}px`, minHeight: `${captureHeight}px`, height: "auto", position: "relative", left: "0", top: "0", transform: "none" },
           }
-        : { width: captureWidth, height: captureHeight }),
+        : { width: captureWidth, height: captureHeight, style: { position: "relative", left: "0", top: "0", transform: "none" } }),
     });
     } catch (e) {
       lastError = e;
