@@ -16,7 +16,7 @@ export function pdfLayout(width: number, height: number, settings: PdfSettings, 
     const slices: { top: number; height: number }[] = [];
     let top = 0;
     while (top < safeHeight - 0.001) {
-      const target = Math.min(safeHeight, top + capacity);
+      const target = top + capacity >= safeHeight - 0.001 ? safeHeight : top + capacity;
       const edge = target < safeHeight ? edges.filter(x => x > top + capacity * 0.3 && x <= target).at(-1) : undefined;
       const bottom = edge ?? target;
       slices.push({ top, height: bottom - top });
