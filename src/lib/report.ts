@@ -1,3 +1,6 @@
+import { controlledPdf } from "./pdf-controls";
+import { pdfLayout, type PdfSettings } from "./pdf-layout";
+
 /** Shared helpers: date format, usage calculation, PDF export (size-capped) */
 
 /** แสดงวันที่เป็น วว-ดด-ปปปป แบบพุทธศักราช (พ.ศ.) */
@@ -166,59 +169,7 @@ export async function waitForPaint(): Promise<void> {
  * ใช้ JPEG (บีบอัดได้) แทน PNG และลดคุณภาพ/ความละเอียดเป็นขั้นๆ
  */
 export async function elementToPdfBlob(el: HTMLElement): Promise<Blob> {
-  const [{ toJpeg }, { default: jsPDF }] = await Promise.all([
-    import("html-to-image"),
-    import("jspdf"),
-  ]);
-
-  const steps: Array<{ pixelRatio: number; quality: number }> = [
-    { pixelRatio: EXPORT_PIXEL_RATIO, quality: 0.96 },
-    { pixelRatio: 2.5, quality: 0.93 },
-    { pixelRatio: 2, quality: 0.9 },
-    { pixelRatio: 1.5, quality: 0.82 },
-  ];
-
-  await waitForPaint();
-  let last: Blob | null = null;
-  for (const step of steps) {
-    const dataUrl = await toJpeg(el, {
-      backgroundColor: "#ffffff",
-      cacheBust: true,
-      pixelRatio: safePixelRatio(el.scrollWidth, el.scrollHeight, step.pixelRatio),
-      quality: step.quality,
-      width: el.scrollWidth || undefined,
-      height: el.scrollHeight || undefined,
-
-    });
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = reject;
-      i.src = dataUrl;
-    });
-
-    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 8;
-    const imgW = pageW - margin * 2;
-    const imgH = (img.height * imgW) / img.width;
-
-    let heightLeft = imgH;
-    let position = margin;
-    pdf.addImage(dataUrl, "JPEG", margin, position, imgW, imgH, undefined, "FAST");
-    heightLeft -= pageH - margin * 2;
-    while (heightLeft > 0) {
-      position = margin - (imgH - heightLeft);
-      pdf.addPage();
-      pdf.addImage(dataUrl, "JPEG", margin, position, imgW, imgH, undefined, "FAST");
-      heightLeft -= pageH - margin * 2;
-    }
-
-    last = pdf.output("blob");
-    if (last.size <= MAX_BYTES) return last;
-  }
-  return last!;
+  return elementToPdfBlobPaged(el, 0);
 }
 
 /** สถานะเครื่องมาตรฐาน (พิมพ์เพิ่มเองได้) */
@@ -246,8 +197,23 @@ export async function elementToPdfBlobPaged(
     maxBytes?: number;
     pixelRatio?: number;
     pageBreakSelector?: string;
+    interactive?: boolean;
   },
 ): Promise<Blob> {
+  if (opts?.interactive !== false) {
+    return controlledPdf(async (settings) => {
+      const previousWidth = el.style.width;
+      // Reflow normal documents; dense calendars keep their minimum grid width.
+      el.style.width = settings.orientation === "landscape" ? "1123px" : "794px";
+      try {
+        await waitForPaint();
+        return await elementToPdfBlobPaged(el, settings.pages, {
+          ...opts, interactive: false, orientation: settings.orientation,
+          size: { width: el.scrollWidth, height: el.scrollHeight },
+        });
+      } finally { el.style.width = previousWidth; }
+    }, { orientation: opts?.orientation ?? "portrait", pages });
+  }
   const [{ toJpeg }, { default: jsPDF }] = await Promise.all([
     import("html-to-image"),
     import("jspdf"),
@@ -299,57 +265,16 @@ export async function elementToPdfBlobPaged(
       orientation: opts?.orientation ?? "portrait",
       compress: true,
     });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 8;
-    const usableW = pageW - margin * 2;
-    const usableH = pageH - margin * 2;
-
-    let imgW = usableW;
-    let imgH = (img.height * imgW) / img.width;
-
-    // pages = 0 → อัตโนมัติ: ไม่ย่อ ให้เนื้อหากว้างเต็มหน้าแล้วแบ่งหน้าตามจริง
-    const wanted = Math.max(0, Math.round(pages));
-    if (wanted > 0) {
-      const capacity = usableH * wanted;
-      if (imgH > capacity) {
-        const k = capacity / imgH;
-        imgH *= k;
-        imgW *= k;
-      }
-    }
-    const offsetX = margin + (usableW - imgW) / 2;
-
-    const sourcePageHeight = (img.width * usableH) / imgW;
-    const renderedWidth = captureWidth;
-    const sourceScale = img.width / renderedWidth;
+    const sourceScale = img.width / captureWidth;
     const rootTop = el.getBoundingClientRect().top;
     const candidates = opts?.pageBreakSelector
       ? Array.from(el.querySelectorAll<HTMLElement>(opts.pageBreakSelector))
-          .map((node) => (node.getBoundingClientRect().bottom - rootTop) * sourceScale)
-          .filter((value) => value > 0 && value < img.height)
-          .sort((a, b) => a - b)
+          .map(node => (node.getBoundingClientRect().bottom - rootTop) * sourceScale)
       : [];
-    const slices: Array<{ top: number; height: number }> = [];
-    let sourceTop = 0;
-    while (sourceTop < img.height - 1) {
-      const remaining = img.height - sourceTop;
-      if (slices.length > 0 && remaining <= Math.max(12, sourcePageHeight * 0.02)) {
-        slices[slices.length - 1].height += remaining;
-        break;
-      }
-      const target = Math.min(img.height, sourceTop + sourcePageHeight);
-      const safeBreak = candidates.filter((value) => value > sourceTop + sourcePageHeight * 0.55 && value <= target).at(-1);
-      const bottom = safeBreak ?? target;
-      slices.push({ top: sourceTop, height: Math.max(1, bottom - sourceTop) });
-      sourceTop = bottom;
-    }
-    if (slices.length > 1 && slices[slices.length - 1].height < sourcePageHeight * 0.08) {
-      const trailing = slices.pop();
-      if (trailing) slices[slices.length - 1].height += trailing.height;
-    }
-    const total = slices.length;
-    slices.forEach((slice, p) => {
+    const layout = pdfLayout(img.width, img.height, {
+      orientation: opts?.orientation ?? "portrait", pages,
+    }, candidates);
+    layout.slices.forEach((slice, p) => {
       if (p > 0) pdf.addPage();
       const canvas = document.createElement("canvas");
       canvas.width = img.width;
@@ -360,11 +285,9 @@ export async function elementToPdfBlobPaged(
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, slice.top, img.width, slice.height, 0, 0, img.width, slice.height);
       const pageDataUrl = canvas.toDataURL("image/jpeg", step.quality);
-      const pageImgH = (slice.height * imgW) / img.width;
-      pdf.addImage(pageDataUrl, "JPEG", offsetX, margin, imgW, pageImgH, undefined, "SLOW");
+      const pageImgH = slice.height * layout.imageWidth / img.width;
+      pdf.addImage(pageDataUrl, "JPEG", layout.offsetX, 8, layout.imageWidth, pageImgH, undefined, "SLOW");
     });
-    // เติมหน้าว่างให้ครบตามจำนวนที่ผู้ใช้กำหนด
-    for (let p = total; p < wanted; p++) pdf.addPage();
 
     last = pdf.output("blob");
     if (last.size <= (opts?.maxBytes ?? MAX_BYTES)) return last;
@@ -408,7 +331,8 @@ function drawOnA4(img: HTMLImageElement, quality = 0.9): { canvas: HTMLCanvasEle
   const canvas = document.createElement("canvas");
   canvas.width = A4_W_PX;
   canvas.height = A4_H_PX;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("ไม่สามารถสร้างภาพเอกสารได้");
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, A4_W_PX, A4_H_PX);
 
@@ -435,27 +359,29 @@ export async function elementsToA4PdfBlob(
   els: HTMLElement[],
   opts?: { maxBytes?: number; pixelRatio?: number },
 ): Promise<Blob> {
-  const { default: jsPDF } = await import("jspdf");
-  const imgs: HTMLImageElement[] = [];
-  for (const el of els) imgs.push(await captureElement(el, opts?.pixelRatio ?? EXPORT_PIXEL_RATIO));
-
-  let quality = 0.96;
-  let blob: Blob | null = null;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    imgs.forEach((img, i) => {
-      if (i > 0) pdf.addPage();
-      const { dataUrl } = drawOnA4(img, quality);
-      pdf.addImage(dataUrl, "JPEG", 0, 0, pageW, pageH, undefined, "SLOW");
-    });
-    blob = pdf.output("blob");
-    if (blob.size <= (opts?.maxBytes ?? MAX_BYTES)) return blob;
-    quality -= 0.08;
-    if (quality < 0.68) break;
-  }
-  return blob!;
+  if (!els.length) throw new Error("ไม่มีเอกสารสำหรับส่งออก");
+  return controlledPdf(async (settings) => {
+    const stage = document.createElement("div");
+    stage.style.cssText = "position:fixed;left:-20000px;top:0;background:white;padding:0;";
+    stage.style.width = settings.orientation === "landscape" ? "1123px" : "794px";
+    for (const el of els) {
+      const clone = el.cloneNode(true) as HTMLElement;
+      clone.style.width = "100%";
+      clone.style.minHeight = "0";
+      clone.style.height = "auto";
+      clone.classList.add("pdf-document-section");
+      stage.append(clone);
+    }
+    document.body.append(stage);
+    try {
+      await waitForPaint();
+      return await elementToPdfBlobPaged(stage, settings.pages, {
+        ...opts, interactive: false, orientation: settings.orientation,
+        size: { width: stage.scrollWidth, height: stage.scrollHeight },
+        pageBreakSelector: "tr, .pdf-document-section, .daily-queue-document__job, .job-report-checklist-card",
+      });
+    } finally { stage.remove(); }
+  }, { orientation: "portrait", pages: 0 });
 }
 
 /**
@@ -467,10 +393,13 @@ export async function tableToPdfBlob(
   columns: string[],
   rows: Array<Record<string, any>>,
   headerLabels?: Record<string, string>,
+  settings?: PdfSettings,
 ): Promise<Blob> {
+  if (!settings) return controlledPdf(s => tableToPdfBlob(title, columns, rows, headerLabels, s), { orientation: "landscape", pages: 0 });
+  await waitForPaint();
   const { default: jsPDF } = await import("jspdf");
 
-  const probe = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape", compress: true });
+  const probe = new jsPDF({ unit: "mm", format: "a4", orientation: settings.orientation, compress: true });
   const pageW = probe.internal.pageSize.getWidth();
   const pageH = probe.internal.pageSize.getHeight();
   const margin = 8;
@@ -487,10 +416,12 @@ export async function tableToPdfBlob(
   const titleH = 46;
 
   const cellW = Math.floor((cw - pad * 2) / Math.max(1, columns.length));
-  const rowsPerPage = Math.max(
+  const automaticRowsPerPage = Math.max(
     1,
     Math.floor(((usableH / usableW) * cw - titleH - headH - pad * 2) / rowH),
   );
+  const limit = Math.max(0, Math.floor(settings.pages));
+  const rowsPerPage = limit > 0 ? Math.max(automaticRowsPerPage, Math.ceil(rows.length / limit)) : automaticRowsPerPage;
   const pages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
 
   const clip = (ctx: CanvasRenderingContext2D, text: string, w: number) => {
@@ -504,14 +435,15 @@ export async function tableToPdfBlob(
   let blob: Blob | null = null;
 
   for (let attempt = 0; attempt < 4; attempt++) {
-    const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape", compress: true });
+    const doc = new jsPDF({ unit: "mm", format: "a4", orientation: settings.orientation, compress: true });
     for (let p = 0; p < pages; p++) {
       const pageRows = rows.slice(p * rowsPerPage, (p + 1) * rowsPerPage);
       const ch = titleH + headH + pageRows.length * rowH + pad * 2;
       const canvas = document.createElement("canvas");
       canvas.width = cw * scale;
       canvas.height = ch * scale;
-      const ctx = canvas.getContext("2d")!;
+      const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("ไม่สามารถสร้างภาพเอกสารได้");
       ctx.scale(scale, scale);
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, cw, ch);
@@ -553,8 +485,8 @@ export async function tableToPdfBlob(
 
       const dataUrl = canvas.toDataURL("image/jpeg", quality);
       if (p > 0) doc.addPage();
-      const imgW = usableW;
-      const imgH = Math.min(usableH, (ch * imgW) / cw);
+      const imgW = Math.min(usableW, usableH * cw / ch);
+      const imgH = ch * imgW / cw;
       doc.addImage(dataUrl, "JPEG", margin, margin, imgW, imgH, undefined, "FAST");
     }
     blob = doc.output("blob");
@@ -562,7 +494,8 @@ export async function tableToPdfBlob(
     quality -= 0.08;
     if (quality < 0.68) break;
   }
-  return blob!;
+  if (!blob) throw new Error("สร้าง PDF ไม่สำเร็จ");
+  return blob;
 }
 
 /** แชร์ไฟล์ (มือถือ) หรือดาวน์โหลด (เดสก์ท็อป) */
