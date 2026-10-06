@@ -203,15 +203,28 @@ export async function elementToPdfBlobPaged(
   if (opts?.interactive !== false) {
     return controlledPdf(async (settings) => {
       const previousWidth = el.style.width;
+      const previousPriority = el.style.getPropertyPriority("width");
+      const wasPortrait = el.classList.contains("job-report-export--portrait");
+      const wasLandscape = el.classList.contains("job-report-export--landscape");
+      if (wasPortrait || wasLandscape) {
+        el.classList.remove("job-report-export--portrait", "job-report-export--landscape");
+        el.classList.add(`job-report-export--${settings.orientation}`);
+      }
       // Reflow normal documents; dense calendars keep their minimum grid width.
-      el.style.width = settings.orientation === "landscape" ? "1123px" : "794px";
+      el.style.setProperty("width", settings.orientation === "landscape" ? "1123px" : "794px", "important");
       try {
         await waitForPaint();
         return await elementToPdfBlobPaged(el, settings.pages, {
           ...opts, interactive: false, orientation: settings.orientation,
           size: { width: el.scrollWidth, height: el.scrollHeight },
         });
-      } finally { el.style.width = previousWidth; }
+      } finally {
+        el.style.setProperty("width", previousWidth, previousPriority);
+        if (wasPortrait || wasLandscape) {
+          el.classList.remove("job-report-export--portrait", "job-report-export--landscape");
+          el.classList.add(wasPortrait ? "job-report-export--portrait" : "job-report-export--landscape");
+        }
+      }
     }, { orientation: opts?.orientation ?? "portrait", pages });
   }
   const [{ toJpeg }, { default: jsPDF }] = await Promise.all([

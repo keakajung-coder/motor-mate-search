@@ -1455,7 +1455,8 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
     setBusy(true);
     // โหมดส่งออก A4: บังคับความกว้างตามแนวกระดาษ + ตัวหนังสือใหญ่ขึ้น แล้วคืนค่าเดิมเมื่อจบ
     el.classList.add("export-a4");
-    if (o === "landscape") el.style.width = "1123px";
+    el.style.setProperty("width", o === "landscape" ? "1123px" : "794px", "important");
+    el.style.setProperty("max-width", "none", "important");
     try {
       // รอให้เบราว์เซอร์จัดเลย์เอาต์/โหลดรูปตามขนาดใหม่ก่อนจับภาพ
       await new Promise((r) => setTimeout(r, 120));
@@ -1479,6 +1480,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
     } finally {
       el.classList.remove("export-a4");
       el.style.width = "";
+      el.style.removeProperty("max-width");
       setBusy(false);
     }
   }
