@@ -2904,6 +2904,20 @@ function CloseJobDialog({
               แสดงทั้งคลัง
             </label>
           </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="min-w-0 pl-9"
+              placeholder="ค้นหาอะไหล่จากฐานข้อมูล (พิมพ์รหัสหรือชื่อ เช่น 220099)"
+              value={partSearch}
+              onChange={(e) => setPartSearch(e.target.value)}
+            />
+          </div>
+          {partKw && (
+            <p className="text-xs text-muted-foreground">
+              พบ {visibleParts.length} รายการจากทั้งคลัง{visibleParts.length === 0 ? " — ไม่มีในระบบ สามารถพิมพ์เพิ่มใหม่ด้านล่างได้" : ""}
+            </p>
+          )}
           <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
             {Object.entries(grouped)
               .sort(([a], [b]) => a.localeCompare(b, "th"))
