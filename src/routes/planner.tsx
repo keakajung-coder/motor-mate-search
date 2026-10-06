@@ -2537,6 +2537,8 @@ function CloseJobDialog({
   const [quotePart, setQuotePart] = useState("");
   const [quoteCat, setQuoteCat] = useState("");
   const [showAllQuote, setShowAllQuote] = useState(false);
+  const [partSearch, setPartSearch] = useState("");
+  const [quoteSearch, setQuoteSearch] = useState("");
   const [useChecklist, setUseChecklist] = useState(false);
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [checklist, setChecklist] = useState<ChecklistResult | null>(null);
