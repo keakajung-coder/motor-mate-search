@@ -2652,15 +2652,23 @@ function CloseJobDialog({
   }, [appt.serial_number]);
 
   // อะไหล่ที่แสดงเป็น Checkbox: ผูกกับ S/N + ตรงรุ่นเครื่อง (หรือทั้งคลังเมื่อกด "แสดงทั้งหมด")
+  // เมื่อพิมพ์ค้นหา ให้กรองจาก "ทั้งคลัง" ทันที (real-time) ตามรหัส/ชื่ออะไหล่
+  const partKw = partSearch.trim().toLowerCase();
+  const quoteKw = quoteSearch.trim().toLowerCase();
+  const matchKw = (p: CatalogPart, kw: string) => !kw || p.label.toLowerCase().includes(kw);
   const visibleParts = products.filter(
-    (p) => showAll || !unitInfo || linkedIds.includes(p.id) || (unitInfo.model_id && p.model_id === unitInfo.model_id) || cats.includes(p.label),
+    (p) =>
+      matchKw(p, partKw) &&
+      (partKw || showAll || !unitInfo || linkedIds.includes(p.id) || (unitInfo.model_id && p.model_id === unitInfo.model_id) || cats.includes(p.label)),
   );
   const grouped = visibleParts.reduce<Record<string, CatalogPart[]>>((acc, p) => {
     (acc[p.category] ??= []).push(p);
     return acc;
   }, {});
   const quoteParts = products.filter(
-    (p) => showAllQuote || !unitInfo || linkedIds.includes(p.id) || (unitInfo.model_id && p.model_id === unitInfo.model_id) || quoteItems.includes(p.label),
+    (p) =>
+      matchKw(p, quoteKw) &&
+      (quoteKw || showAllQuote || !unitInfo || linkedIds.includes(p.id) || (unitInfo.model_id && p.model_id === unitInfo.model_id) || quoteItems.includes(p.label)),
   );
   const quoteGrouped = quoteParts.reduce<Record<string, CatalogPart[]>>((acc, p) => {
     (acc[p.category] ??= []).push(p);
