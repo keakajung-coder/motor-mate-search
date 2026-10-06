@@ -36,7 +36,7 @@ function PdfPages({ blob }: { blob: Blob }) {
           const context = canvas.getContext("2d");
           if (!context) throw new Error("แสดงตัวอย่างไม่ได้");
           container.append(canvas);
-          await page.render({ canvasContext: context, canvas, viewport }).promise;
+          await page.render({ canvasContext: context, viewport }).promise;
         }
       } catch (e) { if (!cancelled) setError(e instanceof Error ? e.message : "แสดงตัวอย่างไม่ได้"); }
     })();
