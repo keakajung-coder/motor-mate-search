@@ -20,6 +20,7 @@ import { setupPwa } from "@/lib/pwa";
 import { useMyIssueReplies } from "@/lib/issue-watch";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ConnectionKeeper } from "@/components/ConnectionKeeper";
+import { ExcelExportButton } from "@/components/ExcelExportButton";
 
 function NotFoundComponent() {
   return (
@@ -169,6 +170,7 @@ function RootComponent() {
         <AccessGate>
           <div className="min-h-dvh min-w-0 overflow-x-clip bg-background">
             <ConnectionKeeper />
+            <ExcelExportButton />
             <NavBar />
             <main className="w-full min-w-0 max-w-none px-3 py-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-6 sm:pb-[calc(6rem+env(safe-area-inset-bottom))]">
               <Outlet />
