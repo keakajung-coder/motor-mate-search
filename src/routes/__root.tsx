@@ -21,6 +21,8 @@ import { useMyIssueReplies } from "@/lib/issue-watch";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ConnectionKeeper } from "@/components/ConnectionKeeper";
 import { ExcelExportButton } from "@/components/ExcelExportButton";
+import { ThemeQuickToggle } from "@/components/ThemePicker";
+import { useTheme } from "@/lib/theme";
 
 function NotFoundComponent() {
   return (
@@ -107,8 +109,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="th">
+    <html lang="th" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var mode = localStorage.getItem('app_theme_mode') || 'light';
+                  var isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                  if (isDark) document.documentElement.classList.add('dark');
+                  else document.documentElement.classList.remove('dark');
+                  var primary = localStorage.getItem('app_theme_primary');
+                  var ring = localStorage.getItem('app_theme_ring');
+                  if (primary) document.documentElement.style.setProperty('--primary', primary);
+                  if (ring) document.documentElement.style.setProperty('--ring', ring);
+                  document.documentElement.style.setProperty('--primary-foreground', 'oklch(0.99 0 0)');
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
         <HeadContent />
       </head>
       <body>
@@ -149,6 +170,7 @@ function NavBar() {
           >
             จัดการข้อมูล
           </Link>
+          <ThemeQuickToggle />
           <NotificationBell />
           <AdminLockButton />
         </nav>
@@ -159,6 +181,7 @@ function NavBar() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useTheme();
   useEffect(() => {
     setupPwa();
   }, []);
