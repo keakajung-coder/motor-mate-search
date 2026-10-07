@@ -9,14 +9,19 @@ import { Badge } from "@/components/ui/badge";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { toast } from "sonner";
-import { Bot, Check, Loader2, Plus, Trash2 } from "lucide-react";
+import { Bot, Check, Loader2, Plus, Send, Trash2 } from "lucide-react";
+import { useEffect } from "react";
+import { Switch } from "@/components/ui/switch";
 import { useIssues, type Issue } from "@/components/TroubleshootPanel";
 import { draftTroubleshooting } from "@/lib/troubleshoot.functions";
+import { loadAutoIssueAlert, saveAutoIssueAlert, sendIssueApprovalAlert } from "@/lib/issue-alerts";
 
 /** แผงควบคุมคลังความรู้อาการเสีย + ให้ AI ร่างคำตอบรอแอดมินอนุมัติ */
 export function TroubleshootTab() {
   const { issues, loading, reload } = useIssues("all");
   const [newTitle, setNewTitle] = useState("");
+  const [autoAlert, setAutoAlert] = useState(true);
+  useEffect(() => void loadAutoIssueAlert().then(setAutoAlert), []);
 
   const pending = issues.filter((i) => i.status !== "published");
   const published = issues.filter((i) => i.status === "published");
@@ -33,6 +38,17 @@ export function TroubleshootTab() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-2 rounded-lg border p-3 text-sm">
+        <Switch
+          id="auto-issue-alert"
+          checked={autoAlert}
+          onCheckedChange={(v) => {
+            setAutoAlert(v);
+            void saveAutoIssueAlert(v);
+          }}
+        />
+        <Label htmlFor="auto-issue-alert">ส่ง LINE ให้ช่างอัตโนมัติเมื่อกดอนุมัติปัญหา</Label>
+      </div>
       <CollapsibleSection title="➕ เพิ่มอาการเสียใหม่" subtitle="พิมพ์อาการ แล้วให้ AI ช่วยร่างคำตอบ">
         <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
           <Input
@@ -123,7 +139,16 @@ function IssueEditor({ issue, onSaved }: { issue: Issue; onSaved: () => void }) 
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success(publish ? "อนุมัติและบันทึกเข้าคลังแล้ว" : "บันทึกร่างแล้ว");
+    if (publish && (await loadAutoIssueAlert())) {
+      const sent = await sendIssueApprovalAlert(form);
+      if (sent > 0) toast.success(`ส่งแจ้งเตือน LINE ให้ช่างแล้ว (${sent} ราย)`);
+    }
     onSaved();
+  };
+
+  const shareNow = async () => {
+    const sent = await sendIssueApprovalAlert(form);
+    toast[sent > 0 ? "success" : "error"](sent > 0 ? `ส่งเข้า LINE แล้ว (${sent} ราย)` : "ยังส่งไม่ได้ — ยังไม่มีช่างที่ผูก LINE หรือยังไม่ได้ตั้งค่า LINE");
   };
 
   const remove = async () => {
@@ -169,6 +194,9 @@ function IssueEditor({ issue, onSaved }: { issue: Issue; onSaved: () => void }) 
         </Button>
         <Button onClick={() => save(true)} disabled={busy}>
           <Check className="mr-1 h-4 w-4" /> อนุมัติและบันทึกเข้าคลัง
+        </Button>
+        <Button variant="outline" onClick={shareNow}>
+          <Send className="mr-1 h-4 w-4" /> ส่งแจ้งเตือนผ่าน LINE
         </Button>
         <ConfirmButton onConfirm={remove} variant="outline">
           <Trash2 className="mr-1 h-4 w-4" /> ลบ

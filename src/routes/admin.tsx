@@ -27,6 +27,7 @@ import { refreshDirectory } from "@/lib/directory";
 import { PasscodeSettings } from "@/components/admin/PasscodeSettings";
 import { BackupRestore } from "@/components/admin/BackupRestore";
 import { AlertSettings } from "@/components/admin/AlertSettings";
+import { ExcelBackupSettings } from "@/components/admin/ExcelBackupSettings";
 import { ReadOnlyScope } from "@/components/AccessGate";
 import { ChecklistTemplatesTab } from "@/components/admin/ChecklistTemplatesTab";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
@@ -114,7 +115,7 @@ function AdminPage() {
         <TabsContent value="bundles"><ReadOnlyScope><BundlesTab /></ReadOnlyScope></TabsContent>
         <TabsContent value="checklist"><ReadOnlyScope><ChecklistTemplatesTab /></ReadOnlyScope></TabsContent>
         <TabsContent value="issues"><ReadOnlyScope><TroubleshootTab /></ReadOnlyScope></TabsContent>
-        {isAdmin && <TabsContent value="io"><ImportExportTab /></TabsContent>}
+        {isAdmin && <TabsContent value="io"><div className="space-y-4"><ExcelBackupSettings /><ImportExportTab /></div></TabsContent>}
         <TabsContent value="audit"><ReadOnlyScope><AuditLogTab /></ReadOnlyScope></TabsContent>
         {isAdmin && (
           <TabsContent value="security">

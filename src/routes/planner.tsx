@@ -1032,7 +1032,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
                 อนุมัติ
               </Button>
               <Button size="sm" variant="secondary" onClick={() => shareNow(o)}>
-                <Phone className="mr-1 h-4 w-4" /> ส่ง LINE ให้เซลล์/ช่าง
+                <Phone className="mr-1 h-4 w-4" /> ส่งแจ้งเตือนผ่าน LINE
               </Button>
               <ConfirmButton
                 variant="outline"
