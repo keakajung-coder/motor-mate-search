@@ -47,7 +47,14 @@ import {
   XCircle,
   ZoomIn,
   ZoomOut,
+  Palmtree,
 } from "lucide-react";
+import { useHolidays, type Holiday } from "@/lib/holidays";
+import {
+  HolidayManagerDialog,
+  HolidayFormDialog,
+  HolidayBanner,
+} from "@/components/HolidayDialog";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog, WorkOrderFormPrint } from "@/components/WorkOrderDialog";
@@ -278,6 +285,11 @@ function PlannerPage() {
   const [viewing, setViewing] = useState<Appointment | null>(null);
   const pickAppt = (a: Appointment) => (a.status === "closed" ? setViewing(a) : setEditing(a));
   const [dayDetail, setDayDetail] = useState<string | null>(null);
+  const { holidays, holidaysMap, addHoliday, updateHoliday, deleteHoliday } = useHolidays();
+  const [holidayManagerOpen, setHolidayManagerOpen] = useState(false);
+  const [holidayFormOpen, setHolidayFormOpen] = useState(false);
+  const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
+  const [holidayInitialDate, setHolidayInitialDate] = useState<string>("");
   const monthRef = useRef<HTMLDivElement>(null);
   const weekRef = useRef<HTMLDivElement>(null);
   const dayRef = useRef<HTMLDivElement>(null);
@@ -428,6 +440,14 @@ function PlannerPage() {
           <WorkOrderDialog onCreated={load} />
           <Button variant="outline" className="h-11" onClick={() => setEditing(newAppointment(iso(cursor)))}>
             <CalendarPlus className="mr-1 h-4 w-4" /> เพิ่มนัดหมายลงปฏิทินโดยตรง
+          </Button>
+          <Button
+            variant="outline"
+            className="h-11 border-rose-300/80 bg-rose-50/50 hover:bg-rose-100/70 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 dark:text-rose-200"
+            onClick={() => setHolidayManagerOpen(true)}
+          >
+            <Palmtree className="mr-1 h-4 w-4 text-rose-500" />
+            จัดการวันหยุด ({holidays.length})
           </Button>
         </div>
       </header>
@@ -602,9 +622,15 @@ function PlannerPage() {
               <MonthGrid
                 cursor={cursor}
                 appts={visible}
+                holidaysMap={holidaysMap}
                 onPick={pickAppt}
                 onPickDate={(d) => setEditing(newAppointment(d))}
                 onPickDay={(d) => setDayDetail(d)}
+                onAddHoliday={(d) => {
+                  setEditingHoliday(null);
+                  setHolidayInitialDate(d);
+                  setHolidayFormOpen(true);
+                }}
               />
             </div>
           ) : (
@@ -617,6 +643,7 @@ function PlannerPage() {
                       : [iso(cursor)]
                   }
                   appts={visible}
+                  holidaysMap={holidaysMap}
                   onPick={pickAppt}
                   onPickSlot={(d, t) => setEditing({ ...newAppointment(d), visit_time: t })}
                 />
@@ -625,10 +652,21 @@ function PlannerPage() {
                 <DayList
                   days={[iso(cursor)]}
                   appts={visible}
+                  holidaysMap={holidaysMap}
                   isAdmin={isAdmin}
                   sortBy={sortBy}
                   onEdit={setEditing}
                   onClose={setClosing}
+                  onEditHoliday={(h) => {
+                    setEditingHoliday(h);
+                    setHolidayFormOpen(true);
+                  }}
+                  onDeleteHoliday={deleteHoliday}
+                  onAddHoliday={(d) => {
+                    setEditingHoliday(null);
+                    setHolidayInitialDate(d);
+                    setHolidayFormOpen(true);
+                  }}
                   reload={load}
                 />
               )}
@@ -642,6 +680,7 @@ function PlannerPage() {
         <DayDetailDialog
           date={dayDetail}
           appts={visible}
+          holiday={holidaysMap[dayDetail]}
           sortBy={sortBy}
           onClose={() => setDayDetail(null)}
           onPick={(a) => {
@@ -652,8 +691,42 @@ function PlannerPage() {
             setDayDetail(null);
             setClosing(a);
           }}
+          onEditHoliday={(h) => {
+            setEditingHoliday(h);
+            setHolidayFormOpen(true);
+          }}
+          onDeleteHoliday={deleteHoliday}
+          onAddHoliday={(d) => {
+            setEditingHoliday(null);
+            setHolidayInitialDate(d);
+            setHolidayFormOpen(true);
+          }}
         />
       )}
+
+      <HolidayManagerDialog
+        open={holidayManagerOpen}
+        onOpenChange={setHolidayManagerOpen}
+        holidays={holidays}
+        onAdd={addHoliday}
+        onUpdate={updateHoliday}
+        onDelete={deleteHoliday}
+      />
+
+      <HolidayFormDialog
+        open={holidayFormOpen}
+        onOpenChange={setHolidayFormOpen}
+        initialDate={holidayInitialDate}
+        editingHoliday={editingHoliday}
+        onSave={async (data) => {
+          if (editingHoliday) {
+            await updateHoliday({ ...editingHoliday, ...data });
+          } else {
+            await addHoliday(data);
+          }
+        }}
+        onDelete={deleteHoliday}
+      />
 
       {editing && (
         <AppointmentDialog
@@ -1485,15 +1558,19 @@ function VehicleLegend({ appts }: { appts: Appointment[] }) {
 function MonthGrid({
   cursor,
   appts,
+  holidaysMap,
   onPick,
   onPickDate,
   onPickDay,
+  onAddHoliday,
 }: {
   cursor: Date;
   appts: Appointment[];
+  holidaysMap?: Record<string, Holiday>;
   onPick: (a: Appointment) => void;
   onPickDate?: (date: string) => void;
   onPickDay: (date: string) => void;
+  onAddHoliday?: (date: string) => void;
 }) {
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
   const start = startOfWeek(first);
@@ -1523,6 +1600,7 @@ function MonthGrid({
         {days.map((d) => {
           const key = iso(d);
           const list = appts.filter((a) => a.visit_date === key).sort(byVehicleThenTime);
+          const holiday = holidaysMap?.[key];
 
           const dim = d.getMonth() !== cursor.getMonth();
 
@@ -1532,14 +1610,20 @@ function MonthGrid({
               <div
                 key={key}
                 onClick={() => onPickDay(key)}
-                title={`วันอาทิตย์ที่ ${formatDate(key)} · ${list.length} งาน`}
+                title={holiday ? `วันอาทิตย์ที่ ${formatDate(key)} (วันหยุด: ${holiday.title}${holiday.note ? ` - ${holiday.note}` : ""}) · ${list.length} งาน` : `วันอาทิตย์ที่ ${formatDate(key)} · ${list.length} งาน`}
                 className={
                   "flex min-h-32 cursor-pointer flex-col items-center rounded-full border sm:min-h-40 md:min-h-48 " +
                   (key === today ? "border-red-500 bg-red-100 " : "border-red-200 bg-red-50 ") +
+                  (holiday ? "ring-2 ring-rose-400 " : "") +
                   (dim ? "opacity-40" : "")
                 }
               >
                 <span className="mt-1 text-[9px] font-bold leading-none text-red-500">{d.getDate()}</span>
+                {holiday && (
+                  <span className="mt-0.5 text-[8px] leading-none" title={holiday.title}>
+                    🌴
+                  </span>
+                )}
                 <div className="mt-1 flex w-1.5 flex-1 flex-col items-center gap-1 rounded-full bg-red-400/70 py-1">
                   {list.map((a) => (
                     <button
@@ -1564,6 +1648,7 @@ function MonthGrid({
               className={
                 "flex min-h-32 flex-col rounded-xl border bg-card p-1.5 sm:min-h-40 md:min-h-48 " +
                 (onPickDate ? "cursor-pointer hover:border-primary/60 hover:bg-accent/40 " : "") +
+                (holiday ? "border-rose-300/80 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20 " : "") +
                 (dim ? "bg-muted/30 text-muted-foreground " : "") +
                 (key === today ? "border-primary" : "")
               }
@@ -1580,6 +1665,52 @@ function MonthGrid({
                   {thaiCellDate(d)}
                 </button>
               </div>
+
+              {holiday && (
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPickDay(key);
+                  }}
+                  className="mb-1 flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-tight shadow-xs hover:opacity-90"
+                  style={{
+                    backgroundColor:
+                      holiday.color === "amber"
+                        ? "rgba(254, 243, 199, 0.95)"
+                        : holiday.color === "purple"
+                          ? "rgba(243, 232, 255, 0.95)"
+                          : holiday.color === "blue"
+                            ? "rgba(224, 242, 254, 0.95)"
+                            : holiday.color === "emerald"
+                              ? "rgba(209, 250, 229, 0.95)"
+                              : "rgba(255, 228, 230, 0.95)",
+                    color:
+                      holiday.color === "amber"
+                        ? "#92400e"
+                        : holiday.color === "purple"
+                          ? "#6b21a8"
+                          : holiday.color === "blue"
+                            ? "#075985"
+                            : holiday.color === "emerald"
+                              ? "#065f46"
+                              : "#9f1239",
+                    borderColor:
+                      holiday.color === "amber"
+                        ? "#fde68a"
+                        : holiday.color === "purple"
+                          ? "#e9d5ff"
+                          : holiday.color === "blue"
+                            ? "#bae6fd"
+                            : holiday.color === "emerald"
+                              ? "#a7f3d0"
+                              : "#fecdd3",
+                  }}
+                  title={`🌴 วันหยุด: ${holiday.title}${holiday.note ? `\nสาเหตุ: ${holiday.note}` : ""}`}
+                >
+                  <Palmtree className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{holiday.title}</span>
+                </div>
+              )}
 
               <div className="scrollbar-none min-h-0 flex-1 space-y-0.5 overflow-y-auto">
                 {list.map((a) => (
@@ -1629,11 +1760,13 @@ function MonthGrid({
 function TimeGrid({
   days,
   appts,
+  holidaysMap,
   onPick,
   onPickSlot,
 }: {
   days: string[];
   appts: Appointment[];
+  holidaysMap?: Record<string, Holiday>;
   onPick: (a: Appointment) => void;
   onPickSlot?: (date: string, time: string) => void;
 }) {
@@ -1742,21 +1875,31 @@ function TimeGrid({
           >
             <div className="bg-card p-2" />
             {days.map((d) => {
+              const holiday = holidaysMap?.[d];
               if (isWeek && dowOf(d) === 0) {
                 return (
                   <div key={d} className="bg-red-50 p-1 text-center text-red-500">
                     <p className="text-[10px] font-bold leading-tight">อา</p>
                     <p className="text-[9px] leading-tight">{new Date(d + "T00:00:00").getDate()}</p>
+                    {holiday && <span className="text-[8px]" title={holiday.title}>🌴</span>}
                   </div>
                 );
               }
               return (
                 <div
                   key={d}
-                  className={"bg-card p-2 text-center " + (d === today ? "text-primary" : "")}
+                  className={"bg-card p-2 text-center " + (d === today ? "text-primary font-bold " : "") + (holiday ? "border-b-2 border-rose-400 bg-rose-50/40 dark:bg-rose-950/20 " : "")}
                 >
                   <p className="text-sm font-bold">วัน{TH_DOW_FULL[dowOf(d)]}</p>
                   <p className="text-xs text-muted-foreground">{formatDate(d)}</p>
+                  {holiday && (
+                    <span
+                      className="mt-0.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[10px] font-semibold text-rose-700 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-200"
+                      title={`วันหยุด: ${holiday.title}${holiday.note ? `\nสาเหตุ: ${holiday.note}` : ""}`}
+                    >
+                      🌴 {holiday.title}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -1781,17 +1924,25 @@ function TimeGrid({
 function DayDetailDialog({
   date,
   appts,
+  holiday,
   sortBy = "date-asc",
   onClose,
   onPick,
   onCloseJob,
+  onEditHoliday,
+  onDeleteHoliday,
+  onAddHoliday,
 }: {
   date: string;
   appts: Appointment[];
+  holiday?: Holiday;
   sortBy?: string;
   onClose: () => void;
   onPick: (a: Appointment) => void;
   onCloseJob: (a: Appointment) => void;
+  onEditHoliday?: (h: Holiday) => void;
+  onDeleteHoliday?: (id: string) => void;
+  onAddHoliday?: (date: string) => void;
 }) {
   const list = sortApptList(appts.filter((a) => a.visit_date === date), sortBy).sort(byVehicleThenTime);
   const [preview, setPreview] = useState(false);
@@ -1880,14 +2031,36 @@ function DayDetailDialog({
             <DialogHeader className="pr-8">
                <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
                 <div>
-                  <DialogTitle>คิวงานวันที่ {formatDate(date)}</DialogTitle>
+                  <DialogTitle className="flex flex-wrap items-center gap-2">
+                    <span>คิวงานวันที่ {formatDate(date)}</span>
+                    {holiday && (
+                      <Badge variant="outline" className="border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-200">
+                        🌴 วันหยุด: {holiday.title}
+                      </Badge>
+                    )}
+                  </DialogTitle>
                   <DialogDescription className="mt-1">ทั้งหมด {list.length} งาน · แตะรายการเพื่อดูรายละเอียดเชิงลึก</DialogDescription>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => setPreview(true)}>
-                  <Share2 className="mr-1 h-4 w-4" /> แชร์
-                </Button>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {!holiday && onAddHoliday && (
+                    <Button size="sm" variant="outline" className="border-rose-200 text-rose-700 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30" onClick={() => onAddHoliday(date)}>
+                      <Palmtree className="mr-1 h-3.5 w-3.5 text-rose-500" /> + กำหนดเป็นวันหยุด
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => setPreview(true)}>
+                    <Share2 className="mr-1 h-4 w-4" /> แชร์
+                  </Button>
+                </div>
               </div>
             </DialogHeader>
+
+            {holiday && (
+              <HolidayBanner
+                holiday={holiday}
+                onEdit={onEditHoliday ? () => onEditHoliday(holiday) : undefined}
+                onDelete={onDeleteHoliday ? () => onDeleteHoliday(holiday.id) : undefined}
+              />
+            )}
             <div className="space-y-2">
               {list.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีนัดหมายในวันนี้</p>}
               {list.map((a) => (
@@ -2032,18 +2205,26 @@ const DailyQueueDocument = ({ ref, date, list }: { ref: React.Ref<HTMLDivElement
 function DayList({
   days,
   appts,
+  holidaysMap,
   isAdmin,
   sortBy = "date-asc",
   onEdit,
   onClose,
+  onEditHoliday,
+  onDeleteHoliday,
+  onAddHoliday,
   reload,
 }: {
   days: string[];
   appts: Appointment[];
+  holidaysMap?: Record<string, Holiday>;
   isAdmin: boolean;
   sortBy?: string;
   onEdit: (a: Appointment) => void;
   onClose: (a: Appointment) => void;
+  onEditHoliday?: (h: Holiday) => void;
+  onDeleteHoliday?: (id: string) => void;
+  onAddHoliday?: (date: string) => void;
   reload: () => void;
 }) {
   const setStatus = async (a: Appointment, status: string) => {
@@ -2066,9 +2247,24 @@ function DayList({
     <div className="space-y-4">
       {days.map((d) => {
         const list = sortApptList(appts.filter((a) => a.visit_date === d), sortBy);
+        const holiday = holidaysMap?.[d];
         return (
           <div key={d} className="space-y-2">
-            <p className="text-sm font-semibold">{formatDate(d)}</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold">{formatDate(d)}</p>
+              {!holiday && onAddHoliday && (
+                <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-rose-600" onClick={() => onAddHoliday(d)}>
+                  <Palmtree className="mr-1 h-3 w-3 text-rose-500" /> กำหนดวันหยุด
+                </Button>
+              )}
+            </div>
+            {holiday && (
+              <HolidayBanner
+                holiday={holiday}
+                onEdit={onEditHoliday ? () => onEditHoliday(holiday) : undefined}
+                onDelete={onDeleteHoliday ? () => onDeleteHoliday(holiday.id) : undefined}
+              />
+            )}
             {list.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีนัดหมาย</p>}
             {list.map((a) => (
               <div key={a.id} className="relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3">
