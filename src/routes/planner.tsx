@@ -293,7 +293,7 @@ function PlannerPage() {
   const monthRef = useRef<HTMLDivElement>(null);
   const weekRef = useRef<HTMLDivElement>(null);
   const dayRef = useRef<HTMLDivElement>(null);
-  const [exporting, setExporting] = useState<"" | "image" | "pdf">("");
+  const [exporting, setExporting] = useState<"" | "image" | "pdf" | "excel">("");
 
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
