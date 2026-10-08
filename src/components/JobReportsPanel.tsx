@@ -225,6 +225,37 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
     el.style.setProperty("--jr-scale", scale.toFixed(3));
   };
 
+  const exportExcel = async () => {
+    const el = ref.current;
+    if (!el) return;
+    setExporting("excel");
+    try {
+      const { tableToGrid, downloadGridWorkbook } = await import("@/lib/excel-layout");
+      const title = el.querySelector("p")?.textContent?.trim() ?? "สรุปใบสั่งงาน";
+      const jobCount = rows.length;
+      const sheet: string[][] = [[title], [], ["งานทั้งหมด", String(jobCount), "ปิดงานแล้ว", String(done.length), "ค้างอยู่", String(pendingRows.length), "ปิดงานไม่เรียบร้อย", String(notOk)], []];
+      const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }];
+      let width = 10;
+      el.querySelectorAll("table").forEach((t) => {
+        const heading = t.closest("section, div")?.previousElementSibling?.textContent?.trim();
+        if (heading && heading.length < 120) sheet.push([heading]);
+        const g = tableToGrid(t as HTMLTableElement, sheet.length);
+        merges.push(...(g.merges ?? []));
+        width = Math.max(width, ...g.rows.map((r) => r.length));
+        sheet.push(...g.rows, []);
+      });
+      const cols = Array.from({ length: width }, (_, c) =>
+        Math.min(50, Math.max(10, ...sheet.slice(4).map((r) => Math.max(...String(r[c] ?? "").split("\n").map((x) => x.length))))),
+      );
+      await downloadGridWorkbook([{ name: `สรุปใบสั่งงาน ${scopeLabel}`, rows: sheet, merges, cols }], `สรุปใบสั่งงาน-${scopeLabel}-${range.from}`);
+      toast.success("ดาวน์โหลด Excel เรียบร้อย");
+    } catch (e) {
+      toast.error("ส่งออก Excel ไม่สำเร็จ: " + (e as Error).message);
+    } finally {
+      setExporting("");
+    }
+  };
+
   const exportReport = async (kind: "image" | "pdf") => {
     const el = ref.current;
     if (!el) return;
@@ -352,6 +383,10 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
             <Button size="sm" variant="outline" disabled={!!exporting} onClick={() => exportReport("pdf")}>
               {exporting === "pdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
               PDF
+            </Button>
+            <Button size="sm" variant="outline" disabled={!!exporting} onClick={exportExcel}>
+              {exporting === "excel" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+              Excel
             </Button>
           </div>
         </div>

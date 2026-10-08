@@ -406,7 +406,7 @@ function PlannerPage() {
             const k = iso(d);
             const hol = holidaysMap?.[k];
             const items = byDate(k).map(line);
-            const cell = [`${d.getDate()}${d.getMonth() !== cursor.getMonth() ? " (นอกเดือน)" : ""}${hol ? " 🎌 " + hol.name : ""}`, ...items].join("\n• ");
+            const cell = [`${d.getDate()}${d.getMonth() !== cursor.getMonth() ? " (นอกเดือน)" : ""}${hol ? " 🎌 " + hol.title : ""}`, ...items].join("\n• ");
             maxLines = Math.max(maxLines, cell.split("\n").length);
             row.push(cell);
           }

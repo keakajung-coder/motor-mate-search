@@ -1,4 +1,4 @@
-import { xlsxBlob } from "@/lib/report";
+import { saveFile, xlsxBlob } from "@/lib/report";
 
 /** ล้างอักขระต้องห้ามของชื่อชีท Excel ( : \ / ? * [ ] ) ตัดเหลือ 31 ตัว และกันชื่อซ้ำ */
 export function sanitizeSheetName(name: string, used?: Set<string>): string {
@@ -44,7 +44,6 @@ export async function downloadGridWorkbook(sheets: GridSheet[], filename: string
     XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(s.name, used));
   }
   const blob = xlsxBlob(XLSX.write(wb, { bookType: "xlsx", type: "array" }));
-  const { saveFile } = await import("@/lib/report");
   const fname = sanitizeFileName(filename.replace(/\.xlsx$/i, "")) + ".xlsx";
   await saveFile(blob, fname);
 }
