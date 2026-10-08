@@ -216,7 +216,7 @@ export function SmartSearchDialog({
       .sort((x, y) => (x.score as number) - (y.score as number))
       .slice(0, 10)
       .map((r) => r.a);
-  }, [appts, kw, dateFrom, dateTo]);
+  }, [appts, kw, dateFrom, dateTo, fSeller, fStaff, fStage]);
 
   const issueResults = useMemo(() => {
     if (!kw) return issues.slice(0, 6);
