@@ -111,6 +111,9 @@ export function SmartSearchDialog({
   const [status, setStatus] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState<string | null>(null);
   const [dateTo, setDateTo] = useState<string | null>(null);
+  const [fSeller, setFSeller] = useState<string | null>(null);
+  const [fStaff, setFStaff] = useState<string | null>(null);
+  const [fStage, setFStage] = useState<ApptStage | null>(null);
   const [units, setUnits] = useState<UnitLite[]>([]);
   const [appts, setAppts] = useState<ApptLite[]>([]);
   const [loading, setLoading] = useState(false);
@@ -175,10 +178,29 @@ export function SmartSearchDialog({
       .slice(0, 12) as { u: UnitLite; score: number }[];
   }, [units, kw, seller, status]);
 
+  const apptSellers = useMemo(
+    () => Array.from(new Set(appts.map((a) => (a.sales_rep ?? "").trim()).filter(Boolean))).sort((x, y) => x.localeCompare(y, "th")),
+    [appts],
+  );
+  const apptStaff = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          appts.flatMap((a) =>
+            (a.staff_name ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+          ),
+        ),
+      ).sort((x, y) => x.localeCompare(y, "th")),
+    [appts],
+  );
+
   const apptResults = useMemo(() => {
     const rows = appts.filter((a) => {
       if (dateFrom && a.visit_date < dateFrom) return false;
       if (dateTo && a.visit_date > dateTo) return false;
+      if (fSeller && (a.sales_rep ?? "").trim() !== fSeller) return false;
+      if (fStaff && !(a.staff_name ?? "").split(",").map((s) => s.trim()).includes(fStaff)) return false;
+      if (fStage && apptStage(a.status) !== fStage) return false;
       return true;
     });
     if (!kw) return rows.slice(0, 10);
@@ -194,7 +216,7 @@ export function SmartSearchDialog({
       .sort((x, y) => (x.score as number) - (y.score as number))
       .slice(0, 10)
       .map((r) => r.a);
-  }, [appts, kw, dateFrom, dateTo]);
+  }, [appts, kw, dateFrom, dateTo, fSeller, fStaff, fStage]);
 
   const issueResults = useMemo(() => {
     if (!kw) return issues.slice(0, 6);
@@ -288,6 +310,57 @@ export function SmartSearchDialog({
           </div>
         )}
 
+        {mode === "planner" && (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">เซลล์ผู้ขาย:</span>
+              <Chip active={fSeller === null} onClick={() => setFSeller(null)}>
+                ทั้งหมด
+              </Chip>
+              {apptSellers.map((s) => (
+                <Chip key={s} active={fSeller === s} onClick={() => setFSeller(fSeller === s ? null : s)}>
+                  {s}
+                </Chip>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">ช่าง:</span>
+              <Chip active={fStaff === null} onClick={() => setFStaff(null)}>
+                ทั้งหมด
+              </Chip>
+              {apptStaff.map((s) => (
+                <Chip key={s} active={fStaff === s} onClick={() => setFStaff(fStaff === s ? null : s)}>
+                  {s}
+                </Chip>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">สถานะงาน:</span>
+              <Chip active={fStage === null} onClick={() => setFStage(null)}>
+                ทั้งหมด
+              </Chip>
+              {(Object.keys(APPT_STAGE_STYLE) as ApptStage[]).map((k) => (
+                <Chip key={k} active={fStage === k} onClick={() => setFStage(fStage === k ? null : k)}>
+                  {APPT_STAGE_STYLE[k].label}
+                </Chip>
+              ))}
+            </div>
+            {(fSeller || fStaff || fStage) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setFSeller(null);
+                  setFStaff(null);
+                  setFStage(null);
+                }}
+              >
+                ล้างตัวกรองทั้งหมด
+              </Button>
+            )}
+          </div>
+        )}
+
         {mode === "parts" && (
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -315,7 +388,7 @@ export function SmartSearchDialog({
           </div>
         )}
 
-        {!(kw || seller !== null || status !== null || dateFrom || dateTo) ? (
+        {!(kw || seller !== null || status !== null || dateFrom || dateTo || fSeller || fStaff || fStage) ? (
           <p className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">
             เริ่มพิมพ์หรือเลือกตัวกรองเพื่อแสดงผลการค้นหา
           </p>
