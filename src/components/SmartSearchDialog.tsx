@@ -388,7 +388,7 @@ export function SmartSearchDialog({
           </div>
         )}
 
-        {!(kw || seller !== null || status !== null || dateFrom || dateTo) ? (
+        {!(kw || seller !== null || status !== null || dateFrom || dateTo || fSeller || fStaff || fStage) ? (
           <p className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">
             เริ่มพิมพ์หรือเลือกตัวกรองเพื่อแสดงผลการค้นหา
           </p>
