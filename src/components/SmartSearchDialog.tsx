@@ -310,6 +310,57 @@ export function SmartSearchDialog({
           </div>
         )}
 
+        {mode === "planner" && (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">เซลล์ผู้ขาย:</span>
+              <Chip active={fSeller === null} onClick={() => setFSeller(null)}>
+                ทั้งหมด
+              </Chip>
+              {apptSellers.map((s) => (
+                <Chip key={s} active={fSeller === s} onClick={() => setFSeller(fSeller === s ? null : s)}>
+                  {s}
+                </Chip>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">ช่าง:</span>
+              <Chip active={fStaff === null} onClick={() => setFStaff(null)}>
+                ทั้งหมด
+              </Chip>
+              {apptStaff.map((s) => (
+                <Chip key={s} active={fStaff === s} onClick={() => setFStaff(fStaff === s ? null : s)}>
+                  {s}
+                </Chip>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">สถานะงาน:</span>
+              <Chip active={fStage === null} onClick={() => setFStage(null)}>
+                ทั้งหมด
+              </Chip>
+              {(Object.keys(APPT_STAGE_STYLE) as ApptStage[]).map((k) => (
+                <Chip key={k} active={fStage === k} onClick={() => setFStage(fStage === k ? null : k)}>
+                  {APPT_STAGE_STYLE[k].label}
+                </Chip>
+              ))}
+            </div>
+            {(fSeller || fStaff || fStage) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setFSeller(null);
+                  setFStaff(null);
+                  setFStage(null);
+                }}
+              >
+                ล้างตัวกรองทั้งหมด
+              </Button>
+            )}
+          </div>
+        )}
+
         {mode === "parts" && (
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
