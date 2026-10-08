@@ -111,6 +111,9 @@ export function SmartSearchDialog({
   const [status, setStatus] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState<string | null>(null);
   const [dateTo, setDateTo] = useState<string | null>(null);
+  const [fSeller, setFSeller] = useState<string | null>(null);
+  const [fStaff, setFStaff] = useState<string | null>(null);
+  const [fStage, setFStage] = useState<ApptStage | null>(null);
   const [units, setUnits] = useState<UnitLite[]>([]);
   const [appts, setAppts] = useState<ApptLite[]>([]);
   const [loading, setLoading] = useState(false);
