@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { xlsxBlob } from "@/lib/report";
+import { sanitizeSheetName, sanitizeFileName } from "@/lib/excel-layout";
 
 type Sheet = { table: string; label: string };
 
@@ -48,15 +49,16 @@ export async function buildPageWorkbook(path: string) {
   const cfg = sheetsForPath(path);
   const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
+  const used = new Set<string>();
   for (const s of cfg.sheets) {
     const { data } = await supabase.from(s.table as never).select("*").limit(20000);
     const rows = (data ?? []) as Record<string, unknown>[];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{}]), s.label.slice(0, 31));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{}]), sanitizeSheetName(s.label, used));
   }
   const date = new Date().toISOString().slice(0, 10);
   return {
     blob: xlsxBlob(XLSX.write(wb, { bookType: "xlsx", type: "array" })),
-    filename: `${cfg.title}-${date}.xlsx`,
+    filename: `${sanitizeFileName(cfg.title)}-${date}.xlsx`,
     title: cfg.title,
   };
 }

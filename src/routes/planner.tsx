@@ -293,7 +293,7 @@ function PlannerPage() {
   const monthRef = useRef<HTMLDivElement>(null);
   const weekRef = useRef<HTMLDivElement>(null);
   const dayRef = useRef<HTMLDivElement>(null);
-  const [exporting, setExporting] = useState<"" | "image" | "pdf">("");
+  const [exporting, setExporting] = useState<"" | "image" | "pdf" | "excel">("");
 
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -375,6 +375,71 @@ function PlannerPage() {
   const activeRef = view === "month" ? monthRef : view === "week" ? weekRef : dayRef;
 
   /** บันทึกตารางปฏิทินเป็นไฟล์ภาพ หรือ PDF เต็มใบ */
+  const exportExcel = async () => {
+    setExporting("excel");
+    try {
+      const line = (a: Appointment) =>
+        [
+          a.visit_time ? a.visit_time.slice(0, 5) : "",
+          a.cust_id ? `[${a.cust_id}]` : "",
+          a.customer_name ?? "",
+          `(${STATUS_STAGE_STYLE[statusStage(a.status)].label})`,
+          a.machine_label || a.serial_number ? `\n  ${a.machine_label ?? ""} ${a.serial_number ? "S/N " + a.serial_number : ""}` : "",
+          a.staff_name ? `\n  ช่าง: ${a.staff_name}` : "",
+          a.sales_rep ? ` · เซลล์: ${a.sales_rep}` : "",
+          a.vehicle_plate ? ` · รถ: ${a.vehicle_plate}` : "",
+        ].filter(Boolean).join(" ").trim();
+      const byDate = (d: string) =>
+        visible.filter((a) => a.visit_date === d).sort((x, y) => (x.visit_time ?? "").localeCompare(y.visit_time ?? ""));
+      const sheets: import("@/lib/excel-layout").GridSheet[] = [];
+      const titleRow = [`ตารางนัดหมายบริการ · ${title}`];
+      if (view === "month") {
+        const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+        const start = startOfWeek(first);
+        const rows: string[][] = [titleRow, TH_DOW];
+        const heights = [24, 20];
+        for (let w = 0; w < 6; w++) {
+          const row: string[] = [];
+          let maxLines = 1;
+          for (let i = 0; i < 7; i++) {
+            const d = addDays(start, w * 7 + i);
+            const k = iso(d);
+            const hol = holidaysMap?.[k];
+            const items = byDate(k).map(line);
+            const cell = [`${d.getDate()}${d.getMonth() !== cursor.getMonth() ? " (นอกเดือน)" : ""}${hol ? " 🎌 " + hol.title : ""}`, ...items].join("\n• ");
+            maxLines = Math.max(maxLines, cell.split("\n").length);
+            row.push(cell);
+          }
+          rows.push(row);
+          heights.push(Math.min(409, 15 * maxLines + 6));
+        }
+        sheets.push({ name: `เดือน ${title}`, rows, cols: Array(7).fill(32), rowHeights: heights, merges: [{ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }] });
+      } else {
+        const days = view === "week" ? Array.from({ length: 7 }, (_, i) => iso(addDays(startOfWeek(cursor), i))) : [iso(cursor)];
+        const head = ["ช่วงเวลา", ...days.map((d) => `${TH_DOW[(new Date(d).getDay() + 6) % 7]} ${formatDate(d)}`)];
+        const part = (from: string, to: string) =>
+          days.map((d) => byDate(d).filter((a) => { const t = a.visit_time ?? "08:00"; return t >= from && t < to; }).map(line).join("\n\n"));
+        const rows = [titleRow.concat(Array(days.length).fill("")), head, ["เช้า (ก่อน 12:00)", ...part("00:00", "12:00")], ["— พักเที่ยง 12:00–13:00 —", ...days.map(() => "")], ["บ่าย (13:00 ขึ้นไป)", ...part("12:00", "24:00")]];
+        const h = (r: string[]) => Math.min(409, 15 * Math.max(1, ...r.map((c) => c.split("\n").length)) + 6);
+        sheets.push({ name: view === "week" ? `สัปดาห์ ${title}` : `วัน ${title}`, rows, cols: [18, ...days.map(() => 36)], rowHeights: rows.map((r, i) => (i < 2 ? 22 : h(r))), merges: [{ s: { r: 0, c: 0 }, e: { r: 0, c: days.length } }, { s: { r: 3, c: 0 }, e: { r: 3, c: days.length } }] });
+      }
+      const list = [...visible].sort((x, y) => (x.visit_date + (x.visit_time ?? "")).localeCompare(y.visit_date + (y.visit_time ?? "")));
+      sheets.push({
+        name: "รายการงาน",
+        cols: [12, 8, 12, 28, 30, 24, 18, 18, 14, 18, 40],
+        rows: [["วันที่", "เวลา", "รหัสลูกค้า", "ชื่อลูกค้า", "เครื่อง", "S/N", "ช่าง", "เซลล์", "รถ", "สถานะ", "รายละเอียดงาน"],
+          ...list.map((a) => [formatDate(a.visit_date), a.visit_time?.slice(0, 5) ?? "", a.cust_id ?? "", a.customer_name ?? "", a.machine_label ?? "", a.serial_number ?? "", a.staff_name ?? "", a.sales_rep ?? "", a.vehicle_plate ?? "", STATUS_STAGE_STYLE[statusStage(a.status)].label, a.job_detail ?? ""])],
+      });
+      const { downloadGridWorkbook } = await import("@/lib/excel-layout");
+      await downloadGridWorkbook(sheets, `ตารางงาน-${fileLabel}`);
+      toast.success("ดาวน์โหลด Excel เรียบร้อย");
+    } catch (e) {
+      toast.error("ส่งออก Excel ไม่สำเร็จ: " + (e as Error).message);
+    } finally {
+      setExporting("");
+    }
+  };
+
   const exportView = async (
     kind: "image" | "pdf",
     ref: React.RefObject<HTMLDivElement | null>,
@@ -592,6 +657,10 @@ function PlannerPage() {
                     <FileDown className="mr-1 h-4 w-4" />
                   )}
                   PDF เต็มใบ
+                </Button>
+                <Button size="sm" variant="outline" disabled={exporting !== ""} onClick={exportExcel}>
+                  {exporting === "excel" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+                  Excel ตาราง{viewLabel}
                 </Button>
               </>
             )}
