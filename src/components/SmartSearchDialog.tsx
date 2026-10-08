@@ -178,10 +178,29 @@ export function SmartSearchDialog({
       .slice(0, 12) as { u: UnitLite; score: number }[];
   }, [units, kw, seller, status]);
 
+  const apptSellers = useMemo(
+    () => Array.from(new Set(appts.map((a) => (a.sales_rep ?? "").trim()).filter(Boolean))).sort((x, y) => x.localeCompare(y, "th")),
+    [appts],
+  );
+  const apptStaff = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          appts.flatMap((a) =>
+            (a.staff_name ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+          ),
+        ),
+      ).sort((x, y) => x.localeCompare(y, "th")),
+    [appts],
+  );
+
   const apptResults = useMemo(() => {
     const rows = appts.filter((a) => {
       if (dateFrom && a.visit_date < dateFrom) return false;
       if (dateTo && a.visit_date > dateTo) return false;
+      if (fSeller && (a.sales_rep ?? "").trim() !== fSeller) return false;
+      if (fStaff && !(a.staff_name ?? "").split(",").map((s) => s.trim()).includes(fStaff)) return false;
+      if (fStage && apptStage(a.status) !== fStage) return false;
       return true;
     });
     if (!kw) return rows.slice(0, 10);
