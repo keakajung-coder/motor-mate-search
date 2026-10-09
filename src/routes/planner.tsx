@@ -1756,6 +1756,8 @@ function MonthGrid({
                 </button>
               </div>
 
+              <LeaveCell date={key} rows={leaveRows} onManage={onManageLeave} />
+
               {holiday && (
                 <div
                   onClick={(e) => {
@@ -1849,12 +1851,16 @@ function MonthGrid({
 /** ตารางเวลาแบบ Grid สำหรับมุมมองรายสัปดาห์ / รายวัน */
 function TimeGrid({
   days,
+  leaveRows,
+  onManageLeave,
   appts,
   holidaysMap,
   onPick,
   onPickSlot,
 }: {
   days: string[];
+  leaveRows: StaffLeave[];
+  onManageLeave?: (date: string) => void;
   appts: Appointment[];
   holidaysMap?: Record<string, Holiday>;
   onPick: (a: Appointment) => void;
@@ -1971,6 +1977,7 @@ function TimeGrid({
                   <div key={d} className="bg-red-50 p-1 text-center text-red-500">
                     <p className="text-[10px] font-bold leading-tight">อา</p>
                     <p className="text-[9px] leading-tight">{new Date(d + "T00:00:00").getDate()}</p>
+                    <LeaveCell date={d} rows={leaveRows} onManage={onManageLeave} compact />
                     {holiday && <span className="text-[8px]" title={holiday.title}>🌴</span>}
                   </div>
                 );
@@ -1982,6 +1989,7 @@ function TimeGrid({
                 >
                   <p className="text-sm font-bold">วัน{TH_DOW_FULL[dowOf(d)]}</p>
                   <p className="text-xs text-muted-foreground">{formatDate(d)}</p>
+                  <LeaveCell date={d} rows={leaveRows} onManage={onManageLeave} />
                   {holiday && (
                     <span
                       className="mt-0.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[10px] font-semibold text-rose-700 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-200"
