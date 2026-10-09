@@ -66,6 +66,8 @@ import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { JobReportsPanel } from "@/components/JobReportsPanel";
 import { PART_CATEGORIES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
+import { LeaveCell, StaffLeaveDialog, useStaffLeave } from "@/components/StaffLeave";
+import type { StaffLeave } from "@/lib/staff-leave";
 import { ChecklistForm } from "@/components/ChecklistForm";
 import { ChecklistView } from "@/components/ChecklistView";
 import { loadTemplates, matchesType, newResult, type ChecklistResult, type ChecklistTemplate } from "@/lib/checklist";
@@ -272,6 +274,8 @@ function FoldSection({
 function PlannerPage() {
 
   const { isAdmin } = useAccess();
+  const leave = useStaffLeave();
+  const [leaveDate, setLeaveDate] = useState<string | null>(null);
   const [appts, setAppts] = useState<Appointment[]>([]);
   const [orders, setOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -279,6 +283,7 @@ function PlannerPage() {
   const [cursor, setCursor] = useState(new Date());
   const [staffFilter, setStaffFilter] = useState("");
   const [vehicleFilter, setVehicleFilter] = useState("");
+  const visibleLeave = leave.rows.filter((row) => !staffFilter || row.staff_name === staffFilter);
   const [sortBy, setSortBy] = useState("date-asc");
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
@@ -680,7 +685,13 @@ function PlannerPage() {
         </CardHeader>
 
         <CardContent>
-          <div className="mb-3"><StatusLegend /></div>
+          <div className="mb-3 flex flex-wrap items-center gap-2"><StatusLegend />
+            <span className="leave-marker leave-marker--full"><Palmtree className="size-3" />ลาเต็มวัน</span>
+            <span className="leave-marker leave-marker--am">ลาครึ่งวันเช้า</span>
+            <span className="leave-marker leave-marker--pm">ลาครึ่งวันบ่าย</span>
+            {isAdmin && <Button size="sm" variant="outline" onClick={() => setLeaveDate(iso(cursor))}><Palmtree className="size-4" />บันทึกวันลา</Button>}
+            {leave.error && <Button variant="ghost" size="sm" onClick={() => void leave.load()}>{leave.error}</Button>}
+          </div>
           {loading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -690,6 +701,8 @@ function PlannerPage() {
               <p className="mb-2 text-center text-sm font-bold">ตารางนัดหมายบริการ · {title}</p>
               <MonthGrid
                 cursor={cursor}
+                leaveRows={visibleLeave}
+                onManageLeave={isAdmin ? setLeaveDate : undefined}
                 appts={visible}
                 holidaysMap={holidaysMap}
                 onPick={pickAppt}
@@ -706,6 +719,8 @@ function PlannerPage() {
             <div className="space-y-5">
               <div ref={view === "week" ? weekRef : dayRef} className="rounded-xl bg-card p-2">
                 <TimeGrid
+                  leaveRows={visibleLeave}
+                  onManageLeave={isAdmin ? setLeaveDate : undefined}
                   days={
                     view === "week"
                       ? Array.from({ length: 7 }, (_, i) => iso(addDays(startOfWeek(cursor), i)))
@@ -773,6 +788,7 @@ function PlannerPage() {
         />
       )}
 
+      {isAdmin && <StaffLeaveDialog date={leaveDate} onClose={() => setLeaveDate(null)} staff={leave.staff} rows={leave.rows} reload={leave.load} />}
       <HolidayManagerDialog
         open={holidayManagerOpen}
         onOpenChange={setHolidayManagerOpen}
@@ -1626,6 +1642,8 @@ function VehicleLegend({ appts }: { appts: Appointment[] }) {
 
 function MonthGrid({
   cursor,
+  leaveRows,
+  onManageLeave,
   appts,
   holidaysMap,
   onPick,
@@ -1634,6 +1652,8 @@ function MonthGrid({
   onAddHoliday,
 }: {
   cursor: Date;
+  leaveRows: StaffLeave[];
+  onManageLeave?: (date: string) => void;
   appts: Appointment[];
   holidaysMap?: Record<string, Holiday>;
   onPick: (a: Appointment) => void;
@@ -1688,6 +1708,7 @@ function MonthGrid({
                 }
               >
                 <span className="mt-1 text-[9px] font-bold leading-none text-red-500">{d.getDate()}</span>
+                <LeaveCell date={key} rows={leaveRows} onManage={onManageLeave} compact />
                 {holiday && (
                   <span className="mt-0.5 text-[8px] leading-none" title={holiday.title}>
                     🌴
@@ -1734,6 +1755,8 @@ function MonthGrid({
                   {thaiCellDate(d)}
                 </button>
               </div>
+
+              <LeaveCell date={key} rows={leaveRows} onManage={onManageLeave} />
 
               {holiday && (
                 <div
@@ -1828,12 +1851,16 @@ function MonthGrid({
 /** ตารางเวลาแบบ Grid สำหรับมุมมองรายสัปดาห์ / รายวัน */
 function TimeGrid({
   days,
+  leaveRows,
+  onManageLeave,
   appts,
   holidaysMap,
   onPick,
   onPickSlot,
 }: {
   days: string[];
+  leaveRows: StaffLeave[];
+  onManageLeave?: (date: string) => void;
   appts: Appointment[];
   holidaysMap?: Record<string, Holiday>;
   onPick: (a: Appointment) => void;
@@ -1950,6 +1977,7 @@ function TimeGrid({
                   <div key={d} className="bg-red-50 p-1 text-center text-red-500">
                     <p className="text-[10px] font-bold leading-tight">อา</p>
                     <p className="text-[9px] leading-tight">{new Date(d + "T00:00:00").getDate()}</p>
+                    <LeaveCell date={d} rows={leaveRows} onManage={onManageLeave} compact />
                     {holiday && <span className="text-[8px]" title={holiday.title}>🌴</span>}
                   </div>
                 );
@@ -1961,6 +1989,7 @@ function TimeGrid({
                 >
                   <p className="text-sm font-bold">วัน{TH_DOW_FULL[dowOf(d)]}</p>
                   <p className="text-xs text-muted-foreground">{formatDate(d)}</p>
+                  <LeaveCell date={d} rows={leaveRows} onManage={onManageLeave} />
                   {holiday && (
                     <span
                       className="mt-0.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[10px] font-semibold text-rose-700 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-200"

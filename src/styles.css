@@ -63,6 +63,9 @@
 }
 
 :root {
+  --leave-full: oklch(0.50 0.15 15);
+  --leave-am: oklch(0.48 0.12 225);
+  --leave-pm: oklch(0.46 0.12 160);
   --radius: 0.75rem;
   --background: oklch(0.968 0.003 250);
   --foreground: oklch(0.26 0.015 260);
@@ -109,6 +112,9 @@
 }
 
 .dark {
+  --leave-full: oklch(0.80 0.10 15);
+  --leave-am: oklch(0.80 0.10 225);
+  --leave-pm: oklch(0.80 0.10 160);
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
@@ -338,6 +344,23 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.leave-marker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-left: 4px solid currentColor;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  background: color-mix(in oklch, currentColor 10%, var(--card));
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.leave-marker--full { color: var(--leave-full); }
+.leave-marker--am { color: var(--leave-am); }
+.leave-marker--pm { color: var(--leave-pm); }
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }

@@ -13,3 +13,4 @@
 - Check backend reachability on wake and interval in a browser-only keeper, refresh near-expiry sessions, and refresh visible data when connectivity returns so idle tabs recover without reload.
 - Route PDF helper calls through a shared lazy-loaded settings preview, with pure pagination geometry; this keeps orientation/page limits consistent across export entry points without server-side browser imports.
 - Use the shared DateInput with a portalled Shadcn Calendar and controlled Popover for all editable dates; native hidden showPicker controls are unreliable in mobile browsers and nested dialogs.
+- Store employee leave separately from appointments, one entry per staff/date; verify existing passcodes server-side for reads and admin-only writes so leave never alters job history or relies on client permissions.
