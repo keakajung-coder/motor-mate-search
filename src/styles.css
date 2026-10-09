@@ -342,6 +342,16 @@
   display: none;
 }
 
+/* ปฏิทินลอยเหนือฟอร์ม ไม่ถูกตัดโดยพื้นที่เลื่อนของหน้าต่าง */
+.date-picker-popover {
+  z-index: 80;
+  width: min(20rem, calc(100vw - 1rem));
+  max-height: var(--radix-popover-content-available-height);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
 
 /* โหมดส่งออกภาพ/PDF: คลายการตัดขอบทั้งหมดเพื่อจับภาพตารางเต็มช่วง */
 .export-full,
