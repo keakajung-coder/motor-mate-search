@@ -1,5 +1,9 @@
 import * as React from "react";
 import { CalendarDays } from "lucide-react";
+import { th } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 /** แปลง ISO (ค.ศ.) เป็นข้อความ วว-ดด-ปปปป แบบ พ.ศ. */
@@ -52,12 +56,23 @@ type Props = {
 export function DateInput({ value, onChange, disabled, className, id, size = "default", ...rest }: Props) {
   const [text, setText] = React.useState(toBEDisplay(value));
   const [bad, setBad] = React.useState(false);
-  const pickerRef = React.useRef<HTMLInputElement>(null);
+  const [open, setOpen] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const calendarId = React.useId();
+  const selected = React.useMemo(() => {
+    const iso = parseDateText(value ?? "");
+    return iso ? new Date(`${iso}T00:00:00`) : undefined;
+  }, [value]);
+  const [month, setMonth] = React.useState<Date | undefined>(selected);
 
   React.useEffect(() => {
     setText(toBEDisplay(value));
     setBad(false);
   }, [value]);
+
+  React.useEffect(() => {
+    if (disabled) setOpen(false);
+  }, [disabled]);
 
   const commit = () => {
     const iso = parseDateText(text);
@@ -67,33 +82,43 @@ export function DateInput({ value, onChange, disabled, className, id, size = "de
     else setText(toBEDisplay(value));
   };
 
-  const openPicker = () => {
-    const el = pickerRef.current;
-    if (!el) return;
-    try {
-      el.showPicker();
-    } catch {
-      el.focus();
-      el.click();
-    }
+  const changeOpen = (next: boolean) => {
+    if (disabled) return;
+    if (next) setMonth(selected ?? new Date());
+    setOpen(next);
   };
 
   return (
-    <div className={cn("relative min-w-0 w-full", className)}>
+    <Popover open={open && !disabled} onOpenChange={changeOpen}>
+    <PopoverAnchor asChild>
+    <div data-readonly-allow className={cn("relative min-w-0 w-full", className)}>
       <input
+        ref={inputRef}
         id={id}
         type="text"
         inputMode="numeric"
         aria-label={rest["aria-label"]}
+        aria-haspopup="dialog"
+        aria-expanded={open && !disabled}
+        aria-controls={open ? calendarId : undefined}
+        aria-invalid={bad}
         disabled={disabled}
         value={text}
         placeholder="วว-ดด-ปปปป (พ.ศ./ค.ศ.)"
         onChange={(e) => setText(e.target.value)}
+        onClick={() => changeOpen(true)}
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
             commit();
+            setOpen(false);
+          } else if (e.key === "ArrowDown") {
+            e.preventDefault();
+            changeOpen(true);
+          } else if (e.key === "Escape" && open) {
+            e.stopPropagation();
+            setOpen(false);
           }
         }}
         title={bad ? "รูปแบบวันที่ไม่ถูกต้อง เช่น 27-09-2569 หรือ 27/09/2026" : undefined}
@@ -103,25 +128,57 @@ export function DateInput({ value, onChange, disabled, className, id, size = "de
           bad && "border-destructive",
         )}
       />
-      <button
+      <PopoverTrigger asChild>
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         disabled={disabled}
-        onClick={openPicker}
         aria-label="เลือกจากปฏิทิน"
-        className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-accent"
+        title="เลือกจากปฏิทิน"
+        className="absolute right-0 top-0 h-full w-9 rounded-l-none p-0 text-muted-foreground"
       >
         <CalendarDays className="h-4 w-4" />
-      </button>
-      <input
-        ref={pickerRef}
-        type="date"
-        tabIndex={-1}
-        aria-hidden="true"
-        disabled={disabled}
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        className="pointer-events-none absolute bottom-0 right-0 h-0 w-0 opacity-0"
-      />
+      </Button>
+      </PopoverTrigger>
     </div>
+    </PopoverAnchor>
+    <PopoverContent
+      id={calendarId}
+      aria-label="เลือกวันที่"
+      data-readonly-allow
+      align="start"
+      sideOffset={6}
+      collisionPadding={8}
+      avoidCollisions
+      className="date-picker-popover pointer-events-auto p-0"
+      onOpenAutoFocus={(event) => event.preventDefault()}
+      onCloseAutoFocus={(event) => {
+        event.preventDefault();
+        inputRef.current?.focus({ preventScroll: true });
+      }}
+    >
+      <Calendar
+        mode="single"
+        locale={th}
+        selected={selected}
+        month={month}
+        onMonthChange={setMonth}
+        captionLayout="dropdown"
+        startMonth={new Date(1900, 0)}
+        endMonth={new Date(2100, 11)}
+        formatters={{ formatYearDropdown: (date) => String(date.getFullYear() + 543) }}
+        className="pointer-events-auto w-full p-3"
+        onSelect={(date) => {
+          if (!date) return;
+          const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+          setText(toBEDisplay(iso));
+          setBad(false);
+          onChange(iso);
+          setOpen(false);
+        }}
+      />
+    </PopoverContent>
+    </Popover>
   );
 }
