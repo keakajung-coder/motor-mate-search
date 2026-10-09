@@ -830,6 +830,44 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_leave: {
+        Row: {
+          created_at: string
+          id: string
+          leave_date: string
+          period: string
+          staff_id: string | null
+          staff_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          leave_date: string
+          period: string
+          staff_id?: string | null
+          staff_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          leave_date?: string
+          period?: string
+          staff_id?: string | null
+          staff_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_leave_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "service_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       troubleshooting_issues: {
         Row: {
           ai_check_draft: string | null
