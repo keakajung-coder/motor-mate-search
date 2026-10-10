@@ -68,6 +68,7 @@ import { PART_CATEGORIES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
 import { LeaveCell, StaffLeaveDialog, useStaffLeave } from "@/components/StaffLeave";
 import type { StaffLeave } from "@/lib/staff-leave";
+import { checkScheduleConflicts } from "@/lib/schedule-check";
 import { ChecklistForm } from "@/components/ChecklistForm";
 import { ChecklistView } from "@/components/ChecklistView";
 import { loadTemplates, matchesType, newResult, type ChecklistResult, type ChecklistTemplate } from "@/lib/checklist";
@@ -968,6 +969,10 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
   const approve = async (o: WorkOrder) => {
     const p = edit[o.id] ?? {};
     const m = { ...o, ...p } as WorkOrder & Record<string, any>;
+    if (m.visit_date) {
+      const conflicts = await checkScheduleConflicts({ visit_date: m.visit_date, visit_time: m.visit_time, staff_name: m.staff_name, vehicle_plate: m.vehicle_plate });
+      if (conflicts.length) return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
+    }
     setBusy(o.id);
     const { data: unit } = await supabase
       .from("machine_units")
@@ -1265,6 +1270,8 @@ function ApprovedOrders({
     const chosen = schedule[o.id];
     if (!a) return toast.error("ไม่พบรายการงานที่เชื่อมกับปฏิทิน");
     if (!chosen?.date) return toast.error("กรุณาเลือกวันที่นัดหมาย");
+    const conflicts = await checkScheduleConflicts({ id: a.id, visit_date: chosen.date, visit_time: chosen.time || null, staff_name: a.staff_name, vehicle_plate: a.vehicle_plate });
+    if (conflicts.length) return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
     setBusy(o.id + "schedule");
     const [apptResult, orderResult] = await Promise.all([
       supabase.from("appointments").update({ visit_date: chosen.date, visit_time: chosen.time || null, status: "scheduled" }).eq("id", a.id),
@@ -2528,6 +2535,8 @@ function AppointmentDialog({
   const save = async () => {
     if (!form.customer_name?.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     setSaving(true);
+    const conflicts = await checkScheduleConflicts({ id: form.id, visit_date: form.visit_date, visit_time: form.visit_time, staff_name: form.staff_name, vehicle_plate: form.vehicle_plate });
+    if (conflicts.length) { setSaving(false); return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 }); }
     const serials = splitNames(form.serial_number);
     const plates = splitNames(form.vehicle_plate);
     await ensureDirectoryEntries({
