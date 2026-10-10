@@ -2482,6 +2482,15 @@ function AppointmentDialog({
   const [form, setForm] = useState<Appointment>(value);
   const [editMode, setEditMode] = useState(!value.id);
   const [saving, setSaving] = useState(false);
+  const [liveConflicts, setLiveConflicts] = useState<string[]>([]);
+  useEffect(() => {
+    let off = false;
+    const t = setTimeout(() => {
+      void checkScheduleConflicts({ id: form.id, visit_date: form.visit_date, visit_time: form.visit_time, staff_name: form.staff_name, vehicle_plate: form.vehicle_plate })
+        .then((c) => { if (!off) setLiveConflicts(c); }).catch(() => {});
+    }, 300);
+    return () => { off = true; clearTimeout(t); };
+  }, [form.id, form.visit_date, form.visit_time, form.staff_name, form.vehicle_plate]);
   const { isAdmin: canDelete } = useAccess();
   const locked = !canEdit || !editMode;
   const dir = useDirectory();
@@ -2750,6 +2759,7 @@ function AppointmentDialog({
               placeholder="ติ๊กเลือกทะเบียนรถ"
               searchPlaceholder="ค้นหาทะเบียนรถ..."
             />
+            {liveConflicts.length > 0 && <p role="alert" className="mt-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">⚠ {liveConflicts.join(" · ")}</p>}
           </F>
           <F label="พนักงานขาย (เซลล์) ที่ดูแล">
             <Combobox
