@@ -275,7 +275,24 @@ export async function deleteDirectoryEntry(kind: DirectoryKind, value: string) {
     return false;
   }
   if (kind === "seller") window.dispatchEvent(new Event("sales-contacts-changed"));
+
+  // ตัดรายการออกจากแคชทันที เพื่อให้ Dropdown ทุกจุดอัปเดตแบบเรียลไทม์โดยไม่ต้องรอโหลดใหม่
+  const target = value.trim().toLowerCase();
+  cache = {
+    ...cache,
+    customers: cache.customers.filter(
+      (c) =>
+        (kind !== "customer" || c.name.trim().toLowerCase() !== target) &&
+        (kind !== "cust_id" || c.cust_id.trim().toLowerCase() !== target),
+    ),
+    machines: cache.machines.filter((m) => kind !== "serial" || m.serial.trim().toLowerCase() !== target),
+    staff: kind === "staff" ? cache.staff.filter((s) => s.trim().toLowerCase() !== target) : cache.staff,
+    vehicles: kind === "vehicle" ? cache.vehicles.filter((v) => v.trim().toLowerCase() !== target) : cache.vehicles,
+  };
+  listeners.forEach((fn) => fn(cache));
+
   toast.success(`ลบ "${value}" แล้ว`);
-  await refreshDirectory();
+  // ซิงก์ข้อมูลจริงจากฐานข้อมูลอีกครั้งเบื้องหลัง (กันกรณีมีการลบซ้ำ/ข้อมูลเปลี่ยนจากที่อื่น)
+  await refreshDirectory().catch(() => {});
   return true;
 }
