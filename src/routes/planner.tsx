@@ -1717,7 +1717,7 @@ function MonthGrid({
                 <span className="mt-1 text-[9px] font-bold leading-none text-red-500">{d.getDate()}</span>
                 <LeaveCell date={key} rows={leaveRows} onManage={onManageLeave} compact />
                 {holiday && (
-                  <span className="mt-0.5 text-[8px] leading-none" title={holiday.title}>
+                  <span className="mt-0.5 text-[11px] leading-none" title={holiday.title}>
                     🌴
                   </span>
                 )}
@@ -1771,7 +1771,7 @@ function MonthGrid({
                     e.stopPropagation();
                     onPickDay(key);
                   }}
-                  className="mb-1 flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-tight shadow-xs hover:opacity-90"
+                  className="mb-1 flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-bold leading-snug shadow-xs hover:opacity-90 sm:text-sm"
                   style={{
                     backgroundColor:
                       holiday.color === "amber"
@@ -1999,7 +1999,7 @@ function TimeGrid({
                   <LeaveCell date={d} rows={leaveRows} onManage={onManageLeave} />
                   {holiday && (
                     <span
-                      className="mt-0.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[10px] font-semibold text-rose-700 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-200"
+                      className="mt-0.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold text-rose-700 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-200 sm:text-sm"
                       title={`วันหยุด: ${holiday.title}${holiday.note ? `\nสาเหตุ: ${holiday.note}` : ""}`}
                     >
                       🌴 {holiday.title}
@@ -2139,7 +2139,7 @@ function DayDetailDialog({
                   <DialogTitle className="flex flex-wrap items-center gap-2">
                     <span>คิวงานวันที่ {formatDate(date)}</span>
                     {holiday && (
-                      <Badge variant="outline" className="border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-200">
+                      <Badge variant="outline" className="border-rose-300 bg-rose-100 text-rose-800 text-sm font-bold sm:text-base dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-200">
                         🌴 วันหยุด: {holiday.title}
                       </Badge>
                     )}
@@ -2358,7 +2358,7 @@ function DayList({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold">{formatDate(d)}</p>
               {!holiday && onAddHoliday && (
-                <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-rose-600" onClick={() => onAddHoliday(d)}>
+                <Button size="sm" variant="ghost" className="h-7 text-sm font-semibold text-muted-foreground hover:text-rose-600" onClick={() => onAddHoliday(d)}>
                   <Palmtree className="mr-1 h-3 w-3 text-rose-500" /> กำหนดวันหยุด
                 </Button>
               )}

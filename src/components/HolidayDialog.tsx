@@ -258,7 +258,7 @@ export function HolidayManagerDialog({
                   >
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-bold text-sm tracking-tight">{h.title}</span>
+                        <span className="text-base font-bold tracking-tight">{h.title}</span>
                         <Badge variant="outline" className="text-xs bg-background/80">
                           <CalendarDays className="mr-1 h-3 w-3" />
                           {formatDate(h.date)}
@@ -348,7 +348,7 @@ export function HolidayBanner({
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2">
             <Palmtree className="h-5 w-5 shrink-0 text-rose-500 animate-pulse" />
-            <span className="font-bold text-sm sm:text-base">วันหยุด: {holiday.title}</span>
+            <span className="text-base font-bold sm:text-lg">วันหยุด: {holiday.title}</span>
           </div>
           {holiday.note && (
             <p className="text-xs sm:text-sm leading-relaxed opacity-95 pl-7">
