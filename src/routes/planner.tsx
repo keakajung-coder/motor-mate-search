@@ -1807,7 +1807,7 @@ function MonthGrid({
                   title={`🌴 วันหยุด: ${holiday.title}${holiday.note ? `\nสาเหตุ: ${holiday.note}` : ""}`}
                 >
                   <Palmtree className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{holiday.title}</span>
+                  <span className="line-clamp-2 break-words leading-snug">{holiday.title}</span>
                 </div>
               )}
 
