@@ -72,9 +72,13 @@ async function fetchAll() {
 
 /** โหลดข้อมูลใหม่ทั้งระบบ (เรียกหลังบันทึกลูกค้า/เครื่องจักรใหม่) */
 export async function refreshDirectory() {
-  inflight = fetchAll().finally(() => {
-    inflight = null;
-  });
+  inflight = fetchAll()
+    .catch(() => {
+      // โหลดไม่สำเร็จ — คงแคชเดิมไว้ ไม่ให้ตัวเลือกหายหรือค้าง
+    })
+    .finally(() => {
+      inflight = null;
+    });
   await inflight;
 }
 
