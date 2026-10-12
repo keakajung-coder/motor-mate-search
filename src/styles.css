@@ -345,22 +345,56 @@
   scrollbar-width: none;
 }
 
+/* ป้ายวันลา: ขนาดพอเหมาะ ตัวหนาเข้ม มีแถบสีและขอบชัด สังเกตได้ทันที */
 .leave-marker {
   display: flex;
   align-items: center;
-  gap: 4px;
-  border-left: 4px solid currentColor;
-  border-radius: 4px;
-  padding: 4px 6px;
-  font-size: 11px;
-  line-height: 1.5;
-  background: color-mix(in oklch, currentColor 10%, var(--card));
+  gap: 5px;
+  border: 1px solid color-mix(in oklch, currentColor 45%, transparent);
+  border-left: 5px solid currentColor;
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+  background: color-mix(in oklch, currentColor 16%, var(--card));
+  box-shadow: 0 1px 2px color-mix(in oklch, currentColor 25%, transparent);
   white-space: normal;
   overflow-wrap: anywhere;
 }
+.leave-marker--compact { font-size: 11px; gap: 4px; padding: 2px 5px; }
+.dark .leave-marker { background: color-mix(in oklch, currentColor 24%, var(--card)); }
 .leave-marker--full { color: var(--leave-full); }
 .leave-marker--am { color: var(--leave-am); }
 .leave-marker--pm { color: var(--leave-pm); }
+
+/* ป้ายนับจำนวนคนที่ลาในช่วงที่มองเห็น */
+.leave-count {
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--leave-full) 45%, transparent);
+  background: color-mix(in oklch, var(--leave-full) 16%, var(--card));
+  color: var(--leave-full);
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* ช่องวันที่หยุด: พื้นสีชมพูอ่อนพร้อมลายเส้นทแยงและขอบเข้มขึ้น
+   แต่ยังคลิกลงงานในช่องได้ตามเดิม */
+.planner-holiday {
+  background-color: color-mix(in oklch, var(--report-pending) 14%, var(--card));
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--report-pending) 9%, transparent) 0 6px,
+    transparent 6px 14px
+  );
+}
+.planner-holiday--head {
+  background-color: color-mix(in oklch, var(--report-pending) 24%, var(--card));
+}
+
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }

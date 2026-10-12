@@ -284,7 +284,22 @@ function PlannerPage() {
   const [cursor, setCursor] = useState(new Date());
   const [staffFilter, setStaffFilter] = useState("");
   const [vehicleFilter, setVehicleFilter] = useState("");
-  const visibleLeave = leave.rows.filter((row) => !staffFilter || row.staff_name === staffFilter);
+  const gridStart =
+    view === "month"
+      ? startOfWeek(new Date(cursor.getFullYear(), cursor.getMonth(), 1))
+      : view === "week"
+        ? startOfWeek(cursor)
+        : cursor;
+  const gridDays = view === "month" ? 42 : view === "week" ? 7 : 1;
+  const rangeFrom = iso(gridStart);
+  const rangeTo = iso(addDays(gridStart, gridDays - 1));
+  const visibleLeave = leave.rows.filter(
+    (row) =>
+      (!staffFilter || row.staff_name === staffFilter) &&
+      row.leave_date >= rangeFrom &&
+      row.leave_date <= rangeTo,
+  );
+  const leavePeople = new Set(visibleLeave.map((row) => row.staff_name)).size;
   const [sortBy, setSortBy] = useState("date-asc");
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
@@ -686,10 +701,20 @@ function PlannerPage() {
         </CardHeader>
 
         <CardContent>
-          <div className="mb-3 flex flex-wrap items-center gap-2"><StatusLegend />
-            <span className="leave-marker leave-marker--full"><Palmtree className="size-3" />ลาเต็มวัน</span>
-            <span className="leave-marker leave-marker--am">ลาครึ่งวันเช้า</span>
-            <span className="leave-marker leave-marker--pm">ลาครึ่งวันบ่าย</span>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <StatusLegend />
+            <span className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-secondary/60 px-2 py-1.5">
+              <span className="flex items-center gap-1.5 text-sm font-bold text-foreground">
+                <Palmtree className="size-4" style={{ color: "var(--leave-full)" }} />
+                พนักงานลา
+              </span>
+              <span className="leave-marker leave-marker--full">ลาเต็มวัน</span>
+              <span className="leave-marker leave-marker--am">ลาครึ่งวันเช้า</span>
+              <span className="leave-marker leave-marker--pm">ลาครึ่งวันบ่าย</span>
+              {leavePeople > 0 && (
+                <span className="leave-count">ลางาน {leavePeople} คน · {visibleLeave.length} รายการ</span>
+              )}
+            </span>
             {isAdmin && <Button size="sm" variant="outline" onClick={() => setLeaveDate(iso(cursor))}><Palmtree className="size-4" />บันทึกวันลา</Button>}
             {leave.error && <Button variant="ghost" size="sm" onClick={() => void leave.load()}>{leave.error}</Button>}
           </div>
@@ -1710,7 +1735,7 @@ function MonthGrid({
                 className={
                   "flex min-h-32 cursor-pointer flex-col items-center rounded-full border sm:min-h-40 md:min-h-48 " +
                   (key === today ? "border-red-500 bg-red-100 " : "border-red-200 bg-red-50 ") +
-                  (holiday ? "ring-2 ring-rose-400 " : "") +
+                  (holiday ? "planner-holiday--head border-rose-500 ring-2 ring-rose-500 " : "") +
                   (dim ? "opacity-40" : "")
                 }
               >
@@ -1745,7 +1770,7 @@ function MonthGrid({
               className={
                 "flex min-h-32 flex-col rounded-xl border bg-card p-1.5 sm:min-h-40 md:min-h-48 " +
                 (onPickDate ? "cursor-pointer hover:border-primary/60 hover:bg-accent/40 " : "") +
-                (holiday ? "border-rose-300/80 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20 " : "") +
+                (holiday ? "planner-holiday border-rose-400 shadow-xs dark:border-rose-700 " : "") +
                 (dim ? "bg-muted/30 text-muted-foreground " : "") +
                 (key === today ? "border-primary" : "")
               }
@@ -1771,18 +1796,18 @@ function MonthGrid({
                     e.stopPropagation();
                     onPickDay(key);
                   }}
-                  className="mb-1 flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-bold leading-snug shadow-xs hover:opacity-90 sm:text-sm"
+                  className="mb-1 flex items-center gap-1 rounded-md border-2 px-1.5 py-0.5 text-xs font-bold leading-snug shadow-sm hover:opacity-90 sm:text-sm"
                   style={{
                     backgroundColor:
                       holiday.color === "amber"
-                        ? "rgba(254, 243, 199, 0.95)"
+                        ? "rgb(254, 243, 199)"
                         : holiday.color === "purple"
-                          ? "rgba(243, 232, 255, 0.95)"
+                          ? "rgb(243, 232, 255)"
                           : holiday.color === "blue"
-                            ? "rgba(224, 242, 254, 0.95)"
+                            ? "rgb(224, 242, 254)"
                             : holiday.color === "emerald"
-                              ? "rgba(209, 250, 229, 0.95)"
-                              : "rgba(255, 228, 230, 0.95)",
+                              ? "rgb(209, 250, 229)"
+                              : "rgb(255, 228, 230)",
                     color:
                       holiday.color === "amber"
                         ? "#92400e"
@@ -1795,14 +1820,14 @@ function MonthGrid({
                               : "#9f1239",
                     borderColor:
                       holiday.color === "amber"
-                        ? "#fde68a"
+                        ? "#f59e0b"
                         : holiday.color === "purple"
-                          ? "#e9d5ff"
+                          ? "#a855f7"
                           : holiday.color === "blue"
-                            ? "#bae6fd"
+                            ? "#0ea5e9"
                             : holiday.color === "emerald"
-                              ? "#a7f3d0"
-                              : "#fecdd3",
+                              ? "#10b981"
+                              : "#f43f5e",
                   }}
                   title={`🌴 วันหยุด: ${holiday.title}${holiday.note ? `\nสาเหตุ: ${holiday.note}` : ""}`}
                 >
@@ -1895,11 +1920,14 @@ function TimeGrid({
         const list = appts
           .filter((a) => a.visit_date === d && hourOf(a) === h)
           .sort(byVehicleThenTime);
+        const dayHoliday = holidaysMap?.[d];
+
+
 
         // วันอาทิตย์: แถบแดงแคบพร้อมจุด mini
         if (isWeek && dowOf(d) === 0) {
           return (
-            <div key={d + h} className="flex min-h-12 justify-center bg-red-50/70 p-1">
+            <div key={d + h} className={"flex min-h-12 justify-center p-1 " + (dayHoliday ? "planner-holiday--head " : "bg-red-50/70 ")}>
               <div className="flex w-1.5 flex-col items-center gap-1 rounded-full bg-red-400/60 py-0.5">
                 {list.map((a) => (
                   <button
@@ -1922,7 +1950,8 @@ function TimeGrid({
             key={d + h}
             onClick={() => onPickSlot?.(d, `${String(h).padStart(2, "0")}:00`)}
             className={
-              "min-h-12 space-y-1 bg-card p-1 " +
+              "min-h-12 space-y-1 p-1 " +
+              (dayHoliday ? "planner-holiday " : "bg-card ") +
               (onPickSlot ? "cursor-pointer hover:bg-accent/40" : "")
             }
           >
@@ -1981,7 +2010,7 @@ function TimeGrid({
               const holiday = holidaysMap?.[d];
               if (isWeek && dowOf(d) === 0) {
                 return (
-                  <div key={d} className="bg-red-50 p-1 text-center text-red-500">
+                  <div key={d} className={"p-1 text-center text-red-500 " + (holiday ? "planner-holiday--head border-b-4 border-rose-500 " : "bg-red-50 ")}>
                     <p className="text-[10px] font-bold leading-tight">อา</p>
                     <p className="text-[9px] leading-tight">{new Date(d + "T00:00:00").getDate()}</p>
                     <LeaveCell date={d} rows={leaveRows} onManage={onManageLeave} compact />
@@ -1992,14 +2021,14 @@ function TimeGrid({
               return (
                 <div
                   key={d}
-                  className={"bg-card p-2 text-center " + (d === today ? "text-primary font-bold " : "") + (holiday ? "border-b-2 border-rose-400 bg-rose-50/40 dark:bg-rose-950/20 " : "")}
+                  className={"bg-card p-2 text-center " + (d === today ? "text-primary font-bold " : "") + (holiday ? "planner-holiday--head border-b-4 border-rose-500 " : "")}
                 >
                   <p className="text-sm font-bold">วัน{TH_DOW_FULL[dowOf(d)]}</p>
                   <p className="text-xs text-muted-foreground">{formatDate(d)}</p>
                   <LeaveCell date={d} rows={leaveRows} onManage={onManageLeave} />
                   {holiday && (
                     <span
-                      className="mt-0.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold text-rose-700 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-200 sm:text-sm"
+                      className="mt-0.5 inline-flex items-center gap-1 rounded-md border-2 border-rose-400 px-1.5 py-0.5 text-xs font-bold text-rose-800 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-100 sm:text-sm"
                       title={`วันหยุด: ${holiday.title}${holiday.note ? `\nสาเหตุ: ${holiday.note}` : ""}`}
                     >
                       🌴 {holiday.title}

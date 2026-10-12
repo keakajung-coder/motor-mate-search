@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { storedAdminCode } from "@/lib/access";
 import { staffLeaveRequest } from "@/lib/staff-leave.functions";
-import { LEAVE_LABELS, LEAVE_PERIODS, isLeavePeriod, type StaffLeave, type LeavePeriod } from "@/lib/staff-leave";
+import { LEAVE_LABELS, LEAVE_SHORT_LABELS, LEAVE_PERIODS, isLeavePeriod, type StaffLeave, type LeavePeriod } from "@/lib/staff-leave";
 import { toast } from "sonner";
 
 function readCode() { return storedAdminCode() || localStorage.getItem("pc_viewer") || ""; }
@@ -35,9 +35,9 @@ export function useStaffLeave() {
 export function LeaveCell({ date, rows, onManage, compact = false }: { date: string; rows: StaffLeave[]; onManage?: (date: string) => void; compact?: boolean }) {
   const list = rows.filter((row) => row.leave_date === date);
   return <div className="space-y-1 whitespace-normal" onClick={(event) => event.stopPropagation()}>
-    {list.map((row) => <div key={row.id} className={`leave-marker leave-marker--${row.period}`} title={`${row.staff_name} · ${LEAVE_LABELS[row.period]}`}>
+    {list.map((row) => <div key={row.id} className={`leave-marker leave-marker--${row.period}${compact ? " leave-marker--compact" : ""}`} title={`${row.staff_name} · ${LEAVE_LABELS[row.period]}`}>
       <Palmtree className="size-3 shrink-0" />
-      {compact ? <span className="sr-only">{row.staff_name} · {LEAVE_LABELS[row.period]}</span> : <span className="min-w-0 break-words">{row.staff_name} · {LEAVE_LABELS[row.period]}</span>}
+      <span className="min-w-0 break-words">{compact ? `${row.staff_name} · ${LEAVE_SHORT_LABELS[row.period]}` : `${row.staff_name} · ${LEAVE_LABELS[row.period]}`}</span>
     </div>)}
     {onManage && <Button type="button" variant="ghost" size="sm" className="no-print h-6 w-full justify-start gap-1 px-1 text-xs text-muted-foreground" title="บันทึกวันลาพนักงาน" aria-label={`บันทึกวันลา ${date}`} onClick={() => onManage(date)}>
       <Plus className="size-3" />{!compact && "วันลา"}
