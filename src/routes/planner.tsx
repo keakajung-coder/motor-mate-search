@@ -2028,7 +2028,7 @@ function TimeGrid({
                   <LeaveCell date={d} rows={leaveRows} onManage={onManageLeave} />
                   {holiday && (
                     <span
-                      className="mt-0.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold text-rose-700 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-200 sm:text-sm"
+                      className="mt-0.5 inline-flex items-center gap-1 rounded-md border-2 border-rose-400 px-1.5 py-0.5 text-xs font-bold text-rose-800 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-100 sm:text-sm"
                       title={`วันหยุด: ${holiday.title}${holiday.note ? `\nสาเหตุ: ${holiday.note}` : ""}`}
                     >
                       🌴 {holiday.title}
