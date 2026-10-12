@@ -284,7 +284,22 @@ function PlannerPage() {
   const [cursor, setCursor] = useState(new Date());
   const [staffFilter, setStaffFilter] = useState("");
   const [vehicleFilter, setVehicleFilter] = useState("");
-  const visibleLeave = leave.rows.filter((row) => !staffFilter || row.staff_name === staffFilter);
+  const gridStart =
+    view === "month"
+      ? startOfWeek(new Date(cursor.getFullYear(), cursor.getMonth(), 1))
+      : view === "week"
+        ? startOfWeek(cursor)
+        : cursor;
+  const gridDays = view === "month" ? 42 : view === "week" ? 7 : 1;
+  const rangeFrom = iso(gridStart);
+  const rangeTo = iso(addDays(gridStart, gridDays - 1));
+  const visibleLeave = leave.rows.filter(
+    (row) =>
+      (!staffFilter || row.staff_name === staffFilter) &&
+      row.leave_date >= rangeFrom &&
+      row.leave_date <= rangeTo,
+  );
+  const leavePeople = new Set(visibleLeave.map((row) => row.staff_name)).size;
   const [sortBy, setSortBy] = useState("date-asc");
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
@@ -686,10 +701,20 @@ function PlannerPage() {
         </CardHeader>
 
         <CardContent>
-          <div className="mb-3 flex flex-wrap items-center gap-2"><StatusLegend />
-            <span className="leave-marker leave-marker--full"><Palmtree className="size-3" />ลาเต็มวัน</span>
-            <span className="leave-marker leave-marker--am">ลาครึ่งวันเช้า</span>
-            <span className="leave-marker leave-marker--pm">ลาครึ่งวันบ่าย</span>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <StatusLegend />
+            <span className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-secondary/60 px-2 py-1.5">
+              <span className="flex items-center gap-1.5 text-sm font-bold text-foreground">
+                <Palmtree className="size-4" style={{ color: "var(--leave-full)" }} />
+                พนักงานลา
+              </span>
+              <span className="leave-marker leave-marker--full">ลาเต็มวัน</span>
+              <span className="leave-marker leave-marker--am">ลาครึ่งวันเช้า</span>
+              <span className="leave-marker leave-marker--pm">ลาครึ่งวันบ่าย</span>
+              {leavePeople > 0 && (
+                <span className="leave-count">ลางาน {leavePeople} คน · {visibleLeave.length} รายการ</span>
+              )}
+            </span>
             {isAdmin && <Button size="sm" variant="outline" onClick={() => setLeaveDate(iso(cursor))}><Palmtree className="size-4" />บันทึกวันลา</Button>}
             {leave.error && <Button variant="ghost" size="sm" onClick={() => void leave.load()}>{leave.error}</Button>}
           </div>
