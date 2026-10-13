@@ -42,6 +42,7 @@ import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { TroubleshootTab } from "@/components/admin/TroubleshootTab";
 import { StatsPanel } from "@/components/admin/StatsPanel";
 import { AuditLogTab } from "@/components/admin/AuditLogTab";
+import { TrashTab } from "@/components/admin/TrashTab";
 import { logAudit } from "@/lib/audit";
 import { BundlesTab } from "@/components/admin/BundlesTab";
 import { DateInput } from "@/components/ui/date-input";
@@ -90,6 +91,7 @@ function AdminPage() {
           <TabsTrigger value="issues" className="shrink-0">คลังอาการเสีย (AI)</TabsTrigger>
           {isAdmin && <TabsTrigger value="io" className="shrink-0">นำเข้า / ส่งออก</TabsTrigger>}
           <TabsTrigger value="audit" className="shrink-0">ประวัติการแก้ไข</TabsTrigger>
+          {isAdmin && <TabsTrigger value="trash" className="shrink-0">ถังขยะ</TabsTrigger>}
           {isAdmin && <TabsTrigger value="security" className="shrink-0">ความปลอดภัย</TabsTrigger>}
         </TabsList>
         <TabsContent value="machines"><ReadOnlyScope><MachinesTab /></ReadOnlyScope></TabsContent>
@@ -117,6 +119,7 @@ function AdminPage() {
         <TabsContent value="issues"><ReadOnlyScope><TroubleshootTab /></ReadOnlyScope></TabsContent>
         {isAdmin && <TabsContent value="io"><div className="space-y-4"><ExcelBackupSettings /><ImportExportTab /></div></TabsContent>}
         <TabsContent value="audit"><ReadOnlyScope><AuditLogTab /></ReadOnlyScope></TabsContent>
+        {isAdmin && <TabsContent value="trash"><TrashTab /></TabsContent>}
         {isAdmin && (
           <TabsContent value="security">
             <div className="grid gap-4 md:grid-cols-2">
