@@ -33,6 +33,7 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  Copy,
   Loader2,
   Camera,
   FileDown,
@@ -958,6 +959,21 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
 }
 
 // ---------- Pending work orders ----------
+/** คัดลอกใบสั่งงาน — สร้างใบใหม่สถานะรออนุมัติ พร้อมเลขที่ใบสั่งงานใหม่อัตโนมัติ */
+async function duplicateWorkOrder(o: WorkOrder) {
+  const { id, created_at, updated_at, status, approved_hidden, ...rest } = o as WorkOrder & Record<string, unknown>;
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  const jobNo = `JO-${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+  const { error } = await supabase.from("work_orders").insert({ ...rest, job_no: jobNo, status: "pending", approved_hidden: false } as never);
+  if (error) {
+    toast.error("คัดลอกใบงานไม่สำเร็จ: " + error.message);
+    return false;
+  }
+  toast.success(`คัดลอกใบงานแล้ว (เลขที่ใหม่ ${jobNo}) — รอแอดมินอนุมัติ`);
+  return true;
+}
+
 function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => void }) {
   const [edit, setEdit] = useState<Record<string, Partial<WorkOrder>>>({});
   const { staff, vehicles } = useServiceOptions();
