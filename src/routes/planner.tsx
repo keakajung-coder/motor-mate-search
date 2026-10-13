@@ -33,6 +33,7 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  Copy,
   Loader2,
   Camera,
   FileDown,
@@ -958,6 +959,21 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
 }
 
 // ---------- Pending work orders ----------
+/** คัดลอกใบสั่งงาน — สร้างใบใหม่สถานะรออนุมัติ พร้อมเลขที่ใบสั่งงานใหม่อัตโนมัติ */
+async function duplicateWorkOrder(o: WorkOrder) {
+  const { id, created_at, updated_at, status, approved_hidden, ...rest } = o as WorkOrder & Record<string, unknown>;
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  const jobNo = `JO-${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+  const { error } = await supabase.from("work_orders").insert({ ...rest, job_no: jobNo, status: "pending", approved_hidden: false } as never);
+  if (error) {
+    toast.error("คัดลอกใบงานไม่สำเร็จ: " + error.message);
+    return false;
+  }
+  toast.success(`คัดลอกใบงานแล้ว (เลขที่ใหม่ ${jobNo}) — รอแอดมินอนุมัติ`);
+  return true;
+}
+
 function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => void }) {
   const [edit, setEdit] = useState<Record<string, Partial<WorkOrder>>>({});
   const { staff, vehicles } = useServiceOptions();
@@ -1221,6 +1237,20 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
               </Button>
               <Button size="sm" variant="secondary" onClick={() => shareNow(o)}>
                 <Phone className="mr-1 h-4 w-4" /> ส่งแจ้งเตือนผ่าน LINE
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy === o.id + "dup"}
+                onClick={async () => {
+                  setBusy(o.id + "dup");
+                  const ok = await duplicateWorkOrder(o);
+                  setBusy("");
+                  if (ok) reload();
+                }}
+              >
+                {busy === o.id + "dup" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Copy className="mr-1 h-4 w-4" />}
+                คัดลอกใบงาน
               </Button>
               <ConfirmButton
                 variant="outline"
@@ -1554,6 +1584,20 @@ function ApprovedOrders({
             <Button size="sm" disabled={!!busy} onClick={() => exportFormPdf([o])}>
               {busy === o.id + "formpdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
               PDF แบบฟอร์ม
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!!busy}
+              onClick={async () => {
+                setBusy(o.id + "dup");
+                const ok = await duplicateWorkOrder(o);
+                setBusy("");
+                if (ok) await loadApproved();
+              }}
+            >
+              {busy === o.id + "dup" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Copy className="mr-1 h-4 w-4" />}
+              คัดลอกใบงาน
             </Button>
             <Button size="sm" variant="ghost" onClick={() => toggleHidden(o)}>
               {(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? <Eye className="mr-1 h-4 w-4" /> : <EyeOff className="mr-1 h-4 w-4" />}
