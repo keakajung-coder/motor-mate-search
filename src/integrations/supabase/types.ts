@@ -367,6 +367,30 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_items: {
+        Row: {
+          deleted_at: string
+          id: string
+          label: string | null
+          row_data: Json
+          table_name: string
+        }
+        Insert: {
+          deleted_at?: string
+          id?: string
+          label?: string | null
+          row_data: Json
+          table_name: string
+        }
+        Update: {
+          deleted_at?: string
+          id?: string
+          label?: string | null
+          row_data?: Json
+          table_name?: string
+        }
+        Relationships: []
+      }
       machine_parts: {
         Row: {
           created_at: string | null
