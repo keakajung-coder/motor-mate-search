@@ -1255,8 +1255,14 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
           </div>
         ))}
 
-
-
+        {/* ฟอร์มคัดลอกใบงาน — เติมข้อมูลจากใบเดิมทั้งหมด แก้ไขได้ทุกช่องก่อนบันทึก */}
+        <WorkOrderDialog
+          hideTrigger
+          open={!!dup}
+          onOpenChange={(v) => !v && setDup(null)}
+          initial={dup ? workOrderToDraft(dup) : undefined}
+          onCreated={reload}
+        />
       </CardContent>
     </Card>
   );
