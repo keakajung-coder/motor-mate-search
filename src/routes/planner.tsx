@@ -58,7 +58,7 @@ import {
 } from "@/components/HolidayDialog";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog, WorkOrderFormPrint } from "@/components/WorkOrderDialog";
+import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog, WorkOrderFormPrint, type WorkOrderDraft } from "@/components/WorkOrderDialog";
 import { Combobox } from "@/components/ui/combobox";
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { deleteDirectoryEntry, ensureDirectoryEntries, ensureParts, useDirectory, type DirectoryKind } from "@/lib/directory";
@@ -959,19 +959,18 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
 }
 
 // ---------- Pending work orders ----------
-/** คัดลอกใบสั่งงาน — สร้างใบใหม่สถานะรออนุมัติ พร้อมเลขที่ใบสั่งงานใหม่อัตโนมัติ */
-async function duplicateWorkOrder(o: WorkOrder) {
-  const { id, created_at, updated_at, status, approved_hidden, ...rest } = o as WorkOrder & Record<string, unknown>;
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  const jobNo = `JO-${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
-  const { error } = await supabase.from("work_orders").insert({ ...rest, job_no: jobNo, status: "pending", approved_hidden: false } as never);
-  if (error) {
-    toast.error("คัดลอกใบงานไม่สำเร็จ: " + error.message);
-    return false;
-  }
-  toast.success(`คัดลอกใบงานแล้ว (เลขที่ใหม่ ${jobNo}) — รอแอดมินอนุมัติ`);
-  return true;
+/** แปลงใบงานเดิมเป็นค่าเริ่มต้นของฟอร์มใบสั่งงาน (ใช้ตอนคัดลอกใบงาน) — แก้ไขได้ทุกช่องก่อนบันทึก */
+function workOrderToDraft(o: WorkOrder): Partial<WorkOrderDraft> {
+  const keys: (keyof WorkOrderDraft)[] = [
+    "cust_id", "customer_name", "customer_address", "contact_name", "contact_phone",
+    "machine_label", "serial_number", "customer_sn", "job_detail", "service_type",
+    "visit_date", "visit_time", "staff_name", "vehicle_plate", "sales_rep",
+    "priority", "billing_type", "po_number", "billing_note", "work_types",
+    "depart_time", "return_time", "logistics_note", "safety_gear", "attachments",
+  ];
+  const draft: Partial<WorkOrderDraft> = {};
+  for (const k of keys) draft[k] = (o as unknown as Record<string, string | null>)[k] ?? "";
+  return draft;
 }
 
 function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => void }) {
