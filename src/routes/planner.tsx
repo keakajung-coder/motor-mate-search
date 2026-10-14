@@ -58,7 +58,7 @@ import {
 } from "@/components/HolidayDialog";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog, WorkOrderFormPrint } from "@/components/WorkOrderDialog";
+import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog, WorkOrderFormPrint, type WorkOrderDraft } from "@/components/WorkOrderDialog";
 import { Combobox } from "@/components/ui/combobox";
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { deleteDirectoryEntry, ensureDirectoryEntries, ensureParts, useDirectory, type DirectoryKind } from "@/lib/directory";
@@ -959,25 +959,25 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
 }
 
 // ---------- Pending work orders ----------
-/** คัดลอกใบสั่งงาน — สร้างใบใหม่สถานะรออนุมัติ พร้อมเลขที่ใบสั่งงานใหม่อัตโนมัติ */
-async function duplicateWorkOrder(o: WorkOrder) {
-  const { id, created_at, updated_at, status, approved_hidden, ...rest } = o as WorkOrder & Record<string, unknown>;
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  const jobNo = `JO-${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
-  const { error } = await supabase.from("work_orders").insert({ ...rest, job_no: jobNo, status: "pending", approved_hidden: false } as never);
-  if (error) {
-    toast.error("คัดลอกใบงานไม่สำเร็จ: " + error.message);
-    return false;
-  }
-  toast.success(`คัดลอกใบงานแล้ว (เลขที่ใหม่ ${jobNo}) — รอแอดมินอนุมัติ`);
-  return true;
+/** แปลงใบงานเดิมเป็นค่าเริ่มต้นของฟอร์มใบสั่งงาน (ใช้ตอนคัดลอกใบงาน) — แก้ไขได้ทุกช่องก่อนบันทึก */
+function workOrderToDraft(o: WorkOrder): Partial<WorkOrderDraft> {
+  const keys: (keyof WorkOrderDraft)[] = [
+    "cust_id", "customer_name", "customer_address", "contact_name", "contact_phone",
+    "machine_label", "serial_number", "customer_sn", "job_detail", "service_type",
+    "visit_date", "visit_time", "staff_name", "vehicle_plate", "sales_rep",
+    "priority", "billing_type", "po_number", "billing_note", "work_types",
+    "depart_time", "return_time", "logistics_note", "safety_gear", "attachments",
+  ];
+  const draft: Partial<WorkOrderDraft> = {};
+  for (const k of keys) draft[k] = (o as unknown as Record<string, string | null>)[k] ?? "";
+  return draft;
 }
 
 function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => void }) {
   const [edit, setEdit] = useState<Record<string, Partial<WorkOrder>>>({});
   const { staff, vehicles } = useServiceOptions();
   const [busy, setBusy] = useState<string | null>(null);
+  const [dup, setDup] = useState<WorkOrder | null>(null);
   const [openEdit, setOpenEdit] = useState<Record<string, boolean>>({});
   const [autoAlert, setAutoAlert] = useState(true);
 
@@ -1238,19 +1238,8 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
               <Button size="sm" variant="secondary" onClick={() => shareNow(o)}>
                 <Phone className="mr-1 h-4 w-4" /> ส่งแจ้งเตือนผ่าน LINE
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy === o.id + "dup"}
-                onClick={async () => {
-                  setBusy(o.id + "dup");
-                  const ok = await duplicateWorkOrder(o);
-                  setBusy("");
-                  if (ok) reload();
-                }}
-              >
-                {busy === o.id + "dup" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Copy className="mr-1 h-4 w-4" />}
-                คัดลอกใบงาน
+              <Button size="sm" variant="outline" onClick={() => setDup(o)}>
+                <Copy className="mr-1 h-4 w-4" /> คัดลอกใบงาน
               </Button>
               <ConfirmButton
                 variant="outline"
@@ -1266,8 +1255,14 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
           </div>
         ))}
 
-
-
+        {/* ฟอร์มคัดลอกใบงาน — เติมข้อมูลจากใบเดิมทั้งหมด แก้ไขได้ทุกช่องก่อนบันทึก */}
+        <WorkOrderDialog
+          hideTrigger
+          open={!!dup}
+          onOpenChange={(v) => !v && setDup(null)}
+          initial={dup ? workOrderToDraft(dup) : undefined}
+          onCreated={reload}
+        />
       </CardContent>
     </Card>
   );
@@ -1296,6 +1291,7 @@ function ApprovedOrders({
   const [rows, setRows] = useState<WorkOrder[]>([]);
   const [appointments, setAppointments] = useState<Record<string, Appointment>>({});
   const [busy, setBusy] = useState("");
+  const [dup, setDup] = useState<WorkOrder | null>(null);
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [schedule, setSchedule] = useState<Record<string, { date: string; time: string }>>({});
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -1585,19 +1581,8 @@ function ApprovedOrders({
               {busy === o.id + "formpdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
               PDF แบบฟอร์ม
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!!busy}
-              onClick={async () => {
-                setBusy(o.id + "dup");
-                const ok = await duplicateWorkOrder(o);
-                setBusy("");
-                if (ok) await loadApproved();
-              }}
-            >
-              {busy === o.id + "dup" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Copy className="mr-1 h-4 w-4" />}
-              คัดลอกใบงาน
+            <Button size="sm" variant="outline" onClick={() => setDup(o)}>
+              <Copy className="mr-1 h-4 w-4" /> คัดลอกใบงาน
             </Button>
             <Button size="sm" variant="ghost" onClick={() => toggleHidden(o)}>
               {(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? <Eye className="mr-1 h-4 w-4" /> : <EyeOff className="mr-1 h-4 w-4" />}
@@ -1616,6 +1601,14 @@ function ApprovedOrders({
           </div>
         </div>
       ))}
+      {/* ฟอร์มคัดลอกใบงาน — เติมข้อมูลจากใบเดิมทั้งหมด แก้ไขได้ทุกช่องก่อนบันทึก */}
+      <WorkOrderDialog
+        hideTrigger
+        open={!!dup}
+        onOpenChange={(v) => !v && setDup(null)}
+        initial={dup ? workOrderToDraft(dup) : undefined}
+        onCreated={() => void loadApproved()}
+      />
     </div>
   );
 }
