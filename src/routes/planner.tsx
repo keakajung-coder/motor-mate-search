@@ -977,6 +977,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
   const [edit, setEdit] = useState<Record<string, Partial<WorkOrder>>>({});
   const { staff, vehicles } = useServiceOptions();
   const [busy, setBusy] = useState<string | null>(null);
+  const [dup, setDup] = useState<WorkOrder | null>(null);
   const [openEdit, setOpenEdit] = useState<Record<string, boolean>>({});
   const [autoAlert, setAutoAlert] = useState(true);
 
