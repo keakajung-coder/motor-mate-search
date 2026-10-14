@@ -788,8 +788,14 @@ function MachinesTab() {
   const [customStatuses, setCustomStatuses] = useState<string[]>([]);
   const [completeFilter, setCompleteFilter] = useState<"all" | "yes" | "no">("all");
   useEffect(() => {
-    loadOptionList("sellers").then(setCustomSellers);
-    loadOptionList("statuses").then(setCustomStatuses);
+    const reload = () => {
+      loadOptionList("sellers").then(setCustomSellers);
+      loadOptionList("statuses").then(setCustomStatuses);
+    };
+    reload();
+    // รีโหลดทันทีเมื่อผู้ขาย/สถานะถูกเพิ่ม แก้ไข หรือลบ จากที่ใดก็ได้ในระบบ
+    window.addEventListener("option-list-changed", reload);
+    return () => window.removeEventListener("option-list-changed", reload);
   }, []);
 
   const statusCounts = useMemo(() => {

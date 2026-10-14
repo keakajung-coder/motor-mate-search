@@ -62,7 +62,11 @@ export function OptionListManager({
   useEffect(() => {
     const onChanged = () => load();
     window.addEventListener("sales-contacts-changed", onChanged);
-    return () => window.removeEventListener("sales-contacts-changed", onChanged);
+    window.addEventListener("option-list-changed", onChanged);
+    return () => {
+      window.removeEventListener("sales-contacts-changed", onChanged);
+      window.removeEventListener("option-list-changed", onChanged);
+    };
   }, [listKey, column]);
 
   const all = useMemo(

@@ -34,6 +34,9 @@ export function SellerTransfer({ onChanged }: { onChanged?: () => void }) {
   }
   useEffect(() => {
     load();
+    // รีโหลดรายชื่อผู้ขายทันทีเมื่อมีการเพิ่ม/แก้ไข/ลบจากที่อื่น
+    window.addEventListener("option-list-changed", load);
+    return () => window.removeEventListener("option-list-changed", load);
   }, []);
 
   const sellers = useMemo(
