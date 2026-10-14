@@ -1581,19 +1581,8 @@ function ApprovedOrders({
               {busy === o.id + "formpdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
               PDF แบบฟอร์ม
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!!busy}
-              onClick={async () => {
-                setBusy(o.id + "dup");
-                const ok = await duplicateWorkOrder(o);
-                setBusy("");
-                if (ok) await loadApproved();
-              }}
-            >
-              {busy === o.id + "dup" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Copy className="mr-1 h-4 w-4" />}
-              คัดลอกใบงาน
+            <Button size="sm" variant="outline" onClick={() => setDup(o)}>
+              <Copy className="mr-1 h-4 w-4" /> คัดลอกใบงาน
             </Button>
             <Button size="sm" variant="ghost" onClick={() => toggleHidden(o)}>
               {(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? <Eye className="mr-1 h-4 w-4" /> : <EyeOff className="mr-1 h-4 w-4" />}
@@ -1612,6 +1601,14 @@ function ApprovedOrders({
           </div>
         </div>
       ))}
+      {/* ฟอร์มคัดลอกใบงาน — เติมข้อมูลจากใบเดิมทั้งหมด แก้ไขได้ทุกช่องก่อนบันทึก */}
+      <WorkOrderDialog
+        hideTrigger
+        open={!!dup}
+        onOpenChange={(v) => !v && setDup(null)}
+        initial={dup ? workOrderToDraft(dup) : undefined}
+        onCreated={() => void loadApproved()}
+      />
     </div>
   );
 }
