@@ -450,10 +450,12 @@ export function WorkOrderDialog({
 
   return (
     <>
-      <Button className="h-11" onClick={() => setOpen(true)}>
-        <ClipboardPlus className="mr-1 h-4 w-4" /> เขียนใบสั่งงานใหม่
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
+      {!hideTrigger && (
+        <Button className="h-11" onClick={() => setOpen(true)}>
+          <ClipboardPlus className="mr-1 h-4 w-4" /> เขียนใบสั่งงานใหม่
+        </Button>
+      )}
+      <Dialog open={isOpen} onOpenChange={setOpen}>
         <DialogContent className="w-[calc(100vw-1rem)] max-w-none sm:w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>ใบสั่งงานใหม่</DialogTitle>
