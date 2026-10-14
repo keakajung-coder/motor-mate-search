@@ -22,4 +22,9 @@ export async function saveOptionList(key: OptionListKey, list: string[]) {
   } else {
     await supabase.from("app_settings").insert({ key, value });
   }
+  // แจ้งทุกส่วนที่ใช้รายการนี้ให้โหลดใหม่ทันที (เพิ่ม/แก้ไข/ลบ → dropdown ไม่ค้างชื่อเดิม)
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("option-list-changed", { detail: { key } }));
+    if (key === "sellers") window.dispatchEvent(new Event("sales-contacts-changed"));
+  }
 }
