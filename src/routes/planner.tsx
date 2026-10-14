@@ -1237,19 +1237,8 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
               <Button size="sm" variant="secondary" onClick={() => shareNow(o)}>
                 <Phone className="mr-1 h-4 w-4" /> ส่งแจ้งเตือนผ่าน LINE
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy === o.id + "dup"}
-                onClick={async () => {
-                  setBusy(o.id + "dup");
-                  const ok = await duplicateWorkOrder(o);
-                  setBusy("");
-                  if (ok) reload();
-                }}
-              >
-                {busy === o.id + "dup" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Copy className="mr-1 h-4 w-4" />}
-                คัดลอกใบงาน
+              <Button size="sm" variant="outline" onClick={() => setDup(o)}>
+                <Copy className="mr-1 h-4 w-4" /> คัดลอกใบงาน
               </Button>
               <ConfirmButton
                 variant="outline"
