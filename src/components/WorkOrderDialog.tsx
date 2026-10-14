@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatDate } from "@/lib/report";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -224,11 +224,41 @@ export function useServiceOptions() {
   };
 }
 
-/** ฟอร์มใบสั่งงาน (ใช้ได้ทุกคน) */
-export function WorkOrderDialog({ onCreated }: { onCreated?: () => void }) {
-  const [open, setOpen] = useState(false);
+/** ฟอร์มใบสั่งงาน (ใช้ได้ทุกคน) — รองรับการเปิดจากภายนอกพร้อมค่าเริ่มต้น (เช่น คัดลอกใบงาน) */
+export function WorkOrderDialog({
+  onCreated,
+  initial,
+  open,
+  onOpenChange,
+  hideTrigger = false,
+}: {
+  onCreated?: () => void;
+  /** ค่าเริ่มต้นจากใบงานเดิม (ใช้ตอนคัดลอกใบงาน) — แก้ไขได้ทุกช่องก่อนบันทึก */
+  initial?: Partial<WorkOrderDraft>;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+  hideTrigger?: boolean;
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = open ?? internalOpen;
+  const setOpen = (v: boolean) => {
+    setInternalOpen(v);
+    onOpenChange?.(v);
+  };
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<WorkOrderDraft>(emptyDraft());
+
+  // เมื่อเปิดฟอร์มพร้อมค่าเริ่มต้น (คัดลอกใบงาน) — เติมข้อมูลเดิมทั้งหมด แต่สร้างเลขที่ใบสั่งงานใหม่
+  useEffect(() => {
+    if (isOpen && initial) {
+      const filled = Object.fromEntries(
+        Object.entries(initial).map(([k, v]) => [k, v ?? ""]),
+      ) as Partial<WorkOrderDraft>;
+      setForm({ ...emptyDraft(), ...filled, job_no: autoJobNo() });
+      setBooked(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
   const [shareNames, setShareNames] = useState<string[]>([]);
   const [booked, setBooked] = useState(false);
   const dir = useDirectory();
