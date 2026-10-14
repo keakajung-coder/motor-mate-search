@@ -1291,6 +1291,7 @@ function ApprovedOrders({
   const [rows, setRows] = useState<WorkOrder[]>([]);
   const [appointments, setAppointments] = useState<Record<string, Appointment>>({});
   const [busy, setBusy] = useState("");
+  const [dup, setDup] = useState<WorkOrder | null>(null);
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [schedule, setSchedule] = useState<Record<string, { date: string; time: string }>>({});
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
