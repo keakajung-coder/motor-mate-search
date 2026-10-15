@@ -19,21 +19,17 @@ import {
   CheckCircle2,
   Download,
   FileDown,
-  FileSpreadsheet,
   FileText,
-  ImageIcon,
   Loader2,
   PenTool,
   Printer,
   RotateCcw,
-  Share2,
-  Trash2,
   X,
   XCircle,
 } from "lucide-react";
-import { elementToPdfBlobPaged, formatDate, saveFile, shareOrDownload } from "@/lib/report";
-import { parseAttachments, serializeAttachments, type JobAttachment } from "@/components/JobAttachments";
-import { splitNames, joinNames } from "@/components/ui/multi-combobox";
+import { elementToPdfBlobPaged, formatDate, saveFile } from "@/lib/report";
+import { parseAttachments, type JobAttachment } from "@/components/JobAttachments";
+import { splitNames } from "@/components/ui/multi-combobox";
 import { useDirectory } from "@/lib/directory";
 import { ChecklistView } from "@/components/ChecklistView";
 import type { ChecklistResult } from "@/lib/checklist";
@@ -70,13 +66,158 @@ export type HandoverReportState = {
   serviceType: string;
   overallSummary: string;
   machines: HandoverMachineData[];
-  delivererName: string;
-  delivererSignature: string | null;
-  delivererDate: string;
+
+  // 1. Sales เจ้าของงาน
+  salesName: string;
+  salesSignature: string | null;
+  salesDate: string;
+
+  // 2. Engineer คุมงาน
+  engineerName: string;
+  engineerSignature: string | null;
+  engineerDate: string;
+
+  // 3. Technician ช่างผู้ปฏิบัติงาน
+  technicianName: string;
+  technicianSignature: string | null;
+  technicianDate: string;
+
+  // 4. ผู้รับมอบงาน (ลูกค้า)
   receiverName: string;
   receiverSignature: string | null;
   receiverDate: string;
 };
+
+/** โลโก้เวกเตอร์ PNEUMAX มาตรฐาน สวย คมชัด ทุกความละเอียด */
+export function PneumaxLogo({ className = "h-11 w-auto" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 320 62"
+      className={className}
+      aria-label="PNEUMAX"
+    >
+      <defs>
+        <linearGradient id="pneuRedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#E31B23" />
+          <stop offset="100%" stop-color="#B71219" />
+        </linearGradient>
+      </defs>
+
+      {/* สัญลักษณ์นิวเมติกรูปกระบอกลมสีแดงเอกลักษณ์ของ PNEUMAX */}
+      <g transform="translate(2, 2)">
+        {/* Top nozzle / fitting */}
+        <rect x="19" y="1" width="14" height="6" rx="1.5" fill="url(#pneuRedGrad)" />
+        <rect x="22" y="0" width="8" height="2.5" rx="1" fill="#7F0E13" />
+
+        {/* Upper cylinder body */}
+        <path d="M10 9 C10 7.5 12 6 15 6 L37 6 C40 6 42 7.5 42 9 L42 20 L10 20 Z" fill="url(#pneuRedGrad)" />
+
+        {/* Central dark belt */}
+        <rect x="7" y="21.5" width="38" height="11" rx="2.5" fill="#0F172A" />
+        <rect x="11" y="25" width="6" height="4" rx="1" fill="#FFFFFF" />
+        <rect x="20" y="25" width="12" height="4" rx="1" fill="#E31B23" />
+        <rect x="35" y="25" width="6" height="4" rx="1" fill="#FFFFFF" />
+
+        {/* Lower cylinder body */}
+        <path d="M10 34.5 L42 34.5 L42 46 C42 47.5 40 49 37 49 L15 49 C12 49 10 47.5 10 46 Z" fill="url(#pneuRedGrad)" />
+
+        {/* Bottom base plate */}
+        <rect x="17" y="50.5" width="18" height="4.5" rx="1.5" fill="#7F0E13" />
+
+        {/* Subtle highlights */}
+        <path d="M13 9 L17 9 L17 18 L13 18 Z" fill="#FFFFFF" opacity="0.3" />
+        <path d="M13 36 L17 36 L17 45 L13 45 Z" fill="#FFFFFF" opacity="0.3" />
+      </g>
+
+      {/* Typography: PNEUMAX */}
+      <g transform="translate(60, 6)">
+        <text
+          x="0"
+          y="31"
+          fontFamily="'Arial Black', 'Impact', sans-serif"
+          fontWeight="900"
+          fontSize="32"
+          fill="#E31B23"
+          letterSpacing="0.5"
+        >
+          PNEUMAX
+        </text>
+        <rect x="180" y="11" width="5" height="5" rx="1" fill="#0F172A" />
+        <text
+          x="1"
+          y="46"
+          fontFamily="'Segoe UI', -apple-system, sans-serif"
+          fontWeight="700"
+          fontSize="9.5"
+          fill="#0F172A"
+          letterSpacing="1.8"
+        >
+          AIR COMPRESSOR SERVICE &amp; ENGINEERING
+        </text>
+      </g>
+    </svg>
+  );
+}
+
+/** ส่วนหัวกระดาษอย่างเป็นทางการของ บริษัท นิวแม็ก จำกัด */
+export function PneumaxHeader({ report }: { report: HandoverReportState }) {
+  return (
+    <header className="handover-header border-b-2 border-slate-800 pb-3 mb-3.5 break-inside-avoid page-break-inside-avoid">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+        {/* ฝั่งซ้าย: โลโก้ PNEUMAX และข้อมูลบริษัท นิวแม็ก จำกัด */}
+        <div className="space-y-1 max-w-[62%]">
+          <div className="flex items-center gap-2">
+            <PneumaxLogo className="h-10 w-auto" />
+          </div>
+          <div className="text-[11px] leading-tight text-slate-700 space-y-0.5 pt-0.5">
+            <p className="font-bold text-slate-900 text-xs">
+              บริษัท นิวแม็ก จำกัด <span className="font-semibold text-slate-600">(สำนักงานใหญ่)</span> · PNEUMAX CO., LTD.
+            </p>
+            <p className="text-slate-600">
+              เลขประจำตัวผู้เสียภาษี: <strong className="text-slate-800">0105524020764</strong>
+            </p>
+            <p className="text-slate-600">
+              107/1 ถนนเฉลิมพระเกียรติ ร.9 แขวงประเวศ เขตประเวศ กรุงเทพฯ 10250
+            </p>
+            <p className="text-slate-600">
+              โทรศัพท์: <strong>02-726-8000</strong> (แผนก Air Compressor ต่อ 640-644, 661) · แฟกซ์: 02-726-8266
+            </p>
+            <p className="text-slate-600">
+              อีเมล: <strong className="text-primary">sales@pneumax.co.th</strong> · เว็บไซต์: <strong>www.pneumax.co.th</strong>
+            </p>
+          </div>
+        </div>
+
+        {/* ฝั่งขวา: ชื่อเอกสารและข้อมูลการส่งมอบ */}
+        <div className="text-right text-[11px] space-y-1 sm:min-w-[210px] shrink-0">
+          <div className="rounded border border-primary/30 bg-primary/5 px-2.5 py-1 text-right">
+            <h1 className="text-base font-extrabold tracking-tight text-slate-900 leading-tight">
+              ใบส่งมอบงาน
+            </h1>
+            <p className="text-[10px] font-bold text-primary tracking-wider uppercase">
+              JOB HANDOVER REPORT
+            </p>
+          </div>
+          <div className="rounded border border-slate-200 bg-slate-50/80 px-2 py-1 text-[11px] space-y-0.5 text-left">
+            <div className="flex justify-between gap-1">
+              <span className="text-slate-500">เลขที่เอกสาร:</span>
+              <strong className="font-mono text-slate-900">{report.reportNo}</strong>
+            </div>
+            <div className="flex justify-between gap-1">
+              <span className="text-slate-500">วันที่ส่งมอบ:</span>
+              <strong className="text-slate-800">{formatDate(report.reportDate)}</strong>
+            </div>
+            <div className="flex justify-between gap-1">
+              <span className="text-slate-500">ประเภทงาน:</span>
+              <span className="truncate font-semibold text-slate-800">{report.serviceType || "งานบริการซ่อมบำรุง"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
 
 /** ลายเซ็นดิจิทัล Canvas */
 function SignatureModal({
@@ -181,7 +322,7 @@ function SignatureModal({
             {title} {name ? `(${name})` : ""}
           </DialogTitle>
           <DialogDescription>
-            ใช้ปลายนิ้ว ปากกา หรือเมาส์เพื่อลงลายเซ็นในกรอบด้านล่าง
+            ใช้ปลายนิ้ว ปากกาสไตลัส หรือเมาส์เพื่อลงลายเซ็นในกรอบด้านล่าง
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -259,7 +400,7 @@ export function HandoverReportDialog({
   const printRef = useRef<HTMLDivElement | null>(null);
   const [exporting, setExporting] = useState<"" | "pdf" | "image" | "print">("");
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("preview");
-  const [signingWho, setSigningWho] = useState<"deliverer" | "receiver" | null>(null);
+  const [signingWho, setSigningWho] = useState<"sales" | "engineer" | "technician" | "receiver" | null>(null);
 
   // ดึงรูปที่แนบไว้ในใบงาน
   const baseAttachments = useMemo(() => {
@@ -331,7 +472,6 @@ export function HandoverReportDialog({
       };
     });
 
-    // หากไม่มีเครื่องใน Directory เลย ให้สร้างรายการจากใบงานนี้
     if (initialMachines.length === 0) {
       initialMachines.push({
         serial: appt.serial_number || "ไม่ระบุ S/N",
@@ -349,15 +489,16 @@ export function HandoverReportDialog({
       });
     }
 
+    const todayStr = new Date().toISOString().slice(0, 10);
     return {
       reportNo: appt.job_no ? `HVR-${appt.job_no}` : autoReportNo,
-      reportDate: new Date().toISOString().slice(0, 10),
+      reportDate: todayStr,
       customerName: appt.customer_name ?? "",
       custId: appt.cust_id ?? "",
       contactName: appt.contact_name ?? "",
       contactPhone: appt.contact_phone ?? "",
       customerAddress: appt.customer_address ?? "",
-      visitDate: appt.visit_date ?? new Date().toISOString().slice(0, 10),
+      visitDate: appt.visit_date ?? todayStr,
       visitTime: appt.visit_time ?? "09:00",
       staffName: appt.staff_name ?? "",
       vehiclePlate: appt.vehicle_plate ?? "",
@@ -367,16 +508,29 @@ export function HandoverReportDialog({
         appt.close_note ||
         "ทีมช่างได้เข้าปฏิบัติงานตรวจเช็กและซ่อมบำรุงตามรายการข้างต้นเรียบร้อยแล้ว เครื่องจักรพร้อมใช้งานตามปกติ",
       machines: initialMachines,
-      delivererName: appt.staff_name ?? "",
-      delivererSignature: null,
-      delivererDate: new Date().toISOString().slice(0, 10),
+
+      // 1. Sales
+      salesName: appt.sales_rep ?? "",
+      salesSignature: null,
+      salesDate: todayStr,
+
+      // 2. Engineer
+      engineerName: "",
+      engineerSignature: null,
+      engineerDate: todayStr,
+
+      // 3. Technician
+      technicianName: appt.staff_name ?? "",
+      technicianSignature: null,
+      technicianDate: todayStr,
+
+      // 4. Receiver
       receiverName: appt.contact_name ?? "",
       receiverSignature: null,
-      receiverDate: new Date().toISOString().slice(0, 10),
+      receiverDate: todayStr,
     };
   });
 
-  // อัปเดตข้อมูลเครื่องรายตัว
   const updateMachine = (idx: number, patch: Partial<HandoverMachineData>) => {
     setReport((prev) => {
       const nextMachines = [...prev.machines];
@@ -385,21 +539,22 @@ export function HandoverReportDialog({
     });
   };
 
-  // เครื่องที่ถูกเลือกให้แสดงในเอกสาร
   const selectedMachines = useMemo(
     () => report.machines.filter((m) => m.selected),
     [report.machines],
   );
 
-  // ส่งออก PDF
+  // ส่งออก PDF โดยคำนึงถึง 1 หน้า vs หลายหน้า
   const handleExportPdf = async () => {
     const el = printRef.current;
     if (!el) return;
     setExporting("pdf");
     try {
       const filename = `${report.reportNo}_${report.customerName || "ใบส่งมอบงาน"}.pdf`;
-      const blob = await elementToPdfBlobPaged(el, 0, {
+      const isSingleMachine = selectedMachines.length === 1;
+      const blob = await elementToPdfBlobPaged(el, isSingleMachine ? 1 : 0, {
         orientation: "portrait",
+        pageBreakSelector: ".handover-break-candidate, .handover-machine-card, .handover-summary, .handover-signatures",
       });
       await saveFile(blob, filename);
       toast.success("ดาวน์โหลด PDF ใบส่งมอบงานเรียบร้อย");
@@ -410,7 +565,6 @@ export function HandoverReportDialog({
     }
   };
 
-  // สั่งพิมพ์ผ่านเบราว์เซอร์
   const handlePrint = () => {
     window.print();
   };
@@ -426,7 +580,7 @@ export function HandoverReportDialog({
                 ใบส่งมอบงานและรายงานผลบริการ (Job Handover Report)
               </DialogTitle>
               <DialogDescription className="text-xs">
-                จัดกลุ่มรายงานแยกตามหมายเลขเครื่อง (S/N) พร้อมรูปภาพประกอบ เช็คลิสต์ และลายเซ็นส่งมอบ
+                จัดกลุ่มรายงานแยกตามหมายเลขเครื่อง (S/N) พร้อมข้อมูล บริษัท นิวแม็ก จำกัด และระบบลงนาม 4 บทบาท
               </DialogDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -451,7 +605,7 @@ export function HandoverReportDialog({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  แก้ไขข้อมูล / เลือกเครื่อง ({selectedMachines.length})
+                  แก้ไขข้อมูล / เลือกลงนาม ({selectedMachines.length})
                 </button>
               </div>
 
@@ -480,7 +634,7 @@ export function HandoverReportDialog({
           </div>
         </DialogHeader>
 
-        {/* Tab 1: แก้ไขข้อมูลและเลือกเครื่องจักร */}
+        {/* Tab 1: แก้ไขข้อมูลและเลือกลงนาม */}
         {activeTab === "edit" && (
           <div className="space-y-5 py-2">
             {/* กล่องเลือกเครื่องจักรที่จะรวมในรายงาน */}
@@ -531,7 +685,7 @@ export function HandoverReportDialog({
               </div>
             </div>
 
-            {/* กล่องแก้ไขรายละเอียดข้อมูลหัวเอกสาร */}
+            {/* กล่องแก้ไขรายละเอียดข้อมูลทั่วไป */}
             <div className="rounded-xl border bg-card p-4 shadow-2xs">
               <h3 className="mb-3 text-sm font-bold text-foreground">
                 2. ข้อมูลทั่วไปของงานและลูกค้า
@@ -708,7 +862,7 @@ export function HandoverReportDialog({
                         </div>
                         <div className="sm:col-span-2">
                           <Label className="text-xs font-semibold">
-                            ช่องข้อความสรุปงานเครื่องนี้ (Editable Text Area)
+                            ข้อความสรุปงานเครื่องนี้ (Editable Text Area)
                           </Label>
                           <Textarea
                             rows={2}
@@ -725,38 +879,53 @@ export function HandoverReportDialog({
               )}
             </div>
 
-            {/* ส่วนลงลายมือชื่อ */}
+            {/* ส่วนลงลายมือชื่อ 4 บทบาท */}
             <div className="rounded-xl border bg-card p-4 shadow-2xs">
-              <h3 className="mb-3 text-sm font-bold text-foreground">
-                4. ลายมือชื่อผู้ส่งมอบงานและผู้รับมอบงาน
+              <h3 className="mb-1 text-sm font-bold text-foreground">
+                4. ลายมือชื่อผู้ส่งมอบงาน (3 บทบาท) และผู้รับมอบงาน (ลูกค้า)
               </h3>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* ผู้ส่งมอบงาน */}
-                <div className="rounded-lg border p-3 space-y-2">
-                  <p className="text-xs font-bold text-foreground">ผู้ส่งมอบงาน (ฝ่ายบริการ/ช่าง)</p>
+              <p className="text-xs text-muted-foreground mb-4">
+                รองรับการพิมพ์ชื่อ วันที่ และเซ็นชื่อดิจิทัลผ่านหน้าจอครบทั้ง 4 ตำแหน่ง
+              </p>
+
+              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+                {/* 1. Sales */}
+                <div className="rounded-lg border p-3 space-y-2 bg-slate-50/50 dark:bg-slate-900/30">
+                  <Badge variant="outline" className="text-[10px] bg-background">
+                    ฝั่งผู้ส่งมอบ · 1
+                  </Badge>
+                  <p className="text-xs font-bold text-foreground">Sales เจ้าของงาน</p>
                   <div>
-                    <Label className="text-[11px]">ชื่อผู้ส่งมอบ</Label>
+                    <Label className="text-[10px]">ชื่อพนักงานขาย</Label>
                     <Input
-                      value={report.delivererName}
-                      onChange={(e) => setReport({ ...report, delivererName: e.target.value })}
-                      className="h-8 text-xs"
-                      placeholder="ชื่อ-นามสกุล ช่างบริการ"
+                      value={report.salesName}
+                      onChange={(e) => setReport({ ...report, salesName: e.target.value })}
+                      className="h-7 text-xs"
+                      placeholder="ชื่อ-นามสกุล เซลล์"
                     />
                   </div>
-                  <div className="flex items-center justify-between pt-1">
-                    {report.delivererSignature ? (
-                      <div className="flex items-center gap-2">
+                  <div>
+                    <Label className="text-[10px]">วันที่ลงนาม</Label>
+                    <DateInput
+                      value={report.salesDate}
+                      onChange={(v) => setReport({ ...report, salesDate: v })}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                  <div className="pt-1">
+                    {report.salesSignature ? (
+                      <div className="flex items-center gap-1.5">
                         <img
-                          src={report.delivererSignature}
-                          alt="ลายเซ็นผู้ส่งมอบ"
-                          className="h-10 border rounded bg-white px-2 py-0.5 object-contain"
+                          src={report.salesSignature}
+                          alt="ลายเซ็น Sales"
+                          className="h-8 border rounded bg-white px-1.5 py-0.5 object-contain"
                         />
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 text-xs text-destructive"
-                          onClick={() => setReport({ ...report, delivererSignature: null })}
+                          className="h-6 text-[10px] text-destructive px-1.5"
+                          onClick={() => setReport({ ...report, salesSignature: null })}
                         >
                           ลบ
                         </Button>
@@ -766,43 +935,159 @@ export function HandoverReportDialog({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-7 text-xs gap-1"
-                        onClick={() => setSigningWho("deliverer")}
+                        className="h-7 w-full text-[11px] gap-1"
+                        onClick={() => setSigningWho("sales")}
                       >
-                        <PenTool className="h-3 w-3" /> เซ็นชื่อดิจิทัล (หน้าจอ)
+                        <PenTool className="h-3 w-3" /> เซ็นดิจิทัล
                       </Button>
                     )}
-                    <span className="text-[11px] text-muted-foreground">
-                      วันที่: {formatDate(report.delivererDate)}
-                    </span>
                   </div>
                 </div>
 
-                {/* ผู้รับมอบงาน */}
-                <div className="rounded-lg border p-3 space-y-2">
-                  <p className="text-xs font-bold text-foreground">ผู้รับมอบงาน (ลูกค้า/ตัวแทน)</p>
+                {/* 2. Engineer */}
+                <div className="rounded-lg border p-3 space-y-2 bg-slate-50/50 dark:bg-slate-900/30">
+                  <Badge variant="outline" className="text-[10px] bg-background">
+                    ฝั่งผู้ส่งมอบ · 2
+                  </Badge>
+                  <p className="text-xs font-bold text-foreground">Engineer คุมงาน</p>
                   <div>
-                    <Label className="text-[11px]">ชื่อผู้รับมอบ</Label>
+                    <Label className="text-[10px]">ชื่อวิศวกรคุมงาน</Label>
                     <Input
-                      value={report.receiverName}
-                      onChange={(e) => setReport({ ...report, receiverName: e.target.value })}
-                      className="h-8 text-xs"
-                      placeholder="ชื่อ-นามสกุล ตัวแทนลูกค้า"
+                      value={report.engineerName}
+                      onChange={(e) => setReport({ ...report, engineerName: e.target.value })}
+                      className="h-7 text-xs"
+                      placeholder="ชื่อ-นามสกุล วิศวกร"
                     />
                   </div>
-                  <div className="flex items-center justify-between pt-1">
-                    {report.receiverSignature ? (
-                      <div className="flex items-center gap-2">
+                  <div>
+                    <Label className="text-[10px]">วันที่ลงนาม</Label>
+                    <DateInput
+                      value={report.engineerDate}
+                      onChange={(v) => setReport({ ...report, engineerDate: v })}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                  <div className="pt-1">
+                    {report.engineerSignature ? (
+                      <div className="flex items-center gap-1.5">
                         <img
-                          src={report.receiverSignature}
-                          alt="ลายเซ็นผู้รับมอบ"
-                          className="h-10 border rounded bg-white px-2 py-0.5 object-contain"
+                          src={report.engineerSignature}
+                          alt="ลายเซ็น Engineer"
+                          className="h-8 border rounded bg-white px-1.5 py-0.5 object-contain"
                         />
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 text-xs text-destructive"
+                          className="h-6 text-[10px] text-destructive px-1.5"
+                          onClick={() => setReport({ ...report, engineerSignature: null })}
+                        >
+                          ลบ
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-full text-[11px] gap-1"
+                        onClick={() => setSigningWho("engineer")}
+                      >
+                        <PenTool className="h-3 w-3" /> เซ็นดิจิทัล
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Technician */}
+                <div className="rounded-lg border p-3 space-y-2 bg-slate-50/50 dark:bg-slate-900/30">
+                  <Badge variant="outline" className="text-[10px] bg-background">
+                    ฝั่งผู้ส่งมอบ · 3
+                  </Badge>
+                  <p className="text-xs font-bold text-foreground">Technician (ช่างผู้ปฏิบัติงาน)</p>
+                  <div>
+                    <Label className="text-[10px]">ชื่อช่างบริการ</Label>
+                    <Input
+                      value={report.technicianName}
+                      onChange={(e) => setReport({ ...report, technicianName: e.target.value })}
+                      className="h-7 text-xs"
+                      placeholder="ชื่อ-นามสกุล ช่าง"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[10px]">วันที่ลงนาม</Label>
+                    <DateInput
+                      value={report.technicianDate}
+                      onChange={(v) => setReport({ ...report, technicianDate: v })}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                  <div className="pt-1">
+                    {report.technicianSignature ? (
+                      <div className="flex items-center gap-1.5">
+                        <img
+                          src={report.technicianSignature}
+                          alt="ลายเซ็น ช่าง"
+                          className="h-8 border rounded bg-white px-1.5 py-0.5 object-contain"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-[10px] text-destructive px-1.5"
+                          onClick={() => setReport({ ...report, technicianSignature: null })}
+                        >
+                          ลบ
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-full text-[11px] gap-1"
+                        onClick={() => setSigningWho("technician")}
+                      >
+                        <PenTool className="h-3 w-3" /> เซ็นดิจิทัล
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Customer Receiver */}
+                <div className="rounded-lg border border-primary/30 p-3 space-y-2 bg-primary/5">
+                  <Badge className="text-[10px]">ฝั่งลูกค้า</Badge>
+                  <p className="text-xs font-bold text-foreground">ผู้รับมอบงาน (ลูกค้า)</p>
+                  <div>
+                    <Label className="text-[10px]">ชื่อตัวแทนลูกค้า</Label>
+                    <Input
+                      value={report.receiverName}
+                      onChange={(e) => setReport({ ...report, receiverName: e.target.value })}
+                      className="h-7 text-xs"
+                      placeholder="ชื่อ-นามสกุล ลูกค้า"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[10px]">วันที่ลงนาม</Label>
+                    <DateInput
+                      value={report.receiverDate}
+                      onChange={(v) => setReport({ ...report, receiverDate: v })}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                  <div className="pt-1">
+                    {report.receiverSignature ? (
+                      <div className="flex items-center gap-1.5">
+                        <img
+                          src={report.receiverSignature}
+                          alt="ลายเซ็น ผู้รับมอบงาน"
+                          className="h-8 border rounded bg-white px-1.5 py-0.5 object-contain"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-[10px] text-destructive px-1.5"
                           onClick={() => setReport({ ...report, receiverSignature: null })}
                         >
                           ลบ
@@ -813,15 +1098,12 @@ export function HandoverReportDialog({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-7 text-xs gap-1"
+                        className="h-7 w-full text-[11px] gap-1"
                         onClick={() => setSigningWho("receiver")}
                       >
-                        <PenTool className="h-3 w-3" /> เซ็นชื่อดิจิทัล (หน้าจอ)
+                        <PenTool className="h-3 w-3" /> เซ็นดิจิทัล
                       </Button>
                     )}
-                    <span className="text-[11px] text-muted-foreground">
-                      วันที่: {formatDate(report.receiverDate)}
-                    </span>
                   </div>
                 </div>
               </div>
@@ -832,7 +1114,7 @@ export function HandoverReportDialog({
         {/* Tab 2: ตัวอย่างเอกสารจริง พร้อมพิมพ์ / Export PDF */}
         {activeTab === "preview" && (
           <div className="overflow-x-auto py-2">
-            <div className="mx-auto w-[210mm] min-h-[297mm] shadow-lg rounded-sm border border-slate-200 bg-white dark:bg-white dark:text-slate-900">
+            <div className="mx-auto w-[210mm] min-h-[297mm] shadow-lg rounded-sm border border-slate-200 bg-white text-slate-900">
               <div ref={printRef}>
                 <HandoverReportPrintView
                   report={report}
@@ -867,11 +1149,31 @@ export function HandoverReportDialog({
         {/* Modal ลงลายเซ็น */}
         {signingWho && (
           <SignatureModal
-            title={signingWho === "deliverer" ? "ลงลายมือชื่อผู้ส่งมอบงาน" : "ลงลายมือชื่อผู้รับมอบงาน"}
-            name={signingWho === "deliverer" ? report.delivererName : report.receiverName}
+            title={
+              signingWho === "sales"
+                ? "ลงลายมือชื่อพนักงานขายเจ้าของงาน (Sales)"
+                : signingWho === "engineer"
+                ? "ลงลายมือชื่อวิศวกรผู้ควบคุมงาน (Engineer)"
+                : signingWho === "technician"
+                ? "ลงลายมือชื่อช่างผู้ปฏิบัติงาน (Technician)"
+                : "ลงลายมือชื่อผู้รับมอบงาน (ลูกค้า)"
+            }
+            name={
+              signingWho === "sales"
+                ? report.salesName
+                : signingWho === "engineer"
+                ? report.engineerName
+                : signingWho === "technician"
+                ? report.technicianName
+                : report.receiverName
+            }
             onSave={(dataUrl) => {
-              if (signingWho === "deliverer") {
-                setReport((prev) => ({ ...prev, delivererSignature: dataUrl }));
+              if (signingWho === "sales") {
+                setReport((prev) => ({ ...prev, salesSignature: dataUrl }));
+              } else if (signingWho === "engineer") {
+                setReport((prev) => ({ ...prev, engineerSignature: dataUrl }));
+              } else if (signingWho === "technician") {
+                setReport((prev) => ({ ...prev, technicianSignature: dataUrl }));
               } else {
                 setReport((prev) => ({ ...prev, receiverSignature: dataUrl }));
               }
@@ -893,251 +1195,293 @@ export function HandoverReportPrintView({
   checklist?: ChecklistResult | null;
 }) {
   const selectedMachines = report.machines.filter((m) => m.selected);
+  const isSinglePage = selectedMachines.length === 1;
 
   return (
-    <article className="handover-report-export p-8 text-slate-900 font-sans leading-relaxed text-[13px] bg-white">
-      {/* 1. Header ตราและหัวเอกสาร */}
-      <header className="border-b-2 border-slate-800 pb-4 mb-5 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs tracking-wider uppercase font-bold text-primary">
-            MOTOR MATE SERVICE & ENGINEERING
-          </p>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
-            ใบส่งมอบงานและรายงานการบริการ
-          </h1>
-          <p className="text-xs font-semibold text-slate-600">
-            JOB HANDOVER & SERVICE REPORT
-          </p>
-        </div>
-        <div className="text-right text-xs space-y-1">
-          <div className="inline-block rounded border border-slate-300 bg-slate-50 px-2.5 py-1">
-            <span className="text-slate-500 font-normal">เลขที่รายงาน: </span>
-            <strong className="font-mono text-slate-900">{report.reportNo}</strong>
-          </div>
-          <p className="text-slate-600">
-            วันที่ส่งมอบ: <strong>{formatDate(report.reportDate)}</strong>
-          </p>
-          <p className="text-slate-600">
-            ประเภทงาน: <strong>{report.serviceType || "งานบริการตรวจเช็กซ่อมบำรุง"}</strong>
-          </p>
-        </div>
-      </header>
+    <article
+      className={`handover-report-export ${
+        isSinglePage ? "handover-report-export--single p-6 text-[12px]" : "p-8 text-[12.5px]"
+      } text-slate-900 font-sans leading-relaxed bg-white`}
+    >
+      <div>
+        {/* 1. ส่วนหัวกระดาษ PNEUMAX และข้อมูลบริษัท นิวแม็ก จำกัด */}
+        <PneumaxHeader report={report} />
 
-      {/* 2. Customer & Service Info Box */}
-      <section className="mb-5 rounded-lg border border-slate-300 bg-slate-50/70 p-3.5 text-xs">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-          <div>
-            <span className="text-slate-500 font-medium">ชื่อลูกค้า / บริษัท:</span>{" "}
-            <strong className="text-slate-900 font-bold">
-              {report.custId ? `[${report.custId}] ` : ""}
-              {report.customerName || "-"}
-            </strong>
+        {/* 2. Customer & Service Info Box */}
+        <section className="handover-customer-box mb-3.5 rounded-lg border border-slate-300 bg-slate-50/70 p-3 text-[11px] break-inside-avoid page-break-inside-avoid">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+            <div>
+              <span className="text-slate-500 font-medium">ชื่อลูกค้า / บริษัท:</span>{" "}
+              <strong className="text-slate-900 font-bold">
+                {report.custId ? `[${report.custId}] ` : ""}
+                {report.customerName || "-"}
+              </strong>
+            </div>
+            <div>
+              <span className="text-slate-500 font-medium">วันที่เข้าปฏิบัติงาน:</span>{" "}
+              <strong className="text-slate-900">
+                {formatDate(report.visitDate)} {report.visitTime?.slice(0, 5) ?? ""}
+              </strong>
+            </div>
+            <div>
+              <span className="text-slate-500 font-medium">ผู้ติดต่อ:</span>{" "}
+              <strong className="text-slate-900">
+                {[report.contactName, report.contactPhone].filter(Boolean).join(" · ") || "-"}
+              </strong>
+            </div>
+            <div>
+              <span className="text-slate-500 font-medium">ทีมบริการ:</span>{" "}
+              <strong className="text-slate-900">
+                {[report.technicianName || report.staffName, report.vehiclePlate ? `รถ ${report.vehiclePlate}` : ""].filter(Boolean).join(" · ") || "-"}
+              </strong>
+            </div>
+            <div>
+              <span className="text-slate-500 font-medium">พนักงานขาย (Sales):</span>{" "}
+              <strong className="text-slate-900">{report.salesName || report.salesRep || "-"}</strong>
+            </div>
+            <div>
+              <span className="text-slate-500 font-medium">วิศวกรผู้คุมงาน:</span>{" "}
+              <strong className="text-slate-900">{report.engineerName || "-"}</strong>
+            </div>
+            <div className="col-span-2">
+              <span className="text-slate-500 font-medium">สถานที่ปฏิบัติงาน / ที่อยู่:</span>{" "}
+              <span className="text-slate-800">{report.customerAddress || "-"}</span>
+            </div>
           </div>
-          <div>
-            <span className="text-slate-500 font-medium">วันที่เข้าปฏิบัติงาน:</span>{" "}
-            <strong className="text-slate-900">
-              {formatDate(report.visitDate)} {report.visitTime?.slice(0, 5) ?? ""}
-            </strong>
-          </div>
-          <div>
-            <span className="text-slate-500 font-medium">ผู้ติดต่อ:</span>{" "}
-            <strong className="text-slate-900">
-              {[report.contactName, report.contactPhone].filter(Boolean).join(" · ") || "-"}
-            </strong>
-          </div>
-          <div>
-            <span className="text-slate-500 font-medium">ทีมช่างผู้รับผิดชอบ:</span>{" "}
-            <strong className="text-slate-900">
-              {[report.staffName, report.vehiclePlate ? `รถ ${report.vehiclePlate}` : ""].filter(Boolean).join(" · ") || "-"}
-            </strong>
-          </div>
-          <div className="col-span-2">
-            <span className="text-slate-500 font-medium">สถานที่ปฏิบัติงาน / ที่อยู่:</span>{" "}
-            <span className="text-slate-800">{report.customerAddress || "-"}</span>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 3. Section ทีละเครื่อง (1 หัวข้อต่อ 1 S/N) */}
-      <div className="space-y-6">
-        {selectedMachines.length === 0 ? (
-          <p className="text-center text-xs text-slate-500 py-6 border rounded">
-            ไม่มีเครื่องจักรที่เลือกในรายงานนี้
-          </p>
-        ) : (
-          selectedMachines.map((m, idx) => (
-            <section
-              key={m.serial + idx}
-              className="rounded-lg border border-slate-300 p-4 space-y-3.5 break-inside-avoid page-break-inside-avoid bg-white"
-            >
-              {/* Header เครื่องจักร */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2 bg-slate-100 -mx-4 -mt-4 px-4 py-2.5 rounded-t-lg">
-                <div className="flex items-center gap-2">
-                  <span className="rounded bg-slate-800 text-white px-2 py-0.5 text-xs font-bold">
-                    เครื่องที่ {idx + 1}
-                  </span>
-                  <span className="font-bold text-sm text-slate-900 font-mono">
-                    S/N: {m.serial}
-                  </span>
-                  {m.customerSn && (
-                    <span className="text-xs font-medium text-slate-600">
-                      (รหัสลูกค้า: {m.customerSn})
+        {/* 3. Section ทีละเครื่อง (1 หัวข้อต่อ 1 S/N) */}
+        <div className={isSinglePage ? "space-y-3" : "space-y-5"}>
+          {selectedMachines.length === 0 ? (
+            <p className="text-center text-xs text-slate-500 py-6 border rounded">
+              ไม่มีเครื่องจักรที่เลือกในรายงานนี้
+            </p>
+          ) : (
+            selectedMachines.map((m, idx) => (
+              <section
+                key={m.serial + idx}
+                className="handover-machine-card handover-break-candidate rounded-lg border border-slate-300 p-3.5 space-y-2.5 break-inside-avoid page-break-inside-avoid bg-white"
+              >
+                {/* Header เครื่องจักร */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-1.5 bg-slate-100 -mx-3.5 -mt-3.5 px-3.5 py-2 rounded-t-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-slate-900 text-white px-2 py-0.5 text-[10px] font-bold">
+                      เครื่องที่ {idx + 1}
                     </span>
-                  )}
-                </div>
-                <div className="text-xs font-semibold text-slate-700">
-                  รุ่น/รายละเอียด: {m.label || "-"}
-                </div>
-              </div>
-
-              {/* งานที่ทำ & ผลการดำเนินงาน */}
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="rounded border border-slate-200 bg-slate-50/50 p-2.5">
-                  <p className="font-bold text-slate-700 mb-1">งานที่เข้าไปปฏิบัติ (Job Detail)</p>
-                  <p className="whitespace-pre-wrap text-slate-800">{m.jobDetail || "-"}</p>
-                </div>
-                <div className="rounded border border-slate-200 bg-slate-50/50 p-2.5">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="font-bold text-slate-700">ผลงานที่ทำเสร็จ (Result Status)</p>
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
-                        m.result === "ok"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-amber-100 text-amber-800"
-                      }`}
-                    >
-                      {m.result === "ok" ? "✓ เรียบร้อย (Normal)" : "⚠️ ต้องติดตามต่อ"}
+                    <span className="font-bold text-xs text-slate-900 font-mono">
+                      S/N: {m.serial}
                     </span>
+                    {m.customerSn && (
+                      <span className="text-[11px] font-medium text-slate-600">
+                        (รหัสลูกค้า: {m.customerSn})
+                      </span>
+                    )}
                   </div>
-                  <p className="whitespace-pre-wrap text-slate-800">{m.closeNote || "ตรวจเช็กและทดสอบการทำงานเรียบร้อย"}</p>
+                  <div className="text-[11px] font-semibold text-slate-700">
+                    รุ่น/รายละเอียด: {m.label || "-"}
+                  </div>
                 </div>
-              </div>
 
-              {/* อะไหล่ที่เปลี่ยน & รายการแนะนำ */}
-              {(m.partsReplaced || m.recommendations) && (
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  {m.partsReplaced && (
-                    <div className="rounded border border-slate-200 p-2.5">
-                      <p className="font-bold text-slate-700 mb-1">🔧 อะไหล่ที่เปลี่ยนในงานนี้</p>
-                      <p className="text-slate-800">{m.partsReplaced}</p>
-                    </div>
-                  )}
-                  {m.recommendations && (
-                    <div className="rounded border border-amber-200 bg-amber-50/40 p-2.5">
-                      <p className="font-bold text-amber-900 mb-1">💡 รายการแนะนำ / ข้อเสนอแนะเพิ่มเติม</p>
-                      <p className="text-amber-800">{m.recommendations}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* รูปภาพประกอบผลงาน (แนบรูปปิดงาน) */}
-              {m.photos && m.photos.length > 0 && (
-                <div>
-                  <p className="font-bold text-xs text-slate-700 mb-2">
-                    📷 รูปภาพประกอบผลงานการปฏิบัติงาน (Attached Photos)
-                  </p>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {m.photos.map((p, pIdx) => (
-                      <div
-                        key={p.path + pIdx}
-                        className="rounded border border-slate-200 overflow-hidden bg-slate-50 text-center"
+                {/* งานที่ทำ & ผลการดำเนินงาน */}
+                <div className="grid grid-cols-2 gap-2.5 text-[11px]">
+                  <div className="rounded border border-slate-200 bg-slate-50/50 p-2">
+                    <p className="font-bold text-slate-700 mb-0.5">งานที่เข้าไปปฏิบัติ (Job Detail)</p>
+                    <p className="whitespace-pre-wrap text-slate-800">{m.jobDetail || "-"}</p>
+                  </div>
+                  <div className="rounded border border-slate-200 bg-slate-50/50 p-2">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <p className="font-bold text-slate-700">ผลงานที่ทำเสร็จ (Result Status)</p>
+                      <span
+                        className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          m.result === "ok"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}
                       >
-                        <img
-                          src={p.url}
-                          alt={p.name}
-                          crossOrigin="anonymous"
-                          className="h-28 w-full object-cover"
-                        />
-                        <p className="text-[10px] text-slate-600 truncate px-1 py-1">
-                          {p.name || `ภาพที่ ${pIdx + 1}`}
-                        </p>
-                      </div>
-                    ))}
+                        {m.result === "ok" ? "✓ เรียบร้อย (Normal)" : "⚠️ ต้องติดตามต่อ"}
+                      </span>
+                    </div>
+                    <p className="whitespace-pre-wrap text-slate-800">{m.closeNote || "ตรวจเช็กและทดสอบการทำงานเรียบร้อย"}</p>
                   </div>
                 </div>
-              )}
 
-              {/* เช็คลิสต์ตรวจสอบ (ถ้ามีติ๊กให้แสดง) */}
-              {m.includeChecklist && checklist && (
-                <div className="rounded border border-slate-200 p-2.5 bg-slate-50/40">
-                  <p className="font-bold text-xs text-slate-700 mb-1.5">
-                    📋 ผลการตรวจสอบ Checklist ประจำเครื่อง
-                  </p>
-                  <ChecklistView value={checklist} />
-                </div>
-              )}
+                {/* อะไหล่ที่เปลี่ยน & รายการแนะนำ */}
+                {(m.partsReplaced || m.recommendations) && (
+                  <div className="grid grid-cols-2 gap-2.5 text-[11px]">
+                    {m.partsReplaced ? (
+                      <div className="rounded border border-slate-200 p-2">
+                        <p className="font-bold text-slate-700 mb-0.5">🔧 อะไหล่ที่เปลี่ยนในงานนี้</p>
+                        <p className="text-slate-800">{m.partsReplaced}</p>
+                      </div>
+                    ) : (
+                      <div />
+                    )}
+                    {m.recommendations && (
+                      <div className="rounded border border-amber-200 bg-amber-50/40 p-2">
+                        <p className="font-bold text-amber-900 mb-0.5">💡 รายการแนะนำ / ข้อเสนอแนะเพิ่มเติม</p>
+                        <p className="text-amber-800">{m.recommendations}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              {/* ช่องข้อความสรุปงาน */}
-              {m.summary && (
-                <div className="rounded border border-slate-200 bg-slate-50 p-2.5 text-xs">
-                  <p className="font-bold text-slate-700 mb-0.5">ข้อความสรุปงาน / ความคิดเห็นช่าง</p>
-                  <p className="whitespace-pre-wrap text-slate-800">{m.summary}</p>
-                </div>
-              )}
-            </section>
-          ))
+                {/* รูปภาพประกอบผลงาน (แนบรูปปิดงาน) */}
+                {m.photos && m.photos.length > 0 && (
+                  <div>
+                    <p className="font-bold text-[11px] text-slate-700 mb-1.5">
+                      📷 รูปภาพประกอบผลงานการปฏิบัติงาน (Attached Photos)
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {m.photos.map((p, pIdx) => (
+                        <div
+                          key={p.path + pIdx}
+                          className="rounded border border-slate-200 overflow-hidden bg-slate-50 text-center"
+                        >
+                          <img
+                            src={p.url}
+                            alt={p.name}
+                            crossOrigin="anonymous"
+                            className={`${isSinglePage ? "h-20" : "h-24"} w-full object-cover`}
+                          />
+                          <p className="text-[9px] text-slate-600 truncate px-1 py-0.5">
+                            {p.name || `ภาพที่ ${pIdx + 1}`}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* เช็คลิสต์ตรวจสอบ (ถ้ามีติ๊กให้แสดง) */}
+                {m.includeChecklist && checklist && (
+                  <div className="rounded border border-slate-200 p-2 bg-slate-50/40">
+                    <p className="font-bold text-[11px] text-slate-700 mb-1">
+                      📋 ผลการตรวจสอบ Checklist ประจำเครื่อง
+                    </p>
+                    <ChecklistView value={checklist} />
+                  </div>
+                )}
+
+                {/* ช่องข้อความสรุปงาน */}
+                {m.summary && (
+                  <div className="rounded border border-slate-200 bg-slate-50 p-2 text-[11px]">
+                    <p className="font-bold text-slate-700 mb-0.5">ข้อความสรุปงาน / ความคิดเห็นช่าง</p>
+                    <p className="whitespace-pre-wrap text-slate-800">{m.summary}</p>
+                  </div>
+                )}
+              </section>
+            ))
+          )}
+        </div>
+
+        {/* 4. สรุปภาพรวมและข้อเสนอแนะรวม */}
+        {report.overallSummary && (
+          <section className="handover-summary handover-break-candidate mt-3 rounded-lg border border-slate-300 bg-slate-50/50 p-2.5 text-[11px] break-inside-avoid page-break-inside-avoid">
+            <p className="font-bold text-slate-800 mb-0.5">สรุปภาพรวมการส่งมอบงาน (Summary)</p>
+            <p className="whitespace-pre-wrap text-slate-700">{report.overallSummary}</p>
+          </section>
         )}
       </div>
 
-      {/* 4. สรุปภาพรวมและข้อเสนอแนะรวม */}
-      {report.overallSummary && (
-        <section className="mt-5 rounded-lg border border-slate-300 bg-slate-50/50 p-3 text-xs break-inside-avoid page-break-inside-avoid">
-          <p className="font-bold text-slate-800 mb-1">สรุปภาพรวมการส่งมอบงาน (Summary)</p>
-          <p className="whitespace-pre-wrap text-slate-700">{report.overallSummary}</p>
-        </section>
-      )}
-
-      {/* 5. ส่วนลงนามลายเซ็นผู้ส่งมอบและผู้รับมอบงาน */}
-      <footer className="mt-8 pt-4 border-t-2 border-slate-800 break-inside-avoid page-break-inside-avoid">
-        <div className="grid grid-cols-2 gap-8 text-center text-xs">
-          {/* ช่องผู้ส่งมอบงาน */}
-          <div className="flex flex-col items-center justify-between rounded-lg border border-slate-300 p-3.5 min-h-[140px]">
-            <p className="font-bold text-slate-800 mb-2">
-              ผู้ส่งมอบงาน (Service Engineer / Technician)
-            </p>
-            <div className="h-14 flex items-center justify-center w-full">
-              {report.delivererSignature ? (
+      {/* 5. ส่วนลงนามลายเซ็นผู้ส่งมอบ (3 บทบาท) และผู้รับมอบงาน (ลูกค้า) */}
+      <footer className="handover-signatures handover-break-candidate mt-4 pt-3 border-t-2 border-slate-800 break-inside-avoid page-break-inside-avoid">
+        <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-2">
+          การลงนามส่งมอบและรับมอบงาน (Signatures &amp; Acceptance)
+        </p>
+        <div className="grid grid-cols-4 gap-2 text-center text-[10.5px]">
+          {/* 1. Sales */}
+          <div className="handover-sig-card flex flex-col justify-between rounded border border-slate-300 bg-slate-50/50 p-2 min-h-[120px]">
+            <div>
+              <p className="font-bold text-slate-800 leading-tight">พนักงานขายเจ้าของงาน</p>
+              <p className="text-[9px] text-slate-500 font-normal">(Sales Representative)</p>
+            </div>
+            <div className="h-11 flex items-center justify-center w-full">
+              {report.salesSignature ? (
                 <img
-                  src={report.delivererSignature}
-                  alt="ลายเซ็นผู้ส่งมอบ"
+                  src={report.salesSignature}
+                  alt="ลายเซ็น Sales"
                   crossOrigin="anonymous"
-                  className="h-12 max-w-[180px] object-contain"
+                  className="h-9 max-w-[100px] object-contain"
                 />
               ) : (
-                <div className="w-48 border-b border-dotted border-slate-400 mt-6" />
+                <div className="w-24 border-b border-dotted border-slate-400 mt-4" />
               )}
             </div>
-            <div className="mt-2 text-slate-700 space-y-0.5">
-              <p>ลงชื่อ: ({report.delivererName || "____________________"})</p>
-              <p className="text-[11px] text-slate-500">
-                วันที่: {formatDate(report.delivererDate)}
-              </p>
+            <div className="text-slate-700 text-[9.5px] space-y-0.5">
+              <p className="truncate">({report.salesName || "____________________"})</p>
+              <p className="text-[8.5px] text-slate-500">วันที่: {formatDate(report.salesDate)}</p>
             </div>
           </div>
 
-          {/* ช่องผู้รับมอบงาน */}
-          <div className="flex flex-col items-center justify-between rounded-lg border border-slate-300 p-3.5 min-h-[140px]">
-            <p className="font-bold text-slate-800 mb-2">
-              ผู้รับมอบงาน (Customer Acceptance)
-            </p>
-            <div className="h-14 flex items-center justify-center w-full">
+          {/* 2. Engineer */}
+          <div className="handover-sig-card flex flex-col justify-between rounded border border-slate-300 bg-slate-50/50 p-2 min-h-[120px]">
+            <div>
+              <p className="font-bold text-slate-800 leading-tight">วิศวกรผู้ควบคุมงาน</p>
+              <p className="text-[9px] text-slate-500 font-normal">(Service Engineer)</p>
+            </div>
+            <div className="h-11 flex items-center justify-center w-full">
+              {report.engineerSignature ? (
+                <img
+                  src={report.engineerSignature}
+                  alt="ลายเซ็น Engineer"
+                  crossOrigin="anonymous"
+                  className="h-9 max-w-[100px] object-contain"
+                />
+              ) : (
+                <div className="w-24 border-b border-dotted border-slate-400 mt-4" />
+              )}
+            </div>
+            <div className="text-slate-700 text-[9.5px] space-y-0.5">
+              <p className="truncate">({report.engineerName || "____________________"})</p>
+              <p className="text-[8.5px] text-slate-500">วันที่: {formatDate(report.engineerDate)}</p>
+            </div>
+          </div>
+
+          {/* 3. Technician */}
+          <div className="handover-sig-card flex flex-col justify-between rounded border border-slate-300 bg-slate-50/50 p-2 min-h-[120px]">
+            <div>
+              <p className="font-bold text-slate-800 leading-tight">ช่างผู้ปฏิบัติงาน</p>
+              <p className="text-[9px] text-slate-500 font-normal">(Technician)</p>
+            </div>
+            <div className="h-11 flex items-center justify-center w-full">
+              {report.technicianSignature ? (
+                <img
+                  src={report.technicianSignature}
+                  alt="ลายเซ็น Technician"
+                  crossOrigin="anonymous"
+                  className="h-9 max-w-[100px] object-contain"
+                />
+              ) : (
+                <div className="w-24 border-b border-dotted border-slate-400 mt-4" />
+              )}
+            </div>
+            <div className="text-slate-700 text-[9.5px] space-y-0.5">
+              <p className="truncate">({report.technicianName || "____________________"})</p>
+              <p className="text-[8.5px] text-slate-500">วันที่: {formatDate(report.technicianDate)}</p>
+            </div>
+          </div>
+
+          {/* 4. Customer Receiver */}
+          <div className="handover-sig-card flex flex-col justify-between rounded border border-primary/40 bg-primary/5 p-2 min-h-[120px]">
+            <div>
+              <p className="font-bold text-slate-900 leading-tight">ผู้รับมอบงาน (ลูกค้า)</p>
+              <p className="text-[9px] text-slate-500 font-normal">(Customer Acceptance)</p>
+            </div>
+            <div className="h-11 flex items-center justify-center w-full">
               {report.receiverSignature ? (
                 <img
                   src={report.receiverSignature}
-                  alt="ลายเซ็นผู้รับมอบ"
+                  alt="ลายเซ็น ผู้รับมอบงาน"
                   crossOrigin="anonymous"
-                  className="h-12 max-w-[180px] object-contain"
+                  className="h-9 max-w-[100px] object-contain"
                 />
               ) : (
-                <div className="w-48 border-b border-dotted border-slate-400 mt-6" />
+                <div className="w-24 border-b border-dotted border-slate-400 mt-4" />
               )}
             </div>
-            <div className="mt-2 text-slate-700 space-y-0.5">
-              <p>ลงชื่อ: ({report.receiverName || "____________________"})</p>
-              <p className="text-[11px] text-slate-500">
-                วันที่: {formatDate(report.receiverDate)}
-              </p>
+            <div className="text-slate-700 text-[9.5px] space-y-0.5">
+              <p className="truncate">({report.receiverName || "____________________"})</p>
+              <p className="text-[8.5px] text-slate-500">วันที่: {formatDate(report.receiverDate)}</p>
             </div>
           </div>
         </div>

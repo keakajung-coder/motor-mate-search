@@ -340,27 +340,55 @@
   }
 
   .handover-report-export {
-    width: 100%;
-    padding: 8mm;
-    margin: 0;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    padding: 8mm 10mm !important;
+    margin: 0 auto !important;
     box-shadow: none !important;
     border: none !important;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    box-sizing: border-box !important;
   }
+  .handover-report-export header,
+  .handover-report-export .handover-header,
+  .handover-report-export .handover-customer-box,
+  .handover-report-export .handover-machine-card,
+  .handover-report-export .handover-summary,
+  .handover-report-export .handover-signatures,
+  .handover-report-export .handover-sig-card,
   .handover-report-export section,
-  .handover-report-export footer,
-  .handover-report-export header {
-    break-inside: avoid-page;
-    page-break-inside: avoid;
+  .handover-report-export footer {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 }
 
 .handover-report-export {
+  width: 100%;
   max-width: 210mm;
   margin: 0 auto;
   background: #ffffff;
   color: #0f172a;
+  box-sizing: border-box;
+}
+
+.handover-report-export--single {
+  min-height: 297mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.handover-report-export .handover-machine-card,
+.handover-report-export .handover-signatures,
+.handover-report-export .handover-summary,
+.handover-report-export .handover-customer-box,
+.handover-report-export .handover-header {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .scrollbar-none {

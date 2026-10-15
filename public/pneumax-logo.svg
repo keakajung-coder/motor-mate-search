@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 70" width="340" height="70">
+  <defs>
+    <linearGradient id="pneuRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ED1C24" />
+      <stop offset="100%" stop-color="#C1121F" />
+    </linearGradient>
+  </defs>
+
+  <!-- PNEUMAX Symbol (Iconic Industrial Pneumatic Element) -->
+  <g transform="translate(4, 3)">
+    <!-- Top stem / valve port -->
+    <rect x="22" y="2" width="16" height="8" rx="2" fill="url(#pneuRed)" />
+    <rect x="26" y="0" width="8" height="3" rx="1" fill="#800D15" />
+    
+    <!-- Upper body -->
+    <path d="M12 12 C12 10 14 8 18 8 L42 8 C46 8 48 10 48 12 L48 24 L12 24 Z" fill="url(#pneuRed)" />
+    
+    <!-- Central band with flow cutouts -->
+    <rect x="8" y="26" width="44" height="12" rx="3" fill="#0F172A" />
+    <rect x="13" y="30" width="7" height="4" rx="1" fill="#FFFFFF" />
+    <rect x="23" y="30" width="14" height="4" rx="1" fill="#ED1C24" />
+    <rect x="40" y="30" width="7" height="4" rx="1" fill="#FFFFFF" />
+
+    <!-- Lower cylinder body -->
+    <path d="M12 40 L48 40 L48 52 C48 54 46 56 42 56 L18 56 C14 56 12 54 12 52 Z" fill="url(#pneuRed)" />
+    
+    <!-- Bottom base mount -->
+    <rect x="20" y="58" width="20" height="5" rx="1.5" fill="#800D15" />
+
+    <!-- Subtle highlight reflections -->
+    <path d="M16 12 L20 12 L20 22 L16 22 Z" fill="#FFFFFF" opacity="0.35" />
+    <path d="M16 42 L20 42 L20 52 L16 52 Z" fill="#FFFFFF" opacity="0.35" />
+  </g>
+
+  <!-- Typography: PNEUMAX -->
+  <g transform="translate(68, 8)">
+    <text x="0" y="34" font-family="'Impact', 'Arial Black', -apple-system, BlinkMacSystemFont, sans-serif" font-weight="900" font-size="36" fill="#ED1C24" letter-spacing="1">PNEUMAX</text>
+    <rect x="195" y="14" width="6" height="6" rx="1" fill="#0F172A" />
+    <!-- Subtitle: Thai / Eng Entity Tag -->
+    <text x="1" y="49" font-family="'Segoe UI', -apple-system, sans-serif" font-weight="700" font-size="9.5" fill="#0F172A" letter-spacing="2.5">บริษัท นิวแม็ก จำกัด</text>
+    <text x="122" y="49" font-family="'Segoe UI', -apple-system, sans-serif" font-weight="600" font-size="8" fill="#64748B" letter-spacing="1">· PNEUMAX CO., LTD.</text>
+  </g>
+</svg>
