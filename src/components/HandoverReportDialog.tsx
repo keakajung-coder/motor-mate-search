@@ -109,7 +109,7 @@ export function PneumaxLogo({ className = "h-[84px] w-auto" }: { className?: str
 /** ส่วนหัวกระดาษอย่างเป็นทางการของ บริษัท นิวแม็ก จำกัด — เลย์เอาต์กระชับ (Compact Header) ไม่กินพื้นที่หน้ากระดาษ */
 export function PneumaxHeader({ report }: { report: HandoverReportState }) {
   return (
-    <header className="handover-header border-b-2 border-slate-800 pb-2 mb-2.5 break-inside-avoid page-break-inside-avoid">
+    <header className="handover-header handover-break-candidate border-b-2 border-slate-800 pb-2 mb-2.5 break-inside-avoid page-break-inside-avoid">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         {/* ฝั่งซ้าย: โลโก้ PNEUMAX ใหญ่ คมชัด พร้อมข้อมูลบริษัท นิวแม็ก จำกัด เลย์เอาต์กระชับ 4 บรรทัด */}
         <div className="flex items-center gap-3.5 flex-1 min-w-0">
@@ -512,9 +512,10 @@ export function HandoverReportDialog({
     try {
       const filename = `${report.reportNo}_${report.customerName || "ใบส่งมอบงาน"}.pdf`;
       const isSingleMachine = selectedMachines.length === 1;
-      const blob = await elementToPdfBlobPaged(el, isSingleMachine ? 1 : 0, {
+      const targetPages = isSingleMachine ? 1 : 2;
+      const blob = await elementToPdfBlobPaged(el, targetPages, {
         orientation: "portrait",
-        pageBreakSelector: ".handover-break-candidate, .handover-machine-card, .handover-summary, .handover-signatures",
+        pageBreakSelector: ".handover-break-candidate, .handover-machine-card, .handover-customer-box, .handover-photos-block, .handover-checklist-block, .handover-job-detail-block, .handover-parts-block, .handover-summary-block, .handover-summary, .handover-signatures, .handover-sig-card, section, tr, [data-page-break]",
       });
       await saveFile(blob, filename);
       toast.success("ดาวน์โหลด PDF ใบส่งมอบงานเรียบร้อย");
@@ -1337,7 +1338,7 @@ export function HandoverReportPrintView({
         <PneumaxHeader report={report} />
 
         {/* 2. Customer & Service Info Box */}
-        <section className="handover-customer-box mb-3 rounded-lg border border-slate-300 bg-slate-50/70 p-2.5 text-[11px] break-inside-avoid page-break-inside-avoid">
+        <section className="handover-customer-box handover-break-candidate mb-3 rounded-lg border border-slate-300 bg-slate-50/70 p-2.5 text-[11px] break-inside-avoid page-break-inside-avoid">
           <div className="grid grid-cols-2 gap-x-6 gap-y-1">
             <div>
               <span className="text-slate-500 font-medium">ชื่อลูกค้า / บริษัท:</span>{" "}
@@ -1398,7 +1399,7 @@ export function HandoverReportPrintView({
                 className="handover-machine-card handover-break-candidate rounded-lg border border-slate-300 p-3.5 space-y-2.5 break-inside-avoid page-break-inside-avoid bg-white"
               >
                 {/* Header เครื่องจักร */}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-1.5 bg-slate-100 -mx-3.5 -mt-3.5 px-3.5 py-2 rounded-t-lg">
+                <div className="handover-machine-header handover-break-candidate flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-1.5 bg-slate-100 -mx-3.5 -mt-3.5 px-3.5 py-2 rounded-t-lg break-inside-avoid page-break-inside-avoid">
                   <div className="flex items-center gap-2">
                     <span className="rounded bg-slate-900 text-white px-2 py-0.5 text-[10px] font-bold">
                       เครื่องที่ {idx + 1}
@@ -1418,7 +1419,7 @@ export function HandoverReportPrintView({
                 </div>
 
                 {/* งานที่ทำ & ผลการดำเนินงาน */}
-                <div className="grid grid-cols-2 gap-2.5 text-[11px]">
+                <div className="handover-job-detail-block handover-break-candidate grid grid-cols-2 gap-2.5 text-[11px] break-inside-avoid page-break-inside-avoid">
                   <div className="rounded border border-slate-200 bg-slate-50/50 p-2">
                     <p className="font-bold text-slate-700 mb-0.5">งานที่เข้าไปปฏิบัติ (Job Detail)</p>
                     <p className="whitespace-pre-wrap text-slate-800">{m.jobDetail || "-"}</p>
@@ -1442,7 +1443,7 @@ export function HandoverReportPrintView({
 
                 {/* อะไหล่ที่เปลี่ยน & รายการแนะนำ */}
                 {(m.partsReplaced || m.recommendations) && (
-                  <div className="grid grid-cols-2 gap-2.5 text-[11px]">
+                  <div className="handover-parts-block handover-break-candidate grid grid-cols-2 gap-2.5 text-[11px] break-inside-avoid page-break-inside-avoid">
                     {m.partsReplaced ? (
                       <div className="rounded border border-slate-200 p-2">
                         <p className="font-bold text-slate-700 mb-0.5">🔧 อะไหล่ที่เปลี่ยนในงานนี้</p>
@@ -1462,7 +1463,7 @@ export function HandoverReportPrintView({
 
                 {/* รูปภาพประกอบผลงาน (ขนาดมาตรฐานสี่เหลี่ยมจัตุรัส 4×4 ซม. / 40mm × 40mm) */}
                 {m.photos && m.photos.length > 0 && (
-                  <div className="pt-0.5">
+                  <div className="handover-photos-block handover-break-candidate pt-0.5 break-inside-avoid page-break-inside-avoid">
                     <p className="font-bold text-[10.5px] text-slate-700 mb-1 flex items-center gap-1.5">
                       <span>📷 รูปภาพผลงานการปฏิบัติงาน (Attached Photos)</span>
                       <span className="text-[9.5px] font-normal text-slate-500">
@@ -1512,7 +1513,7 @@ export function HandoverReportPrintView({
 
                 {/* เช็คลิสต์ตรวจสอบ (ถ้ามีติ๊กให้แสดง) */}
                 {m.includeChecklist && checklist && (
-                  <div className="rounded border border-slate-200 p-2 bg-slate-50/40">
+                  <div className="handover-checklist-block handover-break-candidate rounded border border-slate-200 p-2 bg-slate-50/40 break-inside-avoid page-break-inside-avoid">
                     <p className="font-bold text-[11px] text-slate-700 mb-1">
                       📋 ผลการตรวจสอบ Checklist ประจำเครื่อง
                     </p>
@@ -1522,7 +1523,7 @@ export function HandoverReportPrintView({
 
                 {/* ช่องข้อความสรุปงาน */}
                 {m.summary && (
-                  <div className="rounded border border-slate-200 bg-slate-50 p-2 text-[11px]">
+                  <div className="handover-summary-block handover-break-candidate rounded border border-slate-200 bg-slate-50 p-2 text-[11px] break-inside-avoid page-break-inside-avoid">
                     <p className="font-bold text-slate-700 mb-0.5">ข้อความสรุปงาน / ความคิดเห็นช่าง</p>
                     <p className="whitespace-pre-wrap text-slate-800">{m.summary}</p>
                   </div>
@@ -1548,7 +1549,7 @@ export function HandoverReportPrintView({
         </p>
         <div className="grid grid-cols-4 gap-2 text-center text-[10.5px]">
           {/* 1. Sales */}
-          <div className="handover-sig-card flex flex-col justify-between rounded border border-slate-300 bg-slate-50/50 p-2 min-h-[120px]">
+          <div className="handover-sig-card handover-break-candidate flex flex-col justify-between rounded border border-slate-300 bg-slate-50/50 p-2 min-h-[120px] break-inside-avoid page-break-inside-avoid">
             <div>
               <p className="font-bold text-slate-800 leading-tight">พนักงานขายเจ้าของงาน</p>
               <p className="text-[9px] text-slate-500 font-normal">(Sales Representative)</p>
@@ -1572,7 +1573,7 @@ export function HandoverReportPrintView({
           </div>
 
           {/* 2. Engineer */}
-          <div className="handover-sig-card flex flex-col justify-between rounded border border-slate-300 bg-slate-50/50 p-2 min-h-[120px]">
+          <div className="handover-sig-card handover-break-candidate flex flex-col justify-between rounded border border-slate-300 bg-slate-50/50 p-2 min-h-[120px] break-inside-avoid page-break-inside-avoid">
             <div>
               <p className="font-bold text-slate-800 leading-tight">วิศวกรผู้ควบคุมงาน</p>
               <p className="text-[9px] text-slate-500 font-normal">(Service Engineer)</p>
@@ -1596,7 +1597,7 @@ export function HandoverReportPrintView({
           </div>
 
           {/* 3. Technician */}
-          <div className="handover-sig-card flex flex-col justify-between rounded border border-slate-300 bg-slate-50/50 p-2 min-h-[120px]">
+          <div className="handover-sig-card handover-break-candidate flex flex-col justify-between rounded border border-slate-300 bg-slate-50/50 p-2 min-h-[120px] break-inside-avoid page-break-inside-avoid">
             <div>
               <p className="font-bold text-slate-800 leading-tight">ช่างผู้ปฏิบัติงาน</p>
               <p className="text-[9px] text-slate-500 font-normal">(Technician)</p>
@@ -1620,7 +1621,7 @@ export function HandoverReportPrintView({
           </div>
 
           {/* 4. Customer Receiver */}
-          <div className="handover-sig-card flex flex-col justify-between rounded border border-primary/40 bg-primary/5 p-2 min-h-[120px]">
+          <div className="handover-sig-card handover-break-candidate flex flex-col justify-between rounded border border-primary/40 bg-primary/5 p-2 min-h-[120px] break-inside-avoid page-break-inside-avoid">
             <div>
               <p className="font-bold text-slate-900 leading-tight">ผู้รับมอบงาน (ลูกค้า)</p>
               <p className="text-[9px] text-slate-500 font-normal">(Customer Acceptance)</p>

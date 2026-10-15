@@ -184,6 +184,115 @@ export const MACHINE_STATUSES = [
 ];
 
 /**
+ * หาตำแหน่งเส้นแบ่งหน้าที่เป็นช่องว่างสีขาวบริสุทธิ์ (Whitespace row)
+ * เพื่อป้องกันไม่ให้ตัวหนังสือหรือข้อความถูกตัดขาดครึ่งตัวตามแนวนอนระหว่างหน้า PDF
+ */
+export function findCleanBreakY(
+  img: HTMLImageElement,
+  targetY: number,
+  searchUpPx = 220,
+  searchDownPx = 40,
+): number {
+  const width = img.width;
+  const height = img.height;
+  if (targetY <= 0 || targetY >= height) return targetY;
+
+  const minY = Math.max(0, Math.floor(targetY - searchUpPx));
+  const maxY = Math.min(height - 1, Math.ceil(targetY + searchDownPx));
+  const stripHeight = maxY - minY + 1;
+  if (stripHeight <= 1) return targetY;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = stripHeight;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return targetY;
+
+  ctx.drawImage(img, 0, minY, width, stripHeight, 0, 0, width, stripHeight);
+  let imgData: ImageData;
+  try {
+    imgData = ctx.getImageData(0, 0, width, stripHeight);
+  } catch {
+    return targetY;
+  }
+  const data = imgData.data;
+
+  // คำนวณจำนวนพิกเซลที่มีสีเข้ม (ตัวอักษร, เส้นตาราง, กราฟิก) ในแต่ละแถว
+  // ข้ามขอบซ้าย-ขวา 1.5% เพื่อไม่ให้นับขอบกระดาษภายนอก
+  const startX = Math.floor(width * 0.015);
+  const endX = Math.ceil(width * 0.985);
+  const stepX = Math.max(1, Math.floor(width / 800));
+
+  const rowDarkScores = new Int32Array(stripHeight);
+
+  for (let r = 0; r < stripHeight; r++) {
+    const rowOffset = r * width * 4;
+    let darkCount = 0;
+    for (let x = startX; x < endX; x += stepX) {
+      const idx = rowOffset + x * 4;
+      const red = data[idx];
+      const green = data[idx + 1];
+      const blue = data[idx + 2];
+      const alpha = data[idx + 3];
+      // พื้นหลังสีขาวคือ 255 หรือสีเทาอ่อนกล่อง > 230
+      // หากสีมีความเข้ม (ตัวหนังสือภาษาไทย/อังกฤษ มักมีค่าสี < 215)
+      if (alpha > 50 && (red < 215 || green < 215 || blue < 215)) {
+        darkCount++;
+      }
+    }
+    rowDarkScores[r] = darkCount;
+  }
+
+  const targetRowInStrip = targetY - minY;
+
+  // หากตำแหน่งปัจจุบันเป็นช่องว่างสีขาวอยู่แล้ว (ไม่มีตัวหนังสือตัดผ่าน)
+  if (targetRowInStrip >= 0 && targetRowInStrip < stripHeight) {
+    if (rowDarkScores[targetRowInStrip] <= 2) {
+      return targetY;
+    }
+  }
+
+  // 1. ค้นหาย้อนขึ้นข้างบน (Upward) เพื่อหาช่องว่างระหว่างบรรทัดหรือระหว่างกล่องข้อความ
+  let bestRow = -1;
+  let minScore = Infinity;
+
+  for (let r = targetRowInStrip; r >= 0; r--) {
+    const score = rowDarkScores[r];
+    if (score <= 2) {
+      let bandStart = r;
+      while (bandStart > 0 && rowDarkScores[bandStart - 1] <= 2) bandStart--;
+      let bandEnd = r;
+      while (bandEnd < stripHeight - 1 && rowDarkScores[bandEnd + 1] <= 2) bandEnd++;
+      const centerRow = Math.round((bandStart + bandEnd) / 2);
+      return minY + centerRow;
+    }
+    if (score < minScore) {
+      minScore = score;
+      bestRow = r;
+    }
+  }
+
+  // 2. ถ้าค้นหาขึ้นบนแล้วไม่พบแถบที่สะอาด ลองค้นหาลงล่างเล็กน้อย
+  for (let r = targetRowInStrip + 1; r < stripHeight; r++) {
+    const score = rowDarkScores[r];
+    if (score <= 2) {
+      let bandStart = r;
+      while (bandStart > 0 && rowDarkScores[bandStart - 1] <= 2) bandStart--;
+      let bandEnd = r;
+      while (bandEnd < stripHeight - 1 && rowDarkScores[bandEnd + 1] <= 2) bandEnd++;
+      const centerRow = Math.round((bandStart + bandEnd) / 2);
+      return minY + centerRow;
+    }
+    if (score < minScore) {
+      minScore = score;
+      bestRow = r;
+    }
+  }
+
+  return bestRow >= 0 ? minY + bestRow : targetY;
+}
+
+/**
  * แปลง element เป็น PDF โดยกำหนดจำนวนหน้ากระดาษได้
  * ถ้าเนื้อหายาวกว่าจำนวนหน้าที่กำหนด จะย่อขนาดให้พอดี
  * pages = 0 หมายถึง "อัตโนมัติ" — ไม่ย่อ แบ่งหน้าตามความยาวจริง
@@ -278,16 +387,40 @@ export async function elementToPdfBlobPaged(
       orientation: opts?.orientation ?? "portrait",
       compress: true,
     });
-    const sourceScale = img.width / captureWidth;
+    const sourceScaleY = captureHeight > 0 ? img.height / captureHeight : img.width / captureWidth;
     const rootTop = el.getBoundingClientRect().top;
-    const candidates = opts?.pageBreakSelector
-      ? Array.from(el.querySelectorAll<HTMLElement>(opts.pageBreakSelector))
-          .map(node => (node.getBoundingClientRect().bottom - rootTop) * sourceScale)
-      : [];
+    const breakSelector = opts?.pageBreakSelector || ".handover-break-candidate, .break-inside-avoid, .page-break-inside-avoid, [data-page-break], tr, section, .handover-sig-card, .handover-machine-card, .handover-customer-box, .handover-summary, .handover-signatures";
+    const candidateNodes = Array.from(el.querySelectorAll<HTMLElement>(breakSelector));
+    const rawBreaks: number[] = [];
+    for (const node of candidateNodes) {
+      const rect = node.getBoundingClientRect();
+      const topOffset = (rect.top - rootTop) * sourceScaleY;
+      const bottomOffset = (rect.bottom - rootTop) * sourceScaleY;
+      if (topOffset > 0 && topOffset < img.height) {
+        rawBreaks.push(Math.max(0, topOffset - 2));
+      }
+      if (bottomOffset > 0 && bottomOffset < img.height) {
+        rawBreaks.push(bottomOffset + 2);
+      }
+    }
+    const candidates = Array.from(new Set(rawBreaks.map(x => Math.round(x)))).sort((a, b) => a - b);
     const layout = pdfLayout(img.width, img.height, {
       orientation: opts?.orientation ?? "portrait", pages,
     }, candidates);
-    layout.slices.forEach((slice, p) => {
+
+    // ปรับแต่งเส้นแบ่งหน้าให้ตรงกับช่องว่างสีขาวบริสุทธิ์ (Whitespace row) ป้องกันไม่ให้ตัวหนังสือขาด
+    const refinedSlices = layout.slices.map((s) => ({ ...s }));
+    for (let i = 0; i < refinedSlices.length - 1; i++) {
+      const splitY = Math.round(refinedSlices[i].top + refinedSlices[i].height);
+      const cleanY = findCleanBreakY(img, splitY);
+      refinedSlices[i].height = cleanY - refinedSlices[i].top;
+      refinedSlices[i + 1].top = cleanY;
+      refinedSlices[i + 1].height = (i + 1 === refinedSlices.length - 1)
+        ? (img.height - cleanY)
+        : (refinedSlices[i + 1].top + refinedSlices[i + 1].height - cleanY);
+    }
+
+    refinedSlices.forEach((slice, p) => {
       if (p > 0) pdf.addPage();
       const canvas = document.createElement("canvas");
       canvas.width = img.width;

@@ -777,3 +777,53 @@
   flex: 1;
   align-content: start;
 }
+
+/* Job Handover Report (ใบส่งมอบงาน) Print & PDF layout */
+.handover-report-export {
+  box-sizing: border-box;
+}
+
+.handover-break-candidate,
+.handover-machine-card,
+.handover-customer-box,
+.handover-photos-block,
+.handover-checklist-block,
+.handover-job-detail-block,
+.handover-parts-block,
+.handover-summary-block,
+.handover-summary,
+.handover-signatures,
+.handover-sig-card {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 8mm 8mm 8mm;
+  }
+  body {
+    background: #ffffff !important;
+  }
+  .handover-report-export {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  .handover-break-candidate,
+  .handover-machine-card,
+  .handover-customer-box,
+  .handover-photos-block,
+  .handover-checklist-block,
+  .handover-job-detail-block,
+  .handover-parts-block,
+  .handover-summary-block,
+  .handover-summary,
+  .handover-signatures,
+  .handover-sig-card {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+
