@@ -80,14 +80,18 @@ export function buildPlannerSheets(o: Options): GridSheet[] {
     return { ...base, fill: { fgColor: { rgb: colors.fill } }, border: { top: { style: "medium", color: { rgb: colors.border } }, bottom: { style: "medium", color: { rgb: colors.border } }, right: { style: "medium", color: { rgb: colors.border } }, left: { style: "thick", color: { rgb: j.status === "closed" ? p.completed : ["scheduled", "in_progress"].includes(j.status) ? p.active : p.pending } } } };
   };
   const wrapLines = (t: string, width: number) => t.split("\n").reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / width)), 0);
-  const jobRows = (lists: PlannerExcelJob[][], offset: number, label = "") => {
+  const jobRows = (lists: PlannerExcelJob[][], offset: number, label = "", dates: Date[] = []) => {
     for (let i = 0; i < Math.max(1, ...lists.map((l) => l.length)); i++) {
       const values = Array(count).fill("") as string[];
       if (offset) values[0] = i === 0 ? label : "";
       let height = 32;
       lists.forEach((list, c) => { const j = list[i]; if (j) { values[c + offset] = text(j); height = Math.max(height, wrapLines(values[c + offset], c === 6 ? 20 : 38) * 15 + 10); } });
       const r = put(values, Math.min(409, height));
-      lists.forEach((list, c) => { const j = list[i]; if (j) styles[address(r, c + offset)] = jobStyle(j); });
+      lists.forEach((list, c) => {
+        const j = list[i], d = dates[c];
+        if (j) styles[address(r, c + offset)] = jobStyle(j);
+        else if (d) styles[address(r, c + offset)] = { ...base, fill: dayStyle(d).fill };
+      });
     }
   };
   full(`ตารางนัดหมายบริการ · ${o.title}`, 30);
@@ -100,7 +104,7 @@ export function buildPlannerSheets(o: Options): GridSheet[] {
       const labels = week.map(dayText);
       const r = put(labels, Math.min(409, Math.max(...labels.map((t) => wrapLines(t, 30))) * 17 + 12));
       week.forEach((d, c) => { styles[address(r, c)] = dayStyle(d); });
-      jobRows(week.map(byDay), 0);
+      jobRows(week.map(byDay), 0, "", week);
     }
   } else {
     const labels = ["เวลา", ...days.map((d) => `วัน${dow[(d.getDay() + 6) % 7]}\n${dayText(d)}`)];
@@ -108,7 +112,7 @@ export function buildPlannerSheets(o: Options): GridSheet[] {
     days.forEach((d, c) => { styles[address(r, c + 1)] = dayStyle(d); });
     for (const h of [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]) {
       if (h === 12) full("พักเที่ยง 12:00 – 13:00", 26, { ...heading, fill: { fgColor: { rgb: p.lunch } } });
-      else jobRows(days.map((d) => byDay(d).filter((j) => plannerExcelHour(j.visit_time) === h)), 1, `${String(h).padStart(2, "0")}:00`);
+      else jobRows(days.map((d) => byDay(d).filter((j) => plannerExcelHour(j.visit_time) === h)), 1, `${String(h).padStart(2, "0")}:00`, days);
     }
   }
   const grid: GridSheet = { name: `${o.view === "month" ? "เดือน" : o.view === "week" ? "สัปดาห์" : "วัน"} ${o.title}`, rows, styles, defaultStyle: base, merges, rowHeights: heights, cols: o.view === "day" ? [10, 90] : [...(o.view === "week" ? [10] : []), 42, 42, 42, 42, 42, 28, 22] };

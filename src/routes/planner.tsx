@@ -400,9 +400,10 @@ function PlannerPage() {
   const exportExcel = async (mode: "download" | "share" = "download") => {
     if (exporting) return;
     setExporting("excel");
-    const { createPlannerColorSampler, buildPlannerSheets } = await import("@/lib/planner-excel");
-    const sampler = createPlannerColorSampler();
+    let sampler: ReturnType<typeof import("@/lib/planner-excel").createPlannerColorSampler> | undefined;
     try {
+      const { createPlannerColorSampler, buildPlannerSheets } = await import("@/lib/planner-excel");
+      sampler = createPlannerColorSampler();
       const read = sampler.read;
       const exportTitle = view === "month" ? `${TH_MONTHS[cursor.getMonth()]} ${cursor.getFullYear() + 543}` : view === "week" ? `${formatDate(rangeFrom)} - ${formatDate(rangeTo)}` : formatDate(iso(cursor));
       const sheets = buildPlannerSheets({
@@ -428,7 +429,7 @@ function PlannerPage() {
       toast.error("ส่งออก Excel ไม่สำเร็จ: " + (e instanceof Error ? e.message : String(e)));
       throw e;
     } finally {
-      sampler.dispose();
+      sampler?.dispose();
       setExporting("");
     }
   };
