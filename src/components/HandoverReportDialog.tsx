@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
+  Camera,
   CheckCircle2,
   Download,
   FileDown,
@@ -30,6 +31,7 @@ import {
 import { elementToPdfBlobPaged, formatDate, saveFile } from "@/lib/report";
 import { parseAttachments, type JobAttachment } from "@/components/JobAttachments";
 import { splitNames } from "@/components/ui/multi-combobox";
+import { Combobox } from "@/components/ui/combobox";
 import { useDirectory } from "@/lib/directory";
 import { ChecklistView } from "@/components/ChecklistView";
 import type { ChecklistResult } from "@/lib/checklist";
@@ -54,6 +56,7 @@ export type HandoverMachineData = {
 
 export type HandoverReportState = {
   reportNo: string;
+  poNo: string;
   reportDate: string;
   customerName: string;
   custId: string;
@@ -90,8 +93,8 @@ export type HandoverReportState = {
   receiverDate: string;
 };
 
-/** โลโก้ PNEUMAX ทางการตามภาพที่ผู้ใช้กำหนด (กระบอกสูบนิวเมติกสีแดง + ตัวอักษร PNEUMAX ตรงกลาง) */
-export function PneumaxLogo({ className = "h-16 w-auto" }: { className?: string }) {
+/** โลโก้ PNEUMAX ทางการตามภาพที่ผู้ใช้กำหนด (กระบอกสูบนิวเมติกสีแดง + ตัวอักษร PNEUMAX ตรงกลาง) — ขยายใหญ่ ชัดเจน */
+export function PneumaxLogo({ className = "h-[84px] w-auto" }: { className?: string }) {
   return (
     <img
       src={PNEUMAX_LOGO_SRC}
@@ -103,26 +106,25 @@ export function PneumaxLogo({ className = "h-16 w-auto" }: { className?: string 
   );
 }
 
-/** ส่วนหัวกระดาษอย่างเป็นทางการของ บริษัท นิวแม็ก จำกัด */
+/** ส่วนหัวกระดาษอย่างเป็นทางการของ บริษัท นิวแม็ก จำกัด — เลย์เอาต์กระชับ (Compact Header) ไม่กินพื้นที่หน้ากระดาษ */
 export function PneumaxHeader({ report }: { report: HandoverReportState }) {
   return (
-    <header className="handover-header border-b-2 border-slate-800 pb-3 mb-3.5 break-inside-avoid page-break-inside-avoid">
-      <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
-        {/* ฝั่งซ้าย: โลโก้ PNEUMAX และข้อมูลบริษัท นิวแม็ก จำกัด */}
-        <div className="flex items-center gap-3.5 max-w-[65%]">
-          <PneumaxLogo className="h-16 w-auto shrink-0" />
-          <div className="text-[11px] leading-tight text-slate-700 space-y-0.5">
-            <p className="font-extrabold text-slate-900 text-sm tracking-tight">
-              บริษัท นิวแม็ก จำกัด <span className="font-semibold text-slate-600 text-xs">(สำนักงานใหญ่)</span>
-            </p>
-            <p className="font-bold text-slate-800 text-[11px] tracking-wider uppercase">
-              PNEUMAX CO., LTD.
-            </p>
-            <p className="text-slate-600 pt-0.5">
-              เลขประจำตัวผู้เสียภาษี: <strong className="text-slate-800">0105524020764</strong>
-            </p>
+    <header className="handover-header border-b-2 border-slate-800 pb-2 mb-2.5 break-inside-avoid page-break-inside-avoid">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        {/* ฝั่งซ้าย: โลโก้ PNEUMAX ใหญ่ คมชัด พร้อมข้อมูลบริษัท นิวแม็ก จำกัด เลย์เอาต์กระชับ 4 บรรทัด */}
+        <div className="flex items-center gap-3.5 flex-1 min-w-0">
+          <PneumaxLogo className="h-[84px] w-auto shrink-0 drop-shadow-2xs" />
+          <div className="text-[10.5px] leading-snug text-slate-700 min-w-0 space-y-0.5">
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <span className="font-extrabold text-slate-900 text-[13px] tracking-tight">
+                บริษัท นิวแม็ก จำกัด <span className="font-semibold text-slate-600 text-[11px]">(สำนักงานใหญ่)</span>
+              </span>
+              <span className="font-bold text-slate-800 text-[11px] tracking-wider uppercase">
+                PNEUMAX CO., LTD.
+              </span>
+            </div>
             <p className="text-slate-600">
-              107/1 ถนนเฉลิมพระเกียรติ ร.9 แขวงประเวศ เขตประเวศ กรุงเทพฯ 10250
+              เลขประจำตัวผู้เสียภาษี: <strong className="text-slate-800">0105524020764</strong> · 107/1 ถนนเฉลิมพระเกียรติ ร.9 แขวงประเวศ เขตประเวศ กรุงเทพฯ 10250
             </p>
             <p className="text-slate-600">
               โทรศัพท์: <strong>02-726-8000</strong> (แผนก Air Compressor ต่อ 640-644, 661) · แฟกซ์: 02-726-8266
@@ -133,21 +135,27 @@ export function PneumaxHeader({ report }: { report: HandoverReportState }) {
           </div>
         </div>
 
-        {/* ฝั่งขวา: ชื่อเอกสารและข้อมูลการส่งมอบ */}
-        <div className="text-right text-[11px] space-y-1 sm:min-w-[210px] shrink-0">
-          <div className="rounded border border-primary/30 bg-primary/5 px-2.5 py-1 text-right">
-            <h1 className="text-base font-extrabold tracking-tight text-slate-900 leading-tight">
+        {/* ฝั่งขวา: ชื่อเอกสารและข้อมูลการส่งมอบ (กระชับ ไม่กินพื้นที่) */}
+        <div className="text-right text-[10.5px] space-y-1 sm:min-w-[210px] shrink-0">
+          <div className="rounded border border-primary/30 bg-primary/5 px-2 py-0.5 text-right">
+            <h1 className="text-sm font-extrabold tracking-tight text-slate-900 leading-tight">
               ใบส่งมอบงาน
             </h1>
-            <p className="text-[10px] font-bold text-primary tracking-wider uppercase">
+            <p className="text-[9.5px] font-bold text-primary tracking-wider uppercase">
               JOB HANDOVER REPORT
             </p>
           </div>
-          <div className="rounded border border-slate-200 bg-slate-50/80 px-2 py-1 text-[11px] space-y-0.5 text-left">
+          <div className="rounded border border-slate-200 bg-slate-50/80 px-2 py-1 text-[10px] space-y-0.5 text-left leading-tight">
             <div className="flex justify-between gap-1">
               <span className="text-slate-500">เลขที่เอกสาร:</span>
               <strong className="font-mono text-slate-900">{report.reportNo}</strong>
             </div>
+            {report.poNo && (
+              <div className="flex justify-between gap-1">
+                <span className="text-slate-500">เลขที่ PO:</span>
+                <strong className="font-mono text-slate-900">{report.poNo}</strong>
+              </div>
+            )}
             <div className="flex justify-between gap-1">
               <span className="text-slate-500">วันที่ส่งมอบ:</span>
               <strong className="text-slate-800">{formatDate(report.reportDate)}</strong>
@@ -330,6 +338,7 @@ export function HandoverReportDialog({
     vehicle_plate?: string | null;
     sales_rep?: string | null;
     job_no?: string | null;
+    po_number?: string | null;
     result?: string | null;
     close_note?: string | null;
     parts_replaced?: string | null;
@@ -345,6 +354,12 @@ export function HandoverReportDialog({
   const [exporting, setExporting] = useState<"" | "pdf" | "image" | "print">("");
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("preview");
   const [signingWho, setSigningWho] = useState<"sales" | "engineer" | "technician" | "receiver" | null>(null);
+
+  // ตัวเลือกพนักงาน/วิศวกรจากฐานข้อมูลกลาง
+  const staffOptions = useMemo(
+    () => dir.staff.map((s) => ({ value: s, label: s })),
+    [dir.staff],
+  );
 
   // ดึงรูปที่แนบไว้ในใบงาน
   const baseAttachments = useMemo(() => {
@@ -436,6 +451,7 @@ export function HandoverReportDialog({
     const todayStr = new Date().toISOString().slice(0, 10);
     return {
       reportNo: appt.job_no ? `HVR-${appt.job_no}` : autoReportNo,
+      poNo: appt.po_number ?? "",
       reportDate: todayStr,
       customerName: appt.customer_name ?? "",
       custId: appt.cust_id ?? "",
@@ -644,6 +660,15 @@ export function HandoverReportDialog({
                   />
                 </div>
                 <div>
+                  <Label className="text-xs">เลขที่ PO (P/O No.)</Label>
+                  <Input
+                    value={report.poNo}
+                    onChange={(e) => setReport({ ...report, poNo: e.target.value })}
+                    placeholder="เช่น PO-2601-0089"
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div>
                   <Label className="text-xs">วันที่ส่งมอบงาน</Label>
                   <DateInput
                     value={report.reportDate}
@@ -670,7 +695,7 @@ export function HandoverReportDialog({
                     className="h-8 text-xs"
                   />
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <Label className="text-xs">สถานที่ปฏิบัติงาน / ที่อยู่</Label>
                   <Input
                     value={report.customerAddress}
@@ -683,6 +708,18 @@ export function HandoverReportDialog({
                   <Input
                     value={report.staffName}
                     onChange={(e) => setReport({ ...report, staffName: e.target.value })}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-primary">วิศวกรผู้ควบคุมงาน (Engineer)</Label>
+                  <Combobox
+                    value={report.engineerName}
+                    onChange={(v) => setReport({ ...report, engineerName: v })}
+                    options={staffOptions}
+                    allowCustom
+                    placeholder="เลือกหรือพิมพ์ชื่อวิศวกร..."
+                    searchPlaceholder="ค้นหาหรือพิมพ์ชื่อวิศวกร..."
                     className="h-8 text-xs"
                   />
                 </div>
@@ -816,6 +853,151 @@ export function HandoverReportDialog({
                             className="text-xs"
                           />
                         </div>
+
+                        {/* จัดการรูปภาพผลงานประจำเครื่อง (ขนาด 4×4 ซม. / 40mm × 40mm รองรับรูปก่อนทำ-หลังทำ) */}
+                        <div className="sm:col-span-2 border-t pt-3 mt-1 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                📷 รูปภาพผลงานประจำเครื่อง ({m.photos.length} รูป · พรีวิว 4×4 ซม.)
+                              </Label>
+                              <p className="text-[10px] text-muted-foreground">
+                                กำหนดขนาดมาตรฐาน 4×4 ซม. (40mm × 40mm) สำหรับพิมพ์และ PDF สามารถติดป้าย [ก่อนทำ] / [หลังทำ] ได้ทันที
+                              </p>
+                            </div>
+                            <label className="cursor-pointer inline-flex items-center gap-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground shadow-2xs">
+                              <Camera className="h-3.5 w-3.5 text-primary" />
+                              <span>เพิ่มรูปภาพ</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={(e) => {
+                                  const files = Array.from(e.target.files || []);
+                                  if (!files.length) return;
+                                  files.forEach((file) => {
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                      const dataUrl = reader.result as string;
+                                      const newPhoto: JobAttachment = {
+                                        path: `local-${Date.now()}-${file.name}`,
+                                        name: file.name.replace(/\.[^/.]+$/, ""),
+                                        url: dataUrl,
+                                        kind: "image",
+                                      };
+                                      setReport((prev) => {
+                                        const nextMachines = [...prev.machines];
+                                        nextMachines[idx] = {
+                                          ...nextMachines[idx],
+                                          photos: [...nextMachines[idx].photos, newPhoto],
+                                        };
+                                        return { ...prev, machines: nextMachines };
+                                      });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  });
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+                          </div>
+
+                          {m.photos.length === 0 ? (
+                            <div className="rounded-lg border border-dashed p-3 text-center text-xs text-muted-foreground bg-muted/20">
+                              ยังไม่มีรูปภาพผลงานแนบสำหรับเครื่องนี้ สามารถกดปุ่ม "เพิ่มรูปภาพ" เพื่ออัปโหลดรูปก่อนทำ-หลังทำได้
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap gap-3 items-start pt-1">
+                              {m.photos.map((p, pIdx) => {
+                                const isBefore = /ก่อน|before/i.test(p.name);
+                                const isAfter = /หลัง|after/i.test(p.name);
+                                return (
+                                  <div
+                                    key={p.path + pIdx}
+                                    className="w-[40mm] flex flex-col items-center gap-1 shrink-0"
+                                  >
+                                    <div className="relative w-[40mm] h-[40mm] min-w-[40mm] min-h-[40mm] max-w-[40mm] max-h-[40mm] aspect-square rounded border border-border overflow-hidden bg-muted/40 shadow-2xs group">
+                                      <img
+                                        src={p.url}
+                                        alt={p.name}
+                                        className="w-full h-full object-cover"
+                                      />
+                                      {isBefore && (
+                                        <span className="absolute top-1 left-1 rounded bg-amber-600 text-white px-1 py-0.2 text-[8px] font-bold shadow-xs">
+                                          ก่อนทำ
+                                        </span>
+                                      )}
+                                      {isAfter && (
+                                        <span className="absolute top-1 left-1 rounded bg-emerald-600 text-white px-1 py-0.2 text-[8px] font-bold shadow-xs">
+                                          หลังทำ
+                                        </span>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const nextPhotos = m.photos.filter((_, i) => i !== pIdx);
+                                          updateMachine(idx, { photos: nextPhotos });
+                                        }}
+                                        className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-80 hover:opacity-100 shadow-xs"
+                                        title="ลบรูปนี้"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    </div>
+
+                                    <div className="w-full space-y-1">
+                                      <div className="flex gap-1 justify-center">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const nextPhotos = [...m.photos];
+                                            const clean = p.name.replace(/^(ก่อนทำ|หลังทำ)\s*[-:]?\s*/, "");
+                                            nextPhotos[pIdx] = { ...p, name: `ก่อนทำ - ${clean || "สภาพก่อนทำ"}` };
+                                            updateMachine(idx, { photos: nextPhotos });
+                                          }}
+                                          className={`text-[9px] px-1.5 py-0.5 rounded font-medium transition-colors ${
+                                            isBefore
+                                              ? "bg-amber-600 text-white"
+                                              : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                          }`}
+                                        >
+                                          ก่อนทำ
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const nextPhotos = [...m.photos];
+                                            const clean = p.name.replace(/^(ก่อนทำ|หลังทำ)\s*[-:]?\s*/, "");
+                                            nextPhotos[pIdx] = { ...p, name: `หลังทำ - ${clean || "ผลงานหลังทำ"}` };
+                                            updateMachine(idx, { photos: nextPhotos });
+                                          }}
+                                          className={`text-[9px] px-1.5 py-0.5 rounded font-medium transition-colors ${
+                                            isAfter
+                                              ? "bg-emerald-600 text-white"
+                                              : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                          }`}
+                                        >
+                                          หลังทำ
+                                        </button>
+                                      </div>
+                                      <Input
+                                        value={p.name}
+                                        onChange={(e) => {
+                                          const nextPhotos = [...m.photos];
+                                          nextPhotos[pIdx] = { ...p, name: e.target.value };
+                                          updateMachine(idx, { photos: nextPhotos });
+                                        }}
+                                        placeholder="คำอธิบายภาพ..."
+                                        className="h-6 text-[10px] px-1 text-center"
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -896,11 +1078,14 @@ export function HandoverReportDialog({
                   <p className="text-xs font-bold text-foreground">Engineer คุมงาน</p>
                   <div>
                     <Label className="text-[10px]">ชื่อวิศวกรคุมงาน</Label>
-                    <Input
+                    <Combobox
                       value={report.engineerName}
-                      onChange={(e) => setReport({ ...report, engineerName: e.target.value })}
+                      onChange={(v) => setReport({ ...report, engineerName: v })}
+                      options={staffOptions}
+                      allowCustom
+                      placeholder="เลือก / พิมพ์ชื่อ..."
+                      searchPlaceholder="ค้นหา / พิมพ์ชื่อวิศวกร..."
                       className="h-7 text-xs"
-                      placeholder="ชื่อ-นามสกุล วิศวกร"
                     />
                   </div>
                   <div>
@@ -1152,8 +1337,8 @@ export function HandoverReportPrintView({
         <PneumaxHeader report={report} />
 
         {/* 2. Customer & Service Info Box */}
-        <section className="handover-customer-box mb-3.5 rounded-lg border border-slate-300 bg-slate-50/70 p-3 text-[11px] break-inside-avoid page-break-inside-avoid">
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+        <section className="handover-customer-box mb-3 rounded-lg border border-slate-300 bg-slate-50/70 p-2.5 text-[11px] break-inside-avoid page-break-inside-avoid">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1">
             <div>
               <span className="text-slate-500 font-medium">ชื่อลูกค้า / บริษัท:</span>{" "}
               <strong className="text-slate-900 font-bold">
@@ -1165,6 +1350,12 @@ export function HandoverReportPrintView({
               <span className="text-slate-500 font-medium">วันที่เข้าปฏิบัติงาน:</span>{" "}
               <strong className="text-slate-900">
                 {formatDate(report.visitDate)} {report.visitTime?.slice(0, 5) ?? ""}
+              </strong>
+            </div>
+            <div>
+              <span className="text-slate-500 font-medium">เลขที่ PO (P/O No.):</span>{" "}
+              <strong className="text-slate-900 font-mono">
+                {report.poNo || "-"}
               </strong>
             </div>
             <div>
@@ -1184,7 +1375,7 @@ export function HandoverReportPrintView({
               <strong className="text-slate-900">{report.salesName || report.salesRep || "-"}</strong>
             </div>
             <div>
-              <span className="text-slate-500 font-medium">วิศวกรผู้คุมงาน:</span>{" "}
+              <span className="text-slate-500 font-medium">วิศวกรผู้ควบคุมงาน (Engineer):</span>{" "}
               <strong className="text-slate-900">{report.engineerName || "-"}</strong>
             </div>
             <div className="col-span-2">
@@ -1269,29 +1460,52 @@ export function HandoverReportPrintView({
                   </div>
                 )}
 
-                {/* รูปภาพประกอบผลงาน (แนบรูปปิดงาน) */}
+                {/* รูปภาพประกอบผลงาน (ขนาดมาตรฐานสี่เหลี่ยมจัตุรัส 4×4 ซม. / 40mm × 40mm) */}
                 {m.photos && m.photos.length > 0 && (
-                  <div>
-                    <p className="font-bold text-[11px] text-slate-700 mb-1.5">
-                      📷 รูปภาพประกอบผลงานการปฏิบัติงาน (Attached Photos)
+                  <div className="pt-0.5">
+                    <p className="font-bold text-[10.5px] text-slate-700 mb-1 flex items-center gap-1.5">
+                      <span>📷 รูปภาพผลงานการปฏิบัติงาน (Attached Photos)</span>
+                      <span className="text-[9.5px] font-normal text-slate-500">
+                        [ขนาดมาตรฐาน 4×4 ซม. / รองรับรูปถ่ายก่อนทำ-หลังทำ]
+                      </span>
                     </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {m.photos.map((p, pIdx) => (
-                        <div
-                          key={p.path + pIdx}
-                          className="rounded border border-slate-200 overflow-hidden bg-slate-50 text-center"
-                        >
-                          <img
-                            src={p.url}
-                            alt={p.name}
-                            crossOrigin="anonymous"
-                            className={`${isSinglePage ? "h-20" : "h-24"} w-full object-cover`}
-                          />
-                          <p className="text-[9px] text-slate-600 truncate px-1 py-0.5">
-                            {p.name || `ภาพที่ ${pIdx + 1}`}
-                          </p>
-                        </div>
-                      ))}
+                    <div className="flex flex-wrap gap-2.5 items-start">
+                      {m.photos.map((p, pIdx) => {
+                        const isBefore = /ก่อน|before/i.test(p.name);
+                        const isAfter = /หลัง|after/i.test(p.name);
+                        return (
+                          <div
+                            key={p.path + pIdx}
+                            className="flex flex-col items-center w-[40mm] shrink-0"
+                          >
+                            <div className="relative w-[40mm] h-[40mm] min-w-[40mm] min-h-[40mm] max-w-[40mm] max-h-[40mm] aspect-square rounded border border-slate-300 overflow-hidden bg-slate-100 shadow-2xs flex items-center justify-center">
+                              <img
+                                src={p.url}
+                                alt={p.name || `ภาพที่ ${pIdx + 1}`}
+                                crossOrigin="anonymous"
+                                className="w-full h-full object-cover select-none"
+                                loading="eager"
+                              />
+                              {isBefore && (
+                                <span className="absolute top-1 left-1 rounded bg-amber-600/95 text-white px-1 py-0.2 text-[8px] font-bold shadow-xs">
+                                  ก่อนทำ
+                                </span>
+                              )}
+                              {isAfter && (
+                                <span className="absolute top-1 left-1 rounded bg-emerald-600/95 text-white px-1 py-0.2 text-[8px] font-bold shadow-xs">
+                                  หลังทำ
+                                </span>
+                              )}
+                            </div>
+                            <p
+                              className="text-[8.5px] font-medium text-slate-700 truncate w-full text-center mt-0.5 px-0.5"
+                              title={p.name || `รูปที่ ${pIdx + 1}`}
+                            >
+                              {p.name || `รูปที่ ${pIdx + 1}`}
+                            </p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

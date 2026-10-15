@@ -145,6 +145,7 @@ type Appointment = {
   vehicle_plate: string | null;
   sales_rep?: string | null;
   attachments?: string | null;
+  po_number?: string | null;
 
   status: string;
   result: string | null;
