@@ -34,6 +34,8 @@ import { useDirectory } from "@/lib/directory";
 import { ChecklistView } from "@/components/ChecklistView";
 import type { ChecklistResult } from "@/lib/checklist";
 import { DateInput } from "@/components/ui/date-input";
+import { cn } from "@/lib/utils";
+import { PNEUMAX_LOGO_SRC } from "@/assets/pneumaxLogo";
 
 export type HandoverMachineData = {
   serial: string;
@@ -88,75 +90,16 @@ export type HandoverReportState = {
   receiverDate: string;
 };
 
-/** โลโก้เวกเตอร์ PNEUMAX มาตรฐาน สวย คมชัด ทุกความละเอียด */
-export function PneumaxLogo({ className = "h-11 w-auto" }: { className?: string }) {
+/** โลโก้ PNEUMAX ทางการตามภาพที่ผู้ใช้กำหนด (กระบอกสูบนิวเมติกสีแดง + ตัวอักษร PNEUMAX ตรงกลาง) */
+export function PneumaxLogo({ className = "h-16 w-auto" }: { className?: string }) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 320 62"
-      className={className}
-      aria-label="PNEUMAX"
-    >
-      <defs>
-        <linearGradient id="pneuRedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#E31B23" />
-          <stop offset="100%" stop-color="#B71219" />
-        </linearGradient>
-      </defs>
-
-      {/* สัญลักษณ์นิวเมติกรูปกระบอกลมสีแดงเอกลักษณ์ของ PNEUMAX */}
-      <g transform="translate(2, 2)">
-        {/* Top nozzle / fitting */}
-        <rect x="19" y="1" width="14" height="6" rx="1.5" fill="url(#pneuRedGrad)" />
-        <rect x="22" y="0" width="8" height="2.5" rx="1" fill="#7F0E13" />
-
-        {/* Upper cylinder body */}
-        <path d="M10 9 C10 7.5 12 6 15 6 L37 6 C40 6 42 7.5 42 9 L42 20 L10 20 Z" fill="url(#pneuRedGrad)" />
-
-        {/* Central dark belt */}
-        <rect x="7" y="21.5" width="38" height="11" rx="2.5" fill="#0F172A" />
-        <rect x="11" y="25" width="6" height="4" rx="1" fill="#FFFFFF" />
-        <rect x="20" y="25" width="12" height="4" rx="1" fill="#E31B23" />
-        <rect x="35" y="25" width="6" height="4" rx="1" fill="#FFFFFF" />
-
-        {/* Lower cylinder body */}
-        <path d="M10 34.5 L42 34.5 L42 46 C42 47.5 40 49 37 49 L15 49 C12 49 10 47.5 10 46 Z" fill="url(#pneuRedGrad)" />
-
-        {/* Bottom base plate */}
-        <rect x="17" y="50.5" width="18" height="4.5" rx="1.5" fill="#7F0E13" />
-
-        {/* Subtle highlights */}
-        <path d="M13 9 L17 9 L17 18 L13 18 Z" fill="#FFFFFF" opacity="0.3" />
-        <path d="M13 36 L17 36 L17 45 L13 45 Z" fill="#FFFFFF" opacity="0.3" />
-      </g>
-
-      {/* Typography: PNEUMAX */}
-      <g transform="translate(60, 6)">
-        <text
-          x="0"
-          y="31"
-          fontFamily="'Arial Black', 'Impact', sans-serif"
-          fontWeight="900"
-          fontSize="32"
-          fill="#E31B23"
-          letterSpacing="0.5"
-        >
-          PNEUMAX
-        </text>
-        <rect x="180" y="11" width="5" height="5" rx="1" fill="#0F172A" />
-        <text
-          x="1"
-          y="46"
-          fontFamily="'Segoe UI', -apple-system, sans-serif"
-          fontWeight="700"
-          fontSize="9.5"
-          fill="#0F172A"
-          letterSpacing="1.8"
-        >
-          AIR COMPRESSOR SERVICE &amp; ENGINEERING
-        </text>
-      </g>
-    </svg>
+    <img
+      src={PNEUMAX_LOGO_SRC}
+      alt="PNEUMAX"
+      className={cn("object-contain shrink-0 select-none", className)}
+      loading="eager"
+      decoding="sync"
+    />
   );
 }
 
@@ -166,15 +109,16 @@ export function PneumaxHeader({ report }: { report: HandoverReportState }) {
     <header className="handover-header border-b-2 border-slate-800 pb-3 mb-3.5 break-inside-avoid page-break-inside-avoid">
       <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
         {/* ฝั่งซ้าย: โลโก้ PNEUMAX และข้อมูลบริษัท นิวแม็ก จำกัด */}
-        <div className="space-y-1 max-w-[62%]">
-          <div className="flex items-center gap-2">
-            <PneumaxLogo className="h-10 w-auto" />
-          </div>
-          <div className="text-[11px] leading-tight text-slate-700 space-y-0.5 pt-0.5">
-            <p className="font-bold text-slate-900 text-xs">
-              บริษัท นิวแม็ก จำกัด <span className="font-semibold text-slate-600">(สำนักงานใหญ่)</span> · PNEUMAX CO., LTD.
+        <div className="flex items-center gap-3.5 max-w-[65%]">
+          <PneumaxLogo className="h-16 w-auto shrink-0" />
+          <div className="text-[11px] leading-tight text-slate-700 space-y-0.5">
+            <p className="font-extrabold text-slate-900 text-sm tracking-tight">
+              บริษัท นิวแม็ก จำกัด <span className="font-semibold text-slate-600 text-xs">(สำนักงานใหญ่)</span>
             </p>
-            <p className="text-slate-600">
+            <p className="font-bold text-slate-800 text-[11px] tracking-wider uppercase">
+              PNEUMAX CO., LTD.
+            </p>
+            <p className="text-slate-600 pt-0.5">
               เลขประจำตัวผู้เสียภาษี: <strong className="text-slate-800">0105524020764</strong>
             </p>
             <p className="text-slate-600">
