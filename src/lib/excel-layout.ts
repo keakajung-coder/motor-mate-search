@@ -1,4 +1,5 @@
 import { saveFile, xlsxBlob } from "@/lib/report";
+import type { CellStyle } from "xlsx-js-style";
 
 /** ล้างอักขระต้องห้ามของชื่อชีท Excel ( : \ / ? * [ ] ) ตัดเหลือ 31 ตัว และกันชื่อซ้ำ */
 export function sanitizeSheetName(name: string, used?: Set<string>): string {
@@ -30,10 +31,14 @@ export type GridSheet = {
   merges?: { s: { r: number; c: number }; e: { r: number; c: number } }[];
   cols?: number[];
   rowHeights?: number[];
+  styles?: Record<string, CellStyle>;
+  defaultStyle?: CellStyle;
+  autoFilter?: string;
 };
 
-export async function downloadGridWorkbook(sheets: GridSheet[], filename: string) {
-  const XLSX = await import("xlsx");
+export async function buildGridWorkbook(sheets: GridSheet[]) {
+  const imported = await import("xlsx-js-style");
+  const XLSX = imported.default ?? imported;
   const wb = XLSX.utils.book_new();
   const used = new Set<string>();
   for (const s of sheets) {
@@ -41,9 +46,24 @@ export async function downloadGridWorkbook(sheets: GridSheet[], filename: string
     if (s.merges?.length) ws["!merges"] = s.merges;
     if (s.cols) ws["!cols"] = s.cols.map((wch) => ({ wch }));
     if (s.rowHeights) ws["!rows"] = s.rowHeights.map((hpt) => ({ hpt }));
+    if (s.defaultStyle || s.styles) {
+      const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
+      for (let r = range.s.r; r <= range.e.r; r++) {
+        for (let c = range.s.c; c <= range.e.c; c++) {
+          const address = XLSX.utils.encode_cell({ r, c });
+          ws[address] ??= { t: "s", v: "" };
+          ws[address].s = s.styles?.[address] ?? s.defaultStyle;
+        }
+      }
+    }
+    if (s.autoFilter) ws["!autofilter"] = { ref: s.autoFilter };
     XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(s.name, used));
   }
-  const blob = xlsxBlob(XLSX.write(wb, { bookType: "xlsx", type: "array" }));
+  return xlsxBlob(XLSX.write(wb, { bookType: "xlsx", type: "array", cellStyles: true }));
+}
+
+export async function downloadGridWorkbook(sheets: GridSheet[], filename: string) {
+  const blob = await buildGridWorkbook(sheets);
   const fname = sanitizeFileName(filename.replace(/\.xlsx$/i, "")) + ".xlsx";
   await saveFile(blob, fname);
 }
