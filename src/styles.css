@@ -338,6 +338,29 @@
     break-inside: avoid-page;
     page-break-inside: avoid;
   }
+
+  .handover-report-export {
+    width: 100%;
+    padding: 8mm;
+    margin: 0;
+    box-shadow: none !important;
+    border: none !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .handover-report-export section,
+  .handover-report-export footer,
+  .handover-report-export header {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+}
+
+.handover-report-export {
+  max-width: 210mm;
+  margin: 0 auto;
+  background: #ffffff;
+  color: #0f172a;
 }
 
 .scrollbar-none {

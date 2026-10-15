@@ -20,7 +20,8 @@ import { notifyUsers } from "@/lib/notify";
 import { Switch } from "@/components/ui/switch";
 import { loadAutoJobAlert, saveAutoJobAlert, sendJobApprovalAlert } from "@/lib/job-alerts";
 import { ensureSeller, useSellerNames } from "@/lib/sellers";
-import { JobAttachments } from "@/components/JobAttachments";
+import { JobAttachments, parseAttachments } from "@/components/JobAttachments";
+import { HandoverReportDialog } from "@/components/HandoverReportDialog";
 
 import {
   AlertTriangle,
@@ -35,6 +36,7 @@ import {
   Loader2,
   Camera,
   FileDown,
+  FileText,
   Eye,
   EyeOff,
   Pencil,
@@ -148,6 +150,9 @@ type Appointment = {
   result: string | null;
   close_note: string | null;
   closed_at?: string | null;
+  parts_replaced?: string | null;
+  quotation_items?: string | null;
+  checklist?: any;
 };
 
 type WorkOrder = Appointment & {
@@ -383,6 +388,7 @@ function PlannerPage() {
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [viewing, setViewing] = useState<Appointment | null>(null);
+  const [handoverAppt, setHandoverAppt] = useState<Appointment | null>(null);
   const pickAppt = (a: Appointment) => (a.status === "closed" ? setViewing(a) : setEditing(a));
   const [dayDetail, setDayDetail] = useState<string | null>(null);
   const { holidays, holidaysMap, addHoliday, updateHoliday, deleteHoliday } = useHolidays();
@@ -952,6 +958,10 @@ function PlannerPage() {
             setEditing(null);
             setClosing(a);
           }}
+          onOpenHandover={(a) => {
+            setEditing(null);
+            setHandoverAppt(a);
+          }}
         />
       )}
       {viewing && (
@@ -966,6 +976,10 @@ function PlannerPage() {
             setViewing(null);
             setEditing(a);
           }}
+          onOpenHandover={(a) => {
+            setViewing(null);
+            setHandoverAppt(a);
+          }}
         />
       )}
       {closing && (
@@ -976,6 +990,16 @@ function PlannerPage() {
             setClosing(null);
             load();
           }}
+          onOpenHandover={(a) => {
+            setClosing(null);
+            setHandoverAppt(a);
+          }}
+        />
+      )}
+      {handoverAppt && (
+        <HandoverReportDialog
+          appt={handoverAppt}
+          onClose={() => setHandoverAppt(null)}
         />
       )}
     </div>
@@ -3172,6 +3196,7 @@ function AppointmentDialog({
   onSaved,
   onDeleted,
   onCloseJob,
+  onOpenHandover,
 }: {
   value: Appointment;
   canEdit: boolean;
@@ -3179,6 +3204,7 @@ function AppointmentDialog({
   onSaved: () => void;
   onDeleted?: () => void;
   onCloseJob: (a: Appointment) => void;
+  onOpenHandover?: (a: Appointment) => void;
 }) {
   const [form, setForm] = useState<Appointment>(value);
   const [editMode, setEditMode] = useState(!value.id);
@@ -3699,6 +3725,15 @@ function AppointmentDialog({
               <CheckCircle2 className="mr-1 h-4 w-4" /> ปิดใบงาน
             </Button>
           )}
+          {form.id && form.status === "closed" && !editMode && onOpenHandover && (
+            <Button
+              variant="default"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => onOpenHandover(form)}
+            >
+              <FileText className="mr-1.5 h-4 w-4" /> ใบส่งมอบงาน
+            </Button>
+          )}
           {canEdit && !editMode && (
             <Button onClick={() => setEditMode(true)}>
               <Pencil className="mr-1 h-4 w-4" /> แก้ไขข้อมูลนัดหมาย
@@ -3720,16 +3755,20 @@ function CloseJobDialog({
   appt,
   onClose,
   onSaved,
+  onOpenHandover,
 }: {
   appt: Appointment;
   onClose: () => void;
   onSaved: () => void;
+  onOpenHandover?: (a: Appointment) => void;
 }) {
   const isEdit = appt.status === "closed";
   const [result, setResult] = useState<"ok" | "not_ok" | null>(
     isEdit ? ((appt.result as "ok" | "not_ok" | null) ?? "ok") : null,
   );
   const [note, setNote] = useState(appt.close_note ?? "");
+  const [attachments, setAttachments] = useState<string | null>(appt.attachments ?? null);
+  const [wantHandoverReport, setWantHandoverReport] = useState(true);
   const [resetParts, setResetParts] = useState(!isEdit);
   const [saving, setSaving] = useState(false);
   const [quotation, setQuotation] = useState(false);
@@ -3789,7 +3828,9 @@ function CloseJobDialog({
     (async () => {
       const { data } = await supabase
         .from("appointments")
-        .select("quotation_required, parts_categories, parts_note, parts_replaced, quotation_items")
+        .select(
+          "quotation_required, parts_categories, parts_note, parts_replaced, quotation_items, attachments",
+        )
         .eq("id", appt.id)
         .maybeSingle();
       if (!alive || !data) return;
@@ -3801,6 +3842,7 @@ function CloseJobDialog({
       );
       setPartsNote(data.parts_note ?? "");
       setQuoteItems(splitNames(data.quotation_items ?? ""));
+      if (data.attachments) setAttachments(data.attachments);
     })();
     return () => {
       alive = false;
@@ -3999,6 +4041,7 @@ function CloseJobDialog({
         parts_replaced: [cats.join(", "), partsNote.trim()].filter(Boolean).join(" · ") || null,
         quotation_items: quoteItems.join(", ") || null,
         checklist: (useChecklist && checklist ? checklist : null) as never,
+        attachments,
       })
       .eq("id", appt.id);
     if (error) {
@@ -4009,7 +4052,12 @@ function CloseJobDialog({
     if (appt.work_order_id) {
       const { error: orderError } = await supabase
         .from("work_orders")
-        .update({ status: "closed", visit_date: appt.visit_date, visit_time: appt.visit_time })
+        .update({
+          status: "closed",
+          visit_date: appt.visit_date,
+          visit_time: appt.visit_time,
+          attachments,
+        })
         .eq("id", appt.work_order_id);
       if (orderError) {
         setSaving(false);
@@ -4066,7 +4114,20 @@ function CloseJobDialog({
         .join(" · "),
     });
     toast.success(isEdit ? "แก้ไขรายละเอียดปิดงานแล้ว" : "ปิดงานและบันทึกประวัติซ่อมบำรุงแล้ว");
+    const updatedAppt: Appointment = {
+      ...appt,
+      status: "closed",
+      result,
+      close_note: note.trim() || null,
+      parts_replaced: [cats.join(", "), partsNote.trim()].filter(Boolean).join(" · ") || null,
+      quotation_items: quoteItems.join(", ") || null,
+      checklist: (useChecklist && checklist ? checklist : null) as never,
+      attachments,
+    };
     onSaved();
+    if (wantHandoverReport && onOpenHandover) {
+      onOpenHandover(updatedAppt);
+    }
   };
 
   return (
@@ -4096,6 +4157,34 @@ function CloseJobDialog({
           </Button>
         </div>
         <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
+          {/* ช่องอัปโหลดรูปภาพผลงานปิดงาน */}
+          <div className="min-w-0 space-y-2 rounded-lg border p-3 lg:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-1">
+              <p className="text-sm font-semibold flex items-center gap-1.5">
+                <Camera className="h-4 w-4 text-primary" />
+                รูปภาพผลงานปิดงาน (ก่อนทำ - หลังทำ / สภาพเครื่อง)
+              </p>
+              <span className="text-xs text-muted-foreground">
+                อัปโหลดรูปถ่ายผลงานเพื่อรวมในใบส่งมอบงานและประวัติเครื่อง
+              </span>
+            </div>
+            <JobAttachments value={attachments} onChange={setAttachments} />
+          </div>
+
+          {/* ตัวเลือกสร้างใบส่งมอบงาน (Job Handover Report) */}
+          <div className="min-w-0 space-y-1.5 rounded-lg border border-primary/40 bg-primary/5 p-3 lg:col-span-2">
+            <label className="flex items-center justify-between gap-2 text-sm font-semibold cursor-pointer">
+              <span className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                <span>ต้องการสร้างใบส่งมอบงาน (Job Handover Report)</span>
+              </span>
+              <Switch checked={wantHandoverReport} onCheckedChange={setWantHandoverReport} />
+            </label>
+            <p className="text-xs text-muted-foreground">
+              เปิดหน้าต่างสร้างใบส่งมอบงานอัตโนมัติ รวมหลายเครื่องของลูกค้ารายนี้ได้ ดึงประวัติ S/N เช็คลิสต์ รูปถ่าย และลายเซ็น พร้อมส่งออก PDF
+            </p>
+          </div>
+
           <div className="min-w-0 space-y-2 rounded-lg border p-3">
             <p className="text-sm font-semibold">รายละเอียดการปิดงาน</p>
             <Textarea
@@ -4405,14 +4494,36 @@ function CloseJobDialog({
             รีเซ็ตอายุอะไหล่ของเครื่อง {appt.serial_number || "-"} เริ่มนับใหม่
           </label>
         </div>
-        <DialogFooter className="[&>button]:w-full sm:[&>button]:w-auto">
-          <Button variant="outline" onClick={onClose}>
-            ยกเลิก
-          </Button>
-          <Button onClick={submit} disabled={saving}>
-            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-            {isEdit ? "บันทึกการแก้ไข" : "ปิดงาน"}
-          </Button>
+        <DialogFooter className="flex flex-wrap items-center justify-between gap-2 [&>button]:w-full sm:[&>button]:w-auto">
+          {onOpenHandover && isEdit && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                onOpenHandover({
+                  ...appt,
+                  result,
+                  close_note: note.trim() || null,
+                  parts_replaced: [cats.join(", "), partsNote.trim()].filter(Boolean).join(" · ") || null,
+                  quotation_items: quoteItems.join(", ") || null,
+                  checklist: (useChecklist && checklist ? checklist : null) as never,
+                  attachments,
+                });
+              }}
+            >
+              <FileText className="mr-1.5 h-4 w-4 text-primary" />
+              เปิดดูใบส่งมอบงาน
+            </Button>
+          )}
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <Button variant="outline" onClick={onClose}>
+              ยกเลิก
+            </Button>
+            <Button onClick={submit} disabled={saving}>
+              {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+              {isEdit ? "บันทึกการแก้ไข" : "ปิดงาน"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -4452,11 +4563,13 @@ function ClosedJobResultDialog({
   onClose,
   onEditClose,
   onEditDetail,
+  onOpenHandover,
 }: {
   appt: Appointment;
   onClose: () => void;
   onEditClose: (a: Appointment) => void;
   onEditDetail: (a: Appointment) => void;
+  onOpenHandover?: (a: Appointment) => void;
 }) {
   const [row, setRow] = useState<Record<string, any> | null>(null);
   useEffect(() => {
@@ -4502,18 +4615,39 @@ function ClosedJobResultDialog({
             {line("รายการเสนอราคาเพิ่มเติม", r.quotation_items)}
             {line("ปิดงานเมื่อ", r.closed_at ? formatDate(String(r.closed_at).slice(0, 10)) : null)}
           </div>
+          {r.attachments && (
+            <div className="rounded-lg border p-3">
+              <p className="mb-2 text-sm font-semibold flex items-center gap-1.5">
+                <Camera className="h-4 w-4 text-primary" />
+                รูปภาพผลงาน / หน้างาน
+              </p>
+              <JobAttachments value={r.attachments} readOnly />
+            </div>
+          )}
           <div className="rounded-lg border p-3">
             <p className="mb-2 text-sm font-semibold">ผล Checklist</p>
             <ChecklistView value={r.checklist} />
           </div>
         </div>
-        <DialogFooter className="grid grid-cols-1 gap-2 sm:flex">
-          <Button variant="outline" onClick={() => onEditDetail(appt)}>
-            แก้ไขรายละเอียดงาน
-          </Button>
-          <Button onClick={() => onEditClose({ ...(appt as any), ...(row ?? {}) })}>
-            แก้ไขการปิดงาน
-          </Button>
+        <DialogFooter className="grid grid-cols-1 gap-2 sm:flex sm:justify-between">
+          {onOpenHandover && (
+            <Button
+              variant="default"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => onOpenHandover({ ...(appt as any), ...(row ?? {}) })}
+            >
+              <FileText className="mr-1.5 h-4 w-4" />
+              📄 ใบส่งมอบงาน (Handover Report)
+            </Button>
+          )}
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <Button variant="outline" onClick={() => onEditDetail(appt)}>
+              แก้ไขรายละเอียดงาน
+            </Button>
+            <Button onClick={() => onEditClose({ ...(appt as any), ...(row ?? {}) })}>
+              แก้ไขการปิดงาน
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
