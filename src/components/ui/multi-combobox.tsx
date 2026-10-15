@@ -53,7 +53,9 @@ export function MultiCombobox({
 
   const toggle = (name: string) => {
     const hit = values.some((v) => v.toLowerCase() === name.toLowerCase());
-    onChange(hit ? values.filter((v) => v.toLowerCase() !== name.toLowerCase()) : [...values, name]);
+    onChange(
+      hit ? values.filter((v) => v.toLowerCase() !== name.toLowerCase()) : [...values, name],
+    );
   };
 
   return (
@@ -71,31 +73,33 @@ export function MultiCombobox({
           )}
         >
           <span className="flex min-w-0 flex-wrap gap-1 overflow-hidden">
-            {values.length === 0 ? (
-              placeholder
-            ) : (
-              values.map((v) => (
-                <Badge key={v} variant="secondary" className="min-w-0 max-w-full gap-1">
-                  <span className="min-w-0 truncate">{v}</span>
-                  <X
-                    className="h-3 w-3 shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!disabled) toggle(v);
-                    }}
-                  />
-                </Badge>
-              ))
-            )}
+            {values.length === 0
+              ? placeholder
+              : values.map((v) => (
+                  <Badge key={v} variant="secondary" className="min-w-0 max-w-full gap-1">
+                    <span className="min-w-0 truncate">{v}</span>
+                    <X
+                      className="h-3 w-3 shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!disabled) toggle(v);
+                      }}
+                    />
+                  </Badge>
+                ))}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command filter={(val, search) => (val.toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}>
+        <Command
+          filter={(val, search) => (val.toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}
+        >
           <CommandInput placeholder={searchPlaceholder} value={query} onValueChange={setQuery} />
           <CommandList>
-            <CommandEmpty className="px-3 py-3 text-sm text-muted-foreground">ไม่พบข้อมูล</CommandEmpty>
+            <CommandEmpty className="px-3 py-3 text-sm text-muted-foreground">
+              ไม่พบข้อมูล
+            </CommandEmpty>
             <CommandGroup>
               {allowCustom && q && !exists && (
                 <CommandItem
@@ -121,10 +125,20 @@ export function MultiCombobox({
                         title="ลบออกจากฐานข้อมูล (แอดมิน)"
                         className="ml-1 rounded p-1 text-destructive hover:bg-destructive/10"
                         onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          if (window.confirm(`ลบ "${o}" ออกจากฐานข้อมูลกลาง?`)) onDelete(o);
+                          if (window.confirm(`ลบ "${o}" ออกจากฐานข้อมูลกลาง?`)) {
+                            try {
+                              await onDelete(o);
+                            } catch (err) {
+                              console.error(err);
+                            }
+                            const target = o.trim().toLowerCase();
+                            if (values.some((v) => v.trim().toLowerCase() === target)) {
+                              onChange(values.filter((v) => v.trim().toLowerCase() !== target));
+                            }
+                          }
                         }}
                       >
                         <Trash2 className="h-3.5 w-3.5" />

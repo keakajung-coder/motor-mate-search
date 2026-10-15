@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-
 /** ข้อมูลกลางสำหรับ Dropdown ทุกหน้า (ลูกค้า / เครื่องจักร / ช่าง / รถ) */
 export type DirCustomer = { cust_id: string; name: string; phone: string; address: string };
 export type DirMachine = {
@@ -36,10 +35,12 @@ async function fetchAll() {
     supabase.from("customers").select("cust_id, name, phone, address").order("name"),
     supabase
       .from("machine_units")
-      .select("serial_number, customer_sn, seller, address_line, district, province, customers ( cust_id, name, phone, address ), compressor_models ( name, brands ( name ) )")
+      .select(
+        "serial_number, customer_sn, seller, address_line, district, province, customers ( cust_id, name, phone, address ), compressor_models ( name, brands ( name ) )",
+      )
       .order("serial_number"),
-    supabase.from("service_staff").select("name").order("name"),
-    supabase.from("vehicles").select("plate").order("plate"),
+    supabase.from("service_staff").select("name").neq("active", false).order("name"),
+    supabase.from("vehicles").select("plate").neq("active", false).order("plate"),
   ]);
 
   cache = {
@@ -52,7 +53,9 @@ async function fetchAll() {
     })),
     machines: (m.data ?? []).map((r: any) => ({
       serial: r.serial_number ?? "",
-      label: [r.compressor_models?.brands?.name, r.compressor_models?.name].filter(Boolean).join(" "),
+      label: [r.compressor_models?.brands?.name, r.compressor_models?.name]
+        .filter(Boolean)
+        .join(" "),
       brand: r.compressor_models?.brands?.name ?? "",
       model: r.compressor_models?.name ?? "",
       customer_sn: r.customer_sn ?? "",
@@ -60,7 +63,8 @@ async function fetchAll() {
       customer: r.customers?.name ?? "",
       cust_id: r.customers?.cust_id ?? "",
       address:
-        [r.address_line, r.district, r.province].filter(Boolean).join(" ") || (r.customers?.address ?? ""),
+        [r.address_line, r.district, r.province].filter(Boolean).join(" ") ||
+        (r.customers?.address ?? ""),
       phone: r.customers?.phone ?? "",
       seller: r.seller ?? "",
     })),
@@ -112,13 +116,27 @@ export async function ensureDirectoryEntries(input: {
   try {
     if (customer || custId) {
       // หาลูกค้าจากรหัสก่อน แล้วค่อยหาจากชื่อ (เชื่อมโยงสองทาง)
-      let existing: { id: string; name: string; cust_id: string | null; phone: string | null; address: string | null } | null = null;
+      let existing: {
+        id: string;
+        name: string;
+        cust_id: string | null;
+        phone: string | null;
+        address: string | null;
+      } | null = null;
       if (custId) {
-        const { data } = await supabase.from("customers").select("id, name, cust_id, phone, address").eq("cust_id", custId).maybeSingle();
+        const { data } = await supabase
+          .from("customers")
+          .select("id, name, cust_id, phone, address")
+          .eq("cust_id", custId)
+          .maybeSingle();
         existing = data ?? null;
       }
       if (!existing && customer) {
-        const { data } = await supabase.from("customers").select("id, name, cust_id, phone, address").ilike("name", customer).limit(1);
+        const { data } = await supabase
+          .from("customers")
+          .select("id, name, cust_id, phone, address")
+          .ilike("name", customer)
+          .limit(1);
         existing = data?.[0] ?? null;
       }
       if (!existing && customer) {
@@ -140,7 +158,8 @@ export async function ensureDirectoryEntries(input: {
         const patch: { cust_id?: string; phone?: string; address?: string } = {};
         if (custId && !existing.cust_id) patch.cust_id = custId;
         if (norm(input.contact_phone) && !existing.phone) patch.phone = norm(input.contact_phone);
-        if (norm(input.customer_address) && !existing.address) patch.address = norm(input.customer_address);
+        if (norm(input.customer_address) && !existing.address)
+          patch.address = norm(input.customer_address);
         if (Object.keys(patch).length) {
           await supabase.from("customers").update(patch).eq("id", existing.id);
           changed = true;
@@ -157,7 +176,9 @@ export async function ensureDirectoryEntries(input: {
       const u = unit?.[0];
       if (!u) {
         const modelId = await ensureBrandModel(input.machine_label);
-        await supabase.from("machine_units").insert({ serial_number: serial, customer_id: customerId, model_id: modelId });
+        await supabase
+          .from("machine_units")
+          .insert({ serial_number: serial, customer_id: customerId, model_id: modelId });
         changed = true;
       } else {
         // เชื่อมเครื่องเดิมกับลูกค้า/รุ่นที่ยังไม่ได้ผูก
@@ -206,10 +227,17 @@ export async function ensureBrandModel(label?: string | null): Promise<string | 
   const [brandName, ...rest] = text.split(/\s+/);
   const modelName = rest.join(" ").trim();
   try {
-    const { data: brands } = await supabase.from("brands").select("id, name").ilike("name", brandName);
+    const { data: brands } = await supabase
+      .from("brands")
+      .select("id, name")
+      .ilike("name", brandName);
     let brandId = brands?.[0]?.id ?? null;
     if (!brandId) {
-      const { data } = await supabase.from("brands").insert({ name: brandName }).select("id").single();
+      const { data } = await supabase
+        .from("brands")
+        .insert({ name: brandName })
+        .select("id")
+        .single();
       brandId = data?.id ?? null;
     }
     if (!brandId || !modelName) return null;
@@ -236,9 +264,15 @@ export async function ensureParts(names: string[]) {
   if (!list.length) return;
   try {
     const { data } = await supabase.from("products").select("name, part_number");
-    const known = new Set((data ?? []).flatMap((p: any) => [String(p.name).toLowerCase(), String(p.part_number).toLowerCase()]));
+    const known = new Set(
+      (data ?? []).flatMap((p: any) => [
+        String(p.name).toLowerCase(),
+        String(p.part_number).toLowerCase(),
+      ]),
+    );
     const fresh = list.filter((n) => !known.has(n.toLowerCase()));
-    if (fresh.length) await supabase.from("products").insert(fresh.map((n) => ({ name: n, part_number: n })));
+    if (fresh.length)
+      await supabase.from("products").insert(fresh.map((n) => ({ name: n, part_number: n })));
   } catch {
     // ไม่ให้กระทบการบันทึกหลัก
   }
@@ -264,21 +298,40 @@ export type DirectoryKind = "customer" | "cust_id" | "serial" | "staff" | "vehic
 export async function deleteDirectoryEntry(kind: DirectoryKind, value: string) {
   const { deleteAsAdmin } = await import("@/lib/access");
   const { toast } = await import("sonner");
-  const map: Record<DirectoryKind, [string, string]> = {
-    customer: ["customers", "name"],
-    cust_id: ["customers", "cust_id"],
-    serial: ["machine_units", "serial_number"],
-    staff: ["service_staff", "name"],
-    vehicle: ["vehicles", "plate"],
-    seller: ["sales_contacts", "name"],
-  };
-  const [table, col] = map[kind];
-  const { error } = await deleteAsAdmin(table, { [col]: value });
-  if (error) {
-    toast.error(error.message);
-    return false;
+  if (kind === "staff") {
+    // Soft Delete: ตั้งค่า active = false เพื่อรักษาประวัติการปฏิบัติงานและวันลาย้อนหลัง
+    const { error } = await supabase
+      .from("service_staff")
+      .update({ active: false })
+      .eq("name", value);
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    const { logAudit } = await import("@/lib/audit");
+    await logAudit({
+      table: "service_staff",
+      action: "soft_delete",
+      summary: `ลบพนักงาน/ช่าง (Soft Delete: active = false): ${value}`,
+      changes: { name: value, active: false },
+    });
+    window.dispatchEvent(new Event("service-staff-changed"));
+  } else {
+    const map: Record<Exclude<DirectoryKind, "staff">, [string, string]> = {
+      customer: ["customers", "name"],
+      cust_id: ["customers", "cust_id"],
+      serial: ["machine_units", "serial_number"],
+      vehicle: ["vehicles", "plate"],
+      seller: ["sales_contacts", "name"],
+    };
+    const [table, col] = map[kind];
+    const { error } = await deleteAsAdmin(table, { [col]: value });
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    if (kind === "seller") window.dispatchEvent(new Event("sales-contacts-changed"));
   }
-  if (kind === "seller") window.dispatchEvent(new Event("sales-contacts-changed"));
 
   // ตัดรายการออกจากแคชทันที เพื่อให้ Dropdown ทุกจุดอัปเดตแบบเรียลไทม์โดยไม่ต้องรอโหลดใหม่
   const target = value.trim().toLowerCase();
@@ -289,9 +342,15 @@ export async function deleteDirectoryEntry(kind: DirectoryKind, value: string) {
         (kind !== "customer" || c.name.trim().toLowerCase() !== target) &&
         (kind !== "cust_id" || c.cust_id.trim().toLowerCase() !== target),
     ),
-    machines: cache.machines.filter((m) => kind !== "serial" || m.serial.trim().toLowerCase() !== target),
-    staff: kind === "staff" ? cache.staff.filter((s) => s.trim().toLowerCase() !== target) : cache.staff,
-    vehicles: kind === "vehicle" ? cache.vehicles.filter((v) => v.trim().toLowerCase() !== target) : cache.vehicles,
+    machines: cache.machines.filter(
+      (m) => kind !== "serial" || m.serial.trim().toLowerCase() !== target,
+    ),
+    staff:
+      kind === "staff" ? cache.staff.filter((s) => s.trim().toLowerCase() !== target) : cache.staff,
+    vehicles:
+      kind === "vehicle"
+        ? cache.vehicles.filter((v) => v.trim().toLowerCase() !== target)
+        : cache.vehicles,
   };
   listeners.forEach((fn) => fn(cache));
 

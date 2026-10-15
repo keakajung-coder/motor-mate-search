@@ -17,11 +17,16 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CalendarCheck2, ClipboardPlus, Loader2 } from "lucide-react";
-import { deleteDirectoryEntry, ensureDirectoryEntries, refreshDirectory, useDirectory, type DirectoryKind } from "@/lib/directory";
+import {
+  deleteDirectoryEntry,
+  ensureDirectoryEntries,
+  refreshDirectory,
+  useDirectory,
+  type DirectoryKind,
+} from "@/lib/directory";
 import { useAccess } from "@/lib/access";
 import { ensureSeller, useSellerNames } from "@/lib/sellers";
 import { JobAttachments } from "@/components/JobAttachments";
-
 
 import { BILLING_TYPES, PRIORITIES, SAFETY_GEAR, WORK_TYPES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
@@ -69,7 +74,6 @@ export type WorkOrderDraft = {
   attachments: string;
 };
 
-
 export type WorkOrderPrintData = {
   [K in keyof WorkOrderDraft]?: WorkOrderDraft[K] | null;
 } & {
@@ -82,7 +86,10 @@ const displayValue = (value?: string | null) => value?.trim() || "-";
 /** รูปแบบเอกสารสำหรับส่งออก ซึ่งเรียงหัวข้อเหมือนฟอร์มสร้างใบสั่งงาน */
 export function WorkOrderFormPrint({ order }: { order: WorkOrderPrintData }) {
   return (
-    <article className="work-order-form-export" aria-label={`ใบสั่งงาน ${displayValue(order.job_no)}`}>
+    <article
+      className="work-order-form-export"
+      aria-label={`ใบสั่งงาน ${displayValue(order.job_no)}`}
+    >
       <header className="work-order-form-export__header">
         <div>
           <p className="work-order-form-export__eyebrow">SERVICE WORK ORDER</p>
@@ -169,7 +176,9 @@ function PrintField({
   multiline?: boolean;
 }) {
   return (
-    <div className={`work-order-form-export__field${wide ? " work-order-form-export__field--wide" : ""}${multiline ? " work-order-form-export__field--multiline" : ""}`}>
+    <div
+      className={`work-order-form-export__field${wide ? " work-order-form-export__field--wide" : ""}${multiline ? " work-order-form-export__field--multiline" : ""}`}
+    >
       <span>{label}</span>
       <strong>{displayValue(value)}</strong>
     </div>
@@ -212,7 +221,6 @@ export const emptyDraft = (): WorkOrderDraft => ({
   safety_gear: "",
   attachments: "",
 });
-
 
 /** ตัวเลือกบริการ (ช่าง / รถ / S/N) — ดึงจากข้อมูลกลางที่อัปเดตอัตโนมัติ */
 export function useServiceOptions() {
@@ -261,11 +269,46 @@ export function WorkOrderDialog({
   }, [isOpen]);
   const [shareNames, setShareNames] = useState<string[]>([]);
   const [booked, setBooked] = useState(false);
-  const dir = useDirectory();
   const { isAdmin } = useAccess();
-  const delDir = (k: DirectoryKind) => (isAdmin ? (v: string) => void deleteDirectoryEntry(k, v) : undefined);
   const sellerNames = useSellerNames();
-
+  const dir = useDirectory();
+  const delDir = (k: DirectoryKind) =>
+    isAdmin
+      ? async (v: string) => {
+          const ok = await deleteDirectoryEntry(k, v);
+          if (ok) {
+            const target = v.trim().toLowerCase();
+            if (k === "customer" && form.customer_name?.trim().toLowerCase() === target) {
+              setForm((f) => ({
+                ...f,
+                customer_name: "",
+                customer_address: "",
+                contact_phone: "",
+              }));
+            } else if (k === "cust_id" && (form.cust_id ?? "").trim().toLowerCase() === target) {
+              setForm((f) => ({ ...f, cust_id: "" }));
+            } else if (k === "serial") {
+              const remaining = splitNames(form.serial_number).filter(
+                (s) => s.trim().toLowerCase() !== target,
+              );
+              setForm((f) => ({ ...f, serial_number: joinNames(remaining) }));
+            } else if (k === "staff") {
+              const remaining = splitNames(form.staff_name).filter(
+                (s) => s.trim().toLowerCase() !== target,
+              );
+              setForm((f) => ({ ...f, staff_name: joinNames(remaining) }));
+            } else if (k === "vehicle") {
+              const remaining = splitNames(form.vehicle_plate).filter(
+                (p) => p.trim().toLowerCase() !== target,
+              );
+              setForm((f) => ({ ...f, vehicle_plate: joinNames(remaining) }));
+            } else if (k === "seller" && (form.sales_rep ?? "").trim().toLowerCase() === target) {
+              setForm((f) => ({ ...f, sales_rep: "" }));
+            }
+          }
+          return ok;
+        }
+      : undefined;
 
   const set = (k: keyof WorkOrderDraft, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -279,7 +322,9 @@ export function WorkOrderDialog({
         const owner = dir.machines.find((x) => x.serial === s)?.customer;
         return !owner || owner === name;
       });
-      const keptHits = kept.map((s) => dir.machines.find((x) => x.serial === s)).filter(Boolean) as typeof dir.machines;
+      const keptHits = kept
+        .map((s) => dir.machines.find((x) => x.serial === s))
+        .filter(Boolean) as typeof dir.machines;
       const src = keptHits[0] ?? (owned.length === 1 ? m : undefined);
       return {
         ...f,
@@ -305,9 +350,11 @@ export function WorkOrderDialog({
     setForm((f) => ({
       ...f,
       serial_number: joinNames(serials),
-      machine_label: joinNames(Array.from(new Set(hits.map((h) => h.label).filter(Boolean)))) || f.machine_label,
+      machine_label:
+        joinNames(Array.from(new Set(hits.map((h) => h.label).filter(Boolean)))) || f.machine_label,
       customer_sn:
-        joinNames(Array.from(new Set(hits.map((h) => h.customer_sn).filter(Boolean)))) || f.customer_sn,
+        joinNames(Array.from(new Set(hits.map((h) => h.customer_sn).filter(Boolean)))) ||
+        f.customer_sn,
       customer_name: first?.customer || f.customer_name,
       cust_id: first?.cust_id || f.cust_id,
       customer_address: first?.address || f.customer_address,
@@ -315,7 +362,6 @@ export function WorkOrderDialog({
       sales_rep: first?.seller || f.sales_rep,
     }));
   };
-
 
   const customerOptions = dir.customers.map((c) => ({
     value: c.name,
@@ -337,20 +383,26 @@ export function WorkOrderDialog({
     .filter((m) => !form.customer_name || m.customer === form.customer_name)
     .map((m) => m.serial)
     .filter(Boolean);
-  const machineLabels = Array.from(new Set(dir.machines.map((m) => m.label).filter(Boolean))).map((l) => ({ value: l }));
+  const machineLabels = Array.from(new Set(dir.machines.map((m) => m.label).filter(Boolean))).map(
+    (l) => ({ value: l }),
+  );
   const addressOptions = Array.from(
-    new Set([...dir.customers.map((c) => c.address), ...dir.machines.map((m) => m.address)].filter(Boolean)),
+    new Set(
+      [...dir.customers.map((c) => c.address), ...dir.machines.map((m) => m.address)].filter(
+        Boolean,
+      ),
+    ),
   ).map((a) => ({ value: a }));
   const phoneOptions = Array.from(
-    new Set([...dir.customers.map((c) => c.phone), ...dir.machines.map((m) => m.phone)].filter(Boolean)),
+    new Set(
+      [...dir.customers.map((c) => c.phone), ...dir.machines.map((m) => m.phone)].filter(Boolean),
+    ),
   ).map((p) => ({ value: p }));
   const sellerOptions = Array.from(
     new Set([...dir.machines.map((m) => m.seller), ...sellerNames].filter(Boolean)),
   ).map((s) => ({
     value: s,
   }));
-
-
 
   const submit = async () => {
     if (!form.customer_name.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
@@ -368,7 +420,12 @@ export function WorkOrderDialog({
       staff_name: form.staff_name,
       vehicle_plate: plates[0] ?? "",
     });
-    for (const s of serials.slice(1)) await ensureDirectoryEntries({ customer_name: form.customer_name, serial_number: s, machine_label: form.machine_label });
+    for (const s of serials.slice(1))
+      await ensureDirectoryEntries({
+        customer_name: form.customer_name,
+        serial_number: s,
+        machine_label: form.machine_label,
+      });
     for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
     await ensureSeller(form.sales_rep);
 
@@ -459,7 +516,9 @@ export function WorkOrderDialog({
         <DialogContent className="w-[calc(100vw-1rem)] max-w-none sm:w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>ใบสั่งงานใหม่</DialogTitle>
-            <DialogDescription>เลือกข้อมูลจากรายการที่มีในระบบ ระบบจะส่งให้แอดมินตรวจสอบก่อนขึ้นปฏิทิน</DialogDescription>
+            <DialogDescription>
+              เลือกข้อมูลจากรายการที่มีในระบบ ระบบจะส่งให้แอดมินตรวจสอบก่อนขึ้นปฏิทิน
+            </DialogDescription>
           </DialogHeader>
 
           {/* แถวบน: ช่าง / รถ (อัปเดตอัตโนมัติจากฐานข้อมูล) */}
@@ -467,7 +526,8 @@ export function WorkOrderDialog({
             <Field label="พนักงานเซอร์วิสที่ต้องการ (เลือกได้หลายคน)">
               <MultiCombobox
                 values={splitNames(form.staff_name)}
-                onChange={(list) => set("staff_name", joinNames(list))} onDelete={delDir("staff")}
+                onChange={(list) => set("staff_name", joinNames(list))}
+                onDelete={delDir("staff")}
                 options={dir.staff}
                 placeholder="เลือกช่าง (ติ๊กได้หลายคน)"
                 searchPlaceholder="ค้นหาช่าง..."
@@ -476,7 +536,8 @@ export function WorkOrderDialog({
             <Field label="ทะเบียนรถที่ใช้เดินทาง (เลือกได้หลายคัน)">
               <MultiCombobox
                 values={splitNames(form.vehicle_plate)}
-                onChange={(list) => set("vehicle_plate", joinNames(list))} onDelete={delDir("vehicle")}
+                onChange={(list) => set("vehicle_plate", joinNames(list))}
+                onDelete={delDir("vehicle")}
                 options={dir.vehicles}
                 placeholder="ติ๊กเลือกทะเบียนรถ"
                 searchPlaceholder="ค้นหาทะเบียนรถ..."
@@ -491,7 +552,8 @@ export function WorkOrderDialog({
             <Field label="พนักงานขาย (เซลล์) ที่ดูแล">
               <Combobox
                 value={form.sales_rep}
-                onChange={(v) => set("sales_rep", v)} onDelete={delDir("seller")}
+                onChange={(v) => set("sales_rep", v)}
+                onDelete={delDir("seller")}
                 options={sellerOptions}
                 allowCustom
                 placeholder="ชื่อเซลล์ผู้ดูแลลูกค้า (เติมอัตโนมัติจากเครื่อง)"
@@ -511,7 +573,11 @@ export function WorkOrderDialog({
               <DateInput value={form.visit_date} onChange={(v) => set("visit_date", v)} />
             </Field>
             <Field label="เวลานัดหมาย">
-              <Input type="time" value={form.visit_time} onChange={(e) => set("visit_time", e.target.value)} />
+              <Input
+                type="time"
+                value={form.visit_time}
+                onChange={(e) => set("visit_time", e.target.value)}
+              />
             </Field>
           </Section>
 
@@ -519,7 +585,8 @@ export function WorkOrderDialog({
             <Field label="รหัสลูกค้า (cust_id)">
               <Combobox
                 value={form.cust_id}
-                onChange={pickCustId} onDelete={delDir("cust_id")}
+                onChange={pickCustId}
+                onDelete={delDir("cust_id")}
                 options={custIdOptions}
                 allowCustom
                 placeholder="เลือก / พิมพ์รหัสลูกค้า"
@@ -529,17 +596,25 @@ export function WorkOrderDialog({
             <Field label="ชื่อลูกค้า *">
               <Combobox
                 value={form.customer_name}
-                onChange={pickCustomer} onDelete={delDir("customer")}
+                onChange={pickCustomer}
+                onDelete={delDir("customer")}
                 options={customerOptions}
                 allowCustom
                 placeholder="เลือกลูกค้า"
                 searchPlaceholder="ค้นหาลูกค้า..."
               />
             </Field>
-            <Field label={form.customer_name ? `หมายเลขเครื่อง (S/N) — ของ ${form.customer_name}` : "หมายเลขเครื่อง (S/N) (เลือกได้หลายเครื่อง)"}>
+            <Field
+              label={
+                form.customer_name
+                  ? `หมายเลขเครื่อง (S/N) — ของ ${form.customer_name}`
+                  : "หมายเลขเครื่อง (S/N) (เลือกได้หลายเครื่อง)"
+              }
+            >
               <MultiCombobox
                 values={splitNames(form.serial_number)}
-                onChange={pickSerials} onDelete={delDir("serial")}
+                onChange={pickSerials}
+                onDelete={delDir("serial")}
                 options={serialOptions}
                 placeholder="ติ๊กเลือก S/N"
                 searchPlaceholder="ค้นหา S/N..."
@@ -563,7 +638,10 @@ export function WorkOrderDialog({
               />
             </Field>
             <Field label="ชื่อผู้ติดต่อ">
-              <Input value={form.contact_name} onChange={(e) => set("contact_name", e.target.value)} />
+              <Input
+                value={form.contact_name}
+                onChange={(e) => set("contact_name", e.target.value)}
+              />
             </Field>
             <Field label="เบอร์โทรผู้ติดต่อ">
               <Combobox
@@ -600,7 +678,10 @@ export function WorkOrderDialog({
             </Field>
             <div className="md:col-span-2">
               <Field label="หมายเหตุการเงิน">
-                <Input value={form.billing_note} onChange={(e) => set("billing_note", e.target.value)} />
+                <Input
+                  value={form.billing_note}
+                  onChange={(e) => set("billing_note", e.target.value)}
+                />
               </Field>
             </div>
           </Section>
@@ -626,33 +707,50 @@ export function WorkOrderDialog({
             </Field>
             <div className="md:col-span-2">
               <Field label="งานที่ทำ / รายละเอียดปัญหา *">
-                <Textarea rows={3} value={form.job_detail} onChange={(e) => set("job_detail", e.target.value)} />
+                <Textarea
+                  rows={3}
+                  value={form.job_detail}
+                  onChange={(e) => set("job_detail", e.target.value)}
+                />
               </Field>
             </div>
           </Section>
 
           <Section title="การเดินทาง">
             <Field label="เวลาออกเดินทาง">
-              <Input type="time" value={form.depart_time} onChange={(e) => set("depart_time", e.target.value)} />
+              <Input
+                type="time"
+                value={form.depart_time}
+                onChange={(e) => set("depart_time", e.target.value)}
+              />
             </Field>
             <Field label="เวลากลับถึงบริษัท (โดยประมาณ)">
-              <Input type="time" value={form.return_time} onChange={(e) => set("return_time", e.target.value)} />
+              <Input
+                type="time"
+                value={form.return_time}
+                onChange={(e) => set("return_time", e.target.value)}
+              />
             </Field>
             <div className="md:col-span-2">
               <Field label="หมายเหตุการเดินทาง / เส้นทาง">
-                <Input value={form.logistics_note} onChange={(e) => set("logistics_note", e.target.value)} />
+                <Input
+                  value={form.logistics_note}
+                  onChange={(e) => set("logistics_note", e.target.value)}
+                />
               </Field>
             </div>
           </Section>
 
           <Section title="รูปภาพ / คลิปหน้างาน (ไฟล์แนบ)">
             <div className="md:col-span-2">
-              <JobAttachments value={form.attachments} onChange={(v) => set("attachments", v ?? "")} />
+              <JobAttachments
+                value={form.attachments}
+                onChange={(v) => set("attachments", v ?? "")}
+              />
             </div>
           </Section>
 
           <Section title="อุปกรณ์เซฟตี้ที่ต้องเตรียม">
-
             <div className="md:col-span-2">
               <Field label="อุปกรณ์เซฟตี้ (เลือกได้หลายอย่าง)">
                 <MultiCombobox

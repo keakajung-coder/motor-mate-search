@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { storedAdminCode } from "@/lib/access";
 
-export type AuditAction = "create" | "update" | "delete";
+export type AuditAction = "create" | "update" | "delete" | "soft_delete" | "restore";
 
 export type AuditRow = {
   id: string;
@@ -41,4 +41,6 @@ export const AUDIT_ACTION_TH: Record<string, string> = {
   create: "เพิ่มข้อมูล",
   update: "แก้ไขข้อมูล",
   delete: "ลบข้อมูล",
+  soft_delete: "ลบชั่วคราว (ถังขยะ)",
+  restore: "กู้คืนข้อมูล",
 };

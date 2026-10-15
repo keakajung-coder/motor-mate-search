@@ -13,8 +13,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
-import { Wrench, CalendarDays } from "lucide-react";
-import { AccessProvider } from "@/lib/access";
+import { Wrench, CalendarDays, Trash2 } from "lucide-react";
+import { AccessProvider, useAccess } from "@/lib/access";
 import { AccessGate, AdminLockButton } from "@/components/AccessGate";
 import { setupPwa } from "@/lib/pwa";
 import { useMyIssueReplies } from "@/lib/issue-watch";
@@ -30,7 +30,9 @@ function NotFoundComponent() {
       <div className="w-full text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">ไม่พบหน้านี้</h2>
-        <p className="mt-2 text-sm text-muted-foreground">หน้าที่คุณค้นหาไม่มีอยู่หรือถูกย้ายไปแล้ว</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          หน้าที่คุณค้นหาไม่มีอยู่หรือถูกย้ายไปแล้ว
+        </p>
         <div className="mt-6">
           <Link
             to="/"
@@ -48,14 +50,20 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error instanceof Error ? error : new Error(String(error)), { boundary: "tanstack_root_error_component" });
+    reportLovableError(error instanceof Error ? error : new Error(String(error)), {
+      boundary: "tanstack_root_error_component",
+    });
   }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">โหลดหน้านี้ไม่สำเร็จ</h1>
-        <p className="mt-2 text-sm text-muted-foreground">เกิดข้อผิดพลาด ลองรีเฟรชหรือกลับหน้าแรก</p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          โหลดหน้านี้ไม่สำเร็จ
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          เกิดข้อผิดพลาด ลองรีเฟรชหรือกลับหน้าแรก
+        </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -141,6 +149,8 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function NavBar() {
+  const { isAdmin } = useAccess();
+
   return (
     <header className="min-w-0 border-b bg-card">
       <div className="grid w-full min-w-0 grid-cols-1 gap-2 px-3 py-3 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
@@ -170,6 +180,15 @@ function NavBar() {
           >
             จัดการข้อมูล
           </Link>
+          {isAdmin && (
+            <Link
+              to="/trash"
+              className="flex items-center gap-1 rounded-md px-3 py-2 text-destructive hover:bg-destructive/10 [&.active]:bg-destructive/15 [&.active]:font-medium"
+            >
+              <Trash2 className="h-4 w-4" />
+              ถังขยะ / กู้คืน
+            </Link>
+          )}
           <ThemeQuickToggle />
           <NotificationBell />
           <AdminLockButton />

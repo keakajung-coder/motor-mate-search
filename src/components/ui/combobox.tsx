@@ -52,9 +52,15 @@ export function Combobox({
           variant="outline"
           role="combobox"
           disabled={disabled}
-          className={cn("h-11 min-w-0 w-full justify-between font-normal", !value && "text-muted-foreground", className)}
+          className={cn(
+            "h-11 min-w-0 w-full justify-between font-normal",
+            !value && "text-muted-foreground",
+            className,
+          )}
         >
-          <span className="min-w-0 truncate">{value ? current?.label ?? value : placeholder}</span>
+          <span className="min-w-0 truncate">
+            {value ? (current?.label ?? value) : placeholder}
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -64,7 +70,9 @@ export function Combobox({
         >
           <CommandInput placeholder={searchPlaceholder} value={query} onValueChange={setQuery} />
           <CommandList>
-            <CommandEmpty className="px-3 py-3 text-sm text-muted-foreground">ไม่พบข้อมูล</CommandEmpty>
+            <CommandEmpty className="px-3 py-3 text-sm text-muted-foreground">
+              ไม่พบข้อมูล
+            </CommandEmpty>
             <CommandGroup>
               {allowCustom && q && !exists && (
                 <CommandItem
@@ -99,27 +107,41 @@ export function Combobox({
                     setQuery("");
                   }}
                 >
-                  <Check className={cn("mr-2 h-4 w-4", value === o.value ? "opacity-100" : "opacity-0")} />
+                  <Check
+                    className={cn("mr-2 h-4 w-4", value === o.value ? "opacity-100" : "opacity-0")}
+                  />
                   <span className="flex-1 truncate">
                     {o.label ?? o.value}
                     {o.hint && <span className="ml-2 text-xs text-muted-foreground">{o.hint}</span>}
                   </span>
-                    {onDelete && options.some((x) => x === o) && (
-                      <button
-                        type="button"
-                        aria-label="ลบออกจากฐานข้อมูล"
-                        title="ลบออกจากฐานข้อมูล (แอดมิน)"
-                        className="ml-1 rounded p-1 text-destructive hover:bg-destructive/10"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (window.confirm(`ลบ "${o.value}" ออกจากฐานข้อมูลกลาง?`)) onDelete(o.value);
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+                  {onDelete && options.some((x) => x === o) && (
+                    <button
+                      type="button"
+                      aria-label="ลบออกจากฐานข้อมูล"
+                      title="ลบออกจากฐานข้อมูล (แอดมิน)"
+                      className="ml-1 rounded p-1 text-destructive hover:bg-destructive/10"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (window.confirm(`ลบ "${o.value}" ออกจากฐานข้อมูลกลาง?`)) {
+                          try {
+                            await onDelete(o.value);
+                          } catch (err) {
+                            console.error(err);
+                          }
+                          if (
+                            value &&
+                            value.trim().toLowerCase() === o.value.trim().toLowerCase()
+                          ) {
+                            onChange("");
+                          }
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

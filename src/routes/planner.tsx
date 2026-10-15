@@ -22,8 +22,6 @@ import { loadAutoJobAlert, saveAutoJobAlert, sendJobApprovalAlert } from "@/lib/
 import { ensureSeller, useSellerNames } from "@/lib/sellers";
 import { JobAttachments } from "@/components/JobAttachments";
 
-
-
 import {
   AlertTriangle,
   CalendarDays,
@@ -51,18 +49,34 @@ import {
   Palmtree,
 } from "lucide-react";
 import { useHolidays, type Holiday } from "@/lib/holidays";
-import {
-  HolidayManagerDialog,
-  HolidayFormDialog,
-  HolidayBanner,
-} from "@/components/HolidayDialog";
+import { HolidayManagerDialog, HolidayFormDialog, HolidayBanner } from "@/components/HolidayDialog";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { SERVICE_TYPES, useServiceOptions, WorkOrderDialog, WorkOrderFormPrint, type WorkOrderDraft } from "@/components/WorkOrderDialog";
+import {
+  SERVICE_TYPES,
+  useServiceOptions,
+  WorkOrderDialog,
+  WorkOrderFormPrint,
+  type WorkOrderDraft,
+} from "@/components/WorkOrderDialog";
 import { Combobox } from "@/components/ui/combobox";
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
-import { deleteDirectoryEntry, ensureDirectoryEntries, ensureParts, useDirectory, type DirectoryKind } from "@/lib/directory";
-import { elementToPdfBlobPaged, formatDate, safePixelRatio, waitForPaint, isMachineComplete, saveFile, shareOrDownload } from "@/lib/report";
+import {
+  deleteDirectoryEntry,
+  ensureDirectoryEntries,
+  ensureParts,
+  useDirectory,
+  type DirectoryKind,
+} from "@/lib/directory";
+import {
+  elementToPdfBlobPaged,
+  formatDate,
+  safePixelRatio,
+  waitForPaint,
+  isMachineComplete,
+  saveFile,
+  shareOrDownload,
+} from "@/lib/report";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { JobReportsPanel } from "@/components/JobReportsPanel";
 import { PART_CATEGORIES } from "@/lib/job-fields";
@@ -72,8 +86,13 @@ import type { StaffLeave } from "@/lib/staff-leave";
 import { checkScheduleConflicts } from "@/lib/schedule-check";
 import { ChecklistForm } from "@/components/ChecklistForm";
 import { ChecklistView } from "@/components/ChecklistView";
-import { loadTemplates, matchesType, newResult, type ChecklistResult, type ChecklistTemplate } from "@/lib/checklist";
-
+import {
+  loadTemplates,
+  matchesType,
+  newResult,
+  type ChecklistResult,
+  type ChecklistTemplate,
+} from "@/lib/checklist";
 
 export const Route = createFileRoute("/planner")({
   validateSearch: (
@@ -90,16 +109,21 @@ export const Route = createFileRoute("/planner")({
   head: () => ({
     meta: [
       { title: "ปฏิทินนัดหมายบริการ - อะไหล่ปั๊มลม" },
-      { name: "description", content: "ตารางแพลนเนอร์นัดหมายเข้าบริการ ใบสั่งงาน และแจ้งเตือนอายุอะไหล่ล่วงหน้า" },
+      {
+        name: "description",
+        content: "ตารางแพลนเนอร์นัดหมายเข้าบริการ ใบสั่งงาน และแจ้งเตือนอายุอะไหล่ล่วงหน้า",
+      },
       { property: "og:title", content: "ปฏิทินนัดหมายบริการปั๊มลม" },
-      { property: "og:description", content: "วางแผนงานเซอร์วิส ติดตามสถานะงาน และแจ้งเตือนเปลี่ยนอะไหล่ล่วงหน้า 30 วัน" },
+      {
+        property: "og:description",
+        content: "วางแผนงานเซอร์วิส ติดตามสถานะงาน และแจ้งเตือนเปลี่ยนอะไหล่ล่วงหน้า 30 วัน",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
   }),
   component: PlannerPage,
 });
-
 
 type Appointment = {
   id: string;
@@ -151,11 +175,27 @@ const STATUS_LABEL: Record<string, string> = {
 type StatusStage = "pending" | "active" | "completed";
 // เหลือง = กด "นัดหมายแล้ว" หรือ "เริ่มดำเนินการ" เท่านั้น, แดง = ยังไม่กด, เขียว = ปิดงาน
 const statusStage = (status?: string | null): StatusStage =>
-  status === "closed" ? "completed" : status === "scheduled" || status === "in_progress" ? "active" : "pending";
+  status === "closed"
+    ? "completed"
+    : status === "scheduled" || status === "in_progress"
+      ? "active"
+      : "pending";
 const STATUS_STAGE_STYLE: Record<StatusStage, { rail: string; badge: string; label: string }> = {
-  pending: { rail: "bg-red-500", badge: "border-red-300 bg-red-50 text-red-700", label: "ยังไม่ไป" },
-  active: { rail: "bg-amber-400", badge: "border-amber-300 bg-amber-50 text-amber-800", label: "รอ / นัดหมายแล้ว" },
-  completed: { rail: "bg-emerald-500", badge: "border-emerald-300 bg-emerald-50 text-emerald-700", label: "ปิดงานแล้ว" },
+  pending: {
+    rail: "bg-red-500",
+    badge: "border-red-300 bg-red-50 text-red-700",
+    label: "ยังไม่ไป",
+  },
+  active: {
+    rail: "bg-amber-400",
+    badge: "border-amber-300 bg-amber-50 text-amber-800",
+    label: "รอ / นัดหมายแล้ว",
+  },
+  completed: {
+    rail: "bg-emerald-500",
+    badge: "border-emerald-300 bg-emerald-50 text-emerald-700",
+    label: "ปิดงานแล้ว",
+  },
 };
 
 const STAGE_BG: Record<StatusStage, string> = {
@@ -166,14 +206,29 @@ const STAGE_BG: Record<StatusStage, string> = {
 
 function StatusRail({ status }: { status?: string | null }) {
   const style = STATUS_STAGE_STYLE[statusStage(status)];
-  return <span aria-hidden="true" className={`absolute inset-y-0 left-1 w-1.5 rounded-full ${style.rail}`} />;
+  return (
+    <span
+      aria-hidden="true"
+      className={`absolute inset-y-0 left-1 w-1.5 rounded-full ${style.rail}`}
+    />
+  );
 }
 
-function JobStatusBadge({ status, compact = false }: { status?: string | null; compact?: boolean }) {
+function JobStatusBadge({
+  status,
+  compact = false,
+}: {
+  status?: string | null;
+  compact?: boolean;
+}) {
   const style = STATUS_STAGE_STYLE[statusStage(status)];
   return (
     <Badge variant="outline" className={`${style.badge} ${compact ? "px-1 py-0 text-[9px]" : ""}`}>
-      {status === "in_progress" ? "กำลังดำเนินการ" : status === "scheduled" ? "นัดหมายแล้ว" : style.label}
+      {status === "in_progress"
+        ? "กำลังดำเนินการ"
+        : status === "scheduled"
+          ? "นัดหมายแล้ว"
+          : style.label}
     </Badge>
   );
 }
@@ -183,7 +238,12 @@ function StatusLegend() {
     <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
       {(Object.keys(STATUS_STAGE_STYLE) as StatusStage[]).map((stage) => {
         const item = STATUS_STAGE_STYLE[stage];
-        return <span key={stage} className="flex items-center gap-1.5"><span className={`h-3 w-1.5 rounded-full ${item.rail}`} />{item.label}</span>;
+        return (
+          <span key={stage} className="flex items-center gap-1.5">
+            <span className={`h-3 w-1.5 rounded-full ${item.rail}`} />
+            {item.label}
+          </span>
+        );
       })}
     </div>
   );
@@ -200,14 +260,34 @@ const addDays = (d: Date, n: number) => {
 };
 const startOfWeek = (d: Date) => addDays(d, -((d.getDay() + 6) % 7));
 const TH_MONTHS = [
-  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+  "มกราคม",
+  "กุมภาพันธ์",
+  "มีนาคม",
+  "เมษายน",
+  "พฤษภาคม",
+  "มิถุนายน",
+  "กรกฎาคม",
+  "สิงหาคม",
+  "กันยายน",
+  "ตุลาคม",
+  "พฤศจิกายน",
+  "ธันวาคม",
 ];
 const TH_DOW = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
 const TH_DOW_FULL = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 const TH_MONTHS_SHORT = [
-  "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
-  "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
+  "ม.ค.",
+  "ก.พ.",
+  "มี.ค.",
+  "เม.ย.",
+  "พ.ค.",
+  "มิ.ย.",
+  "ก.ค.",
+  "ส.ค.",
+  "ก.ย.",
+  "ต.ค.",
+  "พ.ย.",
+  "ธ.ค.",
 ];
 /** หัวข้อวันที่แบบไทยเต็ม เช่น 25 ส.ค. 2569 */
 const thaiCellDate = (d: Date) =>
@@ -217,22 +297,21 @@ const thaiCellDate = (d: Date) =>
 function byVehicleThenTime(a: Appointment, b: Appointment) {
   const plate = (x: Appointment) => (splitNames(x.vehicle_plate)[0] ?? "zzzz").toLowerCase();
   return (
-    plate(a).localeCompare(plate(b), "th") ||
-    (a.visit_time ?? "").localeCompare(b.visit_time ?? "")
+    plate(a).localeCompare(plate(b), "th") || (a.visit_time ?? "").localeCompare(b.visit_time ?? "")
   );
 }
-
-
 
 /** เรียงลำดับรายการนัดหมายตามตัวเลือกของผู้ใช้ */
 function sortApptList(list: Appointment[], sortBy: string): Appointment[] {
   const arr = [...list];
   const th = (a?: string | null, b?: string | null) => (a ?? "").localeCompare(b ?? "", "th");
-  const time = (a: Appointment, b: Appointment) => (a.visit_time ?? "").localeCompare(b.visit_time ?? "");
+  const time = (a: Appointment, b: Appointment) =>
+    (a.visit_time ?? "").localeCompare(b.visit_time ?? "");
   switch (sortBy) {
     case "date-desc":
       return arr.sort((a, b) =>
-        (b.visit_date + (b.visit_time ?? "")).localeCompare(a.visit_date + (a.visit_time ?? "")));
+        (b.visit_date + (b.visit_time ?? "")).localeCompare(a.visit_date + (a.visit_time ?? "")),
+      );
     case "customer":
       return arr.sort((a, b) => th(a.customer_name, b.customer_name) || time(a, b));
     case "staff":
@@ -274,7 +353,6 @@ function FoldSection({
 }
 
 function PlannerPage() {
-
   const { isAdmin } = useAccess();
   const leave = useStaffLeave();
   const [leaveDate, setLeaveDate] = useState<string | null>(null);
@@ -344,9 +422,6 @@ function PlannerPage() {
     navigate({ search: {}, replace: true });
   }, [search.date, navigate]);
 
-
-
-
   const load = useCallback(async () => {
     const [a, w] = await Promise.all([
       supabase.from("appointments").select("*").order("visit_date"),
@@ -360,17 +435,21 @@ function PlannerPage() {
   useEffect(() => {
     load();
     window.addEventListener("app:connection-restored", load);
-    return () => window.removeEventListener("app:connection-restored", load);
+    window.addEventListener("planner:reload", load);
+    return () => {
+      window.removeEventListener("app:connection-restored", load);
+      window.removeEventListener("planner:reload", load);
+    };
   }, [load]);
 
   const staffNames = useMemo(
     () => Array.from(new Set(appts.flatMap((a) => splitNames(a.staff_name)))).sort(),
-    [appts]
+    [appts],
   );
 
   const vehiclePlates = useMemo(
     () => Array.from(new Set(appts.flatMap((a) => splitNames(a.vehicle_plate)))).sort(),
-    [appts]
+    [appts],
   );
 
   const visible = useMemo(
@@ -378,9 +457,9 @@ function PlannerPage() {
       appts.filter(
         (a) =>
           (!staffFilter || splitNames(a.staff_name).includes(staffFilter)) &&
-          (!vehicleFilter || splitNames(a.vehicle_plate).includes(vehicleFilter))
+          (!vehicleFilter || splitNames(a.vehicle_plate).includes(vehicleFilter)),
       ),
-    [appts, staffFilter, vehicleFilter]
+    [appts, staffFilter, vehicleFilter],
   );
 
   const shift = (dir: number) => {
@@ -393,7 +472,12 @@ function PlannerPage() {
 
   const monthName = `${TH_MONTHS[cursor.getMonth()]}-${cursor.getFullYear() + 543}`;
   const viewLabel = view === "month" ? "รายเดือน" : view === "week" ? "รายสัปดาห์" : "รายวัน";
-  const fileLabel = view === "month" ? monthName : view === "week" ? `สัปดาห์-${iso(startOfWeek(cursor))}` : iso(cursor);
+  const fileLabel =
+    view === "month"
+      ? monthName
+      : view === "week"
+        ? `สัปดาห์-${iso(startOfWeek(cursor))}`
+        : iso(cursor);
   const activeRef = view === "month" ? monthRef : view === "week" ? weekRef : dayRef;
 
   /** บันทึกตารางปฏิทินเป็นไฟล์ภาพ หรือ PDF เต็มใบ */
@@ -406,13 +490,20 @@ function PlannerPage() {
           a.cust_id ? `[${a.cust_id}]` : "",
           a.customer_name ?? "",
           `(${STATUS_STAGE_STYLE[statusStage(a.status)].label})`,
-          a.machine_label || a.serial_number ? `\n  ${a.machine_label ?? ""} ${a.serial_number ? "S/N " + a.serial_number : ""}` : "",
+          a.machine_label || a.serial_number
+            ? `\n  ${a.machine_label ?? ""} ${a.serial_number ? "S/N " + a.serial_number : ""}`
+            : "",
           a.staff_name ? `\n  ช่าง: ${a.staff_name}` : "",
           a.sales_rep ? ` · เซลล์: ${a.sales_rep}` : "",
           a.vehicle_plate ? ` · รถ: ${a.vehicle_plate}` : "",
-        ].filter(Boolean).join(" ").trim();
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
       const byDate = (d: string) =>
-        visible.filter((a) => a.visit_date === d).sort((x, y) => (x.visit_time ?? "").localeCompare(y.visit_time ?? ""));
+        visible
+          .filter((a) => a.visit_date === d)
+          .sort((x, y) => (x.visit_time ?? "").localeCompare(y.visit_time ?? ""));
       const sheets: import("@/lib/excel-layout").GridSheet[] = [];
       const titleRow = [`ตารางนัดหมายบริการ · ${title}`];
       if (view === "month") {
@@ -428,29 +519,96 @@ function PlannerPage() {
             const k = iso(d);
             const hol = holidaysMap?.[k];
             const items = byDate(k).map(line);
-            const cell = [`${d.getDate()}${d.getMonth() !== cursor.getMonth() ? " (นอกเดือน)" : ""}${hol ? " 🎌 " + hol.title : ""}`, ...items].join("\n• ");
+            const cell = [
+              `${d.getDate()}${d.getMonth() !== cursor.getMonth() ? " (นอกเดือน)" : ""}${hol ? " 🎌 " + hol.title : ""}`,
+              ...items,
+            ].join("\n• ");
             maxLines = Math.max(maxLines, cell.split("\n").length);
             row.push(cell);
           }
           rows.push(row);
           heights.push(Math.min(409, 15 * maxLines + 6));
         }
-        sheets.push({ name: `เดือน ${title}`, rows, cols: Array(7).fill(32), rowHeights: heights, merges: [{ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }] });
+        sheets.push({
+          name: `เดือน ${title}`,
+          rows,
+          cols: Array(7).fill(32),
+          rowHeights: heights,
+          merges: [{ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }],
+        });
       } else {
-        const days = view === "week" ? Array.from({ length: 7 }, (_, i) => iso(addDays(startOfWeek(cursor), i))) : [iso(cursor)];
-        const head = ["ช่วงเวลา", ...days.map((d) => `${TH_DOW[(new Date(d).getDay() + 6) % 7]} ${formatDate(d)}`)];
+        const days =
+          view === "week"
+            ? Array.from({ length: 7 }, (_, i) => iso(addDays(startOfWeek(cursor), i)))
+            : [iso(cursor)];
+        const head = [
+          "ช่วงเวลา",
+          ...days.map((d) => `${TH_DOW[(new Date(d).getDay() + 6) % 7]} ${formatDate(d)}`),
+        ];
         const part = (from: string, to: string) =>
-          days.map((d) => byDate(d).filter((a) => { const t = a.visit_time ?? "08:00"; return t >= from && t < to; }).map(line).join("\n\n"));
-        const rows = [titleRow.concat(Array(days.length).fill("")), head, ["เช้า (ก่อน 12:00)", ...part("00:00", "12:00")], ["— พักเที่ยง 12:00–13:00 —", ...days.map(() => "")], ["บ่าย (13:00 ขึ้นไป)", ...part("12:00", "24:00")]];
-        const h = (r: string[]) => Math.min(409, 15 * Math.max(1, ...r.map((c) => c.split("\n").length)) + 6);
-        sheets.push({ name: view === "week" ? `สัปดาห์ ${title}` : `วัน ${title}`, rows, cols: [18, ...days.map(() => 36)], rowHeights: rows.map((r, i) => (i < 2 ? 22 : h(r))), merges: [{ s: { r: 0, c: 0 }, e: { r: 0, c: days.length } }, { s: { r: 3, c: 0 }, e: { r: 3, c: days.length } }] });
+          days.map((d) =>
+            byDate(d)
+              .filter((a) => {
+                const t = a.visit_time ?? "08:00";
+                return t >= from && t < to;
+              })
+              .map(line)
+              .join("\n\n"),
+          );
+        const rows = [
+          titleRow.concat(Array(days.length).fill("")),
+          head,
+          ["เช้า (ก่อน 12:00)", ...part("00:00", "12:00")],
+          ["— พักเที่ยง 12:00–13:00 —", ...days.map(() => "")],
+          ["บ่าย (13:00 ขึ้นไป)", ...part("12:00", "24:00")],
+        ];
+        const h = (r: string[]) =>
+          Math.min(409, 15 * Math.max(1, ...r.map((c) => c.split("\n").length)) + 6);
+        sheets.push({
+          name: view === "week" ? `สัปดาห์ ${title}` : `วัน ${title}`,
+          rows,
+          cols: [18, ...days.map(() => 36)],
+          rowHeights: rows.map((r, i) => (i < 2 ? 22 : h(r))),
+          merges: [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: days.length } },
+            { s: { r: 3, c: 0 }, e: { r: 3, c: days.length } },
+          ],
+        });
       }
-      const list = [...visible].sort((x, y) => (x.visit_date + (x.visit_time ?? "")).localeCompare(y.visit_date + (y.visit_time ?? "")));
+      const list = [...visible].sort((x, y) =>
+        (x.visit_date + (x.visit_time ?? "")).localeCompare(y.visit_date + (y.visit_time ?? "")),
+      );
       sheets.push({
         name: "รายการงาน",
         cols: [12, 8, 12, 28, 30, 24, 18, 18, 14, 18, 40],
-        rows: [["วันที่", "เวลา", "รหัสลูกค้า", "ชื่อลูกค้า", "เครื่อง", "S/N", "ช่าง", "เซลล์", "รถ", "สถานะ", "รายละเอียดงาน"],
-          ...list.map((a) => [formatDate(a.visit_date), a.visit_time?.slice(0, 5) ?? "", a.cust_id ?? "", a.customer_name ?? "", a.machine_label ?? "", a.serial_number ?? "", a.staff_name ?? "", a.sales_rep ?? "", a.vehicle_plate ?? "", STATUS_STAGE_STYLE[statusStage(a.status)].label, a.job_detail ?? ""])],
+        rows: [
+          [
+            "วันที่",
+            "เวลา",
+            "รหัสลูกค้า",
+            "ชื่อลูกค้า",
+            "เครื่อง",
+            "S/N",
+            "ช่าง",
+            "เซลล์",
+            "รถ",
+            "สถานะ",
+            "รายละเอียดงาน",
+          ],
+          ...list.map((a) => [
+            formatDate(a.visit_date),
+            a.visit_time?.slice(0, 5) ?? "",
+            a.cust_id ?? "",
+            a.customer_name ?? "",
+            a.machine_label ?? "",
+            a.serial_number ?? "",
+            a.staff_name ?? "",
+            a.sales_rep ?? "",
+            a.vehicle_plate ?? "",
+            STATUS_STAGE_STYLE[statusStage(a.status)].label,
+            a.job_detail ?? "",
+          ]),
+        ],
       });
       const { downloadGridWorkbook } = await import("@/lib/excel-layout");
       await downloadGridWorkbook(sheets, `ตารางงาน-${fileLabel}`);
@@ -466,7 +624,7 @@ function PlannerPage() {
     kind: "image" | "pdf",
     ref: React.RefObject<HTMLDivElement | null>,
     label: string,
-    fileLabel: string
+    fileLabel: string,
   ) => {
     const el = ref.current;
     if (!el) return;
@@ -507,8 +665,6 @@ function PlannerPage() {
     }
   };
 
-
-
   const title =
     view === "month"
       ? `${TH_MONTHS[cursor.getMonth()]} ${cursor.getFullYear() + 543}`
@@ -521,13 +677,21 @@ function PlannerPage() {
       <header className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">ปฏิทินนัดหมายบริการ</h1>
-          <p className="text-sm text-muted-foreground">วางแผนงานเข้าบริการ ตรวจใบสั่งงาน และแจ้งเตือนอะไหล่ล่วงหน้า</p>
+          <p className="text-sm text-muted-foreground">
+            วางแผนงานเข้าบริการ ตรวจใบสั่งงาน และแจ้งเตือนอะไหล่ล่วงหน้า
+          </p>
         </div>
         <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:flex-wrap lg:justify-end">
           <WorkOrderDialog onCreated={load} />
-          <Button variant="outline" className="h-11" onClick={() => setEditing(newAppointment(iso(cursor)))}>
-            <CalendarPlus className="mr-1 h-4 w-4" /> เพิ่มนัดหมายลงปฏิทินโดยตรง
-          </Button>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              className="h-11"
+              onClick={() => setEditing(newAppointment(iso(cursor)))}
+            >
+              <CalendarPlus className="mr-1 h-4 w-4" /> เพิ่มนัดหมายลงปฏิทินโดยตรง
+            </Button>
+          )}
           <Button
             variant="outline"
             className="h-11 border-rose-300/80 bg-rose-50/50 hover:bg-rose-100/70 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 dark:text-rose-200"
@@ -548,7 +712,10 @@ function PlannerPage() {
         </div>
 
         {isAdmin && (
-          <FoldSection title={`ใบสั่งงานรออนุมัติ (${orders.length})`} className="lg:col-span-2 2xl:col-span-1">
+          <FoldSection
+            title={`ใบสั่งงานรออนุมัติ (${orders.length})`}
+            className="lg:col-span-2 2xl:col-span-1"
+          >
             <PendingOrders orders={orders} reload={load} />
           </FoldSection>
         )}
@@ -561,7 +728,10 @@ function PlannerPage() {
           <PartsAlertPanel withActions={isAdmin} />
         </FoldSection>
 
-        <FoldSection title="สรุปใบสั่งงาน (วัน/สัปดาห์/เดือน/ช่วงวันที่)" className="lg:col-span-2 2xl:col-span-1">
+        <FoldSection
+          title="สรุปใบสั่งงาน (วัน/สัปดาห์/เดือน/ช่วงวันที่)"
+          className="lg:col-span-2 2xl:col-span-1"
+        >
           <JobReportsPanel
             onPickDate={(d) => {
               const [y, m, dd] = d.split("-").map(Number);
@@ -680,8 +850,17 @@ function PlannerPage() {
                   )}
                   PDF เต็มใบ
                 </Button>
-                <Button size="sm" variant="outline" disabled={exporting !== ""} onClick={exportExcel}>
-                  {exporting === "excel" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={exporting !== ""}
+                  onClick={exportExcel}
+                >
+                  {exporting === "excel" ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileDown className="mr-1 h-4 w-4" />
+                  )}
                   Excel ตาราง{viewLabel}
                 </Button>
               </>
@@ -713,11 +892,22 @@ function PlannerPage() {
               <span className="leave-marker leave-marker--am">ลาครึ่งวันเช้า</span>
               <span className="leave-marker leave-marker--pm">ลาครึ่งวันบ่าย</span>
               {leavePeople > 0 && (
-                <span className="leave-count">ลางาน {leavePeople} คน · {visibleLeave.length} รายการ</span>
+                <span className="leave-count">
+                  ลางาน {leavePeople} คน · {visibleLeave.length} รายการ
+                </span>
               )}
             </span>
-            {isAdmin && <Button size="sm" variant="outline" onClick={() => setLeaveDate(iso(cursor))}><Palmtree className="size-4" />บันทึกวันลา</Button>}
-            {leave.error && <Button variant="ghost" size="sm" onClick={() => void leave.load()}>{leave.error}</Button>}
+            {isAdmin && (
+              <Button size="sm" variant="outline" onClick={() => setLeaveDate(iso(cursor))}>
+                <Palmtree className="size-4" />
+                บันทึกวันลา
+              </Button>
+            )}
+            {leave.error && (
+              <Button variant="ghost" size="sm" onClick={() => void leave.load()}>
+                {leave.error}
+              </Button>
+            )}
           </div>
           {loading ? (
             <div className="flex justify-center py-10">
@@ -733,7 +923,7 @@ function PlannerPage() {
                 appts={visible}
                 holidaysMap={holidaysMap}
                 onPick={pickAppt}
-                onPickDate={(d) => setEditing(newAppointment(d))}
+                onPickDate={isAdmin ? (d) => setEditing(newAppointment(d)) : undefined}
                 onPickDay={(d) => setDayDetail(d)}
                 onAddHoliday={(d) => {
                   setEditingHoliday(null);
@@ -756,7 +946,11 @@ function PlannerPage() {
                   appts={visible}
                   holidaysMap={holidaysMap}
                   onPick={pickAppt}
-                  onPickSlot={(d, t) => setEditing({ ...newAppointment(d), visit_time: t })}
+                  onPickSlot={
+                    isAdmin
+                      ? (d, t) => setEditing({ ...newAppointment(d), visit_time: t })
+                      : undefined
+                  }
                 />
               </div>
               {view === "day" && (
@@ -784,7 +978,6 @@ function PlannerPage() {
             </div>
           )}
         </CardContent>
-
       </Card>
 
       {dayDetail && (
@@ -815,7 +1008,15 @@ function PlannerPage() {
         />
       )}
 
-      {isAdmin && <StaffLeaveDialog date={leaveDate} onClose={() => setLeaveDate(null)} staff={leave.staff} rows={leave.rows} reload={leave.load} />}
+      {isAdmin && (
+        <StaffLeaveDialog
+          date={leaveDate}
+          onClose={() => setLeaveDate(null)}
+          staff={leave.staff}
+          rows={leave.rows}
+          reload={leave.load}
+        />
+      )}
       <HolidayManagerDialog
         open={holidayManagerOpen}
         onOpenChange={setHolidayManagerOpen}
@@ -859,8 +1060,14 @@ function PlannerPage() {
         <ClosedJobResultDialog
           appt={viewing}
           onClose={() => setViewing(null)}
-          onEditClose={(a) => { setViewing(null); setClosing(a); }}
-          onEditDetail={(a) => { setViewing(null); setEditing(a); }}
+          onEditClose={(a) => {
+            setViewing(null);
+            setClosing(a);
+          }}
+          onEditDetail={(a) => {
+            setViewing(null);
+            setEditing(a);
+          }}
         />
       )}
       {closing && (
@@ -906,7 +1113,11 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
   useEffect(() => {
     (async () => {
       const [m, p] = await Promise.all([
-        supabase.from("machine_units").select("id, serial_number, model_id, customer_id, install_date, daily_hours, seller, status"),
+        supabase
+          .from("machine_units")
+          .select(
+            "id, serial_number, model_id, customer_id, install_date, daily_hours, seller, status",
+          ),
         supabase.from("products").select("id", { count: "exact", head: true }),
       ]);
       const rows = (m.data ?? []) as any[];
@@ -946,7 +1157,11 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
           <p
             className={
               "text-3xl font-bold leading-tight " +
-              (i.tone === "ok" ? "text-emerald-600" : i.tone === "warn" ? "text-orange-600" : "text-foreground")
+              (i.tone === "ok"
+                ? "text-emerald-600"
+                : i.tone === "warn"
+                  ? "text-orange-600"
+                  : "text-foreground")
             }
           >
             {i.value}
@@ -962,11 +1177,31 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
 /** แปลงใบงานเดิมเป็นค่าเริ่มต้นของฟอร์มใบสั่งงาน (ใช้ตอนคัดลอกใบงาน) — แก้ไขได้ทุกช่องก่อนบันทึก */
 function workOrderToDraft(o: WorkOrder): Partial<WorkOrderDraft> {
   const keys: (keyof WorkOrderDraft)[] = [
-    "cust_id", "customer_name", "customer_address", "contact_name", "contact_phone",
-    "machine_label", "serial_number", "customer_sn", "job_detail", "service_type",
-    "visit_date", "visit_time", "staff_name", "vehicle_plate", "sales_rep",
-    "priority", "billing_type", "po_number", "billing_note", "work_types",
-    "depart_time", "return_time", "logistics_note", "safety_gear", "attachments",
+    "cust_id",
+    "customer_name",
+    "customer_address",
+    "contact_name",
+    "contact_phone",
+    "machine_label",
+    "serial_number",
+    "customer_sn",
+    "job_detail",
+    "service_type",
+    "visit_date",
+    "visit_time",
+    "staff_name",
+    "vehicle_plate",
+    "sales_rep",
+    "priority",
+    "billing_type",
+    "po_number",
+    "billing_note",
+    "work_types",
+    "depart_time",
+    "return_time",
+    "logistics_note",
+    "safety_gear",
+    "attachments",
   ];
   const draft: Partial<WorkOrderDraft> = {};
   for (const k of keys) draft[k] = (o as unknown as Record<string, string | null>)[k] ?? "";
@@ -985,20 +1220,24 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
     loadAutoJobAlert().then(setAutoAlert);
   }, []);
 
-
   const patch = (id: string, k: keyof WorkOrder, v: string) =>
     setEdit((e) => ({ ...e, [id]: { ...e[id], [k]: v } }));
 
   /** ค่าปัจจุบันของช่อง (ค่าที่แอดมินแก้ไว้ ถ้ายังไม่แก้ใช้ค่าเดิม) */
   const val = (o: WorkOrder, k: keyof WorkOrder) =>
-    ((edit[o.id]?.[k] as string | null | undefined) ?? (o[k] as string | null | undefined) ?? "") as string;
+    ((edit[o.id]?.[k] as string | null | undefined) ??
+      (o[k] as string | null | undefined) ??
+      "") as string;
 
   /** บันทึกการแก้ไขลงใบสั่งงานเดิม (ยังไม่อนุมัติ) */
   const saveEdits = async (o: WorkOrder) => {
     const p = edit[o.id];
     if (!p || Object.keys(p).length === 0) return toast.message("ยังไม่มีการแก้ไข");
     setBusy(o.id);
-    const { error } = await supabase.from("work_orders").update(p as never).eq("id", o.id);
+    const { error } = await supabase
+      .from("work_orders")
+      .update(p as never)
+      .eq("id", o.id);
     setBusy(null);
     if (error) return toast.error(error.message);
     toast.success("บันทึกการแก้ไขใบสั่งงานแล้ว");
@@ -1006,13 +1245,18 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
     reload();
   };
 
-
   const approve = async (o: WorkOrder) => {
     const p = edit[o.id] ?? {};
     const m = { ...o, ...p } as WorkOrder & Record<string, any>;
     if (m.visit_date) {
-      const conflicts = await checkScheduleConflicts({ visit_date: m.visit_date, visit_time: m.visit_time, staff_name: m.staff_name, vehicle_plate: m.vehicle_plate });
-      if (conflicts.length) return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
+      const conflicts = await checkScheduleConflicts({
+        visit_date: m.visit_date,
+        visit_time: m.visit_time,
+        staff_name: m.staff_name,
+        vehicle_plate: m.vehicle_plate,
+      });
+      if (conflicts.length)
+        return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
     }
     setBusy(o.id);
     const { data: unit } = await supabase
@@ -1056,7 +1300,10 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
     if (!error)
       await supabase
         .from("work_orders")
-        .update({ ...(p as Record<string, unknown>), status: o.status === "scheduled" ? "scheduled" : "approved" } as never)
+        .update({
+          ...(p as Record<string, unknown>),
+          status: o.status === "scheduled" ? "scheduled" : "approved",
+        } as never)
         .eq("id", o.id);
 
     setBusy(null);
@@ -1078,9 +1325,11 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
     );
   };
 
-
   const reject = async (o: WorkOrder) => {
-    const { error } = await supabase.from("work_orders").update({ status: "rejected" }).eq("id", o.id);
+    const { error } = await supabase
+      .from("work_orders")
+      .update({ status: "rejected" })
+      .eq("id", o.id);
     if (error) return toast.error(error.message);
     toast.message("ปฏิเสธใบสั่งงานแล้ว");
     reload();
@@ -1110,18 +1359,30 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {orders.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีใบสั่งงานรอตรวจ</p>}
+        {orders.length === 0 && (
+          <p className="text-sm text-muted-foreground">ไม่มีใบสั่งงานรอตรวจ</p>
+        )}
         {orders.map((o) => (
-          <div key={o.id} className="relative space-y-3 overflow-hidden rounded-lg border py-3 pl-6 pr-3">
+          <div
+            key={o.id}
+            className="relative space-y-3 overflow-hidden rounded-lg border py-3 pl-6 pr-3"
+          >
             <StatusRail status="pending" />
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="break-words font-semibold leading-snug">{o.cust_id ? `[${o.cust_id}] ` : ""}{val(o, "customer_name")}</p>
-                <p className="break-words text-xs leading-snug text-muted-foreground">
-                  {[val(o, "machine_label"), val(o, "serial_number"), val(o, "service_type")].filter(Boolean).join(" · ")}
+                <p className="break-words font-semibold leading-snug">
+                  {o.cust_id ? `[${o.cust_id}] ` : ""}
+                  {val(o, "customer_name")}
                 </p>
                 <p className="break-words text-xs leading-snug text-muted-foreground">
-                  {[val(o, "contact_name"), val(o, "contact_phone"), val(o, "customer_address")].filter(Boolean).join(" · ")}
+                  {[val(o, "machine_label"), val(o, "serial_number"), val(o, "service_type")]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+                <p className="break-words text-xs leading-snug text-muted-foreground">
+                  {[val(o, "contact_name"), val(o, "contact_phone"), val(o, "customer_address")]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               </div>
               <JobStatusBadge status="pending" />
@@ -1182,25 +1443,46 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
             {openEdit[o.id] && (
               <div className="grid min-w-0 grid-cols-1 gap-2 rounded-lg border bg-muted/30 p-3 lg:grid-cols-2">
                 <EditField label="รหัสลูกค้า (cust_id)">
-                  <Input value={val(o, "cust_id")} onChange={(e) => patch(o.id, "cust_id", e.target.value)} />
+                  <Input
+                    value={val(o, "cust_id")}
+                    onChange={(e) => patch(o.id, "cust_id", e.target.value)}
+                  />
                 </EditField>
                 <EditField label="ชื่อลูกค้า">
-                  <Input value={val(o, "customer_name")} onChange={(e) => patch(o.id, "customer_name", e.target.value)} />
+                  <Input
+                    value={val(o, "customer_name")}
+                    onChange={(e) => patch(o.id, "customer_name", e.target.value)}
+                  />
                 </EditField>
                 <EditField label="ที่อยู่ลูกค้า">
-                  <Input value={val(o, "customer_address")} onChange={(e) => patch(o.id, "customer_address", e.target.value)} />
+                  <Input
+                    value={val(o, "customer_address")}
+                    onChange={(e) => patch(o.id, "customer_address", e.target.value)}
+                  />
                 </EditField>
                 <EditField label="ชื่อผู้ติดต่อ">
-                  <Input value={val(o, "contact_name")} onChange={(e) => patch(o.id, "contact_name", e.target.value)} />
+                  <Input
+                    value={val(o, "contact_name")}
+                    onChange={(e) => patch(o.id, "contact_name", e.target.value)}
+                  />
                 </EditField>
                 <EditField label="เบอร์โทรผู้ติดต่อ">
-                  <Input value={val(o, "contact_phone")} onChange={(e) => patch(o.id, "contact_phone", e.target.value)} />
+                  <Input
+                    value={val(o, "contact_phone")}
+                    onChange={(e) => patch(o.id, "contact_phone", e.target.value)}
+                  />
                 </EditField>
                 <EditField label="เครื่อง (ยี่ห้อ/รุ่น)">
-                  <Input value={val(o, "machine_label")} onChange={(e) => patch(o.id, "machine_label", e.target.value)} />
+                  <Input
+                    value={val(o, "machine_label")}
+                    onChange={(e) => patch(o.id, "machine_label", e.target.value)}
+                  />
                 </EditField>
                 <EditField label="หมายเลขเครื่อง (S/N)">
-                  <Input value={val(o, "serial_number")} onChange={(e) => patch(o.id, "serial_number", e.target.value)} />
+                  <Input
+                    value={val(o, "serial_number")}
+                    onChange={(e) => patch(o.id, "serial_number", e.target.value)}
+                  />
                 </EditField>
                 <EditField label="ประเภทเซอร์วิส">
                   <MultiCombobox
@@ -1219,12 +1501,22 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
                 </EditField>
                 <div className="sm:col-span-2">
                   <EditField label="รายละเอียดงาน">
-                    <Textarea rows={3} value={val(o, "job_detail")} onChange={(e) => patch(o.id, "job_detail", e.target.value)} />
+                    <Textarea
+                      rows={3}
+                      value={val(o, "job_detail")}
+                      onChange={(e) => patch(o.id, "job_detail", e.target.value)}
+                    />
                   </EditField>
                 </div>
                 <div className="sm:col-span-2">
-                  <Button size="sm" variant="secondary" onClick={() => saveEdits(o)} disabled={busy === o.id}>
-                    {busy === o.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} บันทึกการแก้ไข
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => saveEdits(o)}
+                    disabled={busy === o.id}
+                  >
+                    {busy === o.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}{" "}
+                    บันทึกการแก้ไข
                   </Button>
                 </div>
               </div>
@@ -1232,7 +1524,11 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
 
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => approve(o)} disabled={busy === o.id}>
-                {busy === o.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
+                {busy === o.id ? (
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-1 h-4 w-4" />
+                )}
                 อนุมัติ
               </Button>
               <Button size="sm" variant="secondary" onClick={() => shareNow(o)}>
@@ -1299,34 +1595,66 @@ function ApprovedOrders({
 
   const loadApproved = useCallback(async () => {
     const [{ data: workOrders }, { data: apptRows }] = await Promise.all([
-      supabase.from("work_orders").select("*").in("status", ["approved", "scheduled", "in_progress", "closed"]).order("created_at", { ascending: false }).limit(50),
+      supabase
+        .from("work_orders")
+        .select("*")
+        .in("status", ["approved", "scheduled", "in_progress", "closed"])
+        .order("created_at", { ascending: false })
+        .limit(50),
       supabase.from("appointments").select("*").not("work_order_id", "is", null),
     ]);
     const nextRows = (workOrders ?? []) as unknown as WorkOrder[];
     const nextAppointments = Object.fromEntries(
-      ((apptRows ?? []) as Appointment[]).filter((a) => a.work_order_id).map((a) => [a.work_order_id as string, a]),
+      ((apptRows ?? []) as Appointment[])
+        .filter((a) => a.work_order_id)
+        .map((a) => [a.work_order_id as string, a]),
     );
     setRows(nextRows);
     setAppointments(nextAppointments);
-    setSchedule(Object.fromEntries(nextRows.map((o) => {
-      const a = nextAppointments[o.id];
-      return [o.id, { date: a?.visit_date ?? o.visit_date ?? "", time: a?.visit_time ?? o.visit_time ?? "" }];
-    })));
+    setSchedule(
+      Object.fromEntries(
+        nextRows.map((o) => {
+          const a = nextAppointments[o.id];
+          return [
+            o.id,
+            {
+              date: a?.visit_date ?? o.visit_date ?? "",
+              time: a?.visit_time ?? o.visit_time ?? "",
+            },
+          ];
+        }),
+      ),
+    );
   }, []);
 
-  useEffect(() => { void loadApproved(); }, [loadApproved]);
+  useEffect(() => {
+    void loadApproved();
+  }, [loadApproved]);
 
   const confirmAppointment = async (o: WorkOrder) => {
     const a = appointments[o.id];
     const chosen = schedule[o.id];
     if (!a) return toast.error("ไม่พบรายการงานที่เชื่อมกับปฏิทิน");
     if (!chosen?.date) return toast.error("กรุณาเลือกวันที่นัดหมาย");
-    const conflicts = await checkScheduleConflicts({ id: a.id, visit_date: chosen.date, visit_time: chosen.time || null, staff_name: a.staff_name, vehicle_plate: a.vehicle_plate });
-    if (conflicts.length) return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
+    const conflicts = await checkScheduleConflicts({
+      id: a.id,
+      visit_date: chosen.date,
+      visit_time: chosen.time || null,
+      staff_name: a.staff_name,
+      vehicle_plate: a.vehicle_plate,
+    });
+    if (conflicts.length)
+      return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
     setBusy(o.id + "schedule");
     const [apptResult, orderResult] = await Promise.all([
-      supabase.from("appointments").update({ visit_date: chosen.date, visit_time: chosen.time || null, status: "scheduled" }).eq("id", a.id),
-      supabase.from("work_orders").update({ visit_date: chosen.date, visit_time: chosen.time || null, status: "scheduled" }).eq("id", o.id),
+      supabase
+        .from("appointments")
+        .update({ visit_date: chosen.date, visit_time: chosen.time || null, status: "scheduled" })
+        .eq("id", a.id),
+      supabase
+        .from("work_orders")
+        .update({ visit_date: chosen.date, visit_time: chosen.time || null, status: "scheduled" })
+        .eq("id", o.id),
     ]);
     setBusy("");
     const error = apptResult.error ?? orderResult.error;
@@ -1341,10 +1669,17 @@ function ApprovedOrders({
   const [fSeller, setFSeller] = useState("");
   const [fStaff, setFStaff] = useState("");
   const [showHidden, setShowHidden] = useState(false);
-  const sellerOpts = useMemo(() => Array.from(new Set(rows.map((o) => (o.sales_rep ?? "").trim()).filter(Boolean))).sort(), [rows]);
-  const staffOpts = useMemo(() => Array.from(new Set(rows.flatMap((o) => splitNames(o.staff_name)))).sort(), [rows]);
+  const sellerOpts = useMemo(
+    () => Array.from(new Set(rows.map((o) => (o.sales_rep ?? "").trim()).filter(Boolean))).sort(),
+    [rows],
+  );
+  const staffOpts = useMemo(
+    () => Array.from(new Set(rows.flatMap((o) => splitNames(o.staff_name)))).sort(),
+    [rows],
+  );
   const visible = rows.filter((o) => {
-    if (!showHidden && (o as WorkOrder & { approved_hidden?: boolean }).approved_hidden) return false;
+    if (!showHidden && (o as WorkOrder & { approved_hidden?: boolean }).approved_hidden)
+      return false;
     const date = appointments[o.id]?.visit_date ?? o.visit_date ?? "";
     if (fDate && date !== fDate) return false;
     if (fSeller && (o.sales_rep ?? "").trim() !== fSeller) return false;
@@ -1355,7 +1690,10 @@ function ApprovedOrders({
 
   const toggleHidden = async (o: WorkOrder) => {
     const next = !(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden;
-    const { error } = await supabase.from("work_orders").update({ approved_hidden: next } as never).eq("id", o.id);
+    const { error } = await supabase
+      .from("work_orders")
+      .update({ approved_hidden: next } as never)
+      .eq("id", o.id);
     if (error) return toast.error("บันทึกไม่สำเร็จ: " + error.message);
     toast.success(next ? "ซ่อนใบงานแล้ว (งานในปฏิทินยังอยู่)" : "แสดงใบงานอีกครั้ง");
     await loadApproved();
@@ -1434,9 +1772,10 @@ function ApprovedOrders({
       const els = orders.map((o) => formRefs.current[o.id]).filter(Boolean) as HTMLDivElement[];
       if (els.length !== orders.length) throw new Error("ไม่พบแบบฟอร์มสำหรับส่งออก");
       const blob = await elementsToA4PdfBlob(els);
-      const filename = orders.length === 1
-        ? `ใบสั่งงาน-แบบฟอร์ม-${orders[0].customer_name || orders[0].id.slice(0, 6)}.pdf`
-        : `ใบสั่งงาน-แบบฟอร์ม-${orders.length}ใบ.pdf`;
+      const filename =
+        orders.length === 1
+          ? `ใบสั่งงาน-แบบฟอร์ม-${orders[0].customer_name || orders[0].id.slice(0, 6)}.pdf`
+          : `ใบสั่งงาน-แบบฟอร์ม-${orders.length}ใบ.pdf`;
       await saveFile(blob, filename);
       toast.success(`บันทึก PDF แบบฟอร์ม ${orders.length} ใบเรียบร้อย`);
     } catch (e) {
@@ -1446,31 +1785,74 @@ function ApprovedOrders({
     }
   };
 
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">ยังไม่มีใบสั่งงานที่อนุมัติ</p>;
+  if (rows.length === 0)
+    return <p className="text-sm text-muted-foreground">ยังไม่มีใบสั่งงานที่อนุมัติ</p>;
 
   return (
     <div className="space-y-3">
       <div className="grid min-w-0 grid-cols-1 gap-2 rounded-lg border bg-card p-2 lg:grid-cols-4">
         <DateInput size="sm" aria-label="กรองวันที่นัดหมาย" value={fDate} onChange={setFDate} />
-        <select className="h-8 rounded-md border bg-background px-2 text-xs" value={fSeller} onChange={(e) => setFSeller(e.target.value)} aria-label="กรองผู้ขาย">
+        <select
+          className="h-8 rounded-md border bg-background px-2 text-xs"
+          value={fSeller}
+          onChange={(e) => setFSeller(e.target.value)}
+          aria-label="กรองผู้ขาย"
+        >
           <option value="">ผู้ขายทั้งหมด</option>
-          {sellerOpts.map((s) => <option key={s} value={s}>{s}</option>)}
+          {sellerOpts.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
         </select>
-        <select className="h-8 rounded-md border bg-background px-2 text-xs" value={fStaff} onChange={(e) => setFStaff(e.target.value)} aria-label="กรองช่าง">
+        <select
+          className="h-8 rounded-md border bg-background px-2 text-xs"
+          value={fStaff}
+          onChange={(e) => setFStaff(e.target.value)}
+          aria-label="กรองช่าง"
+        >
           <option value="">ช่างทั้งหมด</option>
-          {staffOpts.map((s) => <option key={s} value={s}>{s}</option>)}
+          {staffOpts.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
         </select>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Button size="sm" variant="ghost" className="h-8" onClick={() => { setFDate(""); setFSeller(""); setFStaff(""); }}>ล้างตัวกรอง</Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8"
+            onClick={() => {
+              setFDate("");
+              setFSeller("");
+              setFStaff("");
+            }}
+          >
+            ล้างตัวกรอง
+          </Button>
           <label className="flex items-center gap-1 text-xs">
-            <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} /> แสดงที่ซ่อน
+            <input
+              type="checkbox"
+              checked={showHidden}
+              onChange={(e) => setShowHidden(e.target.checked)}
+            />{" "}
+            แสดงที่ซ่อน
           </label>
         </div>
         <div className="flex flex-wrap gap-2 text-[11px] lg:col-span-4">
-          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> ปิดงาน</span>
-          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> รอ / นัดหมายแล้ว</span>
-          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> ยังไม่ไป</span>
-          <span className="ml-auto text-muted-foreground">แสดง {visible.length}/{rows.length} ใบ</span>
+          <span className="flex items-center gap-1">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> ปิดงาน
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> รอ / นัดหมายแล้ว
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-500" /> ยังไม่ไป
+          </span>
+          <span className="ml-auto text-muted-foreground">
+            แสดง {visible.length}/{rows.length} ใบ
+          </span>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
@@ -1480,49 +1862,102 @@ function ApprovedOrders({
             className="h-4 w-4"
             checked={visible.length > 0 && selected.length === visible.length}
             onChange={(e) =>
-              setPicked(e.target.checked ? Object.fromEntries(visible.map((r) => [r.id, true])) : {})
+              setPicked(
+                e.target.checked ? Object.fromEntries(visible.map((r) => [r.id, true])) : {},
+              )
             }
           />
           เลือกทั้งหมด ({selected.length}/{visible.length})
         </label>
         <div className="ml-auto flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" disabled={!!busy || selected.length === 0} onClick={() => exportSelected("image")}>
-            {busy === "bulkimage" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!!busy || selected.length === 0}
+            onClick={() => exportSelected("image")}
+          >
+            {busy === "bulkimage" ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <Camera className="mr-1 h-4 w-4" />
+            )}
             รูปภาพ A4 ที่เลือก
           </Button>
-          <Button size="sm" disabled={!!busy || selected.length === 0} onClick={() => exportSelected("pdf")}>
-            {busy === "bulkpdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+          <Button
+            size="sm"
+            disabled={!!busy || selected.length === 0}
+            onClick={() => exportSelected("pdf")}
+          >
+            {busy === "bulkpdf" ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="mr-1 h-4 w-4" />
+            )}
             PDF A4 ที่เลือก
           </Button>
-          <Button size="sm" variant="outline" disabled={!!busy || selected.length === 0} onClick={() => exportFormPdf(selected)}>
-            {busy === "bulkformpdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!!busy || selected.length === 0}
+            onClick={() => exportFormPdf(selected)}
+          >
+            {busy === "bulkformpdf" ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="mr-1 h-4 w-4" />
+            )}
             PDF แบบฟอร์มที่เลือก
           </Button>
         </div>
       </div>
 
-      {visible.length === 0 && <p className="text-sm text-muted-foreground">ไม่พบใบงานตามตัวกรอง</p>}
+      {visible.length === 0 && (
+        <p className="text-sm text-muted-foreground">ไม่พบใบงานตามตัวกรอง</p>
+      )}
       {visible.map((o) => (
-        <div key={o.id} className={`relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3 ${STAGE_BG[statusStage(appointments[o.id]?.status ?? o.status)]} ${(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? "opacity-60" : ""}`}>
+        <div
+          key={o.id}
+          className={`relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3 ${STAGE_BG[statusStage(appointments[o.id]?.status ?? o.status)]} ${(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? "opacity-60" : ""}`}
+        >
           <StatusRail status={appointments[o.id]?.status ?? o.status} />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <JobStatusBadge status={appointments[o.id]?.status ?? o.status} />
-            <span className="text-xs text-muted-foreground">เซลล์: {o.sales_rep || "ยังไม่ระบุ"}</span>
+            <span className="text-xs text-muted-foreground">
+              เซลล์: {o.sales_rep || "ยังไม่ระบุ"}
+            </span>
           </div>
           <div className="grid min-w-0 grid-cols-1 gap-2 rounded-md border bg-muted/30 p-2 lg:grid-cols-[minmax(0,1fr)_8rem_auto]">
             <DateInput
               aria-label={`วันที่นัดหมาย ${o.customer_name}`}
               value={schedule[o.id]?.date ?? ""}
-              onChange={(date) => setSchedule((s) => ({ ...s, [o.id]: { date, time: s[o.id]?.time ?? "" } }))}
+              onChange={(date) =>
+                setSchedule((s) => ({ ...s, [o.id]: { date, time: s[o.id]?.time ?? "" } }))
+              }
             />
             <Input
               aria-label={`เวลานัดหมาย ${o.customer_name}`}
               type="time"
               value={schedule[o.id]?.time ?? ""}
-              onChange={(e) => setSchedule((s) => ({ ...s, [o.id]: { date: s[o.id]?.date ?? "", time: e.target.value } }))}
+              onChange={(e) =>
+                setSchedule((s) => ({
+                  ...s,
+                  [o.id]: { date: s[o.id]?.date ?? "", time: e.target.value },
+                }))
+              }
             />
-            <Button size="sm" onClick={() => confirmAppointment(o)} disabled={busy === o.id + "schedule" || statusStage(appointments[o.id]?.status ?? o.status) === "completed"}>
-              {busy === o.id + "schedule" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Phone className="mr-1 h-4 w-4" />}
+            <Button
+              size="sm"
+              onClick={() => confirmAppointment(o)}
+              disabled={
+                busy === o.id + "schedule" ||
+                statusStage(appointments[o.id]?.status ?? o.status) === "completed"
+              }
+            >
+              {busy === o.id + "schedule" ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : (
+                <Phone className="mr-1 h-4 w-4" />
+              )}
               นัดหมายแล้ว
             </Button>
           </div>
@@ -1545,11 +1980,19 @@ function ApprovedOrders({
               <p className="text-base font-bold">ใบสั่งงานบริการ</p>
               <JobStatusBadge status={appointments[o.id]?.status ?? o.status} />
             </div>
-            <p className="font-semibold">{o.cust_id ? `[${o.cust_id}] ` : ""}{o.customer_name}</p>
-            <p className="text-xs">{[o.contact_name, o.contact_phone, o.customer_address].filter(Boolean).join(" · ")}</p>
-            <p className="text-xs">{[o.machine_label, o.serial_number, o.service_type].filter(Boolean).join(" · ")}</p>
+            <p className="font-semibold">
+              {o.cust_id ? `[${o.cust_id}] ` : ""}
+              {o.customer_name}
+            </p>
             <p className="text-xs">
-              วันที่ {formatDate(o.visit_date ?? "")} {o.visit_time ?? ""} · ช่าง {o.staff_name || "-"} · รถ {o.vehicle_plate || "-"}
+              {[o.contact_name, o.contact_phone, o.customer_address].filter(Boolean).join(" · ")}
+            </p>
+            <p className="text-xs">
+              {[o.machine_label, o.serial_number, o.service_type].filter(Boolean).join(" · ")}
+            </p>
+            <p className="text-xs">
+              วันที่ {formatDate(o.visit_date ?? "")} {o.visit_time ?? ""} · ช่าง{" "}
+              {o.staff_name || "-"} · รถ {o.vehicle_plate || "-"}
               {o.sales_rep ? ` · เซลล์ ${o.sales_rep}` : ""}
             </p>
             <p className="text-sm">{o.job_detail}</p>
@@ -1569,23 +2012,49 @@ function ApprovedOrders({
                 <CheckCircle2 className="mr-1 h-4 w-4" /> ปิดใบงาน
               </Button>
             )}
-            <Button size="sm" variant="outline" disabled={!!busy} onClick={() => exportOne(o, "image")}>
-              {busy === o.id + "image" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!!busy}
+              onClick={() => exportOne(o, "image")}
+            >
+              {busy === o.id + "image" ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="mr-1 h-4 w-4" />
+              )}
               บันทึกรูปภาพ
             </Button>
-            <Button size="sm" variant="outline" disabled={!!busy} onClick={() => exportOne(o, "pdf")}>
-              {busy === o.id + "pdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!!busy}
+              onClick={() => exportOne(o, "pdf")}
+            >
+              {busy === o.id + "pdf" ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-1 h-4 w-4" />
+              )}
               บันทึก PDF
             </Button>
             <Button size="sm" disabled={!!busy} onClick={() => exportFormPdf([o])}>
-              {busy === o.id + "formpdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+              {busy === o.id + "formpdf" ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-1 h-4 w-4" />
+              )}
               PDF แบบฟอร์ม
             </Button>
             <Button size="sm" variant="outline" onClick={() => setDup(o)}>
               <Copy className="mr-1 h-4 w-4" /> คัดลอกใบงาน
             </Button>
             <Button size="sm" variant="ghost" onClick={() => toggleHidden(o)}>
-              {(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? <Eye className="mr-1 h-4 w-4" /> : <EyeOff className="mr-1 h-4 w-4" />}
+              {(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? (
+                <Eye className="mr-1 h-4 w-4" />
+              ) : (
+                <EyeOff className="mr-1 h-4 w-4" />
+              )}
               {(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? "แสดง" : "ซ่อน"}
             </Button>
             {isAdmin && (
@@ -1625,7 +2094,6 @@ function apptSummary(a: Appointment) {
     .filter(Boolean)
     .join(" - ");
 }
-
 
 /** สีบล็อกแยกตามทะเบียนรถ (พาสเทล) */
 const VEHICLE_COLORS = [
@@ -1690,7 +2158,12 @@ function staffBg(name?: string | null) {
 }
 /** คลาสการ์ดนัดหมายมาตรฐาน: ขอบ 3px ตามรถ + พื้นพาสเทลตามช่าง + ตัวหนังสือ slate-800 */
 function apptCardClass(a: Appointment) {
-  return "relative overflow-hidden border-[3px] pl-3 text-slate-800 " + vehicleBorder(a.vehicle_plate) + " " + staffBg(a.staff_name);
+  return (
+    "relative overflow-hidden border-[3px] pl-3 text-slate-800 " +
+    vehicleBorder(a.vehicle_plate) +
+    " " +
+    staffBg(a.staff_name)
+  );
 }
 /** ความกว้างคอลัมน์: จันทร์–ศุกร์ เท่ากัน (~17.4%), เสาร์ ~10%, อาทิตย์ ~3% (แถบแดง) */
 const WEEK_COLS = "repeat(5, minmax(0, 17.4fr)) minmax(0, 10fr) minmax(40px, 3fr)";
@@ -1739,51 +2212,161 @@ function MonthGrid({
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <StatusLegend />
-        <span className="ml-auto">แตะวันที่เพื่อดูคิวทั้งวัน{onPickDate ? " · แตะช่องว่างเพื่อเพิ่มงานด่วน" : ""}</span>
+        <span className="ml-auto">
+          แตะวันที่เพื่อดูคิวทั้งวัน{onPickDate ? " · แตะช่องว่างเพื่อเพิ่มงานด่วน" : ""}
+        </span>
       </div>
       <VehicleLegend appts={appts} />
       <div className="scrollbar-none flex overflow-x-auto whitespace-nowrap pb-1">
-      <div className="grid min-w-[900px] flex-1 gap-1 text-xs" style={{ gridTemplateColumns: WEEK_COLS }}>
-        {TH_DOW.map((d, i) => (
-          <div
-            key={d}
-            className={
-              "py-1 text-center font-medium " +
-              (i === 6 ? "text-[10px] text-red-500" : i === 5 ? "text-muted-foreground/80" : "text-muted-foreground")
+        <div
+          className="grid min-w-[900px] flex-1 gap-1 text-xs"
+          style={{ gridTemplateColumns: WEEK_COLS }}
+        >
+          {TH_DOW.map((d, i) => (
+            <div
+              key={d}
+              className={
+                "py-1 text-center font-medium " +
+                (i === 6
+                  ? "text-[10px] text-red-500"
+                  : i === 5
+                    ? "text-muted-foreground/80"
+                    : "text-muted-foreground")
+              }
+            >
+              {d}
+            </div>
+          ))}
+          {days.map((d) => {
+            const key = iso(d);
+            const list = appts.filter((a) => a.visit_date === key).sort(byVehicleThenTime);
+            const holiday = holidaysMap?.[key];
+
+            const dim = d.getMonth() !== cursor.getMonth();
+
+            // วันอาทิตย์: แถบแดงวันหยุดแคบพิเศษ พร้อมจุด mini แทนงาน
+            if (d.getDay() === 0) {
+              return (
+                <div
+                  key={key}
+                  onClick={() => onPickDay(key)}
+                  title={
+                    holiday
+                      ? `วันอาทิตย์ที่ ${formatDate(key)} (วันหยุด: ${holiday.title}${holiday.note ? ` - ${holiday.note}` : ""}) · ${list.length} งาน`
+                      : `วันอาทิตย์ที่ ${formatDate(key)} · ${list.length} งาน`
+                  }
+                  className={
+                    "flex min-h-32 cursor-pointer flex-col items-center rounded-full border sm:min-h-40 md:min-h-48 " +
+                    (key === today ? "border-red-500 bg-red-100 " : "border-red-200 bg-red-50 ") +
+                    (holiday ? "planner-holiday--head border-rose-500 ring-2 ring-rose-500 " : "") +
+                    (dim ? "opacity-40" : "")
+                  }
+                >
+                  <span className="mt-1 text-[9px] font-bold leading-none text-red-500">
+                    {d.getDate()}
+                  </span>
+                  <LeaveCell date={key} rows={leaveRows} onManage={onManageLeave} compact />
+                  {holiday && (
+                    <span className="mt-0.5 text-[11px] leading-none" title={holiday.title}>
+                      🌴
+                    </span>
+                  )}
+                  <div className="mt-1 flex w-1.5 flex-1 flex-col items-center gap-1 rounded-full bg-red-400/70 py-1">
+                    {list.map((a) => (
+                      <button
+                        key={a.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPick(a);
+                        }}
+                        title={apptSummary(a)}
+                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-white shadow ring-1 ring-red-600"
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
             }
-          >
-            {d}
-          </div>
-        ))}
-        {days.map((d) => {
-          const key = iso(d);
-          const list = appts.filter((a) => a.visit_date === key).sort(byVehicleThenTime);
-          const holiday = holidaysMap?.[key];
 
-          const dim = d.getMonth() !== cursor.getMonth();
-
-          // วันอาทิตย์: แถบแดงวันหยุดแคบพิเศษ พร้อมจุด mini แทนงาน
-          if (d.getDay() === 0) {
             return (
               <div
                 key={key}
-                onClick={() => onPickDay(key)}
-                title={holiday ? `วันอาทิตย์ที่ ${formatDate(key)} (วันหยุด: ${holiday.title}${holiday.note ? ` - ${holiday.note}` : ""}) · ${list.length} งาน` : `วันอาทิตย์ที่ ${formatDate(key)} · ${list.length} งาน`}
+                onClick={() => (onPickDate ? onPickDate(key) : onPickDay(key))}
                 className={
-                  "flex min-h-32 cursor-pointer flex-col items-center rounded-full border sm:min-h-40 md:min-h-48 " +
-                  (key === today ? "border-red-500 bg-red-100 " : "border-red-200 bg-red-50 ") +
-                  (holiday ? "planner-holiday--head border-rose-500 ring-2 ring-rose-500 " : "") +
-                  (dim ? "opacity-40" : "")
+                  "flex min-h-32 cursor-pointer flex-col rounded-xl border bg-card p-1.5 hover:border-primary/60 hover:bg-accent/40 sm:min-h-40 md:min-h-48 " +
+                  (holiday
+                    ? "planner-holiday border-rose-400 shadow-xs dark:border-rose-700 "
+                    : "") +
+                  (dim ? "bg-muted/30 text-muted-foreground " : "") +
+                  (key === today ? "border-primary" : "")
                 }
               >
-                <span className="mt-1 text-[9px] font-bold leading-none text-red-500">{d.getDate()}</span>
-                <LeaveCell date={key} rows={leaveRows} onManage={onManageLeave} compact />
+                <div className="mb-1 flex items-center justify-between gap-1">
+                  {list.length > 0 && (
+                    <span className="text-[10px] text-muted-foreground">{list.length} งาน</span>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPickDay(key);
+                    }}
+                    className="ml-auto rounded px-1 text-[10px] font-semibold leading-tight hover:bg-accent sm:text-[11px]"
+                  >
+                    {thaiCellDate(d)}
+                  </button>
+                </div>
+
+                <LeaveCell date={key} rows={leaveRows} onManage={onManageLeave} />
+
                 {holiday && (
-                  <span className="mt-0.5 text-[11px] leading-none" title={holiday.title}>
-                    🌴
-                  </span>
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPickDay(key);
+                    }}
+                    className="mb-1 flex items-center gap-1 rounded-md border-2 px-1.5 py-0.5 text-xs font-bold leading-snug shadow-sm hover:opacity-90 sm:text-sm"
+                    style={{
+                      backgroundColor:
+                        holiday.color === "amber"
+                          ? "rgb(254, 243, 199)"
+                          : holiday.color === "purple"
+                            ? "rgb(243, 232, 255)"
+                            : holiday.color === "blue"
+                              ? "rgb(224, 242, 254)"
+                              : holiday.color === "emerald"
+                                ? "rgb(209, 250, 229)"
+                                : "rgb(255, 228, 230)",
+                      color:
+                        holiday.color === "amber"
+                          ? "#92400e"
+                          : holiday.color === "purple"
+                            ? "#6b21a8"
+                            : holiday.color === "blue"
+                              ? "#075985"
+                              : holiday.color === "emerald"
+                                ? "#065f46"
+                                : "#9f1239",
+                      borderColor:
+                        holiday.color === "amber"
+                          ? "#f59e0b"
+                          : holiday.color === "purple"
+                            ? "#a855f7"
+                            : holiday.color === "blue"
+                              ? "#0ea5e9"
+                              : holiday.color === "emerald"
+                                ? "#10b981"
+                                : "#f43f5e",
+                    }}
+                    title={`🌴 วันหยุด: ${holiday.title}${holiday.note ? `\nสาเหตุ: ${holiday.note}` : ""}`}
+                  >
+                    <Palmtree className="h-3 w-3 shrink-0" />
+                    <span className="line-clamp-2 min-w-0 whitespace-normal break-words leading-snug">
+                      {holiday.title}
+                    </span>
+                  </div>
                 )}
-                <div className="mt-1 flex w-1.5 flex-1 flex-col items-center gap-1 rounded-full bg-red-400/70 py-1">
+
+                <div className="scrollbar-none min-h-0 flex-1 space-y-0.5 overflow-y-auto">
                   {list.map((a) => (
                     <button
                       key={a.id}
@@ -1791,127 +2374,40 @@ function MonthGrid({
                         e.stopPropagation();
                         onPick(a);
                       }}
+                      className={
+                        "block w-full rounded px-1 py-0.5 text-left text-[10px] font-medium leading-snug " +
+                        apptCardClass(a)
+                      }
                       title={apptSummary(a)}
-                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-white shadow ring-1 ring-red-600"
-                    />
+                    >
+                      <StatusRail status={a.status} />
+                      <span className="block truncate">
+                        {a.cust_id ? `[${a.cust_id}] ` : ""}
+                        {a.customer_name || "ไม่ระบุลูกค้า"}
+                      </span>
+                      <span className="block truncate text-xs opacity-80">
+                        👤 {splitNames(a.staff_name).join(", ") || "-"}
+                      </span>
+                      <span className="block truncate text-xs opacity-80">
+                        🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
+                      </span>
+                      {(a.serial_number || a.machine_label) && (
+                        <span className="block truncate text-[10px] opacity-80">
+                          ⚙️{" "}
+                          {splitNames(a.serial_number).join(" / ") ||
+                            splitNames(a.machine_label).join(" / ")}
+                        </span>
+                      )}
+                      {a.sales_rep && (
+                        <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>
+                      )}
+                    </button>
                   ))}
                 </div>
               </div>
             );
-          }
-
-          return (
-            <div
-              key={key}
-              onClick={() => onPickDate?.(key)}
-              className={
-                "flex min-h-32 flex-col rounded-xl border bg-card p-1.5 sm:min-h-40 md:min-h-48 " +
-                (onPickDate ? "cursor-pointer hover:border-primary/60 hover:bg-accent/40 " : "") +
-                (holiday ? "planner-holiday border-rose-400 shadow-xs dark:border-rose-700 " : "") +
-                (dim ? "bg-muted/30 text-muted-foreground " : "") +
-                (key === today ? "border-primary" : "")
-              }
-            >
-              <div className="mb-1 flex items-center justify-between gap-1">
-                {list.length > 0 && <span className="text-[10px] text-muted-foreground">{list.length} งาน</span>}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPickDay(key);
-                  }}
-                  className="ml-auto rounded px-1 text-[10px] font-semibold leading-tight hover:bg-accent sm:text-[11px]"
-                >
-                  {thaiCellDate(d)}
-                </button>
-              </div>
-
-              <LeaveCell date={key} rows={leaveRows} onManage={onManageLeave} />
-
-              {holiday && (
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPickDay(key);
-                  }}
-                  className="mb-1 flex items-center gap-1 rounded-md border-2 px-1.5 py-0.5 text-xs font-bold leading-snug shadow-sm hover:opacity-90 sm:text-sm"
-                  style={{
-                    backgroundColor:
-                      holiday.color === "amber"
-                        ? "rgb(254, 243, 199)"
-                        : holiday.color === "purple"
-                          ? "rgb(243, 232, 255)"
-                          : holiday.color === "blue"
-                            ? "rgb(224, 242, 254)"
-                            : holiday.color === "emerald"
-                              ? "rgb(209, 250, 229)"
-                              : "rgb(255, 228, 230)",
-                    color:
-                      holiday.color === "amber"
-                        ? "#92400e"
-                        : holiday.color === "purple"
-                          ? "#6b21a8"
-                          : holiday.color === "blue"
-                            ? "#075985"
-                            : holiday.color === "emerald"
-                              ? "#065f46"
-                              : "#9f1239",
-                    borderColor:
-                      holiday.color === "amber"
-                        ? "#f59e0b"
-                        : holiday.color === "purple"
-                          ? "#a855f7"
-                          : holiday.color === "blue"
-                            ? "#0ea5e9"
-                            : holiday.color === "emerald"
-                              ? "#10b981"
-                              : "#f43f5e",
-                  }}
-                  title={`🌴 วันหยุด: ${holiday.title}${holiday.note ? `\nสาเหตุ: ${holiday.note}` : ""}`}
-                >
-                  <Palmtree className="h-3 w-3 shrink-0" />
-                  <span className="line-clamp-2 min-w-0 whitespace-normal break-words leading-snug">{holiday.title}</span>
-                </div>
-              )}
-
-              <div className="scrollbar-none min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-                {list.map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPick(a);
-                    }}
-                    className={
-                      "block w-full rounded px-1 py-0.5 text-left text-[10px] font-medium leading-snug " +
-                      apptCardClass(a)
-                    }
-                    title={apptSummary(a)}
-                  >
-                    <StatusRail status={a.status} />
-                    <span className="block truncate">{a.cust_id ? `[${a.cust_id}] ` : ""}{a.customer_name || "ไม่ระบุลูกค้า"}</span>
-                    <span className="block truncate text-xs opacity-80">
-                      👤 {splitNames(a.staff_name).join(", ") || "-"}
-                    </span>
-                    <span className="block truncate text-xs opacity-80">
-                      🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
-                    </span>
-                    {(a.serial_number || a.machine_label) && (
-                      <span className="block truncate text-[10px] opacity-80">
-                        ⚙️ {splitNames(a.serial_number).join(" / ") || splitNames(a.machine_label).join(" / ")}
-                      </span>
-                    )}
-                    {a.sales_rep && (
-                      <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>
-                    )}
-
-                  </button>
-                ))}
-
-              </div>
-            </div>
-          );
-        })}
-      </div>
+          })}
+        </div>
       </div>
     </div>
   );
@@ -1959,12 +2455,16 @@ function TimeGrid({
           .sort(byVehicleThenTime);
         const dayHoliday = holidaysMap?.[d];
 
-
-
         // วันอาทิตย์: แถบแดงแคบพร้อมจุด mini
         if (isWeek && dowOf(d) === 0) {
           return (
-            <div key={d + h} className={"flex min-h-12 justify-center p-1 " + (dayHoliday ? "planner-holiday--head " : "bg-red-50/70 ")}>
+            <div
+              key={d + h}
+              className={
+                "flex min-h-12 justify-center p-1 " +
+                (dayHoliday ? "planner-holiday--head " : "bg-red-50/70 ")
+              }
+            >
               <div className="flex w-1.5 flex-col items-center gap-1 rounded-full bg-red-400/60 py-0.5">
                 {list.map((a) => (
                   <button
@@ -2008,9 +2508,14 @@ function TimeGrid({
                 <StatusRail status={a.status} />
                 <span className="flex items-baseline gap-1 text-[10px]">
                   <span className="font-semibold">{a.visit_time?.slice(0, 5) || "--:--"}</span>
-                  <span className="truncate text-xs opacity-70">{splitNames(a.staff_name).join(", ") || "-"}</span>
+                  <span className="truncate text-xs opacity-70">
+                    {splitNames(a.staff_name).join(", ") || "-"}
+                  </span>
                 </span>
-                <span className="block truncate text-xs font-bold">{a.cust_id ? `[${a.cust_id}] ` : ""}{a.customer_name || "ไม่ระบุลูกค้า"}</span>
+                <span className="block truncate text-xs font-bold">
+                  {a.cust_id ? `[${a.cust_id}] ` : ""}
+                  {a.customer_name || "ไม่ระบุลูกค้า"}
+                </span>
                 <span className="block truncate text-[10px] opacity-80">
                   {splitNames(a.service_type).join(" / ") || a.job_detail || "-"}
                 </span>
@@ -2019,12 +2524,14 @@ function TimeGrid({
                 </span>
                 {(a.serial_number || a.machine_label) && (
                   <span className="block truncate text-[10px] opacity-80">
-                    ⚙️ {splitNames(a.serial_number).join(" / ") || splitNames(a.machine_label).join(" / ")}
+                    ⚙️{" "}
+                    {splitNames(a.serial_number).join(" / ") ||
+                      splitNames(a.machine_label).join(" / ")}
                   </span>
                 )}
-                {a.sales_rep && <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>}
-
-
+                {a.sales_rep && (
+                  <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>
+                )}
               </button>
             ))}
           </div>
@@ -2047,18 +2554,34 @@ function TimeGrid({
               const holiday = holidaysMap?.[d];
               if (isWeek && dowOf(d) === 0) {
                 return (
-                  <div key={d} className={"p-1 text-center text-red-500 " + (holiday ? "planner-holiday--head border-b-4 border-rose-500 " : "bg-red-50 ")}>
+                  <div
+                    key={d}
+                    className={
+                      "p-1 text-center text-red-500 " +
+                      (holiday ? "planner-holiday--head border-b-4 border-rose-500 " : "bg-red-50 ")
+                    }
+                  >
                     <p className="text-[10px] font-bold leading-tight">อา</p>
-                    <p className="text-[9px] leading-tight">{new Date(d + "T00:00:00").getDate()}</p>
+                    <p className="text-[9px] leading-tight">
+                      {new Date(d + "T00:00:00").getDate()}
+                    </p>
                     <LeaveCell date={d} rows={leaveRows} onManage={onManageLeave} compact />
-                    {holiday && <span className="text-[8px]" title={holiday.title}>🌴</span>}
+                    {holiday && (
+                      <span className="text-[8px]" title={holiday.title}>
+                        🌴
+                      </span>
+                    )}
                   </div>
                 );
               }
               return (
                 <div
                   key={d}
-                  className={"bg-card p-2 text-center " + (d === today ? "text-primary font-bold " : "") + (holiday ? "planner-holiday--head border-b-4 border-rose-500 " : "")}
+                  className={
+                    "bg-card p-2 text-center " +
+                    (d === today ? "text-primary font-bold " : "") +
+                    (holiday ? "planner-holiday--head border-b-4 border-rose-500 " : "")
+                  }
                 >
                   <p className="text-sm font-bold">วัน{TH_DOW_FULL[dowOf(d)]}</p>
                   <p className="text-xs text-muted-foreground">{formatDate(d)}</p>
@@ -2080,7 +2603,10 @@ function TimeGrid({
             style={{ gridTemplateColumns: cols }}
           >
             {morning.map(renderHourRow)}
-            <div style={{ gridColumn: "1 / -1" }} className="bg-amber-50 px-2 py-1 text-center text-[11px] font-medium text-amber-700">
+            <div
+              style={{ gridColumn: "1 / -1" }}
+              className="bg-amber-50 px-2 py-1 text-center text-[11px] font-medium text-amber-700"
+            >
               พักเที่ยง 12:00 – 13:00
             </div>
             {afternoon.map(renderHourRow)}
@@ -2115,7 +2641,10 @@ function DayDetailDialog({
   onDeleteHoliday?: (id: string) => void;
   onAddHoliday?: (date: string) => void;
 }) {
-  const list = sortApptList(appts.filter((a) => a.visit_date === date), sortBy).sort(byVehicleThenTime);
+  const list = sortApptList(
+    appts.filter((a) => a.visit_date === date),
+    sortBy,
+  ).sort(byVehicleThenTime);
   const [preview, setPreview] = useState(false);
   const [zoom, setZoom] = useState(0.7);
   const [documentHeight, setDocumentHeight] = useState(1100);
@@ -2146,7 +2675,11 @@ function DayDetailDialog({
         const header = el.querySelector(".daily-queue-document__header");
         const footer = el.querySelector("footer");
         const jobs = Array.from(el.querySelectorAll<HTMLElement>(".daily-queue-document__job"));
-        const sourcePages = jobs.length ? jobs : [el.querySelector<HTMLElement>(".daily-queue-document__empty")].filter(Boolean) as HTMLElement[];
+        const sourcePages = jobs.length
+          ? jobs
+          : ([el.querySelector<HTMLElement>(".daily-queue-document__empty")].filter(
+              Boolean,
+            ) as HTMLElement[]);
         const pages = sourcePages.map((source, index) => {
           const page = document.createElement("div");
           page.className = "daily-queue-document daily-queue-document--pdf-page";
@@ -2183,9 +2716,10 @@ function DayDetailDialog({
         });
         blob = await (await fetch(dataUrl)).blob();
       }
-      const action = outputAction === "share"
-        ? await shareOrDownload(blob, filename, `คิวงานวันที่ ${formatDate(date)}`)
-        : await saveFile(blob, filename);
+      const action =
+        outputAction === "share"
+          ? await shareOrDownload(blob, filename, `คิวงานวันที่ ${formatDate(date)}`)
+          : await saveFile(blob, filename);
       toast.success(action === "shared" ? "เปิดเมนูแชร์แล้ว" : "ดาวน์โหลดไฟล์เรียบร้อย");
     } catch (error) {
       toast.error("สร้างไฟล์ไม่สำเร็จ: " + (error as Error).message);
@@ -2196,25 +2730,41 @@ function DayDetailDialog({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className={preview ? "w-[calc(100vw-1rem)] max-w-none overflow-hidden p-3 sm:w-[calc(100vw-2rem)] sm:p-5" : "w-[calc(100vw-1rem)] max-w-none overflow-y-auto sm:w-[calc(100vw-2rem)]"}>
+      <DialogContent
+        className={
+          preview
+            ? "w-[calc(100vw-1rem)] max-w-none overflow-hidden p-3 sm:w-[calc(100vw-2rem)] sm:p-5"
+            : "w-[calc(100vw-1rem)] max-w-none overflow-y-auto sm:w-[calc(100vw-2rem)]"
+        }
+      >
         {!preview ? (
           <>
             <DialogHeader className="pr-8">
-               <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+              <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
                 <div>
                   <DialogTitle className="flex flex-wrap items-center gap-2">
                     <span>คิวงานวันที่ {formatDate(date)}</span>
                     {holiday && (
-                      <Badge variant="outline" className="border-rose-300 bg-rose-100 text-rose-800 text-sm font-bold sm:text-base dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-200">
+                      <Badge
+                        variant="outline"
+                        className="border-rose-300 bg-rose-100 text-rose-800 text-sm font-bold sm:text-base dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-200"
+                      >
                         🌴 วันหยุด: {holiday.title}
                       </Badge>
                     )}
                   </DialogTitle>
-                  <DialogDescription className="mt-1">ทั้งหมด {list.length} งาน · แตะรายการเพื่อดูรายละเอียดเชิงลึก</DialogDescription>
+                  <DialogDescription className="mt-1">
+                    ทั้งหมด {list.length} งาน · แตะรายการเพื่อดูรายละเอียดเชิงลึก
+                  </DialogDescription>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {!holiday && onAddHoliday && (
-                    <Button size="sm" variant="outline" className="border-rose-200 text-rose-700 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30" onClick={() => onAddHoliday(date)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-rose-200 text-rose-700 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                      onClick={() => onAddHoliday(date)}
+                    >
                       <Palmtree className="mr-1 h-3.5 w-3.5 text-rose-500" /> + กำหนดเป็นวันหยุด
                     </Button>
                   )}
@@ -2233,12 +2783,15 @@ function DayDetailDialog({
               />
             )}
             <div className="space-y-2">
-              {list.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีนัดหมายในวันนี้</p>}
+              {list.length === 0 && (
+                <p className="text-sm text-muted-foreground">ไม่มีนัดหมายในวันนี้</p>
+              )}
               {list.map((a) => (
                 <div
                   key={a.id}
                   className={
-                    "relative grid min-w-0 grid-cols-1 gap-2 overflow-hidden rounded-xl border py-3 pl-6 pr-3 sm:grid-cols-[minmax(0,1fr)_auto] " + vehicleColor(a.vehicle_plate)
+                    "relative grid min-w-0 grid-cols-1 gap-2 overflow-hidden rounded-xl border py-3 pl-6 pr-3 sm:grid-cols-[minmax(0,1fr)_auto] " +
+                    vehicleColor(a.vehicle_plate)
                   }
                 >
                   <StatusRail status={a.status} />
@@ -2250,74 +2803,189 @@ function DayDetailDialog({
                   >
                     <span className="min-w-0 space-y-0.5">
                       <span className="block break-words font-medium">
-                        {a.visit_time?.slice(0, 5) || "-"} · {a.cust_id ? `[${a.cust_id}] ` : ""}{a.customer_name || "ไม่ระบุลูกค้า"}
+                        {a.visit_time?.slice(0, 5) || "-"} · {a.cust_id ? `[${a.cust_id}] ` : ""}
+                        {a.customer_name || "ไม่ระบุลูกค้า"}
                       </span>
-                      <span className="block break-words text-xs opacity-80">เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}{a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}</span>
-                      <span className="block break-words text-xs opacity-80">ประเภทงาน: {splitNames(a.service_type).join(" / ") || "-"}</span>
                       <span className="block break-words text-xs opacity-80">
-                        {a.sales_rep ? `เซลล์: ${a.sales_rep} · ` : ""}ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {splitNames(a.vehicle_plate).join(" / ") || "-"} · {STATUS_LABEL[a.status] ?? a.status}
+                        เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}
+                        {a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}
                       </span>
-                      {a.customer_address && <span className="block break-words text-xs opacity-80">{a.customer_address}</span>}
-                      {a.job_detail && <span className="mt-1 block break-words text-sm">{a.job_detail}</span>}
+                      <span className="block break-words text-xs opacity-80">
+                        ประเภทงาน: {splitNames(a.service_type).join(" / ") || "-"}
+                      </span>
+                      <span className="block break-words text-xs opacity-80">
+                        {a.sales_rep ? `เซลล์: ${a.sales_rep} · ` : ""}ช่าง:{" "}
+                        {splitNames(a.staff_name).join(", ") || "-"} · รถ:{" "}
+                        {splitNames(a.vehicle_plate).join(" / ") || "-"} ·{" "}
+                        {STATUS_LABEL[a.status] ?? a.status}
+                      </span>
+                      {a.customer_address && (
+                        <span className="block break-words text-xs opacity-80">
+                          {a.customer_address}
+                        </span>
+                      )}
+                      {a.job_detail && (
+                        <span className="mt-1 block break-words text-sm">{a.job_detail}</span>
+                      )}
                     </span>
                   </Button>
-                  {a.status !== "closed" && (
-                    <Button type="button" size="sm" variant="secondary" className="self-start" onClick={() => onCloseJob(a)}>
-                      <CheckCircle2 className="mr-1 h-4 w-4" /> ปิดใบงาน
-                    </Button>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2 self-start">
+                    {a.status !== "closed" && (
+                      <label
+                        className={
+                          "flex cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium " +
+                          (a.status === "scheduled"
+                            ? "border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+                            : "bg-card text-muted-foreground hover:bg-muted/40")
+                        }
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-amber-500 cursor-pointer"
+                          checked={a.status === "scheduled"}
+                          onChange={async (e) => {
+                            e.stopPropagation();
+                            const next = e.target.checked ? "scheduled" : "approved";
+                            const { error } = await supabase
+                              .from("appointments")
+                              .update({ status: next })
+                              .eq("id", a.id);
+                            if (error) return toast.error(error.message);
+                            if (a.work_order_id) {
+                              await supabase
+                                .from("work_orders")
+                                .update({ status: next })
+                                .eq("id", a.work_order_id);
+                            }
+                            toast.success(
+                              next === "scheduled"
+                                ? "บันทึก: นัดหมายแล้ว"
+                                : "ยกเลิกสถานะนัดหมายแล้ว",
+                            );
+                            window.dispatchEvent(new CustomEvent("planner:reload"));
+                          }}
+                        />
+                        นัดหมายแล้ว
+                      </label>
+                    )}
+                    {a.status !== "closed" && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => onCloseJob(a)}
+                      >
+                        <CheckCircle2 className="mr-1 h-4 w-4" /> ปิดใบงาน
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={onClose}>ปิด</Button>
+              <Button variant="outline" onClick={onClose}>
+                ปิด
+              </Button>
             </DialogFooter>
           </>
         ) : (
           <>
             <DialogHeader className="pr-8">
               <DialogTitle>ตัวอย่างคิวงานวันที่ {formatDate(date)}</DialogTitle>
-              <DialogDescription>ตรวจรายละเอียดและขยายเอกสารก่อนแชร์หรือดาวน์โหลด</DialogDescription>
+              <DialogDescription>
+                ตรวจรายละเอียดและขยายเอกสารก่อนแชร์หรือดาวน์โหลด
+              </DialogDescription>
             </DialogHeader>
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/40 p-2">
               <div className="flex items-center gap-1">
-                <Button size="icon" variant="outline" aria-label="ซูมออก" title="ซูมออก" onClick={() => setZoom((v) => Math.max(0.4, v - 0.1))}>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label="ซูมออก"
+                  title="ซูมออก"
+                  onClick={() => setZoom((v) => Math.max(0.4, v - 0.1))}
+                >
                   <ZoomOut className="h-4 w-4" />
                 </Button>
-                <span className="w-14 text-center text-sm font-medium">{Math.round(zoom * 100)}%</span>
-                <Button size="icon" variant="outline" aria-label="ซูมเข้า" title="ซูมเข้า" onClick={() => setZoom((v) => Math.min(1.5, v + 0.1))}>
+                <span className="w-14 text-center text-sm font-medium">
+                  {Math.round(zoom * 100)}%
+                </span>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label="ซูมเข้า"
+                  title="ซูมเข้า"
+                  onClick={() => setZoom((v) => Math.min(1.5, v + 0.1))}
+                >
                   <ZoomIn className="h-4 w-4" />
                 </Button>
-                <Button size="icon" variant="ghost" aria-label="คืนขนาด" title="คืนขนาด" onClick={() => setZoom(0.7)}>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="คืนขนาด"
+                  title="คืนขนาด"
+                  onClick={() => setZoom(0.7)}
+                >
                   <RotateCcw className="h-4 w-4" />
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2">
                 <div className="flex rounded-md border bg-background p-0.5" aria-label="วิธีส่งออก">
-                  <Button size="sm" variant={outputAction === "share" ? "secondary" : "ghost"} onClick={() => setOutputAction("share")}>
+                  <Button
+                    size="sm"
+                    variant={outputAction === "share" ? "secondary" : "ghost"}
+                    onClick={() => setOutputAction("share")}
+                  >
                     <Share2 className="mr-1 h-4 w-4" /> แชร์
                   </Button>
-                  <Button size="sm" variant={outputAction === "download" ? "secondary" : "ghost"} onClick={() => setOutputAction("download")}>
+                  <Button
+                    size="sm"
+                    variant={outputAction === "download" ? "secondary" : "ghost"}
+                    onClick={() => setOutputAction("download")}
+                  >
                     <FileDown className="mr-1 h-4 w-4" /> ดาวน์โหลด
                   </Button>
                 </div>
-                <Button size="sm" variant="outline" disabled={!!exporting} onClick={() => exportDailyQueue("image")}>
-                  {exporting === "image" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />} {outputAction === "share" ? "แชร์" : "ดาวน์โหลด"}รูปภาพ
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!!exporting}
+                  onClick={() => exportDailyQueue("image")}
+                >
+                  {exporting === "image" ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="mr-1 h-4 w-4" />
+                  )}{" "}
+                  {outputAction === "share" ? "แชร์" : "ดาวน์โหลด"}รูปภาพ
                 </Button>
                 <Button size="sm" disabled={!!exporting} onClick={() => exportDailyQueue("pdf")}>
-                  {exporting === "pdf" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />} {outputAction === "share" ? "แชร์" : "ดาวน์โหลด"} PDF
+                  {exporting === "pdf" ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileDown className="mr-1 h-4 w-4" />
+                  )}{" "}
+                  {outputAction === "share" ? "แชร์" : "ดาวน์โหลด"} PDF
                 </Button>
               </div>
             </div>
             <div className="h-[62vh] overflow-auto rounded-md border bg-muted p-3">
-              <div className="relative mx-auto" style={{ width: 794 * zoom, height: documentHeight * zoom }}>
-                <div className="absolute left-0 top-0 origin-top-left" style={{ transform: `scale(${zoom})` }}>
+              <div
+                className="relative mx-auto"
+                style={{ width: 794 * zoom, height: documentHeight * zoom }}
+              >
+                <div
+                  className="absolute left-0 top-0 origin-top-left"
+                  style={{ transform: `scale(${zoom})` }}
+                >
                   <DailyQueueDocument ref={documentRef} date={date} list={list} />
                 </div>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setPreview(false)}>กลับไปรายการงาน</Button>
+              <Button variant="outline" onClick={() => setPreview(false)}>
+                กลับไปรายการงาน
+              </Button>
             </DialogFooter>
           </>
         )}
@@ -2326,7 +2994,15 @@ function DayDetailDialog({
   );
 }
 
-const DailyQueueDocument = ({ ref, date, list }: { ref: React.Ref<HTMLDivElement>; date: string; list: Appointment[] }) => (
+const DailyQueueDocument = ({
+  ref,
+  date,
+  list,
+}: {
+  ref: React.Ref<HTMLDivElement>;
+  date: string;
+  list: Appointment[];
+}) => (
   <div ref={ref} className="daily-queue-document">
     <header className="daily-queue-document__header">
       <div>
@@ -2342,36 +3018,78 @@ const DailyQueueDocument = ({ ref, date, list }: { ref: React.Ref<HTMLDivElement
     <main className="daily-queue-document__body">
       {list.length === 0 ? (
         <p className="daily-queue-document__empty">ไม่มีนัดหมายในวันนี้</p>
-      ) : list.map((a, index) => (
-        <section key={a.id} className={`daily-queue-document__job daily-queue-document__job--${statusStage(a.status)}`}>
-          <div className="daily-queue-document__job-head">
-            <div className="daily-queue-document__sequence">{index + 1}</div>
-            <div>
-              <p className="daily-queue-document__time">{a.visit_time?.slice(0, 5) || "ไม่ระบุเวลา"}</p>
-              <h3>{a.cust_id ? `[${a.cust_id}] ` : ""}{a.customer_name || "ไม่ระบุลูกค้า"}</h3>
+      ) : (
+        list.map((a, index) => (
+          <section
+            key={a.id}
+            className={`daily-queue-document__job daily-queue-document__job--${statusStage(a.status)}`}
+          >
+            <div className="daily-queue-document__job-head">
+              <div className="daily-queue-document__sequence">{index + 1}</div>
+              <div>
+                <p className="daily-queue-document__time">
+                  {a.visit_time?.slice(0, 5) || "ไม่ระบุเวลา"}
+                </p>
+                <h3>
+                  {a.cust_id ? `[${a.cust_id}] ` : ""}
+                  {a.customer_name || "ไม่ระบุลูกค้า"}
+                </h3>
+              </div>
+              <span className="daily-queue-document__status">
+                {STATUS_LABEL[a.status] ?? a.status}
+              </span>
             </div>
-            <span className="daily-queue-document__status">{STATUS_LABEL[a.status] ?? a.status}</span>
-          </div>
-          <dl className="daily-queue-document__grid">
-            <div><dt>เครื่อง / รุ่น</dt><dd>{splitNames(a.machine_label).join(" / ") || "-"}</dd></div>
-            <div><dt>Serial Number</dt><dd>{splitNames(a.serial_number).join(" / ") || "-"}</dd></div>
-            <div><dt>ประเภทงาน</dt><dd>{splitNames(a.service_type).join(" / ") || "-"}</dd></div>
-            <div><dt>ผู้ขาย / เซลล์</dt><dd>{a.sales_rep || "-"}</dd></div>
-            <div><dt>ช่างผู้รับผิดชอบ</dt><dd>{splitNames(a.staff_name).join(", ") || "-"}</dd></div>
-            <div><dt>รถบริการ</dt><dd>{splitNames(a.vehicle_plate).join(" / ") || "-"}</dd></div>
-            <div><dt>ผู้ติดต่อ</dt><dd>{[a.contact_name, a.contact_phone].filter(Boolean).join(" · ") || "-"}</dd></div>
-            <div className="daily-queue-document__wide"><dt>ที่อยู่หน้างาน</dt><dd>{a.customer_address || "-"}</dd></div>
-            <div className="daily-queue-document__wide"><dt>รายละเอียดงาน / อาการ</dt><dd>{a.job_detail || "-"}</dd></div>
-            {(a.result || a.close_note) && <div className="daily-queue-document__wide"><dt>ผลการดำเนินงาน</dt><dd>{[a.result, a.close_note].filter(Boolean).join(" · ")}</dd></div>}
-          </dl>
-        </section>
-      ))}
+            <dl className="daily-queue-document__grid">
+              <div>
+                <dt>เครื่อง / รุ่น</dt>
+                <dd>{splitNames(a.machine_label).join(" / ") || "-"}</dd>
+              </div>
+              <div>
+                <dt>Serial Number</dt>
+                <dd>{splitNames(a.serial_number).join(" / ") || "-"}</dd>
+              </div>
+              <div>
+                <dt>ประเภทงาน</dt>
+                <dd>{splitNames(a.service_type).join(" / ") || "-"}</dd>
+              </div>
+              <div>
+                <dt>ผู้ขาย / เซลล์</dt>
+                <dd>{a.sales_rep || "-"}</dd>
+              </div>
+              <div>
+                <dt>ช่างผู้รับผิดชอบ</dt>
+                <dd>{splitNames(a.staff_name).join(", ") || "-"}</dd>
+              </div>
+              <div>
+                <dt>รถบริการ</dt>
+                <dd>{splitNames(a.vehicle_plate).join(" / ") || "-"}</dd>
+              </div>
+              <div>
+                <dt>ผู้ติดต่อ</dt>
+                <dd>{[a.contact_name, a.contact_phone].filter(Boolean).join(" · ") || "-"}</dd>
+              </div>
+              <div className="daily-queue-document__wide">
+                <dt>ที่อยู่หน้างาน</dt>
+                <dd>{a.customer_address || "-"}</dd>
+              </div>
+              <div className="daily-queue-document__wide">
+                <dt>รายละเอียดงาน / อาการ</dt>
+                <dd>{a.job_detail || "-"}</dd>
+              </div>
+              {(a.result || a.close_note) && (
+                <div className="daily-queue-document__wide">
+                  <dt>ผลการดำเนินงาน</dt>
+                  <dd>{[a.result, a.close_note].filter(Boolean).join(" · ")}</dd>
+                </div>
+              )}
+            </dl>
+          </section>
+        ))
+      )}
     </main>
     <footer>เอกสารคิวงานรายวัน · สร้างจากระบบจัดการงานบริการ</footer>
   </div>
 );
-
-
 
 function DayList({
   days,
@@ -2402,7 +3120,10 @@ function DayList({
     const { error } = await supabase.from("appointments").update({ status }).eq("id", a.id);
     if (error) return toast.error(error.message);
     if (a.work_order_id) {
-      const { error: orderError } = await supabase.from("work_orders").update({ status }).eq("id", a.work_order_id);
+      const { error: orderError } = await supabase
+        .from("work_orders")
+        .update({ status })
+        .eq("id", a.work_order_id);
       if (orderError) return toast.error("อัปเดตใบสั่งงานไม่สำเร็จ: " + orderError.message);
     }
     reload();
@@ -2417,14 +3138,22 @@ function DayList({
   return (
     <div className="space-y-4">
       {days.map((d) => {
-        const list = sortApptList(appts.filter((a) => a.visit_date === d), sortBy);
+        const list = sortApptList(
+          appts.filter((a) => a.visit_date === d),
+          sortBy,
+        );
         const holiday = holidaysMap?.[d];
         return (
           <div key={d} className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold">{formatDate(d)}</p>
               {!holiday && onAddHoliday && (
-                <Button size="sm" variant="ghost" className="h-7 text-sm font-semibold text-muted-foreground hover:text-rose-600" onClick={() => onAddHoliday(d)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-sm font-semibold text-muted-foreground hover:text-rose-600"
+                  onClick={() => onAddHoliday(d)}
+                >
                   <Palmtree className="mr-1 h-3 w-3 text-rose-500" /> กำหนดวันหยุด
                 </Button>
               )}
@@ -2438,18 +3167,25 @@ function DayList({
             )}
             {list.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีนัดหมาย</p>}
             {list.map((a) => (
-              <div key={a.id} className="relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3">
+              <div
+                key={a.id}
+                className="relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3"
+              >
                 <StatusRail status={a.status} />
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">
-                      {a.visit_time?.slice(0, 5)} · {a.cust_id ? `[${a.cust_id}] ` : ""}{a.customer_name}
+                      {a.visit_time?.slice(0, 5)} · {a.cust_id ? `[${a.cust_id}] ` : ""}
+                      {a.customer_name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {[a.serial_number, a.machine_label, a.service_type].filter(Boolean).join(" · ")}
+                      {[a.serial_number, a.machine_label, a.service_type]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ: {a.vehicle_plate || "-"}
+                      ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ:{" "}
+                      {a.vehicle_plate || "-"}
                       {a.sales_rep ? ` · เซลล์: ${a.sales_rep}` : ""}
                     </p>
                     {a.job_detail && <p className="mt-1 text-sm">{a.job_detail}</p>}
@@ -2463,7 +3199,9 @@ function DayList({
                   <label
                     className={
                       "flex w-fit cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-xs font-medium " +
-                      (a.status === "scheduled" ? "border-amber-400 bg-amber-50 text-amber-700" : "text-muted-foreground")
+                      (a.status === "scheduled"
+                        ? "border-amber-400 bg-amber-50 text-amber-700"
+                        : "text-muted-foreground")
                     }
                   >
                     <input
@@ -2494,7 +3232,6 @@ function DayList({
                     </ConfirmButton>
                   )}
                 </div>
-
               </div>
             ))}
           </div>
@@ -2552,15 +3289,64 @@ function AppointmentDialog({
   useEffect(() => {
     let off = false;
     const t = setTimeout(() => {
-      void checkScheduleConflicts({ id: form.id, visit_date: form.visit_date, visit_time: form.visit_time, staff_name: form.staff_name, vehicle_plate: form.vehicle_plate })
-        .then((c) => { if (!off) setLiveConflicts(c); }).catch(() => {});
+      void checkScheduleConflicts({
+        id: form.id,
+        visit_date: form.visit_date,
+        visit_time: form.visit_time,
+        staff_name: form.staff_name,
+        vehicle_plate: form.vehicle_plate,
+      })
+        .then((c) => {
+          if (!off) setLiveConflicts(c);
+        })
+        .catch(() => {});
     }, 300);
-    return () => { off = true; clearTimeout(t); };
+    return () => {
+      off = true;
+      clearTimeout(t);
+    };
   }, [form.id, form.visit_date, form.visit_time, form.staff_name, form.vehicle_plate]);
-  const { isAdmin: canDelete } = useAccess();
+  const { isAdmin } = useAccess();
+  const canDelete = isAdmin;
   const locked = !canEdit || !editMode;
   const dir = useDirectory();
-  const delDir = (k: DirectoryKind) => (canDelete ? (v: string) => void deleteDirectoryEntry(k, v) : undefined);
+  const delDir = (k: DirectoryKind) =>
+    isAdmin
+      ? async (v: string) => {
+          const ok = await deleteDirectoryEntry(k, v);
+          if (ok) {
+            const target = v.trim().toLowerCase();
+            if (k === "customer" && form.customer_name?.trim().toLowerCase() === target) {
+              setForm((f) => ({
+                ...f,
+                customer_name: "",
+                customer_address: "",
+                contact_phone: "",
+              }));
+            } else if (k === "cust_id" && (form.cust_id ?? "").trim().toLowerCase() === target) {
+              setForm((f) => ({ ...f, cust_id: null }));
+            } else if (k === "serial") {
+              const remaining = splitNames(form.serial_number).filter(
+                (s) => s.trim().toLowerCase() !== target,
+              );
+              setForm((f) => ({ ...f, serial_number: joinNames(remaining) }));
+            } else if (k === "staff") {
+              const remaining = splitNames(form.staff_name).filter(
+                (s) => s.trim().toLowerCase() !== target,
+              );
+              setForm((f) => ({ ...f, staff_name: joinNames(remaining) }));
+            } else if (k === "vehicle") {
+              const remaining = splitNames(form.vehicle_plate).filter(
+                (p) => p.trim().toLowerCase() !== target,
+              );
+              setForm((f) => ({ ...f, vehicle_plate: joinNames(remaining) }));
+            } else if (k === "seller" && (form.sales_rep ?? "").trim().toLowerCase() === target) {
+              setForm((f) => ({ ...f, sales_rep: null }));
+            }
+          }
+          return ok;
+        }
+      : undefined;
   const sellerNames = useSellerNames();
 
   const set = (k: keyof Appointment, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -2586,12 +3372,15 @@ function AppointmentDialog({
   };
   /** เลือก S/N ได้หลายเครื่อง — เติมรุ่น/ลูกค้า/ที่อยู่/เบอร์โทรอัตโนมัติ */
   const pickSerials = (serials: string[]) => {
-    const hits = serials.map((s) => dir.machines.find((m) => m.serial === s)).filter(Boolean) as typeof dir.machines;
+    const hits = serials
+      .map((s) => dir.machines.find((m) => m.serial === s))
+      .filter(Boolean) as typeof dir.machines;
     const first = hits[0];
     setForm((f) => ({
       ...f,
       serial_number: joinNames(serials),
-      machine_label: joinNames(Array.from(new Set(hits.map((h) => h.label).filter(Boolean)))) || f.machine_label,
+      machine_label:
+        joinNames(Array.from(new Set(hits.map((h) => h.label).filter(Boolean)))) || f.machine_label,
       customer_name: first?.customer || f.customer_name,
       cust_id: first?.cust_id || f.cust_id,
       customer_address: first?.address || f.customer_address,
@@ -2608,10 +3397,24 @@ function AppointmentDialog({
   };
 
   const save = async () => {
+    if (!form.id && !isAdmin) {
+      return toast.error(
+        "ห้ามสร้างงานใหม่ลงในตารางแพลนเนอร์โดยตรง หากต้องการเพิ่มงานใหม่ กรุณา 'เขียนใบสั่งงาน (Work Order)' เพื่อรอแอดมินอนุมัติเท่านั้น",
+      );
+    }
     if (!form.customer_name?.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     setSaving(true);
-    const conflicts = await checkScheduleConflicts({ id: form.id, visit_date: form.visit_date, visit_time: form.visit_time, staff_name: form.staff_name, vehicle_plate: form.vehicle_plate });
-    if (conflicts.length) { setSaving(false); return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 }); }
+    const conflicts = await checkScheduleConflicts({
+      id: form.id,
+      visit_date: form.visit_date,
+      visit_time: form.visit_time,
+      staff_name: form.staff_name,
+      vehicle_plate: form.vehicle_plate,
+    });
+    if (conflicts.length) {
+      setSaving(false);
+      return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
+    }
     const serials = splitNames(form.serial_number);
     const plates = splitNames(form.vehicle_plate);
     await ensureDirectoryEntries({
@@ -2624,7 +3427,12 @@ function AppointmentDialog({
       staff_name: form.staff_name,
       vehicle_plate: plates[0] ?? "",
     });
-    for (const s of serials.slice(1)) await ensureDirectoryEntries({ customer_name: form.customer_name, serial_number: s, machine_label: form.machine_label });
+    for (const s of serials.slice(1))
+      await ensureDirectoryEntries({
+        customer_name: form.customer_name,
+        serial_number: s,
+        machine_label: form.machine_label,
+      });
     for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
     await ensureSeller(form.sales_rep);
 
@@ -2670,13 +3478,17 @@ function AppointmentDialog({
     (onDeleted ?? onSaved)();
   };
 
-
-
   const addressOptions = Array.from(
-    new Set([...dir.customers.map((c) => c.address), ...dir.machines.map((m) => m.address)].filter(Boolean)),
+    new Set(
+      [...dir.customers.map((c) => c.address), ...dir.machines.map((m) => m.address)].filter(
+        Boolean,
+      ),
+    ),
   );
   const phoneOptions = Array.from(
-    new Set([...dir.customers.map((c) => c.phone), ...dir.machines.map((m) => m.phone)].filter(Boolean)),
+    new Set(
+      [...dir.customers.map((c) => c.phone), ...dir.machines.map((m) => m.phone)].filter(Boolean),
+    ),
   );
 
   return (
@@ -2685,26 +3497,99 @@ function AppointmentDialog({
         <DialogHeader>
           <DialogTitle>{form.id ? "รายละเอียดนัดหมาย" : "เพิ่มนัดหมายลงปฏิทิน"}</DialogTitle>
           <DialogDescription>
-            {canEdit ? "เลือกลูกค้า/เครื่องจากฐานข้อมูล ระบบจะเติมที่อยู่และเบอร์โทรให้อัตโนมัติ" : "ดูรายละเอียดงานนัดหมาย"}
+            {canEdit
+              ? "เลือกลูกค้า/เครื่องจากฐานข้อมูล ระบบจะเติมที่อยู่และเบอร์โทรให้อัตโนมัติ"
+              : "ดูรายละเอียดงานนัดหมาย"}
           </DialogDescription>
         </DialogHeader>
+
+        {!form.id && !isAdmin && (
+          <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-semibold">ไม่มีสิทธิ์สร้างงานใหม่ลงในตารางแพลนเนอร์โดยตรง</p>
+              <p className="text-xs opacity-90">
+                หากต้องการเพิ่มงานใหม่ กรุณา "เขียนใบสั่งงาน (Work Order)"
+                เพื่อรอแอดมินอนุมัติเท่านั้น
+              </p>
+            </div>
+          </div>
+        )}
 
         {form.id && (
           <div className="relative flex flex-wrap items-center gap-2 overflow-hidden rounded-xl border bg-muted/40 py-3 pl-6 pr-3 text-sm">
             <StatusRail status={form.status} />
             <JobStatusBadge status={form.status} />
-            <span>{formatDate(form.visit_date)} {form.visit_time?.slice(0, 5)}</span>
+            <span>
+              {formatDate(form.visit_date)} {form.visit_time?.slice(0, 5)}
+            </span>
+            {form.status !== "closed" && (
+              <label className="ml-auto flex cursor-pointer items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 text-xs font-medium">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-amber-500 cursor-pointer"
+                  checked={form.status === "scheduled"}
+                  onChange={async (e) => {
+                    const next = e.target.checked ? "scheduled" : "approved";
+                    set("status", next);
+                    if (form.id) {
+                      const { error } = await supabase
+                        .from("appointments")
+                        .update({ status: next })
+                        .eq("id", form.id);
+                      if (error) {
+                        toast.error(error.message);
+                        set("status", form.status);
+                      } else {
+                        if (form.work_order_id) {
+                          await supabase
+                            .from("work_orders")
+                            .update({ status: next })
+                            .eq("id", form.work_order_id);
+                        }
+                        toast.success(
+                          next === "scheduled" ? "บันทึก: นัดหมายแล้ว" : "ยกเลิกสถานะนัดหมายแล้ว",
+                        );
+                        onSaved();
+                      }
+                    }
+                  }}
+                />
+                <span
+                  className={
+                    form.status === "scheduled"
+                      ? "font-semibold text-amber-700 dark:text-amber-300"
+                      : "text-muted-foreground"
+                  }
+                >
+                  นัดหมายแล้ว
+                </span>
+              </label>
+            )}
             {form.result && (
-              <Badge className={form.result === "not_ok" ? "bg-destructive text-destructive-foreground" : "bg-emerald-600 text-white"}>
+              <Badge
+                className={
+                  form.result === "not_ok"
+                    ? "bg-destructive text-destructive-foreground"
+                    : "bg-emerald-600 text-white"
+                }
+              >
                 {form.result === "not_ok" ? "ไม่เรียบร้อย" : "เรียบร้อย"}
               </Badge>
             )}
             {form.contact_phone && (
-              <a href={`tel:${form.contact_phone}`} className="inline-flex items-center gap-1 text-primary">
+              <a
+                href={`tel:${form.contact_phone}`}
+                className="inline-flex items-center gap-1 text-primary"
+              >
                 <Phone className="h-3.5 w-3.5" /> {form.contact_phone}
               </a>
             )}
-            {form.close_note && <span className="w-full text-xs text-muted-foreground">สรุปงาน: {form.close_note}</span>}
+            {form.close_note && (
+              <span className="w-full text-xs text-muted-foreground">
+                สรุปงาน: {form.close_note}
+              </span>
+            )}
           </div>
         )}
 
@@ -2717,15 +3602,16 @@ function AppointmentDialog({
           </div>
         )}
 
-
-
         <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
           <F label="รหัสลูกค้า (cust_id)">
             <Combobox
               disabled={locked}
               value={form.cust_id ?? ""}
-              onChange={pickCustId} onDelete={delDir("cust_id")}
-              options={dir.customers.filter((c) => c.cust_id).map((c) => ({ value: c.cust_id, hint: c.name }))}
+              onChange={pickCustId}
+              onDelete={delDir("cust_id")}
+              options={dir.customers
+                .filter((c) => c.cust_id)
+                .map((c) => ({ value: c.cust_id, hint: c.name }))}
               allowCustom
               placeholder="เลือก / พิมพ์รหัสลูกค้า"
               searchPlaceholder="ค้นหารหัสลูกค้า..."
@@ -2735,21 +3621,31 @@ function AppointmentDialog({
             <Combobox
               disabled={locked}
               value={form.customer_name ?? ""}
-              onChange={pickCustomer} onDelete={delDir("customer")}
+              onChange={pickCustomer}
+              onDelete={delDir("customer")}
               allowCustom
               options={dir.customers.map((c) => ({
                 value: c.name,
-                hint: [c.cust_id && `รหัส ${c.cust_id}`, c.phone, c.address].filter(Boolean).join(" · "),
+                hint: [c.cust_id && `รหัส ${c.cust_id}`, c.phone, c.address]
+                  .filter(Boolean)
+                  .join(" · "),
               }))}
               placeholder="เลือกลูกค้า"
               searchPlaceholder="ค้นหาลูกค้า..."
             />
           </F>
-          <F label={form.customer_name ? `หมายเลขเครื่อง (S/N) — เฉพาะของ ${form.customer_name} (เลือกได้หลายเครื่อง)` : "หมายเลขเครื่อง (S/N) (เลือกได้หลายเครื่อง)"}>
+          <F
+            label={
+              form.customer_name
+                ? `หมายเลขเครื่อง (S/N) — เฉพาะของ ${form.customer_name} (เลือกได้หลายเครื่อง)`
+                : "หมายเลขเครื่อง (S/N) (เลือกได้หลายเครื่อง)"
+            }
+          >
             <MultiCombobox
               disabled={locked}
               values={splitNames(form.serial_number)}
-              onChange={pickSerials} onDelete={delDir("serial")}
+              onChange={pickSerials}
+              onDelete={delDir("serial")}
               options={dir.machines
                 .filter((m) => !form.customer_name || m.customer === form.customer_name)
                 .map((m) => m.serial)
@@ -2768,7 +3664,11 @@ function AppointmentDialog({
             />
           </F>
           <F label="ผู้ติดต่อ">
-            <Input disabled={locked} value={form.contact_name ?? ""} onChange={(e) => set("contact_name", e.target.value)} />
+            <Input
+              disabled={locked}
+              value={form.contact_name ?? ""}
+              onChange={(e) => set("contact_name", e.target.value)}
+            />
           </F>
           <F label="เบอร์โทร">
             <ComboCell
@@ -2800,17 +3700,27 @@ function AppointmentDialog({
           </F>
           <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
             <F label="วันที่">
-              <DateInput disabled={locked} value={form.visit_date} onChange={(v) => set("visit_date", v)} />
+              <DateInput
+                disabled={locked}
+                value={form.visit_date}
+                onChange={(v) => set("visit_date", v)}
+              />
             </F>
             <F label="เวลา">
-              <Input disabled={locked} type="time" value={form.visit_time ?? ""} onChange={(e) => set("visit_time", e.target.value)} />
+              <Input
+                disabled={locked}
+                type="time"
+                value={form.visit_time ?? ""}
+                onChange={(e) => set("visit_time", e.target.value)}
+              />
             </F>
           </div>
           <F label="พนักงานเซอร์วิส (เลือกได้หลายคน)">
             <MultiCombobox
               disabled={locked}
               values={splitNames(form.staff_name)}
-              onChange={(list) => set("staff_name", joinNames(list))} onDelete={delDir("staff")}
+              onChange={(list) => set("staff_name", joinNames(list))}
+              onDelete={delDir("staff")}
               options={dir.staff}
               placeholder="เลือกช่าง (ติ๊กได้หลายคน)"
               searchPlaceholder="ค้นหาช่าง..."
@@ -2820,19 +3730,30 @@ function AppointmentDialog({
             <MultiCombobox
               disabled={locked}
               values={splitNames(form.vehicle_plate)}
-              onChange={(list) => set("vehicle_plate", joinNames(list))} onDelete={delDir("vehicle")}
+              onChange={(list) => set("vehicle_plate", joinNames(list))}
+              onDelete={delDir("vehicle")}
               options={dir.vehicles}
               placeholder="ติ๊กเลือกทะเบียนรถ"
               searchPlaceholder="ค้นหาทะเบียนรถ..."
             />
-            {liveConflicts.length > 0 && <p role="alert" className="mt-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">⚠ {liveConflicts.join(" · ")}</p>}
+            {liveConflicts.length > 0 && (
+              <p
+                role="alert"
+                className="mt-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive"
+              >
+                ⚠ {liveConflicts.join(" · ")}
+              </p>
+            )}
           </F>
           <F label="พนักงานขาย (เซลล์) ที่ดูแล">
             <Combobox
               disabled={locked}
               value={form.sales_rep ?? ""}
-              onChange={(v) => set("sales_rep", v)} onDelete={delDir("seller")}
-              options={Array.from(new Set([...sellerNames, ...dir.machines.map((m) => m.seller)].filter(Boolean))).map((s) => ({ value: s }))}
+              onChange={(v) => set("sales_rep", v)}
+              onDelete={delDir("seller")}
+              options={Array.from(
+                new Set([...sellerNames, ...dir.machines.map((m) => m.seller)].filter(Boolean)),
+              ).map((s) => ({ value: s }))}
               allowCustom
               placeholder="เลือกเซลล์ หรือพิมพ์ชื่อใหม่"
             />
@@ -2840,7 +3761,12 @@ function AppointmentDialog({
 
           <div className="md:col-span-2">
             <F label="รายละเอียดงาน / บันทึกให้ช่าง">
-              <Textarea disabled={locked} rows={3} value={form.job_detail ?? ""} onChange={(e) => set("job_detail", e.target.value)} />
+              <Textarea
+                disabled={locked}
+                rows={3}
+                value={form.job_detail ?? ""}
+                onChange={(e) => set("job_detail", e.target.value)}
+              />
             </F>
           </div>
           <div className="md:col-span-2">
@@ -2852,7 +3778,6 @@ function AppointmentDialog({
               />
             </F>
           </div>
-
         </div>
 
         <DialogFooter className="gap-2 [&>button]:w-full sm:[&>button]:w-auto">
@@ -2881,7 +3806,7 @@ function AppointmentDialog({
               <Pencil className="mr-1 h-4 w-4" /> แก้ไขข้อมูลนัดหมาย
             </Button>
           )}
-          {canEdit && editMode && (
+          {canEdit && editMode && (isAdmin || form.id) && (
             <Button onClick={save} disabled={saving}>
               {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} บันทึก
             </Button>
@@ -2891,7 +3816,6 @@ function AppointmentDialog({
     </Dialog>
   );
 }
-
 
 // ---------- Close job ----------
 function CloseJobDialog({
@@ -3000,13 +3924,20 @@ function CloseJobDialog({
     let alive = true;
     (async () => {
       const [prodRes, catRes] = await Promise.all([
-        supabase.from("products").select("id, name, part_number, model_id, categories(name)").order("name").limit(1000),
+        supabase
+          .from("products")
+          .select("id, name, part_number, model_id, categories(name)")
+          .order("name")
+          .limit(1000),
         supabase.from("categories").select("id, name").order("sort_order").order("name"),
       ]);
       if (!alive) return;
       const list: CatalogPart[] = (prodRes.data ?? []).map((p: any) => ({
         id: p.id,
-        label: [p.part_number, p.name].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" · "),
+        label: [p.part_number, p.name]
+          .filter(Boolean)
+          .filter((v, i, a) => a.indexOf(v) === i)
+          .join(" · "),
         category: p.categories?.name ?? "อื่นๆ",
         model_id: p.model_id,
       }));
@@ -3021,7 +3952,10 @@ function CloseJobDialog({
         .maybeSingle();
       if (!alive || !unit?.id) return;
       setUnitInfo(unit);
-      const { data: mp } = await supabase.from("machine_parts").select("product_id").eq("machine_unit_id", unit.id);
+      const { data: mp } = await supabase
+        .from("machine_parts")
+        .select("product_id")
+        .eq("machine_unit_id", unit.id);
       if (!alive) return;
       const ids = (mp ?? []).map((r) => r.product_id).filter(Boolean) as string[];
       setLinkedIds(ids);
@@ -3039,7 +3973,12 @@ function CloseJobDialog({
   const visibleParts = products.filter(
     (p) =>
       matchKw(p, partKw) &&
-      (partKw || showAll || !unitInfo || linkedIds.includes(p.id) || (unitInfo.model_id && p.model_id === unitInfo.model_id) || cats.includes(p.label)),
+      (partKw ||
+        showAll ||
+        !unitInfo ||
+        linkedIds.includes(p.id) ||
+        (unitInfo.model_id && p.model_id === unitInfo.model_id) ||
+        cats.includes(p.label)),
   );
   const grouped = visibleParts.reduce<Record<string, CatalogPart[]>>((acc, p) => {
     (acc[p.category] ??= []).push(p);
@@ -3048,18 +3987,27 @@ function CloseJobDialog({
   const quoteParts = products.filter(
     (p) =>
       matchKw(p, quoteKw) &&
-      (quoteKw || showAllQuote || !unitInfo || linkedIds.includes(p.id) || (unitInfo.model_id && p.model_id === unitInfo.model_id) || quoteItems.includes(p.label)),
+      (quoteKw ||
+        showAllQuote ||
+        !unitInfo ||
+        linkedIds.includes(p.id) ||
+        (unitInfo.model_id && p.model_id === unitInfo.model_id) ||
+        quoteItems.includes(p.label)),
   );
   const quoteGrouped = quoteParts.reduce<Record<string, CatalogPart[]>>((acc, p) => {
     (acc[p.category] ??= []).push(p);
     return acc;
   }, {});
-  const quoteCategoryNames = Array.from(new Set([...categories.map((c) => c.name), ...PART_CATEGORIES]));
+  const quoteCategoryNames = Array.from(
+    new Set([...categories.map((c) => c.name), ...PART_CATEGORIES]),
+  );
   const emptyQuoteCategories = quoteCategoryNames.filter((c) => !quoteGrouped[c]);
   const toggleCat = (c: string) =>
     setCats((list) => (list.includes(c) ? list.filter((x) => x !== c) : [...list, c]));
   const toggleQuote = (value: string) =>
-    setQuoteItems((list) => (list.includes(value) ? list.filter((x) => x !== value) : [...list, value]));
+    setQuoteItems((list) =>
+      list.includes(value) ? list.filter((x) => x !== value) : [...list, value],
+    );
 
   /** ผูกอะไหล่เข้ากับ S/N ของเครื่อง (ถ้ายังไม่ผูก) */
   const linkToUnit = async (productIds: string[]) => {
@@ -3068,7 +4016,9 @@ function CloseJobDialog({
     if (!fresh.length) return;
     const { error } = await supabase
       .from("machine_parts")
-      .insert(fresh.map((product_id) => ({ machine_unit_id: unitInfo.id, product_id, quantity: 1 })));
+      .insert(
+        fresh.map((product_id) => ({ machine_unit_id: unitInfo.id, product_id, quantity: 1 })),
+      );
     if (!error) setLinkedIds((l) => [...l, ...fresh]);
   };
 
@@ -3076,7 +4026,9 @@ function CloseJobDialog({
     const name = (target === "quote" ? quotePart : newPart).trim();
     const categoryId = target === "quote" ? quoteCat : newCat;
     if (!name) return;
-    const exist = products.find((p) => p.label.toLowerCase().split(" · ").includes(name.toLowerCase()));
+    const exist = products.find((p) =>
+      p.label.toLowerCase().split(" · ").includes(name.toLowerCase()),
+    );
     if (exist) {
       const select = target === "quote" ? setQuoteItems : setCats;
       select((list) => (list.includes(exist.label) ? list : [...list, exist.label]));
@@ -3088,7 +4040,12 @@ function CloseJobDialog({
     setAdding(true);
     const { data, error } = await supabase
       .from("products")
-      .insert({ name, part_number: name, category_id: categoryId || null, model_id: unitInfo?.model_id ?? null })
+      .insert({
+        name,
+        part_number: name,
+        category_id: categoryId || null,
+        model_id: unitInfo?.model_id ?? null,
+      })
       .select("id")
       .single();
     if (error || !data) {
@@ -3096,14 +4053,21 @@ function CloseJobDialog({
       return toast.error(error?.message ?? "เพิ่มอะไหล่ไม่สำเร็จ");
     }
     const catName = categories.find((c) => c.id === categoryId)?.name ?? "อื่นๆ";
-    setProducts((l) => [...l, { id: data.id, label: name, category: catName, model_id: unitInfo?.model_id ?? null }]);
+    setProducts((l) => [
+      ...l,
+      { id: data.id, label: name, category: catName, model_id: unitInfo?.model_id ?? null },
+    ]);
     if (target === "quote") setQuoteItems((l) => [...l, name]);
     else setCats((l) => [...l, name]);
     await linkToUnit([data.id]);
     setAdding(false);
     if (target === "quote") setQuotePart("");
     else setNewPart("");
-    toast.success(unitInfo ? `เพิ่ม "${name}" และผูกกับ S/N ${appt.serial_number} แล้ว` : `เพิ่ม "${name}" เข้าคลังแล้ว`);
+    toast.success(
+      unitInfo
+        ? `เพิ่ม "${name}" และผูกกับ S/N ${appt.serial_number} แล้ว`
+        : `เพิ่ม "${name}" เข้าคลังแล้ว`,
+    );
   };
 
   const submit = async () => {
@@ -3171,16 +4135,16 @@ function CloseJobDialog({
         .update({ result, note: note.trim() || null, job_detail: appt.job_detail })
         .eq("appointment_id", appt.id);
     } else
-    await supabase.from("maintenance_logs").insert({
-      machine_unit_id: unitId,
-      appointment_id: appt.id,
-      serial_number: appt.serial_number,
-      job_detail: appt.job_detail,
-      service_type: appt.service_type,
-      result,
-      note: note.trim() || null,
-      done_date: doneDate,
-    });
+      await supabase.from("maintenance_logs").insert({
+        machine_unit_id: unitId,
+        appointment_id: appt.id,
+        serial_number: appt.serial_number,
+        job_detail: appt.job_detail,
+        service_type: appt.service_type,
+        result,
+        note: note.trim() || null,
+        done_date: doneDate,
+      });
 
     if (resetParts && unitId && result === "ok") {
       await supabase
@@ -3234,225 +4198,314 @@ function CloseJobDialog({
           </Button>
         </div>
         <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
-        <div className="min-w-0 space-y-2 rounded-lg border p-3">
-          <p className="text-sm font-semibold">รายละเอียดการปิดงาน</p>
-          <Textarea rows={3} placeholder="บันทึกสรุปงานสั้นๆ" value={note} onChange={(e) => setNote(e.target.value)} />
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={quotation} onChange={(e) => setQuotation(e.target.checked)} />
-            ต้องออกใบเสนอราคาให้ลูกค้า
-          </label>
-        </div>
-
-        <div className="min-w-0 space-y-2 rounded-lg border p-3">
-          <label className="flex items-center justify-between gap-2 text-sm font-semibold">
-            ต้องการมี Checklist การตรวจสอบหรือไม่
-            <Switch checked={useChecklist} onCheckedChange={setUseChecklist} />
-          </label>
-          {useChecklist && (
-            <>
-              <select
-                className="h-9 w-full rounded border bg-background px-2 text-sm"
-                value={checklist?.template_id ?? ""}
-                onChange={(e) => {
-                  const t = templates.find((x) => x.id === e.target.value);
-                  if (t) setChecklist(newResult(t, checklist));
-                }}
-              >
-                <option value="" disabled>เลือกชุดเช็คลิสต์</option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}{t.machine_types ? ` (${t.machine_types})` : ""}
-                  </option>
-                ))}
-              </select>
-              {pumpType && <p className="text-xs text-muted-foreground">ประเภทเครื่องนี้: {pumpType}</p>}
-              {checklist && <ChecklistForm value={checklist} onChange={setChecklist} />}
-            </>
-          )}
-        </div>
-
-        <div className="min-w-0 space-y-2 rounded-lg border p-3">
-          <p className="text-sm font-semibold">อะไหล่ที่เปลี่ยนในงานนี้</p>
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">
-              {appt.serial_number
-                ? `อะไหล่ของเครื่อง S/N ${appt.serial_number} (เลือกได้หลายรายการ)`
-                : "ไม่มี S/N — เลือกจากคลังอะไหล่"}
-            </p>
-            <label className="flex shrink-0 items-center gap-1 text-xs">
-              <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-              แสดงทั้งคลัง
+          <div className="min-w-0 space-y-2 rounded-lg border p-3">
+            <p className="text-sm font-semibold">รายละเอียดการปิดงาน</p>
+            <Textarea
+              rows={3}
+              placeholder="บันทึกสรุปงานสั้นๆ"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={quotation}
+                onChange={(e) => setQuotation(e.target.checked)}
+              />
+              ต้องออกใบเสนอราคาให้ลูกค้า
             </label>
           </div>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="min-w-0 pl-9"
-              placeholder="ค้นหาอะไหล่จากฐานข้อมูล (พิมพ์รหัสหรือชื่อ เช่น 220099)"
-              value={partSearch}
-              onChange={(e) => setPartSearch(e.target.value)}
-            />
+
+          <div className="min-w-0 space-y-2 rounded-lg border p-3">
+            <label className="flex items-center justify-between gap-2 text-sm font-semibold">
+              ต้องการมี Checklist การตรวจสอบหรือไม่
+              <Switch checked={useChecklist} onCheckedChange={setUseChecklist} />
+            </label>
+            {useChecklist && (
+              <>
+                <select
+                  className="h-9 w-full rounded border bg-background px-2 text-sm"
+                  value={checklist?.template_id ?? ""}
+                  onChange={(e) => {
+                    const t = templates.find((x) => x.id === e.target.value);
+                    if (t) setChecklist(newResult(t, checklist));
+                  }}
+                >
+                  <option value="" disabled>
+                    เลือกชุดเช็คลิสต์
+                  </option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                      {t.machine_types ? ` (${t.machine_types})` : ""}
+                    </option>
+                  ))}
+                </select>
+                {pumpType && (
+                  <p className="text-xs text-muted-foreground">ประเภทเครื่องนี้: {pumpType}</p>
+                )}
+                {checklist && <ChecklistForm value={checklist} onChange={setChecklist} />}
+              </>
+            )}
           </div>
-          {partKw && (
-            <p className="text-xs text-muted-foreground">
-              พบ {visibleParts.length} รายการจากทั้งคลัง{visibleParts.length === 0 ? " — ไม่มีในระบบ สามารถพิมพ์เพิ่มใหม่ด้านล่างได้" : ""}
-            </p>
-          )}
-          <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
-            {Object.entries(grouped)
-              .sort(([a], [b]) => a.localeCompare(b, "th"))
-              .map(([cat, items]) => (
-                <div key={cat}>
-                  <p className="text-xs font-semibold text-muted-foreground">{cat}</p>
-                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                    {items.map((p) => (
-                      <label key={p.id} className="flex items-start gap-2 text-sm">
+
+          <div className="min-w-0 space-y-2 rounded-lg border p-3">
+            <p className="text-sm font-semibold">อะไหล่ที่เปลี่ยนในงานนี้</p>
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                {appt.serial_number
+                  ? `อะไหล่ของเครื่อง S/N ${appt.serial_number} (เลือกได้หลายรายการ)`
+                  : "ไม่มี S/N — เลือกจากคลังอะไหล่"}
+              </p>
+              <label className="flex shrink-0 items-center gap-1 text-xs">
+                <input
+                  type="checkbox"
+                  checked={showAll}
+                  onChange={(e) => setShowAll(e.target.checked)}
+                />
+                แสดงทั้งคลัง
+              </label>
+            </div>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="min-w-0 pl-9"
+                placeholder="ค้นหาอะไหล่จากฐานข้อมูล (พิมพ์รหัสหรือชื่อ เช่น 220099)"
+                value={partSearch}
+                onChange={(e) => setPartSearch(e.target.value)}
+              />
+            </div>
+            {partKw && (
+              <p className="text-xs text-muted-foreground">
+                พบ {visibleParts.length} รายการจากทั้งคลัง
+                {visibleParts.length === 0 ? " — ไม่มีในระบบ สามารถพิมพ์เพิ่มใหม่ด้านล่างได้" : ""}
+              </p>
+            )}
+            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+              {Object.entries(grouped)
+                .sort(([a], [b]) => a.localeCompare(b, "th"))
+                .map(([cat, items]) => (
+                  <div key={cat}>
+                    <p className="text-xs font-semibold text-muted-foreground">{cat}</p>
+                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                      {items.map((p) => (
+                        <label key={p.id} className="flex items-start gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={cats.includes(p.label)}
+                            onChange={() => toggleCat(p.label)}
+                          />
+                          <span className="break-words">
+                            {p.label}
+                            {linkedIds.includes(p.id) && (
+                              <span className="ml-1 text-[10px] text-primary">(ผูกแล้ว)</span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              {/* หมวดที่ยังไม่มีอะไหล่ในคลัง — แสดงชื่อหมวดให้ติ๊กไว้ก่อน จนกว่าจะเพิ่มอะไหล่จริงเข้าไป */}
+              {PART_CATEGORIES.filter((c) => !grouped[c]).length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    หมวดที่ยังไม่มีอะไหล่ในระบบ (ติ๊กตามหมวดไว้ก่อน)
+                  </p>
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    {PART_CATEGORIES.filter((c) => !grouped[c]).map((c) => (
+                      <label key={c} className="flex items-center gap-2 text-sm">
                         <input
                           type="checkbox"
-                          className="mt-1"
-                          checked={cats.includes(p.label)}
-                          onChange={() => toggleCat(p.label)}
+                          checked={cats.includes(c)}
+                          onChange={() => toggleCat(c)}
                         />
-                        <span className="break-words">
-                          {p.label}
-                          {linkedIds.includes(p.id) && <span className="ml-1 text-[10px] text-primary">(ผูกแล้ว)</span>}
-                        </span>
+                        {c}
                       </label>
                     ))}
                   </div>
                 </div>
-              ))}
-            {/* หมวดที่ยังไม่มีอะไหล่ในคลัง — แสดงชื่อหมวดให้ติ๊กไว้ก่อน จนกว่าจะเพิ่มอะไหล่จริงเข้าไป */}
-            {PART_CATEGORIES.filter((c) => !grouped[c]).length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground">หมวดที่ยังไม่มีอะไหล่ในระบบ (ติ๊กตามหมวดไว้ก่อน)</p>
-                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                  {PART_CATEGORIES.filter((c) => !grouped[c]).map((c) => (
-                    <label key={c} className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={cats.includes(c)} onChange={() => toggleCat(c)} />
-                      {c}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="grid min-w-0 grid-cols-1 gap-1.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+              )}
+            </div>
+            <div className="grid min-w-0 grid-cols-1 gap-1.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+              <Input
+                className="min-w-0"
+                placeholder="พิมพ์ชื่อ/รหัสอะไหล่ใหม่"
+                value={newPart}
+                onChange={(e) => setNewPart(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void addNewPart("replaced");
+                  }
+                }}
+              />
+              <select
+                className="h-9 min-w-0 w-full rounded-md border bg-background px-2 text-sm"
+                value={newCat}
+                onChange={(e) => setNewCat(e.target.value)}
+              >
+                <option value="">หมวด: อื่นๆ</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                size="sm"
+                className="w-full lg:w-auto"
+                onClick={() => void addNewPart("replaced")}
+                disabled={adding || !newPart.trim()}
+              >
+                {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "เพิ่ม+ผูก S/N"}
+              </Button>
+            </div>
             <Input
-              className="min-w-0"
-              placeholder="พิมพ์ชื่อ/รหัสอะไหล่ใหม่"
-              value={newPart}
-              onChange={(e) => setNewPart(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void addNewPart("replaced");
-                }
-              }}
+              placeholder="ระบุอะไหล่เพิ่มเติม / รายละเอียดอื่นๆ"
+              value={partsNote}
+              onChange={(e) => setPartsNote(e.target.value)}
             />
-            <select
-              className="h-9 min-w-0 w-full rounded-md border bg-background px-2 text-sm"
-              value={newCat}
-              onChange={(e) => setNewCat(e.target.value)}
-            >
-              <option value="">หมวด: อื่นๆ</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <Button type="button" size="sm" className="w-full lg:w-auto" onClick={() => void addNewPart("replaced")} disabled={adding || !newPart.trim()}>
-              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "เพิ่ม+ผูก S/N"}
-            </Button>
           </div>
-          <Input
-            placeholder="ระบุอะไหล่เพิ่มเติม / รายละเอียดอื่นๆ"
-            value={partsNote}
-            onChange={(e) => setPartsNote(e.target.value)}
-          />
-        </div>
 
-        <div className="min-w-0 space-y-2 rounded-lg border p-3">
-          <p className="text-sm font-semibold">รายการที่ต้องเสนอราคาเพิ่มเติม</p>
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">
-              {appt.serial_number ? `อะไหล่ของเครื่อง S/N ${appt.serial_number}` : "อะไหล่จากคลัง"} (เลือกได้หลายรายการ)
-            </p>
-            <label className="flex shrink-0 items-center gap-1 text-xs">
-              <input type="checkbox" checked={showAllQuote} onChange={(e) => setShowAllQuote(e.target.checked)} />
-              แสดงทั้งคลัง
-            </label>
-          </div>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="min-w-0 pl-9"
-              placeholder="ค้นหาอะไหล่จากฐานข้อมูล (พิมพ์รหัสหรือชื่อ เช่น 220099)"
-              value={quoteSearch}
-              onChange={(e) => setQuoteSearch(e.target.value)}
-            />
-          </div>
-          {quoteKw && (
-            <p className="text-xs text-muted-foreground">
-              พบ {quoteParts.length} รายการจากทั้งคลัง{quoteParts.length === 0 ? " — ไม่มีในระบบ สามารถพิมพ์เพิ่มใหม่ด้านล่างได้" : ""}
-            </p>
-          )}
-          <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
-            {Object.entries(quoteGrouped).sort(([a], [b]) => a.localeCompare(b, "th")).map(([cat, items]) => (
-              <div key={cat}>
-                <p className="text-xs font-semibold text-muted-foreground">{cat}</p>
-                <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                  {items.map((p) => (
-                    <label key={p.id} className="flex items-start gap-2 text-sm">
-                      <input type="checkbox" className="mt-1" checked={quoteItems.includes(p.label)} onChange={() => toggleQuote(p.label)} />
-                      <span className="break-words">{p.label}{linkedIds.includes(p.id) && <span className="ml-1 text-[10px] text-primary">(ผูกแล้ว)</span>}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
-            {emptyQuoteCategories.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground">หมวดที่ยังไม่มีอะไหล่ในระบบ (ติ๊กตามหมวดไว้ก่อน)</p>
-                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                  {emptyQuoteCategories.map((c) => (
-                    <label key={c} className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={quoteItems.includes(c)} onChange={() => toggleQuote(c)} />
-                      {c}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-            {quoteItems.filter((item) => !quoteCategoryNames.includes(item) && !products.some((p) => p.label === item)).map((item) => (
-              <label key={item} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked onChange={() => toggleQuote(item)} />{item}
+          <div className="min-w-0 space-y-2 rounded-lg border p-3">
+            <p className="text-sm font-semibold">รายการที่ต้องเสนอราคาเพิ่มเติม</p>
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                {appt.serial_number
+                  ? `อะไหล่ของเครื่อง S/N ${appt.serial_number}`
+                  : "อะไหล่จากคลัง"}{" "}
+                (เลือกได้หลายรายการ)
+              </p>
+              <label className="flex shrink-0 items-center gap-1 text-xs">
+                <input
+                  type="checkbox"
+                  checked={showAllQuote}
+                  onChange={(e) => setShowAllQuote(e.target.checked)}
+                />
+                แสดงทั้งคลัง
               </label>
-            ))}
+            </div>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="min-w-0 pl-9"
+                placeholder="ค้นหาอะไหล่จากฐานข้อมูล (พิมพ์รหัสหรือชื่อ เช่น 220099)"
+                value={quoteSearch}
+                onChange={(e) => setQuoteSearch(e.target.value)}
+              />
+            </div>
+            {quoteKw && (
+              <p className="text-xs text-muted-foreground">
+                พบ {quoteParts.length} รายการจากทั้งคลัง
+                {quoteParts.length === 0 ? " — ไม่มีในระบบ สามารถพิมพ์เพิ่มใหม่ด้านล่างได้" : ""}
+              </p>
+            )}
+            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+              {Object.entries(quoteGrouped)
+                .sort(([a], [b]) => a.localeCompare(b, "th"))
+                .map(([cat, items]) => (
+                  <div key={cat}>
+                    <p className="text-xs font-semibold text-muted-foreground">{cat}</p>
+                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                      {items.map((p) => (
+                        <label key={p.id} className="flex items-start gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={quoteItems.includes(p.label)}
+                            onChange={() => toggleQuote(p.label)}
+                          />
+                          <span className="break-words">
+                            {p.label}
+                            {linkedIds.includes(p.id) && (
+                              <span className="ml-1 text-[10px] text-primary">(ผูกแล้ว)</span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              {emptyQuoteCategories.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    หมวดที่ยังไม่มีอะไหล่ในระบบ (ติ๊กตามหมวดไว้ก่อน)
+                  </p>
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    {emptyQuoteCategories.map((c) => (
+                      <label key={c} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={quoteItems.includes(c)}
+                          onChange={() => toggleQuote(c)}
+                        />
+                        {c}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {quoteItems
+                .filter(
+                  (item) =>
+                    !quoteCategoryNames.includes(item) && !products.some((p) => p.label === item),
+                )
+                .map((item) => (
+                  <label key={item} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked onChange={() => toggleQuote(item)} />
+                    {item}
+                  </label>
+                ))}
+            </div>
+            <div className="grid min-w-0 grid-cols-1 gap-1.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+              <Input
+                className="min-w-0"
+                placeholder="พิมพ์ชื่อ/รหัสอะไหล่ที่ต้องเสนอราคา"
+                value={quotePart}
+                onChange={(e) => setQuotePart(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void addNewPart("quote");
+                  }
+                }}
+              />
+              <select
+                className="h-9 min-w-0 w-full rounded-md border bg-background px-2 text-sm sm:w-auto"
+                value={quoteCat}
+                onChange={(e) => setQuoteCat(e.target.value)}
+                aria-label="หมวดอะไหล่เสนอราคา"
+              >
+                <option value="">หมวด: อื่นๆ</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => void addNewPart("quote")}
+                disabled={adding || !quotePart.trim()}
+              >
+                {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "เพิ่ม+ผูก S/N"}
+              </Button>
+            </div>
           </div>
-          <div className="grid min-w-0 grid-cols-1 gap-1.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-            <Input
-              className="min-w-0"
-              placeholder="พิมพ์ชื่อ/รหัสอะไหล่ที่ต้องเสนอราคา"
-              value={quotePart}
-              onChange={(e) => setQuotePart(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addNewPart("quote"); } }}
-            />
-            <select className="h-9 min-w-0 w-full rounded-md border bg-background px-2 text-sm sm:w-auto" value={quoteCat} onChange={(e) => setQuoteCat(e.target.value)} aria-label="หมวดอะไหล่เสนอราคา">
-              <option value="">หมวด: อื่นๆ</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => void addNewPart("quote")} disabled={adding || !quotePart.trim()}>
-              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "เพิ่ม+ผูก S/N"}
-            </Button>
-          </div>
-        </div>
 
-        <label className="flex min-w-0 items-start gap-2 text-sm md:col-span-2">
-          <input type="checkbox" checked={resetParts} onChange={(e) => setResetParts(e.target.checked)} />
-          รีเซ็ตอายุอะไหล่ของเครื่อง {appt.serial_number || "-"} เริ่มนับใหม่
-        </label>
+          <label className="flex min-w-0 items-start gap-2 text-sm md:col-span-2">
+            <input
+              type="checkbox"
+              checked={resetParts}
+              onChange={(e) => setResetParts(e.target.checked)}
+            />
+            รีเซ็ตอายุอะไหล่ของเครื่อง {appt.serial_number || "-"} เริ่มนับใหม่
+          </label>
         </div>
         <DialogFooter className="[&>button]:w-full sm:[&>button]:w-auto">
           <Button variant="outline" onClick={onClose}>
@@ -3495,7 +4548,6 @@ function BadgeRow({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-
 /** ดูผลสรุปการปิดงานและผล Checklist ย้อนหลัง พร้อมปุ่มแก้ไขการปิดงาน */
 function ClosedJobResultDialog({
   appt,
@@ -3534,8 +4586,13 @@ function ClosedJobResultDialog({
         <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <JobStatusBadge status={r.status} />
-            <span className="font-semibold">{r.cust_id ? `[${r.cust_id}] ` : ""}{r.customer_name || "-"}</span>
-            <span className="text-sm text-muted-foreground">{formatDate(r.visit_date)} {r.visit_time?.slice(0, 5) ?? ""}</span>
+            <span className="font-semibold">
+              {r.cust_id ? `[${r.cust_id}] ` : ""}
+              {r.customer_name || "-"}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              {formatDate(r.visit_date)} {r.visit_time?.slice(0, 5) ?? ""}
+            </span>
           </div>
           <div className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border p-3 lg:grid-cols-2">
             {line("เครื่อง / S/N", [r.machine_label, r.serial_number].filter(Boolean).join(" · "))}
@@ -3553,8 +4610,12 @@ function ClosedJobResultDialog({
           </div>
         </div>
         <DialogFooter className="grid grid-cols-1 gap-2 sm:flex">
-          <Button variant="outline" onClick={() => onEditDetail(appt)}>แก้ไขรายละเอียดงาน</Button>
-          <Button onClick={() => onEditClose({ ...(appt as any), ...(row ?? {}) })}>แก้ไขการปิดงาน</Button>
+          <Button variant="outline" onClick={() => onEditDetail(appt)}>
+            แก้ไขรายละเอียดงาน
+          </Button>
+          <Button onClick={() => onEditClose({ ...(appt as any), ...(row ?? {}) })}>
+            แก้ไขการปิดงาน
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

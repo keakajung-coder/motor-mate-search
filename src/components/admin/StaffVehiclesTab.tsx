@@ -28,26 +28,45 @@ function StaffCard() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [lineId, setLineId] = useState("");
+  const [inactiveCount, setInactiveCount] = useState(0);
 
   const load = async () => {
-    const { data } = await supabase.from("service_staff").select("id, name, phone, line_contact").order("name");
-    setRows((data ?? []) as Staff[]);
+    const [{ data: activeList }, { count: inactCount }] = await Promise.all([
+      supabase
+        .from("service_staff")
+        .select("id, name, phone, line_contact")
+        .neq("active", false)
+        .order("name"),
+      supabase
+        .from("service_staff")
+        .select("id", { count: "exact", head: true })
+        .eq("active", false),
+    ]);
+    setRows((activeList ?? []) as Staff[]);
+    setInactiveCount(inactCount ?? 0);
     refreshDirectory();
     setLoading(false);
   };
   useEffect(() => {
     load();
+    const onStaffChanged = () => load();
+    window.addEventListener("service-staff-changed", onStaffChanged);
+    return () => window.removeEventListener("service-staff-changed", onStaffChanged);
   }, []);
 
   const add = async () => {
     if (!name.trim()) return;
-    const { error } = await supabase
-      .from("service_staff")
-      .insert({ name: name.trim(), phone: phone.trim() || null, line_contact: lineId.trim() || null });
+    const { error } = await supabase.from("service_staff").insert({
+      name: name.trim(),
+      phone: phone.trim() || null,
+      line_contact: lineId.trim() || null,
+      active: true,
+    });
     if (error) return toast.error(error.message);
     setName("");
     setPhone("");
     setLineId("");
+    window.dispatchEvent(new Event("service-staff-changed"));
     toast.success("เพิ่มพนักงานแล้ว");
     load();
   };
@@ -55,21 +74,42 @@ function StaffCard() {
   const update = async (id: string, patch: Partial<Staff>) => {
     const { error } = await supabase.from("service_staff").update(patch).eq("id", id);
     if (error) toast.error(error.message);
-    else refreshDirectory();
+    else {
+      window.dispatchEvent(new Event("service-staff-changed"));
+      refreshDirectory();
+    }
   };
 
-  const remove = async (id: string) => {
-    const { error } = await deleteAsAdmin("service_staff", { id });
+  const remove = async (id: string, staffName: string) => {
+    // Soft Delete: ตั้งค่า active = false เพื่อรักษาประวัติการปฏิบัติงานและวันลาย้อนหลัง
+    const { error } = await supabase.from("service_staff").update({ active: false }).eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("ลบแล้ว");
+    const { logAudit } = await import("@/lib/audit");
+    await logAudit({
+      table: "service_staff",
+      recordId: id,
+      action: "soft_delete",
+      summary: `ลบพนักงาน (Soft Delete: active = false): ${staffName}`,
+      changes: { id, name: staffName, active: false },
+    });
+    window.dispatchEvent(new Event("service-staff-changed"));
+    toast.success(`ลบพนักงาน "${staffName}" แล้ว (กู้คืนได้ที่หน้าถังขยะ)`);
+    refreshDirectory();
     load();
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <UserCog className="h-4 w-4" /> พนักงานเซอร์วิส ({rows.length})
+        <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
+          <span className="flex items-center gap-2">
+            <UserCog className="h-4 w-4" /> พนักงานเซอร์วิส ({rows.length})
+          </span>
+          {inactiveCount > 0 && (
+            <span className="text-xs font-normal text-muted-foreground">
+              มีพนักงานถูกลบ {inactiveCount} คน (กู้คืนได้ที่แท็บถังขยะ)
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -90,10 +130,15 @@ function StaffCard() {
         ) : (
           <div className="space-y-2">
             {rows.map((r) => (
-              <div key={r.id} className="grid min-w-0 grid-cols-1 items-center gap-2 rounded-md border p-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
+              <div
+                key={r.id}
+                className="grid min-w-0 grid-cols-1 items-center gap-2 rounded-md border p-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]"
+              >
                 <Input
                   defaultValue={r.name}
-                  onBlur={(e) => e.target.value.trim() && update(r.id, { name: e.target.value.trim() })}
+                  onBlur={(e) =>
+                    e.target.value.trim() && update(r.id, { name: e.target.value.trim() })
+                  }
                 />
                 <Input
                   defaultValue={r.phone ?? ""}
@@ -107,9 +152,9 @@ function StaffCard() {
                 />
                 {isAdmin && (
                   <ConfirmButton
-                    onConfirm={() => remove(r.id)}
-                    title="ลบผู้ใช้นี้?"
-                    description={`ลบพนักงาน ${r.name} ออกจากระบบถาวร`}
+                    onConfirm={() => remove(r.id, r.name)}
+                    title="ลบพนักงานนี้?"
+                    description={`ลบพนักงาน ${r.name} ออกจากระบบใช้งาน (Soft Delete) โดยยังคงรักษาประวัติงานและวันลาย้อนหลังไว้ สามารถกู้คืนได้ที่หน้าถังขยะ`}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </ConfirmButton>
@@ -143,7 +188,9 @@ function VehicleCard() {
 
   const add = async () => {
     if (!plate.trim()) return;
-    const { error } = await supabase.from("vehicles").insert({ plate: plate.trim(), note: note.trim() || null });
+    const { error } = await supabase
+      .from("vehicles")
+      .insert({ plate: plate.trim(), note: note.trim() || null });
     if (error) return toast.error(error.message);
     setPlate("");
     setNote("");
@@ -184,10 +231,15 @@ function VehicleCard() {
         ) : (
           <div className="space-y-2">
             {rows.map((r) => (
-              <div key={r.id} className="grid min-w-0 grid-cols-1 items-center gap-2 rounded-md border p-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+              <div
+                key={r.id}
+                className="grid min-w-0 grid-cols-1 items-center gap-2 rounded-md border p-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+              >
                 <Input
                   defaultValue={r.plate}
-                  onBlur={(e) => e.target.value.trim() && update(r.id, { plate: e.target.value.trim() })}
+                  onBlur={(e) =>
+                    e.target.value.trim() && update(r.id, { plate: e.target.value.trim() })
+                  }
                 />
                 <Input
                   defaultValue={r.note ?? ""}
