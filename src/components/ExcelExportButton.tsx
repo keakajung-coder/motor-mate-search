@@ -23,6 +23,12 @@ export function ExcelExportButton() {
   const go = async (mode: "download" | "share") => {
     setBusy(true);
     try {
+      if (path === "/planner") {
+        await new Promise<void>((resolve, reject) => {
+          window.dispatchEvent(new CustomEvent("app:planner-excel", { detail: { mode, resolve, reject } }));
+        });
+        return;
+      }
       const { blob, filename, title } = await buildPageWorkbook(path);
       if (mode === "share") await shareOrDownload(blob, filename, title);
       else await saveFile(blob, filename);
