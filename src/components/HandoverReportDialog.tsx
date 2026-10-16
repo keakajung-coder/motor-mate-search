@@ -361,6 +361,11 @@ export function HandoverReportDialog({
     [dir.staff],
   );
 
+  const engineerOptions = useMemo(() => {
+    const list = dir.engineers && dir.engineers.length > 0 ? dir.engineers : dir.staff;
+    return list.map((e) => ({ value: e, label: e }));
+  }, [dir.engineers, dir.staff]);
+
   // ดึงรูปที่แนบไว้ในใบงาน
   const baseAttachments = useMemo(() => {
     if (initialAttachments && initialAttachments.length) return initialAttachments;
@@ -717,7 +722,7 @@ export function HandoverReportDialog({
                   <Combobox
                     value={report.engineerName}
                     onChange={(v) => setReport({ ...report, engineerName: v })}
-                    options={staffOptions}
+                    options={engineerOptions}
                     allowCustom
                     placeholder="เลือกหรือพิมพ์ชื่อวิศวกร..."
                     searchPlaceholder="ค้นหาหรือพิมพ์ชื่อวิศวกร..."

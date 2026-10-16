@@ -21,6 +21,7 @@ import { ImportExportTab } from "@/components/admin/ImportExportTab";
 import { OptionListManager } from "@/components/admin/OptionListManager";
 import { SalesContactsCard } from "@/components/admin/SalesContactsCard";
 import { StaffVehiclesTab } from "@/components/admin/StaffVehiclesTab";
+import { EngineersTab } from "@/components/admin/EngineersTab";
 import { SellerTransfer } from "@/components/admin/SellerTransfer";
 import { refreshDirectory } from "@/lib/directory";
 
@@ -85,6 +86,7 @@ function AdminPage() {
           <TabsTrigger value="brands" className="shrink-0">ยี่ห้อ</TabsTrigger>
           <TabsTrigger value="models" className="shrink-0">รุ่นเครื่อง</TabsTrigger>
           <TabsTrigger value="staff" className="shrink-0">ช่าง / รถ</TabsTrigger>
+          <TabsTrigger value="engineers" className="shrink-0">วิศวกร</TabsTrigger>
           <TabsTrigger value="lists" className="shrink-0">ผู้ขาย / สถานะ</TabsTrigger>
           <TabsTrigger value="bundles" className="shrink-0">ชุดอะไหล่</TabsTrigger>
           <TabsTrigger value="checklist" className="shrink-0">เทมเพลต Checklist</TabsTrigger>
@@ -101,6 +103,7 @@ function AdminPage() {
         <TabsContent value="brands"><ReadOnlyScope><BrandsTab /></ReadOnlyScope></TabsContent>
         <TabsContent value="models"><ReadOnlyScope><ModelsTab /></ReadOnlyScope></TabsContent>
         <TabsContent value="staff"><ReadOnlyScope><StaffVehiclesTab /></ReadOnlyScope></TabsContent>
+        <TabsContent value="engineers"><ReadOnlyScope><EngineersTab /></ReadOnlyScope></TabsContent>
         <TabsContent value="lists">
           <ReadOnlyScope>
             <div className="space-y-4">

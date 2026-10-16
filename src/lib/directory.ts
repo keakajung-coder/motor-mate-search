@@ -21,17 +21,24 @@ export type Directory = {
   machines: DirMachine[];
   staff: string[];
   vehicles: string[];
+  engineers: string[];
   loading: boolean;
 };
 
-const EMPTY: Directory = { customers: [], machines: [], staff: [], vehicles: [], loading: true };
+const EMPTY: Directory = { customers: [], machines: [], staff: [], vehicles: [], engineers: [], loading: true };
 
 let cache: Directory = EMPTY;
 let inflight: Promise<void> | null = null;
 const listeners = new Set<(d: Directory) => void>();
 
+if (typeof window !== "undefined") {
+  window.addEventListener("engineers-changed", () => {
+    void refreshDirectory();
+  });
+}
+
 async function fetchAll() {
-  const [c, m, s, v] = await Promise.all([
+  const [c, m, s, v, eng] = await Promise.all([
     supabase.from("customers").select("cust_id, name, phone, address").order("name"),
     supabase
       .from("machine_units")
@@ -41,7 +48,24 @@ async function fetchAll() {
       .order("serial_number"),
     supabase.from("service_staff").select("name").neq("active", false).order("name"),
     supabase.from("vehicles").select("plate").neq("active", false).order("plate"),
+    supabase.from("app_settings").select("value").eq("key", "engineers").maybeSingle(),
   ]);
+
+  let engineerNames: string[] = [];
+  if (eng.data?.value) {
+    try {
+      const parsed = JSON.parse(eng.data.value);
+      if (Array.isArray(parsed)) {
+        engineerNames = parsed
+          .map((item: any) =>
+            typeof item === "string" ? item : item?.active !== false ? item?.name : null,
+          )
+          .filter(Boolean)
+          .map((s: string) => String(s).trim())
+          .filter(Boolean);
+      }
+    } catch {}
+  }
 
   cache = {
     loading: false,
@@ -70,6 +94,7 @@ async function fetchAll() {
     })),
     staff: (s.data ?? []).map((r: any) => r.name).filter(Boolean),
     vehicles: (v.data ?? []).map((r: any) => r.plate).filter(Boolean),
+    engineers: engineerNames,
   };
   listeners.forEach((fn) => fn(cache));
 }
@@ -292,7 +317,14 @@ export function useDirectory(): Directory {
   return dir;
 }
 
-export type DirectoryKind = "customer" | "cust_id" | "serial" | "staff" | "vehicle" | "seller";
+export type DirectoryKind =
+  | "customer"
+  | "cust_id"
+  | "serial"
+  | "staff"
+  | "vehicle"
+  | "seller"
+  | "engineer";
 
 /** แอดมินเท่านั้น: ลบรายการที่ผิดออกจากฐานข้อมูลกลาง แล้วรีเฟรชตัวเลือกทุกหน้า */
 export async function deleteDirectoryEntry(kind: DirectoryKind, value: string) {
@@ -316,8 +348,19 @@ export async function deleteDirectoryEntry(kind: DirectoryKind, value: string) {
       changes: { name: value, active: false },
     });
     window.dispatchEvent(new Event("service-staff-changed"));
+  } else if (kind === "engineer") {
+    const { loadEngineers, removeEngineer } = await import("@/lib/engineers");
+    const list = await loadEngineers(true);
+    const target = list.find((e) => e.name.trim().toLowerCase() === value.trim().toLowerCase());
+    if (target) {
+      const res = await removeEngineer(target.id);
+      if (!res.success) {
+        toast.error(res.error || "ลบวิศวกรไม่สำเร็จ");
+        return false;
+      }
+    }
   } else {
-    const map: Record<Exclude<DirectoryKind, "staff">, [string, string]> = {
+    const map: Record<Exclude<DirectoryKind, "staff" | "engineer">, [string, string]> = {
       customer: ["customers", "name"],
       cust_id: ["customers", "cust_id"],
       serial: ["machine_units", "serial_number"],
@@ -351,6 +394,10 @@ export async function deleteDirectoryEntry(kind: DirectoryKind, value: string) {
       kind === "vehicle"
         ? cache.vehicles.filter((v) => v.trim().toLowerCase() !== target)
         : cache.vehicles,
+    engineers:
+      kind === "engineer"
+        ? cache.engineers.filter((e) => e.trim().toLowerCase() !== target)
+        : cache.engineers,
   };
   listeners.forEach((fn) => fn(cache));
 

@@ -1559,6 +1559,10 @@ function ApprovedOrders({
     const chosen = schedule[o.id];
     if (!a) return toast.error("ไม่พบรายการงานที่เชื่อมกับปฏิทิน");
     if (!chosen?.date) return toast.error("กรุณาเลือกวันที่นัดหมาย");
+    const currentApprovedDate = a.visit_date ?? o.visit_date ?? "";
+    if (!isAdmin && chosen.date !== currentApprovedDate) {
+      return toast.error("เฉพาะแอดมินเท่านั้นที่มีสิทธิ์แก้ไขวันที่นัดหมายหลังจากใบงานอนุมัติแล้ว");
+    }
     const conflicts = await checkScheduleConflicts({
       id: a.id,
       visit_date: chosen.date,
@@ -1852,10 +1856,15 @@ function ApprovedOrders({
           <div className="grid min-w-0 grid-cols-1 gap-2 rounded-md border bg-muted/30 p-2 lg:grid-cols-[minmax(0,1fr)_8rem_auto]">
             <DateInput
               aria-label={`วันที่นัดหมาย ${o.customer_name}`}
+              disabled={!isAdmin}
               value={schedule[o.id]?.date ?? ""}
-              onChange={(date) =>
-                setSchedule((s) => ({ ...s, [o.id]: { date, time: s[o.id]?.time ?? "" } }))
-              }
+              onChange={(date) => {
+                if (!isAdmin) {
+                  toast.error("เฉพาะแอดมินเท่านั้นที่มีสิทธิ์แก้ไขวันที่นัดหมายหลังจากใบงานอนุมัติแล้ว");
+                  return;
+                }
+                setSchedule((s) => ({ ...s, [o.id]: { date, time: s[o.id]?.time ?? "" } }));
+              }}
             />
             <Input
               aria-label={`เวลานัดหมาย ${o.customer_name}`}
@@ -3234,6 +3243,18 @@ function AppointmentDialog({
   const { isAdmin } = useAccess();
   const canDelete = isAdmin;
   const locked = !canEdit || !editMode;
+
+  // ใบงานที่อนุมัติแล้ว: มี id อยู่แล้ว และสถานะเป็น approved, scheduled, in_progress, closed หรือผูกกับ work_order_id
+  const isApproved = Boolean(
+    form.id &&
+      (form.status === "approved" ||
+        form.status === "scheduled" ||
+        form.status === "in_progress" ||
+        form.status === "closed" ||
+        Boolean(form.work_order_id)),
+  );
+  // ห้ามคนที่ไม่ใช่แอดมินแก้วันที่หลังจากใบงานอนุมัติแล้ว
+  const canEditDate = !locked && (isAdmin || !isApproved);
   const dir = useDirectory();
   const delDir = (k: DirectoryKind) =>
     isAdmin
@@ -3327,11 +3348,16 @@ function AppointmentDialog({
         "ห้ามสร้างงานใหม่ลงในตารางแพลนเนอร์โดยตรง หากต้องการเพิ่มงานใหม่ กรุณา 'เขียนใบสั่งงาน (Work Order)' เพื่อรอแอดมินอนุมัติเท่านั้น",
       );
     }
+    if (isApproved && !isAdmin && form.visit_date !== value.visit_date) {
+      setSaving(false);
+      return toast.error("เฉพาะแอดมินเท่านั้นที่มีสิทธิ์แก้ไขวันที่นัดหมายหลังจากใบงานอนุมัติแล้ว");
+    }
     if (!form.customer_name?.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     setSaving(true);
+    const finalVisitDate = isApproved && !isAdmin ? value.visit_date : form.visit_date;
     const conflicts = await checkScheduleConflicts({
       id: form.id,
-      visit_date: form.visit_date,
+      visit_date: finalVisitDate,
       visit_time: form.visit_time,
       staff_name: form.staff_name,
       vehicle_plate: form.vehicle_plate,
@@ -3377,7 +3403,7 @@ function AppointmentDialog({
       machine_unit_id: unit?.id ?? null,
       job_detail: form.job_detail,
       service_type: form.service_type,
-      visit_date: form.visit_date,
+      visit_date: finalVisitDate,
       visit_time: form.visit_time,
       staff_name: form.staff_name,
       vehicle_plate: form.vehicle_plate,
@@ -3624,11 +3650,30 @@ function AppointmentDialog({
             />
           </F>
           <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
-            <F label="วันที่">
+            <F
+              label={
+                <span className="flex items-center gap-1.5">
+                  <span>วันที่ *</span>
+                  {isApproved && !isAdmin && (
+                    <span className="text-[11px] font-normal text-amber-600 dark:text-amber-400">
+                      (เฉพาะแอดมินแก้ไขได้หลังใบงานอนุมัติแล้ว)
+                    </span>
+                  )}
+                </span>
+              }
+            >
               <DateInput
-                disabled={locked}
+                disabled={!canEditDate}
                 value={form.visit_date}
-                onChange={(v) => set("visit_date", v)}
+                onChange={(v) => {
+                  if (isApproved && !isAdmin) {
+                    toast.error(
+                      "เฉพาะแอดมินเท่านั้นที่มีสิทธิ์แก้ไขวันที่นัดหมายหลังจากใบงานอนุมัติแล้ว",
+                    );
+                    return;
+                  }
+                  set("visit_date", v);
+                }}
               />
             </F>
             <F label="เวลา">
