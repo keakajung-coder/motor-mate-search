@@ -670,9 +670,9 @@ function ProductsTab() {
           <div className="sm:col-span-2">
             <Label>รูปสินค้า</Label>
             <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center">
-              <Input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); }} />
+              <Input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadImage(f); }} />
               {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {form.image_url && <img src={form.image_url} alt="" className="h-10 w-10 rounded object-cover" />}
+              {form.image_url && <img key={form.image_url} src={form.image_url} alt="รูปสินค้า" className="h-20 w-20 rounded border object-cover" />}
             </div>
           </div>
         </div>
