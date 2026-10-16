@@ -555,19 +555,33 @@ function ProductsTab() {
   useEffect(() => { load(); }, []);
 
   async function uploadImage(file: File) {
-    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-    const maxBytes = 5 * 1024 * 1024;
-    if (!allowedTypes.has(file.type)) return toast.error("รองรับเฉพาะรูป JPG, PNG หรือ WebP");
-    if (file.size > maxBytes) return toast.error("รูปต้องมีขนาดไม่เกิน 5 MB");
+    if (!file.type.startsWith("image/")) return toast.error("รองรับเฉพาะไฟล์รูปภาพ");
     setUploading(true);
-    const extension = file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1];
-    const path = `products/${crypto.randomUUID()}.${extension}`;
-    const { error } = await supabase.storage.from("product-images").upload(path, file);
-    if (error) { setUploading(false); toast.error(error.message); return; }
-    const { data } = await supabase.storage.from("product-images").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
-    setForm((f) => ({ ...f, image_url: data?.signedUrl ?? "" }));
-    setUploading(false);
-    toast.success("อัพโหลดรูปสำเร็จ");
+    try {
+      const { compressImage } = await import("@/lib/image-compress");
+      const small = await compressImage(file, { maxSize: 1280, quality: 0.82 });
+      const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
+      if (!allowed.has(small.type)) throw new Error("แปลงรูปไม่สำเร็จ ลองใช้ไฟล์ JPG หรือ PNG");
+      if (small.size > 5 * 1024 * 1024) throw new Error("รูปยังใหญ่เกิน 5 MB หลังบีบอัด");
+      const extension = small.type === "image/jpeg" ? "jpg" : small.type.split("/")[1];
+      const path = `products/${crypto.randomUUID()}.${extension}`;
+      const { error } = await supabase.storage.from("product-images").upload(path, small, { contentType: small.type });
+      if (error) throw error;
+      const { data, error: urlErr } = await supabase.storage.from("product-images").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+      if (urlErr || !data?.signedUrl) throw urlErr ?? new Error("สร้างลิงก์รูปไม่สำเร็จ");
+      const url = data.signedUrl;
+      setForm((f) => ({ ...f, image_url: url }));
+      // ถ้ากำลังแก้ไขสินค้าเดิม บันทึกรูปทันทีเพื่อไม่ให้รูปหาย
+      if (form.id) {
+        await supabase.from("products").update({ image_url: url }).eq("id", form.id);
+        load();
+      }
+      toast.success(`อัพโหลดรูปสำเร็จ (${Math.round(small.size / 1024)} KB)`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "อัพโหลดรูปไม่สำเร็จ");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function save() {
@@ -659,9 +673,9 @@ function ProductsTab() {
           <div className="sm:col-span-2">
             <Label>รูปสินค้า</Label>
             <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center">
-              <Input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); }} />
+              <Input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadImage(f); }} />
               {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {form.image_url && <img src={form.image_url} alt="" className="h-10 w-10 rounded object-cover" />}
+              {form.image_url && <img key={form.image_url} src={form.image_url} alt="รูปสินค้า" className="h-20 w-20 rounded border object-cover" />}
             </div>
           </div>
         </div>
