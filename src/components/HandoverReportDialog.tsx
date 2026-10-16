@@ -877,26 +877,25 @@ export function HandoverReportDialog({
                                 onChange={(e) => {
                                   const files = Array.from(e.target.files || []);
                                   if (!files.length) return;
-                                  files.forEach((file) => {
-                                    const reader = new FileReader();
-                                    reader.onload = () => {
-                                      const dataUrl = reader.result as string;
-                                      const newPhoto: JobAttachment = {
-                                        path: `local-${Date.now()}-${file.name}`,
-                                        name: file.name.replace(/\.[^/.]+$/, ""),
-                                        url: dataUrl,
-                                        kind: "image",
-                                      };
-                                      setReport((prev) => {
-                                        const nextMachines = [...prev.machines];
-                                        nextMachines[idx] = {
-                                          ...nextMachines[idx],
-                                          photos: [...nextMachines[idx].photos, newPhoto],
-                                        };
-                                        return { ...prev, machines: nextMachines };
-                                      });
+                                  e.target.value = "";
+                                  files.forEach(async (file) => {
+                                    const { compressImage, fileToDataUrl } = await import("@/lib/image-compress");
+                                    const small = await compressImage(file, { maxSize: 1280, quality: 0.8 });
+                                    const dataUrl = await fileToDataUrl(small);
+                                    const newPhoto: JobAttachment = {
+                                      path: `local-${Date.now()}-${file.name}`,
+                                      name: file.name.replace(/\.[^/.]+$/, ""),
+                                      url: dataUrl,
+                                      kind: "image",
                                     };
-                                    reader.readAsDataURL(file);
+                                    setReport((prev) => {
+                                      const nextMachines = [...prev.machines];
+                                      nextMachines[idx] = {
+                                        ...nextMachines[idx],
+                                        photos: [...nextMachines[idx].photos, newPhoto],
+                                      };
+                                      return { ...prev, machines: nextMachines };
+                                    });
                                   });
                                   e.target.value = "";
                                 }}

@@ -42,12 +42,14 @@ export function JobAttachments({
     if (!files?.length || !onChange) return;
     setBusy(true);
     const added: JobAttachment[] = [];
-    for (const file of Array.from(files)) {
-      const isVideo = file.type.startsWith("video/");
-      if (!isVideo && !file.type.startsWith("image/")) {
-        toast.error(`${file.name}: รองรับเฉพาะรูปภาพและวิดีโอ`);
+    const { compressImage } = await import("@/lib/image-compress");
+    for (const original of Array.from(files)) {
+      const isVideo = original.type.startsWith("video/");
+      if (!isVideo && !original.type.startsWith("image/")) {
+        toast.error(`${original.name}: รองรับเฉพาะรูปภาพและวิดีโอ`);
         continue;
       }
+      const file = isVideo ? original : await compressImage(original, { maxSize: 1920, quality: 0.8 });
       if (file.size > 50 * 1024 * 1024) {
         toast.error(`${file.name}: ไฟล์ใหญ่เกิน 50MB`);
         continue;
