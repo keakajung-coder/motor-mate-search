@@ -22,6 +22,7 @@ export async function proxyBusinessRequest(request: Request) {
         if (rows.length > 2000 || rows.some((r) => !r || typeof r !== "object" || Array.isArray(r))) return Response.json({ message: "Invalid records" }, { status: 400 });
         if (table === "audit_log") for (const row of rows) row.actor = role;
         if (role === "viewer") {
+          if ((request.headers.get("prefer") ?? "").includes("resolution=merge-duplicates")) return Response.json({ message: "An explicit authorized edit is required" }, { status: 403 });
           if (method === "POST" && table === "work_orders" && rows.some((r) => r.status !== "pending" || r.approved_hidden === true)) return Response.json({ message: "Approval requires admin" }, { status: 403 });
           if (method === "PATCH" && table === "work_orders" && rows.some((r) => "status" in r && r.status !== "pending")) return Response.json({ message: "Approval requires admin" }, { status: 403 });
           if (method === "PATCH" && table === "notifications" && rows.some((r) => Object.keys(r).some((k) => k !== "read"))) return Response.json({ message: "Forbidden" }, { status: 403 });
@@ -45,6 +46,11 @@ export async function proxyBusinessRequest(request: Request) {
       if (method === "POST") {
         const type = request.headers.get("content-type") ?? "";
         if (!/^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm|quicktime))($|;)/.test(type) && !type.startsWith("multipart/form-data")) return Response.json({ message: "Unsupported file" }, { status: 400 });
+        if (type.startsWith("multipart/form-data")) {
+          const form = await request.clone().formData();
+          const files = Array.from(form.values()).filter((v): v is File => typeof v !== "string");
+          if (files.length !== 1 || !/^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm|quicktime))$/.test(files[0].type)) return Response.json({ message: "Unsupported file" }, { status: 400 });
+        }
         body = await request.arrayBuffer();
         if (body.byteLength > (bucket === "product-images" ? 10 : 50) * 1024 * 1024) return Response.json({ message: "Too large" }, { status: 413 });
       } else if (method === "DELETE") body = await request.text();

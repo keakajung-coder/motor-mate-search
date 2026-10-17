@@ -95,17 +95,19 @@ export const adminDelete = createServerFn({ method: "POST" })
     // เก็บสำเนาลงถังขยะก่อนลบ เพื่อกู้คืนได้
     let sel = supabaseAdmin.from(data.table as never).select("*");
     for (const [k, v] of Object.entries(filters)) sel = sel.eq(k, v);
-    const { data: snap } = await sel;
-    const { error } = await q;
-    if (!error && Array.isArray(snap) && snap.length) {
-      await supabaseAdmin.from("deleted_items").insert(
+    const { data: snap, error: readError } = await sel;
+    if (readError) return { ok: false as const, error: "อ่านสำเนาก่อนลบไม่สำเร็จ" };
+    if (Array.isArray(snap) && snap.length) {
+      const { error: snapshotError } = await supabaseAdmin.from("deleted_items").insert(
         (snap as Record<string, unknown>[]).map((r) => ({
           table_name: data.table,
           label: String(LABEL_COLS.map((c) => r[c]).find((x) => x) ?? r.id ?? ""),
           row_data: r as never,
         })),
       );
+      if (snapshotError) return { ok: false as const, error: "เก็บสำเนาก่อนลบไม่สำเร็จ จึงยังไม่ลบข้อมูล" };
     }
+    const { error } = await q;
     if (error) return { ok: false as const, error: error.message };
     return { ok: true as const };
   });

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { safeSpreadsheetValue } from "./security-policy";
 
 const BUCKET = "excel-backups";
 const K_INTERVAL = "excel_backup_interval";
@@ -48,7 +49,7 @@ async function runBackup() {
   const wb = XLSX.utils.book_new();
   for (const t of BACKUP_TABLES) {
     const { data } = await db.from(t).select("*").limit(20000);
-    const rows = (data ?? []) as Record<string, unknown>[];
+    const rows = ((data ?? []) as Record<string, unknown>[]).map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, safeSpreadsheetValue(value)])));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{}]), t.slice(0, 31));
   }
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
