@@ -1,71 +1,59 @@
 import { createServerFn } from "@tanstack/react-start";
-
-type Kind = "viewer" | "admin";
+import { z } from "zod";
 
 export const verifyPasscode = createServerFn({ method: "POST" })
-  .inputValidator((d: { kind: Kind; code: string }) => d)
+  .inputValidator((d) => z.object({ kind: z.enum(["viewer", "admin"]), code: z.string().max(128) }).parse(d))
   .handler(async ({ data }) => {
-    const inputCode = String(data?.code ?? "").trim();
     try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const key = data.kind === "admin" ? "admin_passcode" : "viewer_passcode";
-      const { data: row, error } = await supabaseAdmin
-        .from("security_settings")
-        .select("value")
-        .eq("key", key)
-        .maybeSingle();
-      if (!error && row?.value) {
-        const expected = String(row.value).trim();
-        if (expected.length > 0) {
-          return { ok: expected === inputCode };
-        }
-      }
-    } catch (err) {
-      console.warn("[verifyPasscode] Falling back to default passcode due to DB/env error:", err);
-    }
-    const defaultPasscode = data.kind === "admin" ? "1234" : "5555";
-    return { ok: defaultPasscode === inputCode };
+      const { getRequest } = await import("@tanstack/react-start/server");
+      const { assertSameOrigin, accessSession, passcodeVersion, matchesSecret, consumeRateLimit } = await import("./access-session.server");
+      assertSameOrigin();
+      const req = getRequest();
+      await consumeRateLimit("login", req.headers.get("cf-connecting-ip") ?? "shared", 10, 900);
+      const expected = await passcodeVersion(data.kind);
+      if (!data.code.trim() || !matchesSecret(data.code.trim(), expected.code)) return { ok: false };
+      const session = await accessSession();
+      await session.update({ role: data.kind, version: expected.version });
+      return { ok: true };
+    } catch { return { ok: false }; }
   });
 
-export const updatePasscodes = createServerFn({ method: "POST" })
-  .inputValidator((d: { currentAdminCode: string; viewerCode?: string; adminCode?: string }) => d)
+export const getAccessStatus = createServerFn({ method: "POST" }).handler(async () => {
+  try {
+    const { requireAccess } = await import("./access-session.server");
+    const { role } = await requireAccess();
+    return { viewerOk: true, isAdmin: role === "admin" };
+  } catch { return { viewerOk: false, isAdmin: false }; }
+});
+export const lockAccess = createServerFn({ method: "POST" })
+  .inputValidator((d: { adminOnly: boolean }) => d)
   .handler(async ({ data }) => {
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: cur } = await supabaseAdmin
-        .from("security_settings")
-        .select("value")
-        .eq("key", "admin_passcode")
-        .maybeSingle();
-      if (!cur || cur.value.trim() !== String(data.currentAdminCode ?? "").trim()) {
-        return { ok: false as const, error: "รหัสแอดมินปัจจุบันไม่ถูกต้อง" };
-      }
-
-      const updates: { key: string; value: string }[] = [];
-      const viewer = String(data.viewerCode ?? "").trim();
-      const admin = String(data.adminCode ?? "").trim();
-      if (viewer) {
-        if (viewer.length < 4) return { ok: false as const, error: "รหัสเข้าดูต้องมีอย่างน้อย 4 ตัว" };
-        updates.push({ key: "viewer_passcode", value: viewer });
-      }
-      if (admin) {
-        if (admin.length < 4) return { ok: false as const, error: "รหัสแอดมินต้องมีอย่างน้อย 4 ตัว" };
-        updates.push({ key: "admin_passcode", value: admin });
-      }
-      if (updates.length === 0) return { ok: false as const, error: "ยังไม่ได้กรอกรหัสใหม่" };
-
-      for (const u of updates) {
-        const { error } = await supabaseAdmin
-          .from("security_settings")
-          .update({ value: u.value })
-          .eq("key", u.key);
-        if (error) return { ok: false as const, error: error.message };
-      }
-      return { ok: true as const, changedAdmin: !!admin };
-    } catch (err) {
-      return {
-        ok: false as const,
-        error: "ไม่สามารถเชื่อมต่อฐานข้อมูลเพื่อบันทึกรหัสผ่านได้ (ต้องการ SUPABASE_SERVICE_ROLE_KEY ใน .env)",
-      };
+    const { accessSession, assertSameOrigin, passcodeVersion } = await import("./access-session.server");
+    assertSameOrigin();
+    const session = await accessSession();
+    if (data.adminOnly && session.data.role) {
+      const viewer = await passcodeVersion("viewer");
+      await session.update({ role: "viewer", version: viewer.version });
+    } else await session.clear();
+    return { ok: true };
+  });
+export const updatePasscodes = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ currentAdminCode: z.string().max(128), viewerCode: z.string().max(128).optional(), adminCode: z.string().max(128).optional() }).parse(d))
+  .handler(async ({ data }) => {
+    const { requireAccess, passcodeVersion, matchesSecret, accessSession } = await import("./access-session.server");
+    await requireAccess("admin");
+    const current = await passcodeVersion("admin");
+    if (!matchesSecret(data.currentAdminCode.trim(), current.code)) return { ok: false as const, error: "รหัสแอดมินปัจจุบันไม่ถูกต้อง" };
+    const updates = [{ key: "viewer_passcode", value: data.viewerCode?.trim() ?? "" }, { key: "admin_passcode", value: data.adminCode?.trim() ?? "" }].filter((r) => r.value);
+    if (!updates.length) return { ok: false as const, error: "ยังไม่ได้กรอกรหัสใหม่" };
+    if (updates.some((r) => r.value.length < 12)) return { ok: false as const, error: "รหัสใหม่ต้องมีอย่างน้อย 12 ตัวอักษร" };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    for (const row of updates) {
+      const { error } = await supabaseAdmin.from("security_settings").update({ value: row.value }).eq("key", row.key);
+      if (error) return { ok: false as const, error: "บันทึกรหัสไม่สำเร็จ" };
     }
+    const session = await accessSession();
+    const refreshed = await passcodeVersion("admin");
+    await session.update({ role: "admin", version: refreshed.version });
+    return { ok: true as const, changedAdmin: !!data.adminCode?.trim() };
   });

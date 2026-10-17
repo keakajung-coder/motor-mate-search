@@ -28,9 +28,10 @@ async function setSetting(key: string, value: string) {
   else await db.from("security_settings").insert({ key, value });
 }
 
-async function verifyAdmin(code: string) {
-  const v = await getSetting("admin_passcode");
-  return !!v && v === String(code ?? "").trim();
+async function verifyAdmin(_code: string) {
+  const { requireAccess } = await import("./access-session.server");
+  await requireAccess("admin");
+  return true;
 }
 
 /** วันครบกำหนดสำรองถัดไป: daily = 24 ชม., weekly = 7 วัน */
@@ -63,6 +64,9 @@ async function runBackup() {
 
 /** เรียกตอนเปิดแอป: ถ้าครบกำหนดจะสำรอง Excel เข้าโฟลเดอร์บนระบบให้อัตโนมัติ */
 export const maybeAutoBackup = createServerFn({ method: "POST" }).handler(async () => {
+  const { requireAccess, consumeRateLimit } = await import("./access-session.server");
+  const access = await requireAccess("admin");
+  await consumeRateLimit("backup", access.sessionId, 2, 300);
   const [interval, last] = await Promise.all([getSetting(K_INTERVAL), getSetting(K_LAST)]);
   if (!isBackupDue(interval, last)) return { ran: false };
   // จองเวลาไว้ก่อน กันหลายเครื่องสำรองซ้ำพร้อมกัน

@@ -6,10 +6,8 @@ export const staffLeaveRequest = createServerFn({ method: "POST" })
   .inputValidator((input: Request) => input)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const keys = data.action === "list" ? ["admin_passcode", "viewer_passcode"] : ["admin_passcode"];
-    const { data: settings, error: authError } = await supabaseAdmin.from("security_settings").select("value").in("key", keys);
-    const code = String(data.code ?? "").trim();
-    if (authError || !code || !settings?.some((row) => row.value.trim() === code)) throw new Error("กรุณาปลดล็อกสิทธิ์เข้าใช้งานอีกครั้ง");
+    const { requireAccess } = await import("./access-session.server");
+    await requireAccess(data.action === "list" ? "viewer" : "admin");
     if (data.action === "list") {
       const [{ data: rows, error }, { data: staff, error: staffError }] = await Promise.all([
         supabaseAdmin.from("staff_leave").select("id,staff_id,staff_name,leave_date,period").order("leave_date"),

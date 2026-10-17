@@ -27,15 +27,11 @@ const ALLOWED_TABLES = new Set([
  * ลบข้อมูลแบบปลอดภัย: ตรวจรหัสแอดมินฝั่งเซิร์ฟเวอร์ก่อนเสมอ
  * (anon ไม่มีสิทธิ์ DELETE ตามนโยบาย RLS แล้ว)
  */
-async function verifyAdmin(code: string) {
+async function verifyAdmin(_code: string) {
+  const { requireAccess } = await import("./access-session.server");
+  await requireAccess("admin");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: row } = await supabaseAdmin
-    .from("security_settings")
-    .select("value")
-    .eq("key", "admin_passcode")
-    .maybeSingle();
-  const ok = !!row && row.value.trim() === String(code ?? "").trim();
-  return { ok, supabaseAdmin };
+  return { ok: true, supabaseAdmin };
 }
 
 const LABEL_COLS = ["name", "plate", "serial_number", "customer_name", "title", "part_number", "key", "staff_name"];
@@ -84,15 +80,7 @@ export const purgeDeletedItem = createServerFn({ method: "POST" })
 export const adminDelete = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; table: string; filters: Record<string, string> }) => d)
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await supabaseAdmin
-      .from("security_settings")
-      .select("value")
-      .eq("key", "admin_passcode")
-      .maybeSingle();
-    if (!row || row.value.trim() !== String(data.code ?? "").trim()) {
-      return { ok: false as const, error: "รหัสแอดมินไม่ถูกต้องหรือยังไม่ได้ปลดล็อก" };
-    }
+    const { supabaseAdmin } = await verifyAdmin(data.code);
     if (!ALLOWED_TABLES.has(data.table)) {
       return { ok: false as const, error: "ไม่อนุญาตให้ลบตารางนี้" };
     }
