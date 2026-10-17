@@ -23,6 +23,7 @@ export async function proxyBusinessRequest(request: Request) {
         if (table === "audit_log") for (const row of rows) row.actor = role;
         if (role === "viewer") {
           if (rows.some((r) => "line_id" in r)) return Response.json({ message: "Only admins can configure notification recipients" }, { status: 403 });
+          if (table === "troubleshooting_issues" && rows.some((r) => r.status !== "pending" || r.ai_check_draft || r.ai_fix_draft || r.answered_at)) return Response.json({ message: "Publishing answers requires admin" }, { status: 403 });
           if ((request.headers.get("prefer") ?? "").includes("resolution=merge-duplicates")) return Response.json({ message: "An explicit authorized edit is required" }, { status: 403 });
           if (method === "POST" && table === "work_orders" && rows.some((r) => r.status !== "pending" || r.approved_hidden === true)) return Response.json({ message: "Approval requires admin" }, { status: 403 });
           if (method === "PATCH" && table === "work_orders" && rows.some((r) => "status" in r && r.status !== "pending")) return Response.json({ message: "Approval requires admin" }, { status: 403 });
