@@ -450,6 +450,23 @@
   display: none;
 }
 
+/* รายการตัวเลือก: แถบเลื่อนบางและเห็นตัวทันทที */
+.dropdown-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--muted-foreground) 55%, transparent) transparent;
+}
+.dropdown-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.dropdown-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dropdown-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+  border-radius: 999px;
+}
+
 /* ปฏิทินลอยเหนือฟอร์ม ไม่ถูกตัดโดยพื้นที่เลื่อนของหน้าต่าง */
 .date-picker-popover {
   z-index: 80;
