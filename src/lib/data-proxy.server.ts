@@ -60,7 +60,7 @@ export async function proxyBusinessRequest(request: Request) {
     } else return Response.json({ message: "Forbidden" }, { status: 403 });
 
     const base = process.env["SUPABASE_URL"];
-    const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+    const key = process.env["SUPABASE_SERVICE_ROLE_KEY"] || process.env["SUPABASE_PUBLISHABLE_KEY"];
     if (!base || !key) throw new Error("Unavailable");
     const headers = new Headers();
     for (const name of ["content-type", "prefer", "range", "range-unit", "accept", "x-upsert"]) {
