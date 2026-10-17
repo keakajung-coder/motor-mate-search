@@ -16,17 +16,11 @@ export function ConnectionKeeper() {
       if (disposed || inFlight || document.visibilityState === "hidden") return;
       inFlight = true;
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && session.expires_at && session.expires_at * 1000 - Date.now() < 120_000) {
-          await supabase.auth.refreshSession();
-        }
-
         const { error } = await supabase.from("categories").select("id").limit(1).abortSignal(AbortSignal.timeout(10_000));
-        const connected = !error || !!error.code;
+        const connected = !error;
         if (disposed) return;
         window.dispatchEvent(new CustomEvent("app:connection-status", { detail: { online: connected } }));
         if (connected) {
-          if (supabase.getChannels().length > 0 && !supabase.realtime.isConnected()) supabase.realtime.connect();
           if (wasOffline || refresh) {
             void queryClient.invalidateQueries();
             window.dispatchEvent(new Event("app:connection-restored"));

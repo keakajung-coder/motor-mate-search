@@ -1,5 +1,6 @@
 import { saveFile, xlsxBlob } from "@/lib/report";
 import type { CellStyle } from "xlsx-js-style";
+import { safeSpreadsheetValue } from "./security-policy";
 
 /** ล้างอักขระต้องห้ามของชื่อชีท Excel ( : \ / ? * [ ] ) ตัดเหลือ 31 ตัว และกันชื่อซ้ำ */
 export function sanitizeSheetName(name: string, used?: Set<string>): string {
@@ -42,7 +43,7 @@ export async function buildGridWorkbook(sheets: GridSheet[]) {
   const wb = XLSX.utils.book_new();
   const used = new Set<string>();
   for (const s of sheets) {
-    const ws = XLSX.utils.aoa_to_sheet(s.rows.length ? s.rows : [[""]]);
+    const ws = XLSX.utils.aoa_to_sheet((s.rows.length ? s.rows : [[""]]).map((row) => row.map((v) => safeSpreadsheetValue(v))));
     if (s.merges?.length) ws["!merges"] = s.merges;
     if (s.cols) ws["!cols"] = s.cols.map((wch) => ({ wch }));
     if (s.rowHeights) ws["!rows"] = s.rowHeights.map((hpt) => ({ hpt }));

@@ -17,3 +17,6 @@
 - Admin deletes snapshot rows into deleted_items (service-role only) so the admin Trash tab can restore them with original ids.
 - Build planner spreadsheets from a shared pure view-layout module and write styled cells through the lazy-loaded spreadsheet writer; this preserves calendar/time-slot geometry and isolates browser color sampling from data layout.
 - Dismiss shared notifications with browser-persisted IDs and a clear-before timestamp; notifications lack user ownership, so deletion must not erase other users' alerts or server deduplication keys.
+- Gate every business query and storage request through the allowlisted session-aware server gateway; public Data API grants stay revoked so client UI cannot bypass permissions.
+- Shared passcodes are exchanged for encrypted HttpOnly expiring sessions; every privileged action revalidates the server role and credential version, never browser storage.
+- Persist rate limits in the database and escape spreadsheet formula-leading text at export boundaries to resist automated abuse and unsafe spreadsheet execution.
