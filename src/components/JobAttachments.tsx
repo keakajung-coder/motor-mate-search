@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Film, ImageIcon, Loader2, Paperclip, Trash2 } from "lucide-react";

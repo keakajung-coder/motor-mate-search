@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 
 /** รายการตัวเลือกที่ผู้ใช้เพิ่มเอง (ผู้ขาย / สถานะ) เก็บใน app_settings */
 export type OptionListKey = "sellers" | "statuses";

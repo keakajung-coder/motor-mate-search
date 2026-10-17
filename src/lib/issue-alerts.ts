@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { sendUserAlert } from "@/lib/notify.functions";
 
 /** สวิตช์ส่วนกลาง: ส่ง LINE ให้ช่างอัตโนมัติเมื่อแอดมินอนุมัติปัญหา/อาการเสีย */

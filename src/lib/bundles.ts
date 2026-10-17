@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { loadOffline, saveOffline } from "@/lib/offline";
 
 export type BundleItem = { product_id: string; quantity: number; part_number: string; name: string };

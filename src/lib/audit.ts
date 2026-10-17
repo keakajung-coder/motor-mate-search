@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { storedAdminCode } from "@/lib/access";
 
 export type AuditAction = "create" | "update" | "delete" | "soft_delete" | "restore";

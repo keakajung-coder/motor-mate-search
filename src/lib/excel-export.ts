@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { xlsxBlob } from "@/lib/report";
 import { sanitizeSheetName, sanitizeFileName } from "@/lib/excel-layout";
 

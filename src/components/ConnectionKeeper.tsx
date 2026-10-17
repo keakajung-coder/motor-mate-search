@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 
 /** Recheck the backend when the browser wakes up or regains connectivity. */
 export function ConnectionKeeper() {
