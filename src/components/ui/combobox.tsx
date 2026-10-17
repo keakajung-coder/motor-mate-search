@@ -103,7 +103,7 @@ export function Combobox({
                   ล้างค่า
                 </CommandItem>
               )}
-              {options.map((o) => (
+              {visibleOptions.map((o) => (
                 <CommandItem
                   key={o.value + (o.hint ?? "")}
                   value={`${o.value} ${o.label ?? ""} ${o.hint ?? ""}`}
@@ -131,6 +131,7 @@ export function Combobox({
                         e.preventDefault();
                         e.stopPropagation();
                         if (window.confirm(`ลบ "${o.value}" ออกจากฐานข้อมูลกลาง?`)) {
+                          setRemoved((prev) => new Set(prev).add(o.value.trim().toLowerCase()));
                           try {
                             await onDelete(o.value);
                           } catch (err) {
