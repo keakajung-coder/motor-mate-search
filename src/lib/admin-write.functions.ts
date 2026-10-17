@@ -27,15 +27,11 @@ const ALLOWED_TABLES = new Set([
  * ลบข้อมูลแบบปลอดภัย: ตรวจรหัสแอดมินฝั่งเซิร์ฟเวอร์ก่อนเสมอ
  * (anon ไม่มีสิทธิ์ DELETE ตามนโยบาย RLS แล้ว)
  */
-async function verifyAdmin(code: string) {
+async function verifyAdmin(_code: string) {
+  const { requireAccess } = await import("./access-session.server");
+  await requireAccess("admin");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: row } = await supabaseAdmin
-    .from("security_settings")
-    .select("value")
-    .eq("key", "admin_passcode")
-    .maybeSingle();
-  const ok = !!row && row.value.trim() === String(code ?? "").trim();
-  return { ok, supabaseAdmin };
+  return { ok: true, supabaseAdmin };
 }
 
 const LABEL_COLS = ["name", "plate", "serial_number", "customer_name", "title", "part_number", "key", "staff_name"];
@@ -84,15 +80,7 @@ export const purgeDeletedItem = createServerFn({ method: "POST" })
 export const adminDelete = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; table: string; filters: Record<string, string> }) => d)
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await supabaseAdmin
-      .from("security_settings")
-      .select("value")
-      .eq("key", "admin_passcode")
-      .maybeSingle();
-    if (!row || row.value.trim() !== String(data.code ?? "").trim()) {
-      return { ok: false as const, error: "รหัสแอดมินไม่ถูกต้องหรือยังไม่ได้ปลดล็อก" };
-    }
+    const { supabaseAdmin } = await verifyAdmin(data.code);
     if (!ALLOWED_TABLES.has(data.table)) {
       return { ok: false as const, error: "ไม่อนุญาตให้ลบตารางนี้" };
     }
@@ -107,17 +95,19 @@ export const adminDelete = createServerFn({ method: "POST" })
     // เก็บสำเนาลงถังขยะก่อนลบ เพื่อกู้คืนได้
     let sel = supabaseAdmin.from(data.table as never).select("*");
     for (const [k, v] of Object.entries(filters)) sel = sel.eq(k, v);
-    const { data: snap } = await sel;
-    const { error } = await q;
-    if (!error && Array.isArray(snap) && snap.length) {
-      await supabaseAdmin.from("deleted_items").insert(
+    const { data: snap, error: readError } = await sel;
+    if (readError) return { ok: false as const, error: "อ่านสำเนาก่อนลบไม่สำเร็จ" };
+    if (Array.isArray(snap) && snap.length) {
+      const { error: snapshotError } = await supabaseAdmin.from("deleted_items").insert(
         (snap as Record<string, unknown>[]).map((r) => ({
           table_name: data.table,
           label: String(LABEL_COLS.map((c) => r[c]).find((x) => x) ?? r.id ?? ""),
           row_data: r as never,
         })),
       );
+      if (snapshotError) return { ok: false as const, error: "เก็บสำเนาก่อนลบไม่สำเร็จ จึงยังไม่ลบข้อมูล" };
     }
+    const { error } = await q;
     if (error) return { ok: false as const, error: error.message };
     return { ok: true as const };
   });

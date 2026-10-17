@@ -50,6 +50,7 @@ export function PasscodeSettings() {
           <div className="space-y-1">
             <Label>รหัสเข้าดูใหม่ (Viewer)</Label>
             <Input
+              type="password"
               value={viewer}
               onChange={(e) => setViewer(e.target.value)}
               placeholder="เว้นว่าง = ไม่เปลี่ยน"
@@ -59,6 +60,7 @@ export function PasscodeSettings() {
           <div className="space-y-1">
             <Label>รหัสแอดมินใหม่</Label>
             <Input
+              type="password"
               value={admin}
               onChange={(e) => setAdmin(e.target.value)}
               placeholder="เว้นว่าง = ไม่เปลี่ยน"

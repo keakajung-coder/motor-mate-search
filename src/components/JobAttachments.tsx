@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Film, ImageIcon, Loader2, Paperclip, Trash2 } from "lucide-react";
@@ -7,7 +7,7 @@ import { Film, ImageIcon, Loader2, Paperclip, Trash2 } from "lucide-react";
 export type JobAttachment = { path: string; url: string; name: string; kind: "image" | "video" };
 
 const BUCKET = "job-attachments";
-const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
+const PREVIEW_SECONDS = 600;
 
 /** อ่านรายการไฟล์แนบจากข้อความ JSON ที่เก็บในฐานข้อมูล */
 export function parseAttachments(value?: string | null): JobAttachment[] {
@@ -61,7 +61,7 @@ export function JobAttachments({
         toast.error(`${file.name}: ${error.message}`);
         continue;
       }
-      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, TEN_YEARS);
+      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, PREVIEW_SECONDS);
       added.push({ path, url: data?.signedUrl ?? "", name: file.name, kind: isVideo ? "video" : "image" });
     }
     setBusy(false);
@@ -75,7 +75,7 @@ export function JobAttachments({
   const remove = async (item: JobAttachment) => {
     if (!onChange) return;
     setBusy(true);
-    await supabase.storage.from(BUCKET).remove([item.path]);
+    // Removing a reference is available to job operators; physical deletion is admin-only.
     setBusy(false);
     onChange(serializeAttachments(items.filter((i) => i.path !== item.path)));
     toast.success("ลบไฟล์แนบแล้ว");

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { toast } from "sonner";
 import { notifyUserReply } from "@/lib/prefs";
 
@@ -51,17 +51,10 @@ export function useMyIssueReplies(onReplied?: (id: string) => void) {
     checkMissed();
     window.addEventListener("app:connection-restored", checkMissed);
 
-    const ch = supabase
-      .channel("my_issue_replies")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "troubleshooting_issues" },
-        (payload) => announce(payload.new),
-      )
-      .subscribe();
+    const timer = window.setInterval(checkMissed, 30_000);
     return () => {
       window.removeEventListener("app:connection-restored", checkMissed);
-      supabase.removeChannel(ch);
+      window.clearInterval(timer);
     };
   }, [onReplied]);
 }

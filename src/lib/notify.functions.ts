@@ -23,14 +23,10 @@ async function readSettings() {
   };
 }
 
-async function verifyAdmin(code: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("security_settings")
-    .select("value")
-    .eq("key", "admin_passcode")
-    .maybeSingle();
-  return !!data && data.value.trim() === String(code ?? "").trim();
+async function verifyAdmin(_code: string) {
+  const { requireAccess } = await import("./access-session.server");
+  await requireAccess("admin");
+  return true;
 }
 
 async function pushLine(token: string, targets: string[], text: string) {
@@ -63,6 +59,9 @@ async function pushLine(token: string, targets: string[], text: string) {
 export const sendAdminAlert = createServerFn({ method: "POST" })
   .inputValidator((d: { title: string; body?: string; link?: string }) => d)
   .handler(async ({ data }) => {
+    const { requireAccess, consumeRateLimit } = await import("./access-session.server");
+    const access = await requireAccess();
+    await consumeRateLimit("line", access.sessionId, 20, 60);
     const settings = await readSettings();
     const text = [data.title, data.body ?? "", data.link ? `ลิงก์: ${data.link}` : ""]
       .filter(Boolean)
@@ -84,6 +83,9 @@ export const sendAdminAlert = createServerFn({ method: "POST" })
 export const sendUserAlert = createServerFn({ method: "POST" })
   .inputValidator((d: { lineIds: string[]; title: string; body?: string; link?: string }) => d)
   .handler(async ({ data }) => {
+    const { requireAccess, consumeRateLimit } = await import("./access-session.server");
+    const access = await requireAccess();
+    await consumeRateLimit("line", access.sessionId, 20, 60);
     const settings = await readSettings();
     // LINE Messaging API ส่งได้เฉพาะ userId (U…) / groupId (C…) / roomId (R…) เท่านั้น
     const targets = Array.from(
@@ -93,6 +95,13 @@ export const sendUserAlert = createServerFn({ method: "POST" })
           .filter((s) => /^[UCR][0-9a-f]{20,}$/i.test(s)),
       ),
     );
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const allowed = new Set(settings.targets);
+    for (const table of ["customers", "service_staff", "sales_contacts"] as const) {
+      const { data: contacts } = await supabaseAdmin.from(table).select("line_id").not("line_id", "is", null);
+      for (const contact of contacts ?? []) if (contact.line_id) allowed.add(contact.line_id.trim());
+    }
+    if (targets.length > 50 || targets.some((id) => !allowed.has(id))) throw new Error("Invalid recipients");
     if (!settings.token || targets.length === 0) return { line: "skipped" as const, sent: 0 };
     const text = [data.title, data.body ?? "", data.link ? `ลิงก์: ${data.link}` : ""]
       .filter(Boolean)
@@ -111,7 +120,7 @@ export const getAlertSettings = createServerFn({ method: "POST" })
     return {
       ok: true as const,
       hasToken: s.token.length > 0,
-      tokenPreview: s.token ? `${s.token.slice(0, 6)}…${s.token.slice(-4)}` : "",
+      tokenPreview: s.token ? "••••••••" : "",
       targets: s.targets.join("\n"),
       email: s.email,
     };

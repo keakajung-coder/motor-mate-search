@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { sendUserAlert } from "@/lib/notify.functions";
 import { contactText, loadAllContacts } from "@/lib/contact";
 

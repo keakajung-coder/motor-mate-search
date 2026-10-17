@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { safeSpreadsheetValue } from "@/lib/security-policy";
+import { supabase } from "@/lib/data-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -566,7 +567,7 @@ export function ImportExportTab() {
     setBusy(true);
     try {
       const XLSX = await import("xlsx");
-      const rows = await rowsForExport();
+      const rows = (await rowsForExport()).map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, safeSpreadsheetValue(value)])));
       const ws = XLSX.utils.json_to_sheet(rows, { header: cols });
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, safeSheetName(ds.label, ds.key));

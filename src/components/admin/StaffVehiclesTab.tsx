@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { refreshDirectory } from "@/lib/directory";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

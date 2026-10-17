@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { sendAdminAlert, sendUserAlert } from "@/lib/notify.functions";
 
 /**

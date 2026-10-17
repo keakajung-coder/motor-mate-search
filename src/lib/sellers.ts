@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { loadOptionList, saveOptionList } from "@/lib/option-lists";
 
 /** รวมรายชื่อเซลล์/ผู้ขายจากทุกแหล่ง เพื่อใช้เป็นตัวเลือกใน Dropdown */

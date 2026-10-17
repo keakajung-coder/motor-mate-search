@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { sendUserAlert } from "@/lib/notify.functions";
 
 /** รหัสผู้ใช้ LINE เชิงเทคนิค (U…/C…/R…) ใช้ส่งแจ้งเตือนเท่านั้น ไม่ต้องแสดงในหน้าโปรไฟล์ */

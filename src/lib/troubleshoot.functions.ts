@@ -7,19 +7,13 @@ export const draftTroubleshooting = createServerFn({ method: "POST" })
     z.object({
       title: z.string().trim().min(1).max(200),
       note: z.string().trim().max(2_000).optional(),
-      adminCode: z.string().min(4).max(128),
+      adminCode: z.string().max(128),
     }).parse(d),
   )
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await supabaseAdmin
-      .from("security_settings")
-      .select("value")
-      .eq("key", "admin_passcode")
-      .maybeSingle();
-    if (!row || row.value.trim() !== data.adminCode.trim()) {
-      return { ok: false as const, error: "รหัสแอดมินไม่ถูกต้องหรือยังไม่ได้ปลดล็อก" };
-    }
+    const { requireAccess, consumeRateLimit } = await import("./access-session.server");
+    const access = await requireAccess("admin");
+    await consumeRateLimit("ai", access.sessionId, 10, 300);
 
     const apiKey = process.env["LOVABLE_API_KEY"];
     if (!apiKey) return { ok: false as const, error: "ยังไม่ได้เชื่อมต่อระบบ AI" };

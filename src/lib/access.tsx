@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { verifyPasscode } from "@/lib/passcode.functions";
+import { verifyPasscode, getAccessStatus, lockAccess } from "@/lib/passcode.functions";
 
 const VIEWER_KEY = "pc_viewer";
 const ADMIN_KEY = "pc_admin";
@@ -39,28 +39,30 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const v = localStorage.getItem(VIEWER_KEY);
-      const a = localStorage.getItem(ADMIN_KEY);
-      const [vOk, aOk] = await Promise.all([
-        v ? check("viewer", v) : Promise.resolve(false),
-        a ? check("admin", a) : Promise.resolve(false),
-      ]);
+      localStorage.removeItem(VIEWER_KEY);
+      localStorage.removeItem(ADMIN_KEY);
+      const status = await getAccessStatus().catch(() => ({ viewerOk: false, isAdmin: false }));
       if (cancelled) return;
-      if (!vOk) localStorage.removeItem(VIEWER_KEY);
-      if (!aOk) localStorage.removeItem(ADMIN_KEY);
-      setViewerOk(vOk || aOk);
-      setIsAdmin(aOk);
+      setViewerOk(status.viewerOk);
+      setIsAdmin(status.isAdmin);
       setReady(true);
     })();
+    const refresh = () => {
+      void getAccessStatus().then((status) => { if (!cancelled) { setViewerOk(status.viewerOk); setIsAdmin(status.isAdmin); } }).catch(() => {});
+    };
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
     };
   }, []);
 
   const unlockViewer = useCallback(async (code: string) => {
     const ok = await check("viewer", code);
     if (ok) {
-      localStorage.setItem(VIEWER_KEY, code);
+
       setViewerOk(true);
     }
     return ok;
@@ -69,7 +71,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const unlockAdmin = useCallback(async (code: string) => {
     const ok = await check("admin", code);
     if (ok) {
-      localStorage.setItem(ADMIN_KEY, code);
+
       setIsAdmin(true);
       setViewerOk(true);
     }
@@ -77,11 +79,13 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const lockAdmin = useCallback(() => {
+    void lockAccess({ data: { adminOnly: true } });
     localStorage.removeItem(ADMIN_KEY);
     setIsAdmin(false);
   }, []);
 
   const lockAll = useCallback(() => {
+    void lockAccess({ data: { adminOnly: false } });
     localStorage.removeItem(ADMIN_KEY);
     localStorage.removeItem(VIEWER_KEY);
     setIsAdmin(false);
@@ -99,12 +103,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
 /** รหัสแอดมินที่บันทึกไว้ (ใช้ยืนยันตอนเปลี่ยนรหัส) */
 export function storedAdminCode(): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(ADMIN_KEY) ?? "";
+  return "";
 }
 
-export function setStoredAdminCode(code: string) {
-  localStorage.setItem(ADMIN_KEY, code);
+export function setStoredAdminCode(_code: string) {
+  // Access is held only in an HttpOnly server session.
 }
 
 /**

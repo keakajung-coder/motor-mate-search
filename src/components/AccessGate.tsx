@@ -54,7 +54,6 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
         <CardContent className="space-y-3">
           <Input
             type="password"
-            inputMode="numeric"
             autoFocus
             value={code}
             onChange={(e) => setCode(e.target.value)}
@@ -134,7 +133,6 @@ export function AdminLockButton() {
           </DialogHeader>
           <Input
             type="password"
-            inputMode="numeric"
             autoFocus
             value={code}
             onChange={(e) => setCode(e.target.value)}

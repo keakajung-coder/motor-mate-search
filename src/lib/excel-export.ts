@@ -1,6 +1,7 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { xlsxBlob } from "@/lib/report";
 import { sanitizeSheetName, sanitizeFileName } from "@/lib/excel-layout";
+import { safeSpreadsheetValue } from "./security-policy";
 
 type Sheet = { table: string; label: string };
 
@@ -52,7 +53,7 @@ export async function buildPageWorkbook(path: string) {
   const used = new Set<string>();
   for (const s of cfg.sheets) {
     const { data } = await supabase.from(s.table as never).select("*").limit(20000);
-    const rows = (data ?? []) as Record<string, unknown>[];
+    const rows = ((data ?? []) as Record<string, unknown>[]).map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, safeSpreadsheetValue(value)])));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{}]), sanitizeSheetName(s.label, used));
   }
   const date = new Date().toISOString().slice(0, 10);

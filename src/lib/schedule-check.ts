@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 import { storedAdminCode } from "@/lib/access";
 import { staffLeaveRequest } from "@/lib/staff-leave.functions";
 import { isLeavePeriod } from "@/lib/staff-leave";

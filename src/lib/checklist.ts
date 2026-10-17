@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/data-client";
 
 export type ChecklistKind = "number" | "status" | "status_number";
 export type ChecklistItem = { id: string; label: string; kind: ChecklistKind; fields: string[] };
