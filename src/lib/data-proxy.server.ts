@@ -74,7 +74,9 @@ export async function proxyBusinessRequest(request: Request) {
     out.set("cache-control", "private, no-store");
     out.set("x-content-type-options", "nosniff");
     return new Response(response.body, { status: response.status, headers: out });
-  } catch {
-    return Response.json({ message: "กรุณาเข้าใช้งานอีกครั้ง" }, { status: 401, headers: { "cache-control": "no-store" } });
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    console.error("[data-proxy]", reason);
+    return Response.json({ message: "กรุณาเข้าใช้งานอีกครั้ง", reason }, { status: 401, headers: { "cache-control": "no-store" } });
   }
 }
