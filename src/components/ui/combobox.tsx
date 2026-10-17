@@ -39,10 +39,16 @@ export function Combobox({
 }) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  // รายการที่เพิ่งกดลบ — ตัดออกจากตัวเลือกทันที ไม่ต้องรอฐานข้อมูลตอบกลับ
+  const [removed, setRemoved] = React.useState<Set<string>>(new Set());
+  const visibleOptions = React.useMemo(
+    () => options.filter((o) => !removed.has(o.value.trim().toLowerCase())),
+    [options, removed],
+  );
 
-  const current = options.find((o) => o.value === value);
+  const current = visibleOptions.find((o) => o.value === value);
   const q = query.trim();
-  const exists = options.some((o) => o.value.toLowerCase() === q.toLowerCase());
+  const exists = visibleOptions.some((o) => o.value.toLowerCase() === q.toLowerCase());
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -97,7 +103,7 @@ export function Combobox({
                   ล้างค่า
                 </CommandItem>
               )}
-              {options.map((o) => (
+              {visibleOptions.map((o) => (
                 <CommandItem
                   key={o.value + (o.hint ?? "")}
                   value={`${o.value} ${o.label ?? ""} ${o.hint ?? ""}`}
@@ -125,6 +131,7 @@ export function Combobox({
                         e.preventDefault();
                         e.stopPropagation();
                         if (window.confirm(`ลบ "${o.value}" ออกจากฐานข้อมูลกลาง?`)) {
+                          setRemoved((prev) => new Set(prev).add(o.value.trim().toLowerCase()));
                           try {
                             await onDelete(o.value);
                           } catch (err) {

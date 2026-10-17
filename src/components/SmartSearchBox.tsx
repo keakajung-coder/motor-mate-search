@@ -39,7 +39,7 @@ export function SmartSearchBox({
     if (!kw) return [];
     return suggestions
       .filter((s) => `${s.label} ${s.sub ?? ""}`.toLowerCase().includes(kw))
-      .slice(0, 8);
+      .slice(0, 50);
   }, [suggestions, kw]);
 
   const exact = matched.some((s) => s.label.trim().toLowerCase() === kw);
