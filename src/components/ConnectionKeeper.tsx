@@ -16,10 +16,9 @@ export function ConnectionKeeper() {
       if (disposed || inFlight || document.visibilityState === "hidden") return;
       inFlight = true;
       try {
-        const { error } = await supabase.from("categories").select("id").limit(1).abortSignal(AbortSignal.timeout(10_000));
+        const { error, status } = await supabase.from("categories").select("id").limit(1).abortSignal(AbortSignal.timeout(10_000));
         if (disposed) return;
-        // เซิร์ฟเวอร์ตอบกลับ = ออนไลน์ แม้เป็น 401/403 (เซสชันหมดอายุ ไม่ใช่เน็ตหลุด)
-        const status = (error as { status?: number; code?: string } | null)?.status;
+        // เซิร์ฟเวอร์ตอบกลับ (มี HTTP status) = ออนไลน์ แม้เป็น 401/403
         const connected = !error || (typeof status === "number" && status > 0);
         window.dispatchEvent(new CustomEvent("app:connection-status", { detail: { online: connected } }));
         if (error && (status === 401 || status === 403)) {
