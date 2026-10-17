@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as TrashRouteImport } from './routes/trash'
+import { Route as ApiDataSplatRouteImport } from './routes/api/data/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +35,25 @@ const TrashRoute = TrashRouteImport.update({
   path: '/trash',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDataSplatRoute = ApiDataSplatRouteImport.update({
+  id: '/api/data/$',
+  path: '/api/data/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/planner': typeof PlannerRoute
   '/trash': typeof TrashRoute
+  '/api/data/$': typeof ApiDataSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/planner': typeof PlannerRoute
   '/trash': typeof TrashRoute
+  '/api/data/$': typeof ApiDataSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/planner': typeof PlannerRoute
   '/trash': typeof TrashRoute
+  '/api/data/$': typeof ApiDataSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/planner' | '/trash'
+  fullPaths: '/' | '/admin' | '/planner' | '/trash' | '/api/data/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/planner' | '/trash'
-  id: '__root__' | '/' | '/admin' | '/planner' | '/trash'
+  to: '/' | '/admin' | '/planner' | '/trash' | '/api/data/$'
+  id: '__root__' | '/' | '/admin' | '/planner' | '/trash' | '/api/data/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   PlannerRoute: typeof PlannerRoute
   TrashRoute: typeof TrashRoute
+  ApiDataSplatRoute: typeof ApiDataSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrashRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/data/$': {
+      id: '/api/data/$'
+      path: '/api/data/$'
+      fullPath: '/api/data/$'
+      preLoaderRoute: typeof ApiDataSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   PlannerRoute: PlannerRoute,
   TrashRoute: TrashRoute,
+  ApiDataSplatRoute: ApiDataSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

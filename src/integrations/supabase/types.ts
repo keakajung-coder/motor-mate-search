@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_rate_limits: {
+        Row: {
+          attempts: number
+          key: string
+          window_started: string
+        }
+        Insert: {
+          attempts?: number
+          key: string
+          window_started?: string
+        }
+        Update: {
+          attempts?: number
+          key?: string
+          window_started?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           created_at: string
@@ -1080,6 +1098,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_access_limit: {
+        Args: { p_key: string; p_limit: number; p_seconds: number }
+        Returns: boolean
+      }
       replace_name_in_list: {
         Args: { _list: string; _new: string; _old: string }
         Returns: string
