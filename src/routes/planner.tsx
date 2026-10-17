@@ -4576,7 +4576,7 @@ function CloseJobDialog({
   );
 }
 
-function F({ label, children }: { label: string; children: React.ReactNode }) {
+function F({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="min-w-0 space-y-1">
       <Label className="text-xs">{label}</Label>

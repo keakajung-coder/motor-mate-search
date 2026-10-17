@@ -14,6 +14,8 @@ export const Route = createFileRoute("/trash")({
       },
       { property: "og:title", content: "ถังขยะและกู้คืนข้อมูล" },
       { property: "og:description", content: "กู้คืนข้อมูลพนักงานและรายการที่ถูกลบ" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: TrashPage,
