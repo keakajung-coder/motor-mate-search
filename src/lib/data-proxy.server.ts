@@ -68,7 +68,7 @@ export async function proxyBusinessRequest(request: Request) {
     }
     headers.set("apikey", key);
     if (!key.startsWith("sb_")) headers.set("authorization", `Bearer ${key}`);
-    const response = await fetch(`${base}${path}${url.search}`, { method, headers, body, redirect: "error" });
+    const response = await fetch(`${base}${path}${url.search}`, { method, headers, body, redirect: "manual" });
     const out = new Headers();
     for (const name of ["content-type", "content-range", "content-length"]) { const value = response.headers.get(name); if (value) out.set(name, value); }
     out.set("cache-control", "private, no-store");
@@ -77,6 +77,6 @@ export async function proxyBusinessRequest(request: Request) {
   } catch (e) {
     const reason = e instanceof Error ? e.message : String(e);
     console.error("[data-proxy]", reason);
-    return Response.json({ message: "กรุณาเข้าใช้งานอีกครั้ง", reason }, { status: 401, headers: { "cache-control": "no-store" } });
+    return Response.json({ message: "กรุณาเข้าใช้งานอีกครั้ง" }, { status: 401, headers: { "cache-control": "no-store" } });
   }
 }
