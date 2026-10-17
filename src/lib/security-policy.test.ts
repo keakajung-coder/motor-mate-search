@@ -4,6 +4,7 @@ import { canAccessTable, safeSpreadsheetValue } from "./security-policy";
 test("viewer cannot edit stock but can create work orders", () => {
   assert.equal(canAccessTable("viewer", "products", "PATCH"), false);
   assert.equal(canAccessTable("viewer", "work_orders", "POST"), true);
+  assert.equal(canAccessTable("viewer", "maintenance_logs", "POST"), true);
 });
 test("admin can edit stock; direct deletes never bypass trash", () => {
   assert.equal(canAccessTable("admin", "products", "PATCH"), true);

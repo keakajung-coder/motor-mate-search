@@ -5,7 +5,7 @@ export const BUSINESS_TABLES = new Set([
   "notifications", "part_bundle_items", "part_bundles", "products", "sales_contacts",
   "service_staff", "troubleshooting_issues", "vehicles", "work_orders",
 ]);
-const VIEWER_INSERT = new Set(["work_orders", "customers", "machine_units", "brands", "compressor_models", "products", "machine_parts", "notifications", "audit_log", "troubleshooting_issues"]);
+const VIEWER_INSERT = new Set(["work_orders", "maintenance_logs", "customers", "machine_units", "brands", "compressor_models", "products", "machine_parts", "notifications", "audit_log", "troubleshooting_issues"]);
 const VIEWER_UPDATE = new Set(["work_orders", "appointments", "maintenance_logs", "customers", "machine_units", "machine_parts", "notifications"]);
 export function canAccessTable(role: AccessRole, table: string, method: string) {
   if (!BUSINESS_TABLES.has(table)) return false;

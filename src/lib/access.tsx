@@ -47,8 +47,15 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       setIsAdmin(status.isAdmin);
       setReady(true);
     })();
+    const refresh = () => {
+      void getAccessStatus().then((status) => { if (!cancelled) { setViewerOk(status.viewerOk); setIsAdmin(status.isAdmin); } }).catch(() => {});
+    };
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
     };
   }, []);
 
