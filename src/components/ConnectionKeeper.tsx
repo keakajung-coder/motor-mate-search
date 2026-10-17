@@ -17,9 +17,14 @@ export function ConnectionKeeper() {
       inFlight = true;
       try {
         const { error } = await supabase.from("categories").select("id").limit(1).abortSignal(AbortSignal.timeout(10_000));
-        const connected = !error;
         if (disposed) return;
+        // เซิร์ฟเวอร์ตอบกลับ = ออนไลน์ แม้เป็น 401/403 (เซสชันหมดอายุ ไม่ใช่เน็ตหลุด)
+        const status = (error as { status?: number; code?: string } | null)?.status;
+        const connected = !error || (typeof status === "number" && status > 0);
         window.dispatchEvent(new CustomEvent("app:connection-status", { detail: { online: connected } }));
+        if (error && (status === 401 || status === 403)) {
+          window.dispatchEvent(new Event("app:session-expired"));
+        }
         if (connected) {
           if (wasOffline || refresh) {
             void queryClient.invalidateQueries();
