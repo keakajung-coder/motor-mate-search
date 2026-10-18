@@ -982,6 +982,11 @@ function PlannerPage() {
             setViewing(null);
             setEditing(a);
           }}
+          onDuplicate={isAdmin ? (a) => {
+            setViewing(null);
+            setEditing(duplicateAppointment(a));
+            toast.success("คัดลอกแล้ว — แก้ S/N เวลา หรือรายละเอียด แล้วกดบันทึก");
+          } : undefined}
           onOpenHandover={(a) => {
             setViewing(null);
             setHandoverAppt(a);
@@ -4630,7 +4635,9 @@ function ClosedJobResultDialog({
   onEditClose,
   onEditDetail,
   onOpenHandover,
+  onDuplicate,
 }: {
+  onDuplicate?: (a: Appointment) => void;
   appt: Appointment;
   onClose: () => void;
   onEditClose: (a: Appointment) => void;
@@ -4707,6 +4714,11 @@ function ClosedJobResultDialog({
             </Button>
           )}
           <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            {onDuplicate && (
+              <Button variant="outline" onClick={() => onDuplicate({ ...(appt as any), ...(row ?? {}) })}>
+                <Copy className="mr-1 h-4 w-4" /> คัดลอกใบงาน
+              </Button>
+            )}
             <Button variant="outline" onClick={() => onEditDetail(appt)}>
               แก้ไขรายละเอียดงาน
             </Button>
