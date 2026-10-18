@@ -963,6 +963,11 @@ function PlannerPage() {
             setEditing(null);
             setHandoverAppt(a);
           }}
+          onDuplicate={(a) => {
+            setEditing(null);
+            setTimeout(() => setEditing(duplicateAppointment(a)), 0);
+            toast.success("คัดลอกแล้ว — แก้ S/N เวลา หรือรายละเอียด แล้วกดบันทึก");
+          }}
         />
       )}
       {viewing && (
@@ -1027,6 +1032,14 @@ function newAppointment(date: string): Appointment {
     result: null,
     close_note: null,
   };
+}
+
+/** คัดลอกนัดหมายเป็นงานใหม่: เก็บข้อมูลลูกค้า/เครื่อง/รายละเอียดงาน ล้างผลปิดงานและไฟล์แนบ */
+function duplicateAppointment(a: Appointment): Appointment {
+  const src = a as Appointment & Record<string, unknown>;
+  const copy: Record<string, unknown> = { ...src };
+  for (const k of ["id", "work_order_id", "job_no", "result", "close_note", "closed_at", "parts_replaced", "quotation_items", "checklist", "attachments", "created_at", "updated_at"]) delete copy[k];
+  return { ...(copy as unknown as Appointment), id: "", status: "approved", result: null, close_note: null };
 }
 
 // ---------- Stats ----------
@@ -3207,6 +3220,7 @@ function AppointmentDialog({
   onDeleted,
   onCloseJob,
   onOpenHandover,
+  onDuplicate,
 }: {
   value: Appointment;
   canEdit: boolean;
@@ -3215,6 +3229,7 @@ function AppointmentDialog({
   onDeleted?: () => void;
   onCloseJob: (a: Appointment) => void;
   onOpenHandover?: (a: Appointment) => void;
+  onDuplicate?: (a: Appointment) => void;
 }) {
   const [form, setForm] = useState<Appointment>(value);
   const [editMode, setEditMode] = useState(!value.id);
@@ -3778,6 +3793,11 @@ function AppointmentDialog({
               onClick={() => onOpenHandover(form)}
             >
               <FileText className="mr-1.5 h-4 w-4" /> ใบส่งมอบงาน
+            </Button>
+          )}
+          {isAdmin && form.id && !editMode && onDuplicate && (
+            <Button variant="outline" onClick={() => onDuplicate(form)}>
+              <Copy className="mr-1 h-4 w-4" /> คัดลอกใบงาน
             </Button>
           )}
           {canEdit && !editMode && (
