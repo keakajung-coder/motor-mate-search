@@ -8,6 +8,23 @@ export function isOffline() {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
+/** ล้างแคชออฟไลน์ทั้งหมด (เรียกตอนเปิดแอป เพื่อเริ่มจากข้อมูลจริงเสมอ) */
+export function clearOfflineCache() {
+  if (typeof window === "undefined") return;
+  try {
+    for (const store of [localStorage, sessionStorage]) {
+      const keys: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const k = store.key(i);
+        if (k && (k.startsWith(PREFIX) || /offline|connection[-_]?status/i.test(k))) keys.push(k);
+      }
+      keys.forEach((k) => store.removeItem(k));
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 export function saveOffline<T>(key: string, data: T) {
   if (typeof window === "undefined") return;
   try {

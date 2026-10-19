@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { loadOffline, offlineSavedAt, saveOffline } from "@/lib/offline";
+import { isOffline, loadOffline, offlineSavedAt, saveOffline } from "@/lib/offline";
 import { useBundles } from "@/lib/bundles";
 import { supabase } from "@/lib/data-client";
 import { Input } from "@/components/ui/input";
@@ -804,7 +804,7 @@ function SnView({
       .order("serial_number");
     setLoading(false);
     if (error || !data) {
-      const cached = loadOffline<MachineResult[]>("machine_units");
+      const cached = isOffline() ? loadOffline<MachineResult[]>("machine_units") : null;
       if (cached?.length) {
         setUnits(cached);
         const at = offlineSavedAt("machine_units");
