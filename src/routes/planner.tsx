@@ -91,6 +91,7 @@ import { ChecklistView } from "@/components/ChecklistView";
 import {
   loadTemplates,
   matchesType,
+  findChecklistTemplate,
   newResult,
   type ChecklistResult,
   type ChecklistTemplate,
@@ -3883,8 +3884,9 @@ function CloseJobDialog({
         setChecklist(t ? newResult(t, prev) : prev);
         setUseChecklist(true);
       } else {
-        const t = tpls.find((x) => matchesType(x, pt)) ?? tpls[0];
-        if (t) setChecklist(newResult(t));
+        const t = findChecklistTemplate(tpls, pt);
+        setChecklist(t ? newResult(t) : null);
+        setUseChecklist(Boolean(t));
       }
     })();
     return () => {
