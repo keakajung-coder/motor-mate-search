@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/data-client";
+export { matchesType, findChecklistTemplate } from "@/lib/checklist-matching";
 
 export type ChecklistKind = "number" | "status" | "status_number";
 export type ChecklistItem = { id: string; label: string; kind: ChecklistKind; fields: string[] };
@@ -6,6 +7,7 @@ export type ChecklistTemplate = {
   id: string;
   name: string;
   machine_types: string | null;
+  pump_type: string | null;
   items: ChecklistItem[];
   sort_order: number;
 };
@@ -31,19 +33,13 @@ export type ChecklistResult = {
 };
 
 export async function loadTemplates(): Promise<ChecklistTemplate[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("checklist_templates" as never)
     .select("*")
     .order("sort_order")
     .order("created_at");
+  if (error) throw new Error(error.message);
   return ((data ?? []) as any[]).map((t) => ({ ...t, items: Array.isArray(t.items) ? t.items : [] }));
-}
-
-export function matchesType(t: ChecklistTemplate, type: string | null | undefined) {
-  if (!type) return false;
-  const types = (t.machine_types ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  const ty = type.toLowerCase();
-  return types.some((x) => ty.includes(x) || x.includes(ty));
 }
 
 export function newResult(t: ChecklistTemplate, prev?: ChecklistResult | null): ChecklistResult {

@@ -47,9 +47,11 @@ import { TrashTab } from "@/components/admin/TrashTab";
 import { logAudit } from "@/lib/audit";
 import { BundlesTab } from "@/components/admin/BundlesTab";
 import { DateInput } from "@/components/ui/date-input";
+import { Combobox } from "@/components/ui/combobox";
+import { PumpTypeChecklist } from "@/components/PumpTypeChecklist";
+import { ensurePumpType, notifyPumpTypesChanged, usePumpTypes } from "@/lib/pump-types";
 
 
-const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [
@@ -223,6 +225,7 @@ function BrandsTab() {
 
 // ---------- Models ----------
 function ModelsTab() {
+  const pumpTypes = usePumpTypes();
   const [items, setItems] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [name, setName] = useState("");
@@ -250,6 +253,7 @@ function ModelsTab() {
       : await supabase.from("compressor_models").insert(payload);
     if (error) return toast.error(error.message);
     toast.success(editId ? "บันทึกแล้ว" : "เพิ่มรุ่นแล้ว");
+    notifyPumpTypesChanged();
     reset();
     load();
   }
@@ -275,15 +279,12 @@ function ModelsTab() {
             </SelectContent>
           </Select>
           <Input placeholder="ชื่อรุ่น เช่น GA37" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input
-            list="pump-type-options"
-            placeholder="ประเภทปั๊มลม"
-            value={pumpType}
-            onChange={(e) => setPumpType(e.target.value)}
-          />
-          <datalist id="pump-type-options">
-            {PUMP_TYPE_PRESETS.map((t) => <option key={t} value={t} />)}
-          </datalist>
+          <Combobox value={pumpType} options={pumpTypes.map((value) => ({ value }))}
+            placeholder="ประเภทปั๊มลม" searchPlaceholder="ค้นหาหรือพิมพ์ประเภทใหม่..."
+            onChange={async (value) => {
+              try { setPumpType(await ensurePumpType(value)); }
+              catch (error) { toast.error(error instanceof Error ? error.message : "เพิ่มประเภทปั๊มไม่สำเร็จ"); }
+            }} />
           <div className="flex gap-1">
             <Button onClick={save}>{editId ? "บันทึก" : <Plus className="h-4 w-4" />}</Button>
             {editId && <Button variant="outline" onClick={reset}>ยกเลิก</Button>}
@@ -765,6 +766,7 @@ function ProductsTab() {
 const SERVICE_HOUR_PRESETS = [500, 1500, 2000, 3000, 4500, 6000, 7500, 8000];
 
 function MachinesTab() {
+  const pumpTypes = usePumpTypes();
   const [units, setUnits] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
@@ -1312,7 +1314,11 @@ function MachinesTab() {
               <Input
                 list="model-options"
                 value={form.model_name}
-                onChange={(e) => setForm({ ...form, model_name: e.target.value })}
+                onChange={(e) => {
+                  const model_name = e.target.value;
+                  const hit = models.find((m) => m.name.toLowerCase() === model_name.trim().toLowerCase() && (!form.brand_name || m.brands?.name?.toLowerCase() === form.brand_name.toLowerCase()));
+                  setForm({ ...form, model_name, ...(hit ? { pump_type: hit.pump_type ?? "", brand_name: hit.brands?.name ?? form.brand_name } : {}) });
+                }}
                 placeholder="เช่น GA37"
               />
               <datalist id="model-options">
@@ -1323,13 +1329,14 @@ function MachinesTab() {
             </div>
             <div>
               <Label>ประเภทปั๊มลม (พิมพ์เพิ่มหรือเลือก)</Label>
-              <Input
-                list="pump-type-options"
-                value={form.pump_type}
-                onChange={(e) => setForm({ ...form, pump_type: e.target.value })}
-                placeholder="เช่น ปั๊มลมสกรู"
-              />
+              <Combobox value={form.pump_type} options={pumpTypes.map((value) => ({ value }))}
+                placeholder="เลือกประเภทปั๊มลม" searchPlaceholder="ค้นหาหรือพิมพ์ประเภทใหม่..."
+                onChange={async (value) => {
+                  try { const pump_type = await ensurePumpType(value); setForm((current) => ({ ...current, pump_type })); }
+                  catch (error) { toast.error(error instanceof Error ? error.message : "เพิ่มประเภทปั๊มไม่สำเร็จ"); }
+                }} />
             </div>
+            <PumpTypeChecklist pumpType={form.pump_type} />
             <div>
               <Label>วันที่ติดตั้ง</Label>
               <DateInput value={form.install_date} onChange={(v) => setForm({ ...form, install_date: v })} />

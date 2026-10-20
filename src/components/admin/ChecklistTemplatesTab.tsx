@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/data-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { ensurePumpType, notifyPumpTypesChanged, usePumpTypes } from "@/lib/pump-types";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Plus, Trash2, ArrowUp, ArrowDown, Save } from "lucide-react";
@@ -13,12 +15,14 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 export function ChecklistTemplatesTab() {
   const { isAdmin } = useAccess();
+  const pumpTypes = usePumpTypes();
   const [list, setList] = useState<ChecklistTemplate[]>([]);
   const [sel, setSel] = useState<ChecklistTemplate | null>(null);
   const [busy, setBusy] = useState(false);
 
   const reload = async (keepId?: string) => {
-    const l = await loadTemplates();
+    let l: ChecklistTemplate[];
+    try { l = await loadTemplates(); } catch (error) { toast.error(error instanceof Error ? error.message : "โหลดชุดเช็คลิสต์ไม่สำเร็จ"); return; }
     setList(l);
     const pick = l.find((t) => t.id === (keepId ?? sel?.id)) ?? l[0] ?? null;
     setSel(pick ? structuredClone(pick) : null);
@@ -44,11 +48,12 @@ export function ChecklistTemplatesTab() {
       .filter((it) => it.label);
     const { error } = await supabase
       .from("checklist_templates" as never)
-      .update({ name: sel.name.trim(), machine_types: sel.machine_types?.trim() || null, items } as never)
+      .update({ name: sel.name.trim(), pump_type: sel.pump_type?.trim() || null, machine_types: sel.pump_type?.trim() || sel.machine_types?.trim() || null, items } as never)
       .eq("id", sel.id);
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("บันทึกเทมเพลตแล้ว");
+    notifyPumpTypesChanged();
     reload(sel.id);
   };
 
@@ -84,7 +89,7 @@ export function ChecklistTemplatesTab() {
               className={`w-full rounded border px-3 py-2 text-left text-sm ${sel?.id === t.id ? "border-primary bg-accent" : ""}`}
             >
               <div className="font-medium">{t.name}</div>
-              <div className="text-xs text-muted-foreground">ประเภท: {t.machine_types || "—"} · {t.items.length} หัวข้อ</div>
+              <div className="text-xs text-muted-foreground">ประเภท: {t.pump_type || t.machine_types || "—"} · {t.items.length} หัวข้อ</div>
             </button>
           ))}
           <Button variant="outline" className="w-full" onClick={addTemplate}><Plus className="mr-1 h-4 w-4" /> เพิ่มชุด</Button>
@@ -98,9 +103,18 @@ export function ChecklistTemplatesTab() {
               <label className="text-sm">ชื่อชุด
                 <Input value={sel.name} onChange={(e) => setSel({ ...sel, name: e.target.value })} />
               </label>
-              <label className="text-sm">ประเภทเครื่องที่ใช้ (คั่นด้วย , เช่น สกรู, ลูกสูบ)
-                <Input value={sel.machine_types ?? ""} onChange={(e) => setSel({ ...sel, machine_types: e.target.value })} />
-              </label>
+              <div className="min-w-0 space-y-1 text-sm">ประเภทปั๊มลม
+                <Combobox value={sel.pump_type ?? ""} options={pumpTypes.map((value) => ({ value }))}
+                  placeholder="เลือกประเภทปั๊มลม" searchPlaceholder="ค้นหาหรือพิมพ์ประเภทใหม่..."
+                  onChange={async (value) => {
+                    const id = sel.id;
+                    try {
+                      const pump_type = await ensurePumpType(value);
+                      setSel((current) => current?.id === id ? { ...current, pump_type, machine_types: pump_type || null } : current);
+                    } catch (error) { toast.error(error instanceof Error ? error.message : "เพิ่มประเภทปั๊มไม่สำเร็จ"); }
+                  }} />
+                {!sel.pump_type && sel.machine_types && <p className="text-xs text-muted-foreground">ประเภทเดิม: {sel.machine_types}</p>}
+              </div>
             </div>
             <p className="text-xs text-muted-foreground">ระบบจะเลือกชุดนี้อัตโนมัติเมื่อ "ประเภทปั๊ม" ของรุ่นเครื่องตรงกับคำที่ใส่ไว้</p>
             <div className="space-y-2">

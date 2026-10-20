@@ -20,3 +20,4 @@
 - Gate every business query and storage request through the allowlisted session-aware server gateway; public Data API grants stay revoked so client UI cannot bypass permissions.
 - Shared passcodes are exchanged for encrypted HttpOnly expiring sessions; every privileged action revalidates the server role and credential version, never browser storage.
 - Persist rate limits in the database and escape spreadsheet formula-leading text at export boundaries to resist automated abuse and unsafe spreadsheet execution.
+- Resolve equipment checklists dynamically through the model pump type and template pump_type, with legacy machine_types fallback; shared pump-type options include stored custom entries, models, and templates so changes remain synchronized without stale equipment snapshots.

@@ -288,6 +288,7 @@ export type Database = {
           items: Json
           machine_types: string | null
           name: string
+          pump_type: string | null
           sort_order: number
           updated_at: string
         }
@@ -297,6 +298,7 @@ export type Database = {
           items?: Json
           machine_types?: string | null
           name: string
+          pump_type?: string | null
           sort_order?: number
           updated_at?: string
         }
@@ -306,6 +308,7 @@ export type Database = {
           items?: Json
           machine_types?: string | null
           name?: string
+          pump_type?: string | null
           sort_order?: number
           updated_at?: string
         }
