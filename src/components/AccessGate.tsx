@@ -14,6 +14,19 @@ import {
 import { KeyRound, Loader2, Lock, LockOpen, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
+/**
+ * ชองกรอกรหัสผ่านตองเรยกกียบอรดมาตรฐาน (Full QWERTY) บนมือถือเสมอ
+ * เพอพมิพตวั อักษรภาษาอังกฤษ ตวั เลข และสญลักษณไดอยางอสิระ
+ * (ไมใ ชกียบอรดตวั เลขจาก inputMode/pattern)
+ */
+const PASSCODE_INPUT = {
+  type: "password",
+  inputMode: "text",
+  autoCapitalize: "none",
+  autoCorrect: "off",
+  spellCheck: false,
+} as const;
+
 /** หน้าจอบังคับกรอกรหัสเข้าดู (ชั้นที่ 1) */
 export function AccessGate({ children }: { children: React.ReactNode }) {
   const { ready, viewerOk, unlockViewer } = useAccess();
@@ -53,7 +66,7 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <Input
-            type="password"
+            {...PASSCODE_INPUT}
             autoFocus
             value={code}
             onChange={(e) => setCode(e.target.value)}
@@ -132,7 +145,7 @@ export function AdminLockButton() {
             <DialogDescription>กรอกรหัสแอดมินเพื่อปลดล็อกการเพิ่ม/แก้ไข/ลบข้อมูล</DialogDescription>
           </DialogHeader>
           <Input
-            type="password"
+            {...PASSCODE_INPUT}
             autoFocus
             value={code}
             onChange={(e) => setCode(e.target.value)}

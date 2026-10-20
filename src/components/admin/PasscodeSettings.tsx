@@ -8,6 +8,19 @@ import { KeyRound, Loader2 } from "lucide-react";
 import { updatePasscodes } from "@/lib/passcode.functions";
 import { setStoredAdminCode, storedAdminCode } from "@/lib/access";
 
+/**
+ * ชองกรอกรหัสผ่านตองเรยกกียบอรดมาตรฐาน (Full QWERTY) บนมือถือเสมอ
+ * เพอพมิพตวั อักษรภาษาอังกฤษ ตวั เลข และสญลักษณไดอยางอสิระ
+ * (ไมใ ชกียบอรดตวั เลขจาก inputMode/pattern)
+ */
+const PASSCODE_INPUT = {
+  type: "password",
+  inputMode: "text",
+  autoCapitalize: "none",
+  autoCorrect: "off",
+  spellCheck: false,
+} as const;
+
 export function PasscodeSettings() {
   const [current, setCurrent] = useState(storedAdminCode());
   const [viewer, setViewer] = useState("");
@@ -44,13 +57,13 @@ export function PasscodeSettings() {
       <CardContent className="space-y-4">
         <div className="space-y-1">
           <Label>รหัสแอดมินปัจจุบัน (ยืนยันตัวตน)</Label>
-          <Input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          <Input {...PASSCODE_INPUT} value={current} onChange={(e) => setCurrent(e.target.value)} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1">
             <Label>รหัสเข้าดูใหม่ (Viewer)</Label>
             <Input
-              type="password"
+              {...PASSCODE_INPUT}
               value={viewer}
               onChange={(e) => setViewer(e.target.value)}
               placeholder="เว้นว่าง = ไม่เปลี่ยน"
@@ -60,7 +73,7 @@ export function PasscodeSettings() {
           <div className="space-y-1">
             <Label>รหัสแอดมินใหม่</Label>
             <Input
-              type="password"
+              {...PASSCODE_INPUT}
               value={admin}
               onChange={(e) => setAdmin(e.target.value)}
               placeholder="เว้นว่าง = ไม่เปลี่ยน"
