@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/data-client";
 
 /** รายการตัวเลือกที่ผู้ใช้เพิ่มเอง (ผู้ขาย / สถานะ) เก็บใน app_settings */
-export type OptionListKey = "sellers" | "statuses";
+export type OptionListKey = "sellers" | "statuses" | "pump_types";
 
 export async function loadOptionList(key: OptionListKey): Promise<string[]> {
   const { data } = await supabase.from("app_settings").select("value").eq("key", key).maybeSingle();
