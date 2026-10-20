@@ -80,7 +80,7 @@ import {
   shareOrDownload,
 } from "@/lib/report";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
-import { JobReportsPanel } from "@/components/JobReportsPanel";
+import { JobReportsPanel, type RoleFilter } from "@/components/JobReportsPanel";
 import { PART_CATEGORIES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
 import { LeaveCell, StaffLeaveDialog, useStaffLeave } from "@/components/StaffLeave";
@@ -368,6 +368,7 @@ function PlannerPage() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"month" | "week" | "day">("month");
   const [cursor, setCursor] = useState(new Date());
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [staffFilter, setStaffFilter] = useState("");
   const [vehicleFilter, setVehicleFilter] = useState("");
   const gridStart =
@@ -381,6 +382,7 @@ function PlannerPage() {
   const rangeTo = iso(addDays(gridStart, gridDays - 1));
   const visibleLeave = leave.rows.filter(
     (row) =>
+      roleFilter !== "seller" &&
       (!staffFilter || row.staff_name === staffFilter) &&
       row.leave_date >= rangeFrom &&
       row.leave_date <= rangeTo,
@@ -451,23 +453,46 @@ function PlannerPage() {
   }, [load]);
 
   const staffNames = useMemo(
-    () => Array.from(new Set(appts.flatMap((a) => splitNames(a.staff_name)))).sort(),
+    () => Array.from(new Set(appts.flatMap((a) => splitNames(a.staff_name)))).sort((a, b) => a.localeCompare(b, "th")),
+    [appts],
+  );
+
+  const sellerNames = useMemo(
+    () => Array.from(new Set(appts.map((a) => (a.sales_rep ?? "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "th")),
     [appts],
   );
 
   const vehiclePlates = useMemo(
-    () => Array.from(new Set(appts.flatMap((a) => splitNames(a.vehicle_plate)))).sort(),
+    () => Array.from(new Set(appts.flatMap((a) => splitNames(a.vehicle_plate)))).sort((a, b) => a.localeCompare(b, "th")),
     [appts],
   );
 
   const visible = useMemo(
     () =>
-      appts.filter(
-        (a) =>
-          (!staffFilter || splitNames(a.staff_name).includes(staffFilter)) &&
-          (!vehicleFilter || splitNames(a.vehicle_plate).includes(vehicleFilter)),
-      ),
-    [appts, staffFilter, vehicleFilter],
+      appts.filter((a) => {
+        // กรองประเภทงาน (Role Filter)
+        if (roleFilter === "seller" && !(a.sales_rep && a.sales_rep.trim())) return false;
+        if (roleFilter === "tech" && !(a.staff_name && splitNames(a.staff_name).length > 0 && a.staff_name.trim())) return false;
+
+        // กรองรายบุคคล (ช่าง หรือ ผู้ขาย)
+        if (staffFilter) {
+          if (roleFilter === "seller") {
+            if ((a.sales_rep ?? "").trim() !== staffFilter) return false;
+          } else if (roleFilter === "tech") {
+            if (!splitNames(a.staff_name).includes(staffFilter)) return false;
+          } else {
+            const matchesTech = splitNames(a.staff_name).includes(staffFilter);
+            const matchesSeller = (a.sales_rep ?? "").trim() === staffFilter;
+            if (!matchesTech && !matchesSeller) return false;
+          }
+        }
+
+        // กรองรถ
+        if (vehicleFilter && !splitNames(a.vehicle_plate).includes(vehicleFilter)) return false;
+
+        return true;
+      }),
+    [appts, roleFilter, staffFilter, vehicleFilter],
   );
 
   const shift = (dir: number) => {
@@ -501,7 +526,7 @@ function PlannerPage() {
       const sheets = buildPlannerSheets({
         view, cursor, title: exportTitle, jobs: visible, leave: visibleLeave,
         holidays: holidaysMap ?? {},
-        filterLabel: `${staffFilter ? "ช่าง: " + staffFilter : "ช่างทุกคน"} · ${vehicleFilter ? "รถ: " + vehicleFilter : "รถทุกคัน"}`,
+        filterLabel: `${roleFilter === "seller" ? "เฉพาะงานผู้ขาย" : roleFilter === "tech" ? "เฉพาะงานช่าง" : "ทั้งหมด (ช่างและผู้ขาย)"} · ${staffFilter ? (roleFilter === "seller" ? "ผู้ขาย: " + staffFilter : "ช่าง: " + staffFilter) : "ทุกคน"} · ${vehicleFilter ? "รถ: " + vehicleFilter : "รถทุกคัน"}`,
         palette: {
           text: read("text-slate-800", "color"), paper: read("bg-card", "backgroundColor"),
           muted: read("bg-muted", "backgroundColor"), border: read("border border-border", "borderTopColor"),
@@ -648,6 +673,18 @@ function PlannerPage() {
           className="lg:col-span-2 2xl:col-span-1"
         >
           <JobReportsPanel
+            roleFilter={roleFilter}
+            onRoleFilterChange={(r) => {
+              setRoleFilter(r);
+              if (staffFilter) {
+                if (r === "seller" && !sellerNames.includes(staffFilter)) setStaffFilter("");
+                if (r === "tech" && !staffNames.includes(staffFilter)) setStaffFilter("");
+              }
+            }}
+            personFilter={staffFilter}
+            onPersonFilterChange={setStaffFilter}
+            vehicleFilter={vehicleFilter}
+            onVehicleFilterChange={setVehicleFilter}
             onPickDate={(d) => {
               const [y, m, dd] = d.split("-").map(Number);
               setCursor(new Date(y, m - 1, dd));
@@ -702,22 +739,79 @@ function PlannerPage() {
                 setDayDetail(v);
               }}
             />
+            {/* 1. กรองประเภทงาน (Role Filter) */}
+            <select
+              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm font-medium 2xl:w-auto"
+              value={roleFilter}
+              onChange={(e) => {
+                const nextRole = e.target.value as RoleFilter;
+                setRoleFilter(nextRole);
+                if (staffFilter) {
+                  if (nextRole === "seller" && !sellerNames.includes(staffFilter)) setStaffFilter("");
+                  if (nextRole === "tech" && !staffNames.includes(staffFilter)) setStaffFilter("");
+                }
+              }}
+              aria-label="กรองประเภทงาน"
+            >
+              <option value="all">ทั้งหมด (แสดงงานทั้งช่างและผู้ขาย)</option>
+              <option value="seller">เฉพาะงานผู้ขาย</option>
+              <option value="tech">เฉพาะงานช่าง</option>
+            </select>
+            {/* 2. กรองรายบุคคล */}
             <select
               className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm 2xl:w-auto"
               value={staffFilter}
               onChange={(e) => setStaffFilter(e.target.value)}
+              aria-label="กรองรายบุคคล"
             >
-              <option value="">ช่างทุกคน</option>
-              {staffNames.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
+              {roleFilter === "tech" ? (
+                <>
+                  <option value="">ช่างทุกคน</option>
+                  {staffNames.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </>
+              ) : roleFilter === "seller" ? (
+                <>
+                  <option value="">ผู้ขายทุกคน</option>
+                  {sellerNames.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <option value="">ทุกคน (ช่าง / ผู้ขาย)</option>
+                  {staffNames.length > 0 && (
+                    <optgroup label="ช่าง">
+                      {staffNames.map((n) => (
+                        <option key={"tech-" + n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {sellerNames.length > 0 && (
+                    <optgroup label="ผู้ขาย / เซลล์">
+                      {sellerNames.map((n) => (
+                        <option key={"rep-" + n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </>
+              )}
             </select>
+            {/* 3. กรองรถ */}
             <select
               className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm 2xl:w-auto"
               value={vehicleFilter}
               onChange={(e) => setVehicleFilter(e.target.value)}
+              aria-label="กรองรถ"
             >
               <option value="">รถทุกคัน</option>
               {vehiclePlates.map((p) => (
@@ -726,6 +820,7 @@ function PlannerPage() {
                 </option>
               ))}
             </select>
+            {/* 4. เรียงลำดับ */}
             <select
               className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm 2xl:w-auto"
               value={sortBy}
@@ -735,8 +830,24 @@ function PlannerPage() {
               <option value="date-asc">เรียง: วันที่ เก่า → ใหม่</option>
               <option value="date-desc">เรียง: วันที่ ใหม่ → เก่า</option>
               <option value="customer">เรียง: ชื่อลูกค้า ก-ฮ</option>
-              <option value="staff">เรียง: ชื่อช่าง ก-ฮ</option>
+              <option value="staff">
+                {roleFilter === "seller" ? "เรียง: ชื่อผู้ขาย ก-ฮ" : "เรียง: ชื่อช่าง ก-ฮ"}
+              </option>
             </select>
+            {(roleFilter !== "all" || staffFilter || vehicleFilter) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-9 text-xs shrink-0"
+                onClick={() => {
+                  setRoleFilter("all");
+                  setStaffFilter("");
+                  setVehicleFilter("");
+                }}
+              >
+                ล้างตัวกรอง
+              </Button>
+            )}
             {(view === "month" || view === "week" || view === "day") && (
               <>
                 <Button
@@ -1612,6 +1723,7 @@ function ApprovedOrders({
 
   const { isAdmin } = useAccess();
   const [fDate, setFDate] = useState("");
+  const [fRole, setFRole] = useState<RoleFilter>("all");
   const [fSeller, setFSeller] = useState("");
   const [fStaff, setFStaff] = useState("");
   const [showHidden, setShowHidden] = useState(false);
@@ -1628,6 +1740,8 @@ function ApprovedOrders({
       return false;
     const date = appointments[o.id]?.visit_date ?? o.visit_date ?? "";
     if (fDate && date !== fDate) return false;
+    if (fRole === "seller" && !(o.sales_rep && o.sales_rep.trim())) return false;
+    if (fRole === "tech" && !(o.staff_name && splitNames(o.staff_name).length > 0 && o.staff_name.trim())) return false;
     if (fSeller && (o.sales_rep ?? "").trim() !== fSeller) return false;
     if (fStaff && !splitNames(o.staff_name).includes(fStaff)) return false;
     return true;
@@ -1736,13 +1850,29 @@ function ApprovedOrders({
 
   return (
     <div className="space-y-3">
-      <div className="grid min-w-0 grid-cols-1 gap-2 rounded-lg border bg-card p-2 lg:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-1 gap-2 rounded-lg border bg-card p-2 lg:grid-cols-5">
         <DateInput size="sm" aria-label="กรองวันที่นัดหมาย" value={fDate} onChange={setFDate} />
+        <select
+          className="h-8 rounded-md border bg-background px-2 text-xs font-medium"
+          value={fRole}
+          onChange={(e) => {
+            const next = e.target.value as RoleFilter;
+            setFRole(next);
+            if (next === "seller") setFStaff("");
+            if (next === "tech") setFSeller("");
+          }}
+          aria-label="กรองประเภทงาน"
+        >
+          <option value="all">ทั้งหมด (ช่างและผู้ขาย)</option>
+          <option value="seller">เฉพาะงานผู้ขาย</option>
+          <option value="tech">เฉพาะงานช่าง</option>
+        </select>
         <select
           className="h-8 rounded-md border bg-background px-2 text-xs"
           value={fSeller}
           onChange={(e) => setFSeller(e.target.value)}
           aria-label="กรองผู้ขาย"
+          disabled={fRole === "tech"}
         >
           <option value="">ผู้ขายทั้งหมด</option>
           {sellerOpts.map((s) => (
@@ -1756,6 +1886,7 @@ function ApprovedOrders({
           value={fStaff}
           onChange={(e) => setFStaff(e.target.value)}
           aria-label="กรองช่าง"
+          disabled={fRole === "seller"}
         >
           <option value="">ช่างทั้งหมด</option>
           {staffOpts.map((s) => (
@@ -1771,6 +1902,7 @@ function ApprovedOrders({
             className="h-8"
             onClick={() => {
               setFDate("");
+              setFRole("all");
               setFSeller("");
               setFStaff("");
             }}

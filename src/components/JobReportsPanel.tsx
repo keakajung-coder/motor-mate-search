@@ -64,8 +64,26 @@ function rangeFor(mode: "day" | "week" | "month", day: string) {
   };
 }
 
+export type RoleFilter = "all" | "seller" | "tech";
+
 /** สรุปใบสั่งงาน: รายวัน/สัปดาห์/เดือน + ช่วงวันที่เอง + ตัวกรอง + แก้ไข + ส่งออก */
-export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) => void }) {
+export function JobReportsPanel({
+  onPickDate,
+  roleFilter: propRoleFilter,
+  onRoleFilterChange,
+  personFilter: propPersonFilter,
+  onPersonFilterChange,
+  vehicleFilter: propVehicleFilter,
+  onVehicleFilterChange,
+}: {
+  onPickDate?: (date: string) => void;
+  roleFilter?: RoleFilter;
+  onRoleFilterChange?: (role: RoleFilter) => void;
+  personFilter?: string;
+  onPersonFilterChange?: (person: string) => void;
+  vehicleFilter?: string;
+  onVehicleFilterChange?: (vehicle: string) => void;
+}) {
   const { isAdmin } = useAccess();
   const [mode, setMode] = useState<"day" | "week" | "month" | "custom">("day");
   const [day, setDay] = useState(iso(new Date()));
@@ -74,8 +92,15 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
   const [allRows, setAllRows] = useState<Row[]>([]);
   const [snMap, setSnMap] = useState<Record<string, string>>({});
   const [scope, setScope] = useState<"all" | "open" | "closed">("all");
-  const [tech, setTech] = useState<string | null>(null);
-  const [rep, setRep] = useState<string | null>(null);
+
+  const [internalRole, setInternalRole] = useState<RoleFilter>("all");
+  const [internalPerson, setInternalPerson] = useState("");
+  const [internalVehicle, setInternalVehicle] = useState("");
+
+  const roleFilter = propRoleFilter ?? internalRole;
+  const personFilter = propPersonFilter ?? internalPerson;
+  const vehicleFilter = propVehicleFilter ?? internalVehicle;
+
   const [groupBy, setGroupBy] = useState<"none" | "seller" | "tech">("none");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState("");
@@ -133,16 +158,66 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
     return [...set].sort((a, b) => a.localeCompare(b, "th"));
   }, [allRows]);
 
+  const vehicleOptions = useMemo(() => {
+    const set = new Set<string>();
+    allRows.forEach((r) => splitNames(r.vehicle_plate ?? "").forEach((p) => set.add(p)));
+    return [...set].sort((a, b) => a.localeCompare(b, "th"));
+  }, [allRows]);
+
+  const handleRoleChange = (nextRole: RoleFilter) => {
+    if (onRoleFilterChange) onRoleFilterChange(nextRole);
+    else setInternalRole(nextRole);
+
+    if (personFilter) {
+      if (nextRole === "seller" && !repOptions.includes(personFilter)) {
+        if (onPersonFilterChange) onPersonFilterChange("");
+        else setInternalPerson("");
+      } else if (nextRole === "tech" && !techOptions.includes(personFilter)) {
+        if (onPersonFilterChange) onPersonFilterChange("");
+        else setInternalPerson("");
+      }
+    }
+  };
+
+  const handlePersonChange = (nextPerson: string) => {
+    if (onPersonFilterChange) onPersonFilterChange(nextPerson);
+    else setInternalPerson(nextPerson);
+  };
+
+  const handleVehicleChange = (nextVehicle: string) => {
+    if (onVehicleFilterChange) onVehicleFilterChange(nextVehicle);
+    else setInternalVehicle(nextVehicle);
+  };
+
   const rows = useMemo(
     () =>
       allRows.filter((r) => {
         if (scope === "closed" && r.status !== "closed") return false;
         if (scope === "open" && r.status === "closed") return false;
-        if (tech && !splitNames(r.staff_name ?? "").includes(tech)) return false;
-        if (rep && (r.sales_rep ?? "").trim() !== rep) return false;
+
+        // กรองประเภทงาน (Role Filter)
+        if (roleFilter === "seller" && !(r.sales_rep && r.sales_rep.trim())) return false;
+        if (roleFilter === "tech" && !(r.staff_name && splitNames(r.staff_name).length > 0 && r.staff_name.trim())) return false;
+
+        // กรองรายบุคคล (ช่าง หรือ ผู้ขาย)
+        if (personFilter) {
+          if (roleFilter === "seller") {
+            if ((r.sales_rep ?? "").trim() !== personFilter) return false;
+          } else if (roleFilter === "tech") {
+            if (!splitNames(r.staff_name ?? "").includes(personFilter)) return false;
+          } else {
+            const matchesTech = splitNames(r.staff_name ?? "").includes(personFilter);
+            const matchesSeller = (r.sales_rep ?? "").trim() === personFilter;
+            if (!matchesTech && !matchesSeller) return false;
+          }
+        }
+
+        // กรองรถ
+        if (vehicleFilter && !splitNames(r.vehicle_plate ?? "").includes(vehicleFilter)) return false;
+
         return true;
       }),
-    [allRows, scope, tech, rep],
+    [allRows, scope, roleFilter, personFilter, vehicleFilter],
   );
 
   const tableGroups = useMemo(() => {
@@ -163,16 +238,24 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
   const workload = useMemo(() => {
     const map = new Map<string, { total: number; done: number }>();
     for (const r of rows) {
-      const names = splitNames(r.staff_name ?? "");
-      for (const n of names.length ? names : ["ยังไม่ระบุช่าง"]) {
-        const cur = map.get(n) ?? { total: 0, done: 0 };
+      if (roleFilter === "seller") {
+        const name = (r.sales_rep ?? "").trim() || "ยังไม่ระบุเซลล์";
+        const cur = map.get(name) ?? { total: 0, done: 0 };
         cur.total += 1;
         if (r.status === "closed") cur.done += 1;
-        map.set(n, cur);
+        map.set(name, cur);
+      } else {
+        const names = splitNames(r.staff_name ?? "");
+        for (const n of names.length ? names : ["ยังไม่ระบุช่าง"]) {
+          const cur = map.get(n) ?? { total: 0, done: 0 };
+          cur.total += 1;
+          if (r.status === "closed") cur.done += 1;
+          map.set(n, cur);
+        }
       }
     }
     return [...map.entries()].sort((a, b) => b[1].total - a[1].total);
-  }, [rows]);
+  }, [rows, roleFilter]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Row[]>();
@@ -391,6 +474,111 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
           </div>
         </div>
 
+        {/* แถบตัวกรองหลัก: ประเภทงาน / รายบุคคล / รถ */}
+        <div className="grid min-w-0 grid-cols-1 items-center gap-2 rounded-lg border bg-muted/20 p-2.5 sm:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+              กรองประเภทงาน
+            </label>
+            <select
+              aria-label="กรองประเภทงาน"
+              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm font-medium"
+              value={roleFilter}
+              onChange={(e) => handleRoleChange(e.target.value as RoleFilter)}
+            >
+              <option value="all">ทั้งหมด (แสดงงานทั้งช่างและผู้ขาย)</option>
+              <option value="seller">เฉพาะงานผู้ขาย</option>
+              <option value="tech">เฉพาะงานช่าง</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+              {roleFilter === "seller" ? "เลือกผู้ขาย / เซลล์" : roleFilter === "tech" ? "เลือกช่างเทคนิค" : "เลือกรายบุคคล"}
+            </label>
+            <select
+              aria-label="กรองรายบุคคล"
+              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm"
+              value={personFilter}
+              onChange={(e) => handlePersonChange(e.target.value)}
+            >
+              {roleFilter === "tech" ? (
+                <>
+                  <option value="">ช่างทุกคน</option>
+                  {techOptions.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </>
+              ) : roleFilter === "seller" ? (
+                <>
+                  <option value="">ผู้ขายทุกคน</option>
+                  {repOptions.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <option value="">ทุกคน (ช่าง / ผู้ขาย)</option>
+                  {techOptions.length > 0 && (
+                    <optgroup label="ช่าง">
+                      {techOptions.map((t) => (
+                        <option key={"tech-" + t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {repOptions.length > 0 && (
+                    <optgroup label="ผู้ขาย / เซลล์">
+                      {repOptions.map((r) => (
+                        <option key={"rep-" + r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </>
+              )}
+            </select>
+          </div>
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block text-xs font-semibold text-muted-foreground">
+                เลือกรถ
+              </label>
+              {(roleFilter !== "all" || personFilter || vehicleFilter) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleRoleChange("all");
+                    handlePersonChange("");
+                    handleVehicleChange("");
+                  }}
+                  className="text-[11px] text-primary hover:underline font-medium"
+                >
+                  ล้างตัวกรอง
+                </button>
+              )}
+            </div>
+            <select
+              aria-label="กรองรถ"
+              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm"
+              value={vehicleFilter}
+              onChange={(e) => handleVehicleChange(e.target.value)}
+            >
+              <option value="">รถทุกคัน</option>
+              {vehicleOptions.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="font-semibold text-muted-foreground">แยกรายงาน:</span>
           {([
@@ -404,26 +592,51 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-muted-foreground">ช่าง:</span>
-          <Button size="sm" variant={tech === null ? "default" : "outline"} onClick={() => setTech(null)}>
-            ทั้งหมด
-          </Button>
-          {techOptions.map((t) => (
-            <Button key={t} size="sm" variant={tech === t ? "default" : "outline"} onClick={() => setTech(t)}>
-              {t}
+        {(roleFilter === "all" || roleFilter === "tech") && techOptions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-muted-foreground">ทางลัดช่าง:</span>
+            <Button
+              size="sm"
+              variant={!personFilter ? "default" : "outline"}
+              onClick={() => handlePersonChange("")}
+            >
+              ทั้งหมด
             </Button>
-          ))}
-          <span className="ml-2 text-muted-foreground">เซลล์:</span>
-          <Button size="sm" variant={rep === null ? "default" : "outline"} onClick={() => setRep(null)}>
-            ทั้งหมด
-          </Button>
-          {repOptions.map((t) => (
-            <Button key={t} size="sm" variant={rep === t ? "default" : "outline"} onClick={() => setRep(t)}>
-              {t}
+            {techOptions.map((t) => (
+              <Button
+                key={t}
+                size="sm"
+                variant={personFilter === t ? "default" : "outline"}
+                onClick={() => handlePersonChange(personFilter === t ? "" : t)}
+              >
+                {t}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {(roleFilter === "all" || roleFilter === "seller") && repOptions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-muted-foreground">ทางลัดเซลล์:</span>
+            <Button
+              size="sm"
+              variant={!personFilter ? "default" : "outline"}
+              onClick={() => handlePersonChange("")}
+            >
+              ทั้งหมด
             </Button>
-          ))}
-        </div>
+            {repOptions.map((t) => (
+              <Button
+                key={t}
+                size="sm"
+                variant={personFilter === t ? "default" : "outline"}
+                onClick={() => handlePersonChange(personFilter === t ? "" : t)}
+              >
+                {t}
+              </Button>
+            ))}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 p-2 text-xs">
           <span className="text-muted-foreground">แสดงส่วน:</span>
@@ -431,7 +644,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
             ["table", "ตารางงาน"],
             ["pending", "งานที่ยังค้าง"],
             ["customers", "สรุปตามลูกค้า"],
-            ["workload", "ภาระงานรายช่าง"],
+            ["workload", roleFilter === "seller" ? "ภาระงานรายเซลล์" : "ภาระงานรายช่าง"],
             ["checklist", "แนบ Checklist การตรวจสอบ"],
           ] as const).map(([k, t]) => (
             <label key={k} className="flex cursor-pointer items-center gap-1.5">
@@ -454,8 +667,9 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
         >
           <p className="text-sm font-semibold">
             สรุปใบสั่งงาน {modeLabel} · {label} · {scopeLabel}
-            {tech ? ` · ช่าง ${tech}` : ""}
-            {rep ? ` · เซลล์ ${rep}` : ""}
+            {roleFilter === "seller" ? " · เฉพาะงานผู้ขาย" : roleFilter === "tech" ? " · เฉพาะงานช่าง" : ""}
+            {personFilter ? ` · ${personFilter}` : ""}
+            {vehicleFilter ? ` · ทะเบียน ${vehicleFilter}` : ""}
             {groupBy === "seller" ? " · แยกตามเซลล์" : groupBy === "tech" ? " · แยกตามช่าง" : ""}
           </p>
 
@@ -479,7 +693,7 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
                     "งานที่ดำเนินการ",
                     "อะไหล่ที่เปลี่ยน",
                     "รายการเสนอราคาเพิ่มเติม",
-                    "ชื่อช่าง",
+                    roleFilter === "seller" ? "ผู้ขาย / เซลล์" : roleFilter === "tech" ? "ชื่อช่าง" : "ช่าง / ผู้ขาย",
                     "รถ",
                     "สถานะงาน",
                   ].map((h) => (
@@ -527,7 +741,12 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
                       <td className="border px-2 py-1">{r.close_note || (r.status === "closed" ? "ปิดงานแล้ว" : "-")}</td>
                       <td className="border px-2 py-1">{replacedParts(r)}</td>
                       <td className="border px-2 py-1">{quotationItems(r)}</td>
-                      <td className="border px-2 py-1">{r.staff_name || "-"}</td>
+                      <td className="border px-2 py-1">
+                        <div>{r.staff_name || "-"}</div>
+                        {r.sales_rep && (
+                          <div className="text-[11px] text-muted-foreground font-medium">💼 เซลล์: {r.sales_rep}</div>
+                        )}
+                      </td>
                       <td className="border px-2 py-1">{r.vehicle_plate || "-"}</td>
                       <td className="border px-2 py-1">
                         <span>{workStatus(r)}</span>
@@ -610,7 +829,9 @@ export function JobReportsPanel({ onPickDate }: { onPickDate?: (date: string) =>
 
           {show.workload && (
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-muted-foreground">ภาระงานรายช่าง</p>
+            <p className="text-xs font-semibold text-muted-foreground">
+              {roleFilter === "seller" ? "ภาระงานรายเซลล์/ผู้ขาย" : "ภาระงานรายช่าง"}
+            </p>
             <div className="flex flex-wrap gap-2">
               {workload.map(([name, v]) => (
                 <Badge key={name} variant="outline">
