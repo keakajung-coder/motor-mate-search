@@ -6,11 +6,13 @@ const canonical = (value: string) => normalize(value).replace(/^ปั๊มล�
 export function matchesType(template: TypedTemplate, type: string | null | undefined) {
   const target = normalize(type ?? "");
   if (!target) return false;
-  if (template.pump_type?.trim()) return canonical(template.pump_type) === canonical(target);
-  // Legacy templates used keywords such as "สกรู" rather than a full pump-type name.
+  const canonicalTarget = canonical(target);
+  if (template.pump_type?.trim()) {
+    return canonical(template.pump_type) === canonicalTarget;
+  }
   return (template.machine_types ?? "").split(",").some((value) => {
     const keyword = normalize(value);
-    return Boolean(keyword) && (target.includes(keyword) || keyword.includes(target));
+    return Boolean(keyword) && (canonical(keyword) === canonicalTarget || target.includes(keyword) || keyword.includes(target));
   });
 }
 

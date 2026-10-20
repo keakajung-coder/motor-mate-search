@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle, Undo2, Redo2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Pencil, Search, AlertTriangle, Undo2, Redo2, Settings } from "lucide-react";
 import { ImportExportTab } from "@/components/admin/ImportExportTab";
 import { OptionListManager } from "@/components/admin/OptionListManager";
 import { SalesContactsCard } from "@/components/admin/SalesContactsCard";
@@ -50,6 +50,7 @@ import { DateInput } from "@/components/ui/date-input";
 import { Combobox } from "@/components/ui/combobox";
 import { PumpTypeChecklist } from "@/components/PumpTypeChecklist";
 import { ensurePumpType, notifyPumpTypesChanged, usePumpTypes } from "@/lib/pump-types";
+import { PumpTypeManagerCard, PumpTypeManagerDialog } from "@/components/admin/PumpTypeManager";
 
 
 
@@ -89,7 +90,7 @@ function AdminPage() {
           <TabsTrigger value="models" className="shrink-0">รุ่นเครื่อง</TabsTrigger>
           <TabsTrigger value="staff" className="shrink-0">ช่าง / รถ</TabsTrigger>
           <TabsTrigger value="engineers" className="shrink-0">วิศวกร</TabsTrigger>
-          <TabsTrigger value="lists" className="shrink-0">ผู้ขาย / สถานะ</TabsTrigger>
+          <TabsTrigger value="lists" className="shrink-0">ผู้ขาย / สถานะ / ประเภทปั๊ม</TabsTrigger>
           <TabsTrigger value="bundles" className="shrink-0">ชุดอะไหล่</TabsTrigger>
           <TabsTrigger value="checklist" className="shrink-0">เทมเพลต Checklist</TabsTrigger>
           <TabsTrigger value="issues" className="shrink-0">คลังอาการเสีย (AI)</TabsTrigger>
@@ -111,8 +112,9 @@ function AdminPage() {
             <div className="space-y-4">
               <SellerTransfer />
               <SalesContactsCard />
-              <div className="grid gap-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <OptionListManager listKey="statuses" column="status" title="สถานะเครื่อง" presets={MACHINE_STATUSES} />
+                <PumpTypeManagerCard />
               </div>
             </div>
           </ReadOnlyScope>
@@ -279,12 +281,23 @@ function ModelsTab() {
             </SelectContent>
           </Select>
           <Input placeholder="ชื่อรุ่น เช่น GA37" value={name} onChange={(e) => setName(e.target.value)} />
-          <Combobox value={pumpType} options={pumpTypes.map((value) => ({ value }))}
-            placeholder="ประเภทปั๊มลม" searchPlaceholder="ค้นหาหรือพิมพ์ประเภทใหม่..."
-            onChange={async (value) => {
-              try { setPumpType(await ensurePumpType(value)); }
-              catch (error) { toast.error(error instanceof Error ? error.message : "เพิ่มประเภทปั๊มไม่สำเร็จ"); }
-            }} />
+          <div className="flex items-center gap-1.5">
+            <div className="flex-1 min-w-0">
+              <Combobox value={pumpType} options={pumpTypes.map((value) => ({ value }))}
+                placeholder="ประเภทปั๊มลม" searchPlaceholder="ค้นหาหรือพิมพ์ประเภทใหม่..."
+                onChange={async (value) => {
+                  try { setPumpType(await ensurePumpType(value)); }
+                  catch (error) { toast.error(error instanceof Error ? error.message : "เพิ่มประเภทปั๊มไม่สำเร็จ"); }
+                }} />
+            </div>
+            <PumpTypeManagerDialog
+              trigger={
+                <Button type="button" variant="outline" size="icon" className="shrink-0" title="จัดการประเภทปั๊มลม (แก้ไข/ลบ)">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              }
+            />
+          </div>
           <div className="flex gap-1">
             <Button onClick={save}>{editId ? "บันทึก" : <Plus className="h-4 w-4" />}</Button>
             {editId && <Button variant="outline" onClick={reset}>ยกเลิก</Button>}
@@ -1328,7 +1341,16 @@ function MachinesTab() {
               </datalist>
             </div>
             <div>
-              <Label>ประเภทปั๊มลม (พิมพ์เพิ่มหรือเลือก)</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label>ประเภทปั๊มลม (พิมพ์เพิ่มหรือเลือก)</Label>
+                <PumpTypeManagerDialog
+                  trigger={
+                    <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs text-muted-foreground gap-1">
+                      <Settings className="h-3 w-3" /> จัดการประเภท
+                    </Button>
+                  }
+                />
+              </div>
               <Combobox value={form.pump_type} options={pumpTypes.map((value) => ({ value }))}
                 placeholder="เลือกประเภทปั๊มลม" searchPlaceholder="ค้นหาหรือพิมพ์ประเภทใหม่..."
                 onChange={async (value) => {

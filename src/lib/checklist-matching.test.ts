@@ -21,4 +21,11 @@ describe("pump-type checklist assignment", () => {
     assert.deepEqual(findChecklistTemplate([{ id: "old", machine_types: "ปั๊มลมสกรู" }, explicit], "ปั๊มลมสกรู"), explicit);
     assert.equal(matchesType(explicit, "ปั๊มลมลูกสูบ"), false);
   });
+  it("matches multi-selected pump types when pump_type is null", () => {
+    const multi = { id: "multi", pump_type: null, machine_types: "ปั๊มลมสกรู, ปั๊มลมลูกสูบ, ปั๊มลมสกอร์" };
+    assert.equal(matchesType(multi, "ปั๊มลมสกรู"), true);
+    assert.equal(matchesType(multi, "ปั๊มลมลูกสูบ"), true);
+    assert.equal(matchesType(multi, "ปั๊มลมสกอร์"), true);
+    assert.equal(matchesType(multi, "ปั๊มลมไฮดรอลิก"), false);
+  });
 });
