@@ -6,8 +6,11 @@ export function matchesType(template: TypedTemplate, type: string | null | undef
   const target = normalize(type ?? "");
   if (!target) return false;
   if (template.pump_type?.trim()) return normalize(template.pump_type) === target;
-  // Keep existing comma-separated templates compatible without matching unrelated types.
-  return (template.machine_types ?? "").split(",").some((value) => normalize(value) === target);
+  // Legacy templates used keywords such as "สกรู" rather than a full pump-type name.
+  return (template.machine_types ?? "").split(",").some((value) => {
+    const keyword = normalize(value);
+    return Boolean(keyword) && (target.includes(keyword) || keyword.includes(target));
+  });
 }
 
 export function findChecklistTemplate<T extends TypedTemplate>(templates: T[], type: string | null | undefined): T | undefined {

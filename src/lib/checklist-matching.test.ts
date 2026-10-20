@@ -13,6 +13,7 @@ describe("pump-type checklist assignment", () => {
   });
   it("keeps legacy multi-type templates working", () => {
     assert.equal(matchesType({ machine_types: "ปั๊มลมสกรู, ปั๊มลมลูกสูบ" }, "ปั๊มลมลูกสูบ"), true);
+    assert.equal(matchesType({ machine_types: "สกรู, ลูกสูบ" }, "ปั๊มลมสกรู"), true);
   });
   it("prioritizes the explicit pump_type relationship over the legacy field", () => {
     const explicit = { id: "new", pump_type: "ปั๊มลมสกรู", machine_types: "ปั๊มลมลูกสูบ" };
