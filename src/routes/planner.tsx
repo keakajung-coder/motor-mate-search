@@ -3888,7 +3888,9 @@ function CloseJobDialog({
         setChecklist(t ? newResult(t) : null);
         setUseChecklist(Boolean(t));
       }
-    })();
+    })().catch((error) => {
+      if (alive) toast.error(error instanceof Error ? error.message : "โหลดเช็คลิสต์ไม่สำเร็จ");
+    });
     return () => {
       alive = false;
     };

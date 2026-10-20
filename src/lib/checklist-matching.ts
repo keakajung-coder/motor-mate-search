@@ -1,11 +1,12 @@
 type TypedTemplate = { pump_type?: string | null; machine_types?: string | null };
 
 const normalize = (value: string) => value.trim().toLowerCase();
+const canonical = (value: string) => normalize(value).replace(/^ปั๊มลม\s*/, "");
 
 export function matchesType(template: TypedTemplate, type: string | null | undefined) {
   const target = normalize(type ?? "");
   if (!target) return false;
-  if (template.pump_type?.trim()) return normalize(template.pump_type) === target;
+  if (template.pump_type?.trim()) return canonical(template.pump_type) === canonical(target);
   // Legacy templates used keywords such as "สกรู" rather than a full pump-type name.
   return (template.machine_types ?? "").split(",").some((value) => {
     const keyword = normalize(value);
