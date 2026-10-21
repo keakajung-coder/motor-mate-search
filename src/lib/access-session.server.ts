@@ -14,8 +14,9 @@ export function assertSameOrigin() {
 export async function accessSession() {
   const password = process.env["SESSION_SECRET"] || "pneumax-secure-access-session-key-fallback-32chars";
   if (!password || password.length < 32) throw new Error("Access is not configured");
-  return useSession<AccessSession>({ password, name: "pneumax-access", maxAge: 60 * 60 * 8,
-    cookie: { httpOnly: true, secure: new URL(getRequest().url).hostname !== "localhost", sameSite: "strict", path: "/" } });
+  // 30 days; "lax" keeps the session when the app is opened from LINE/links or a home-screen PWA.
+  return useSession<AccessSession>({ password, name: "pneumax-access", maxAge: 60 * 60 * 24 * 30,
+    cookie: { httpOnly: true, secure: new URL(getRequest().url).hostname !== "localhost", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 } });
 }
 export async function passcodeVersion(role: AccessRole) {
   try {

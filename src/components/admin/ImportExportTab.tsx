@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { safeSpreadsheetValue } from "@/lib/security-policy";
+import { exportFilename } from "@/lib/export-filename";
 import { supabase } from "@/lib/data-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -576,7 +577,7 @@ export function ImportExportTab() {
           ? xlsxBlob(XLSX.write(wb, { bookType: "xlsx", type: "array" }))
           : new Blob([withBom(XLSX.utils.sheet_to_csv(ws)) as BlobPart], { type: "text/csv;charset=utf-8" });
       setLastSize(formatBytes(blob.size));
-      const how = await saveFile(blob, `${ds.key}-${new Date().toISOString().slice(0, 10)}.${kind}`);
+      const how = await saveFile(blob, exportFilename(ds.label, new Date(), kind));
       toast.success(
         `ส่งออก ${kind.toUpperCase()} แล้ว (${formatBytes(blob.size)})` +
           (how === "shared" ? " — เลือก “บันทึกลงไฟล์” เพื่อเก็บไว้ใน iPad" : ""),
@@ -595,7 +596,7 @@ export function ImportExportTab() {
       const rows = await rowsForExport();
       const blob = await tableToPdfBlob(ds.label, cols, rows, LABELS);
       setLastSize(formatBytes(blob.size));
-      await shareOrDownload(blob, `${ds.key}-${new Date().toISOString().slice(0, 10)}.pdf`);
+      await shareOrDownload(blob, exportFilename(ds.label, new Date(), "pdf"));
       toast.success(`ส่งออก PDF แล้ว (${formatBytes(blob.size)})`);
     } catch (e: any) {
       toast.error("ส่งออก PDF ไม่สำเร็จ: " + e.message);
@@ -612,7 +613,7 @@ export function ImportExportTab() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, safeSheetName("template"));
     const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    await saveFile(xlsxBlob(out), `template-${ds.key}.xlsx`);
+    await saveFile(xlsxBlob(out), exportFilename(`แบบฟอร์ม-${ds.label}`, new Date(), "xlsx"));
   }
 
 

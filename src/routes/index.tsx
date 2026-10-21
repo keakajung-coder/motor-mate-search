@@ -26,6 +26,7 @@ import { AlertToggles } from "@/lib/prefs";
 import { ThemePicker } from "@/components/ThemePicker";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { isMachineComplete } from "@/lib/report";
+import { exportFilename } from "@/lib/export-filename";
 import {
   CalendarDays,
   Search,
@@ -814,7 +815,10 @@ function SnView({
         );
         return;
       }
-      return toast.error("โหลดข้อมูลผิดพลาด: " + (error?.message ?? "ไม่ทราบสาเหตุ"));
+      const msg = error?.message ?? "";
+      if (/401|เข้าใช้งานอีกครั้ง/.test(msg) || (error as { code?: string })?.code === "401")
+        return toast.warning("เซสชันหมดอายุ กรุณาใส่รหัสเข้าใช้งานอีกครั้ง");
+      return toast.error("สัญญาณไม่เสถียร โหลดข้อมูลไม่สำเร็จ (ลองซ้ำ 3 ครั้งแล้ว) — ระบบจะโหลดใหม่อัตโนมัติเมื่อเชื่อมต่อได้", { id: "load-error" });
     }
     const rows = data as unknown as MachineResult[];
     setUnits(rows);
@@ -1516,7 +1520,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
                 onClick={async () => {
                   if (!blob) return;
                   const { downloadBlob } = await import("@/lib/report");
-                  downloadBlob(blob, `machine-${serial}.pdf`);
+                  downloadBlob(blob, exportFilename(`ข้อมูลเครื่อง-${serial}`, new Date(), "pdf"));
                 }}
               >
                 <Download className="mr-1 h-4 w-4" /> ดาวน์โหลด
@@ -1526,7 +1530,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
                 onClick={async () => {
                   if (!blob) return;
                   const { shareOrDownload } = await import("@/lib/report");
-                  await shareOrDownload(blob, `machine-${serial}.pdf`, `ข้อมูลเครื่อง ${serial}`);
+                  await shareOrDownload(blob, exportFilename(`ข้อมูลเครื่อง-${serial}`, new Date(), "pdf"), `ข้อมูลเครื่อง ${serial}`);
                 }}
               >
                 <Share2 className="mr-1 h-4 w-4" /> แชร์

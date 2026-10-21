@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { BarChart3, Camera, FileDown, Loader2, Pencil } from "lucide-react";
 import { splitNames } from "@/components/ui/multi-combobox";
 import { elementToPdfBlobPaged, formatDate, saveFile } from "@/lib/report";
+import { exportFilename } from "@/lib/export-filename";
 import { useAccess } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { DateInput } from "@/components/ui/date-input";
@@ -330,7 +331,7 @@ export function JobReportsPanel({
       const cols = Array.from({ length: width }, (_, c) =>
         Math.min(50, Math.max(10, ...sheet.slice(4).map((r) => Math.max(...String(r[c] ?? "").split("\n").map((x) => x.length))))),
       );
-      await downloadGridWorkbook([{ name: `สรุปใบสั่งงาน ${scopeLabel}`, rows: sheet, merges, cols }], `สรุปใบสั่งงาน-${scopeLabel}-${range.from}`);
+      await downloadGridWorkbook([{ name: `สรุปใบสั่งงาน ${scopeLabel}`, rows: sheet, merges, cols }], exportFilename(`สรุปใบสั่งงาน-${scopeLabel}`, range.from, "xlsx", range.to));
       toast.success("ดาวน์โหลด Excel เรียบร้อย");
     } catch (e) {
       toast.error("ส่งออก Excel ไม่สำเร็จ: " + (e as Error).message);
@@ -358,7 +359,7 @@ export function JobReportsPanel({
           maxBytes: 12 * 1024 * 1024,
           pageBreakSelector: ".job-report-table tbody tr, .job-report-checklist-card",
         });
-        await saveFile(blob, `สรุปใบสั่งงาน-${scopeLabel}-${range.from}.pdf`);
+        await saveFile(blob, exportFilename(`สรุปใบสั่งงาน-${scopeLabel}`, range.from, "pdf", range.to));
       } else {
         const { toPng } = await import("html-to-image");
         const dataUrl = await toPng(el, {
@@ -369,7 +370,7 @@ export function JobReportsPanel({
           height: el.scrollHeight,
         });
         const blob = await (await fetch(dataUrl)).blob();
-        await saveFile(blob, `สรุปใบสั่งงาน-${scopeLabel}-${range.from}.png`);
+        await saveFile(blob, exportFilename(`สรุปใบสั่งงาน-${scopeLabel}`, range.from, "png", range.to));
       }
       toast.success("บันทึกรายงานเรียบร้อย");
     } catch (e) {
