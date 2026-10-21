@@ -2,6 +2,7 @@ import { supabase } from "@/lib/data-client";
 import { xlsxBlob } from "@/lib/report";
 import { sanitizeSheetName, sanitizeFileName } from "@/lib/excel-layout";
 import { safeSpreadsheetValue } from "./security-policy";
+import { exportFilename } from "./export-filename";
 
 type Sheet = { table: string; label: string };
 
@@ -56,10 +57,9 @@ export async function buildPageWorkbook(path: string) {
     const rows = ((data ?? []) as Record<string, unknown>[]).map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, safeSpreadsheetValue(value)])));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{}]), sanitizeSheetName(s.label, used));
   }
-  const date = new Date().toISOString().slice(0, 10);
   return {
     blob: xlsxBlob(XLSX.write(wb, { bookType: "xlsx", type: "array" })),
-    filename: `${sanitizeFileName(cfg.title)}-${date}.xlsx`,
+    filename: exportFilename(sanitizeFileName(cfg.title), new Date(), "xlsx"),
     title: cfg.title,
   };
 }

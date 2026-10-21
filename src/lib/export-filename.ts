@@ -1,5 +1,6 @@
 type ExportDate = Date | string;
-type ExportExtension = "pdf" | "xlsx" | "jpg" | "png";
+type ExportExtension = "pdf" | "xlsx" | "jpg" | "png" | "csv";
+const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
 function dateParts(value: ExportDate) {
   // Parse calendar strings locally; UTC conversion can shift the selected day.
@@ -7,7 +8,7 @@ function dateParts(value: ExportDate) {
   if (Number.isNaN(date.getTime())) throw new Error("วันที่สำหรับชื่อไฟล์ไม่ถูกต้อง");
   return {
     day: String(date.getDate()).padStart(2, "0"),
-    month: String(date.getMonth() + 1).padStart(2, "0"),
+    month: THAI_MONTHS[date.getMonth()],
     year: String(date.getFullYear() + 543),
   };
 }
@@ -18,8 +19,7 @@ export function exportDateLabel(start: ExportDate, end?: ExportDate) {
   if (!end) return full(a);
   const b = dateParts(end);
   if (full(a) === full(b)) return full(a);
-  if (a.year !== b.year) return `${full(a)}-ถึง-${full(b)}`;
-  if (a.month !== b.month) return `${a.day}-${a.month}-ถึง-${full(b)}`;
+  if (a.year !== b.year || a.month !== b.month) return `${full(a)}-ถึง-${full(b)}`;
   return `${a.day}-ถึง-${full(b)}`;
 }
 
