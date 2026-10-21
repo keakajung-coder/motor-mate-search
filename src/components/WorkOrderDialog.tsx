@@ -33,6 +33,9 @@ import { DateInput } from "@/components/ui/date-input";
 import { notifyAdmins, notifyUsers } from "@/lib/notify";
 import { ContactShare } from "@/components/ContactShare";
 import { autoShareEnabled, shareContacts } from "@/lib/contact";
+import { checkScheduleConflicts } from "@/lib/schedule-check";
+import { ScheduleConflictDialog } from "@/components/ScheduleConflictDialog";
+import { logAudit } from "@/lib/audit";
 
 export const SERVICE_TYPES = [
   "เช็กระยะ (PM)",
@@ -269,6 +272,8 @@ export function WorkOrderDialog({
   }, [isOpen]);
   const [shareNames, setShareNames] = useState<string[]>([]);
   const [booked, setBooked] = useState(false);
+  const [conflictList, setConflictList] = useState<string[]>([]);
+  const [conflictOpen, setConflictOpen] = useState(false);
   const { isAdmin } = useAccess();
   const sellerNames = useSellerNames();
   const dir = useDirectory();
@@ -404,10 +409,29 @@ export function WorkOrderDialog({
     value: s,
   }));
 
-  const submit = async () => {
+  const submit = async (override = false, overrideConflicts: string[] = []) => {
     if (!form.customer_name.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     if (!form.job_detail.trim()) return toast.error("กรุณากรอกรายละเอียดงาน");
     setSaving(true);
+
+    if (form.visit_date && form.staff_name.trim() && !override) {
+      const conflicts = await checkScheduleConflicts({
+        visit_date: form.visit_date,
+        visit_time: form.visit_time || null,
+        staff_name: form.staff_name,
+        vehicle_plate: form.vehicle_plate,
+      });
+      if (conflicts.length) {
+        setSaving(false);
+        if (!isAdmin) {
+          return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
+        }
+        setConflictList(conflicts);
+        setConflictOpen(true);
+        return;
+      }
+    }
+
     const serials = splitNames(form.serial_number);
     const plates = splitNames(form.vehicle_plate);
     await ensureDirectoryEntries({
@@ -429,45 +453,78 @@ export function WorkOrderDialog({
     for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
     await ensureSeller(form.sales_rep);
 
-    const { error } = await supabase.from("work_orders").insert({
-      cust_id: form.cust_id.trim() || null,
-      customer_name: form.customer_name.trim(),
-      customer_address: form.customer_address.trim() || null,
-      contact_name: form.contact_name.trim() || null,
-      contact_phone: form.contact_phone.trim() || null,
-      machine_label: form.machine_label.trim() || null,
-      serial_number: form.serial_number.trim() || null,
-      customer_sn: form.customer_sn.trim() || null,
+    const auditTag = override
+      ? `[Admin Override: ลงงานซ้อน - ${overrideConflicts.join(" · ")}]`
+      : "";
+    const finalJobDetail = override
+      ? form.job_detail.trim()
+        ? `${form.job_detail.trim()}\n${auditTag}`
+        : auditTag
+      : form.job_detail.trim();
 
-      job_detail: form.job_detail.trim(),
-      service_type: form.service_type || null,
-      visit_date: form.visit_date || null,
-      visit_time: form.visit_time || null,
-      staff_name: form.staff_name.trim() || null,
-      vehicle_plate: form.vehicle_plate.trim() || null,
-      sales_rep: form.sales_rep.trim() || null,
-      job_no: form.job_no.trim() || null,
-      priority: form.priority || null,
-      billing_type: form.billing_type || null,
-      po_number: form.po_number.trim() || null,
-      billing_note: form.billing_note.trim() || null,
-      work_types: form.work_types || null,
-      depart_time: form.depart_time || null,
-      return_time: form.return_time || null,
-      logistics_note: form.logistics_note.trim() || null,
-      safety_gear: form.safety_gear || null,
-      attachments: form.attachments || null,
+    const { data: insertedOrder, error } = await supabase
+      .from("work_orders")
+      .insert({
+        cust_id: form.cust_id.trim() || null,
+        customer_name: form.customer_name.trim(),
+        customer_address: form.customer_address.trim() || null,
+        contact_name: form.contact_name.trim() || null,
+        contact_phone: form.contact_phone.trim() || null,
+        machine_label: form.machine_label.trim() || null,
+        serial_number: form.serial_number.trim() || null,
+        customer_sn: form.customer_sn.trim() || null,
 
-      status: booked ? "scheduled" : "pending",
-    });
+        job_detail: finalJobDetail,
+        admin_note: auditTag || null,
+        service_type: form.service_type || null,
+        visit_date: form.visit_date || null,
+        visit_time: form.visit_time || null,
+        staff_name: form.staff_name.trim() || null,
+        vehicle_plate: form.vehicle_plate.trim() || null,
+        sales_rep: form.sales_rep.trim() || null,
+        job_no: form.job_no.trim() || null,
+        priority: form.priority || null,
+        billing_type: form.billing_type || null,
+        po_number: form.po_number.trim() || null,
+        billing_note: form.billing_note.trim() || null,
+        work_types: form.work_types || null,
+        depart_time: form.depart_time || null,
+        return_time: form.return_time || null,
+        logistics_note: form.logistics_note.trim() || null,
+        safety_gear: form.safety_gear || null,
+        attachments: form.attachments || null,
+
+        status: booked ? "scheduled" : "pending",
+      })
+      .select("id")
+      .maybeSingle();
+
     setSaving(false);
     if (error) return toast.error(error.message);
+
+    if (override) {
+      void logAudit({
+        table: "work_orders",
+        recordId: insertedOrder?.id ?? null,
+        action: "create",
+        summary: `Admin Override สร้างใบสั่งงานซ้อน: ${overrideConflicts.join(" · ")}`,
+        changes: {
+          admin_override: true,
+          conflicts: overrideConflicts,
+          customer: form.customer_name.trim(),
+          staff: form.staff_name.trim(),
+          date: form.visit_date,
+          time: form.visit_time,
+        },
+      });
+    }
+
     void notifyAdmins({
       kind: "work_order",
       title: `ใบสั่งงานใหม่: ${form.customer_name.trim()}`,
       body: [
         form.serial_number.trim() && `S/N ${form.serial_number.trim()}`,
-        form.job_detail.trim(),
+        finalJobDetail,
         form.visit_date && `วันที่นัด ${formatDate(form.visit_date)}`,
         form.staff_name.trim() && `ช่าง ${form.staff_name.trim()}`,
       ]
@@ -481,7 +538,7 @@ export function WorkOrderDialog({
       title: `แจ้งใบสั่งงานใหม่: ${form.customer_name.trim()}`,
       body: [
         form.serial_number.trim() && `S/N ${form.serial_number.trim()}`,
-        form.job_detail.trim(),
+        finalJobDetail,
         form.visit_date && `วันที่นัด ${formatDate(form.visit_date)}`,
         form.staff_name.trim() && `ช่าง ${form.staff_name.trim()}`,
       ]
@@ -497,9 +554,16 @@ export function WorkOrderDialog({
       });
     }
     setShareNames([]);
-    toast.success(booked ? "ส่งใบสั่งงานแล้ว (นัดหมายแล้ว)" : "ส่งใบสั่งงานแล้ว รอแอดมินอนุมัติ");
+    toast.success(
+      override
+        ? "ส่งใบสั่งงานแล้ว (Admin Override: บังคับลงงานซ้อน)"
+        : booked
+          ? "ส่งใบสั่งงานแล้ว (นัดหมายแล้ว)"
+          : "ส่งใบสั่งงานแล้ว รอแอดมินอนุมัติ",
+    );
     setForm(emptyDraft());
     setBooked(false);
+    setConflictOpen(false);
     setOpen(false);
     refreshDirectory();
     onCreated?.();
@@ -791,11 +855,19 @@ export function WorkOrderDialog({
               <Button className="min-w-0" variant="outline" onClick={() => setOpen(false)}>
                 ยกเลิก
               </Button>
-              <Button className="min-w-0" onClick={submit} disabled={saving}>
+              <Button className="min-w-0" onClick={() => submit()} disabled={saving}>
                 {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} ส่งใบสั่งงาน
               </Button>
             </div>
           </DialogFooter>
+
+          <ScheduleConflictDialog
+            open={conflictOpen}
+            onOpenChange={setConflictOpen}
+            conflicts={conflictList}
+            onConfirmOverride={() => submit(true, conflictList)}
+            busy={saving}
+          />
         </DialogContent>
       </Dialog>
     </>

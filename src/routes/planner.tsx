@@ -49,6 +49,7 @@ import {
   ZoomIn,
   ZoomOut,
   Palmtree,
+  ShieldAlert,
 } from "lucide-react";
 import { useHolidays, type Holiday } from "@/lib/holidays";
 import { HolidayManagerDialog, HolidayFormDialog, HolidayBanner } from "@/components/HolidayDialog";
@@ -86,6 +87,8 @@ import { DateInput } from "@/components/ui/date-input";
 import { LeaveCell, StaffLeaveDialog, useStaffLeave } from "@/components/StaffLeave";
 import type { StaffLeave } from "@/lib/staff-leave";
 import { checkScheduleConflicts } from "@/lib/schedule-check";
+import { ScheduleConflictDialog } from "@/components/ScheduleConflictDialog";
+import { logAudit } from "@/lib/audit";
 import { ChecklistForm } from "@/components/ChecklistForm";
 import { ChecklistView } from "@/components/ChecklistView";
 import {
@@ -1268,6 +1271,11 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
   const [dup, setDup] = useState<WorkOrder | null>(null);
   const [openEdit, setOpenEdit] = useState<Record<string, boolean>>({});
   const [autoAlert, setAutoAlert] = useState(true);
+  const [conflictTarget, setConflictTarget] = useState<{
+    order: WorkOrder;
+    conflicts: string[];
+  } | null>(null);
+  const { isAdmin } = useAccess();
 
   useEffect(() => {
     loadAutoJobAlert().then(setAutoAlert);
@@ -1298,18 +1306,27 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
     reload();
   };
 
-  const approve = async (o: WorkOrder) => {
+  const approve = async (
+    o: WorkOrder,
+    override = false,
+    overrideConflicts: string[] = [],
+  ) => {
     const p = edit[o.id] ?? {};
     const m = { ...o, ...p } as WorkOrder & Record<string, any>;
-    if (m.visit_date) {
+    if (m.visit_date && !override) {
       const conflicts = await checkScheduleConflicts({
         visit_date: m.visit_date,
         visit_time: m.visit_time,
         staff_name: m.staff_name,
         vehicle_plate: m.vehicle_plate,
       });
-      if (conflicts.length)
-        return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
+      if (conflicts.length) {
+        if (!isAdmin) {
+          return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
+        }
+        setConflictTarget({ order: o, conflicts });
+        return;
+      }
     }
     setBusy(o.id);
     const { data: unit } = await supabase
@@ -1317,38 +1334,55 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
       .select("id")
       .eq("serial_number", m.serial_number ?? "")
       .maybeSingle();
-    const { error } = await supabase.from("appointments").insert({
-      work_order_id: o.id,
-      machine_unit_id: unit?.id ?? null,
-      cust_id: m.cust_id ?? null,
-      customer_name: m.customer_name,
-      customer_address: m.customer_address,
-      contact_name: m.contact_name,
-      contact_phone: m.contact_phone,
-      machine_label: m.machine_label,
-      serial_number: m.serial_number,
-      job_detail: m.job_detail,
-      service_type: m.service_type,
-      visit_date: m.visit_date as string,
-      visit_time: m.visit_time,
-      staff_name: m.staff_name,
-      vehicle_plate: m.vehicle_plate,
-      sales_rep: m.sales_rep ?? null,
-      job_no: m.job_no ?? null,
-      priority: m.priority ?? null,
-      billing_type: m.billing_type ?? null,
-      po_number: m.po_number ?? null,
-      billing_note: m.billing_note ?? null,
-      work_types: m.work_types ?? null,
-      depart_time: m.depart_time ?? null,
-      return_time: m.return_time ?? null,
-      logistics_note: m.logistics_note ?? null,
-      safety_gear: m.safety_gear ?? null,
-      attachments: m.attachments ?? null,
 
-      // อนุมัติเฉยๆ ยังเป็นสีแดง จนกว่าจะกด "นัดหมายแล้ว" หรือ "เริ่มดำเนินการ"
-      status: o.status === "scheduled" ? "scheduled" : "approved",
-    });
+    const auditTag = override
+      ? `[Admin Override: ลงงานซ้อน - ${overrideConflicts.join(" · ")}]`
+      : "";
+    const finalJobDetail = override
+      ? m.job_detail
+        ? m.job_detail.includes("[Admin Override: ลงงานซ้อน")
+          ? m.job_detail
+          : `${m.job_detail}\n${auditTag}`
+        : auditTag
+      : m.job_detail;
+
+    const { data: insertedAppt, error } = await supabase
+      .from("appointments")
+      .insert({
+        work_order_id: o.id,
+        machine_unit_id: unit?.id ?? null,
+        cust_id: m.cust_id ?? null,
+        customer_name: m.customer_name,
+        customer_address: m.customer_address,
+        contact_name: m.contact_name,
+        contact_phone: m.contact_phone,
+        machine_label: m.machine_label,
+        serial_number: m.serial_number,
+        job_detail: finalJobDetail,
+        service_type: m.service_type,
+        visit_date: m.visit_date as string,
+        visit_time: m.visit_time,
+        staff_name: m.staff_name,
+        vehicle_plate: m.vehicle_plate,
+        sales_rep: m.sales_rep ?? null,
+        job_no: m.job_no ?? null,
+        priority: m.priority ?? null,
+        billing_type: m.billing_type ?? null,
+        po_number: m.po_number ?? null,
+        billing_note: m.billing_note ?? null,
+        work_types: m.work_types ?? null,
+        depart_time: m.depart_time ?? null,
+        return_time: m.return_time ?? null,
+        logistics_note: m.logistics_note ?? null,
+        safety_gear: m.safety_gear ?? null,
+        attachments: m.attachments ?? null,
+
+        // อนุมัติเฉยๆ ยังเป็นสีแดง จนกว่าจะกด "นัดหมายแล้ว" หรือ "เริ่มดำเนินการ"
+        status: o.status === "scheduled" ? "scheduled" : "approved",
+      })
+      .select("id")
+      .maybeSingle();
+
     // เก็บค่าที่แอดมินแก้ไว้ลงใบสั่งงานเดิมด้วย เพื่อให้เอกสารตรงกับงานจริง
     if (!error)
       await supabase
@@ -1356,14 +1390,36 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
         .update({
           ...(p as Record<string, unknown>),
           status: o.status === "scheduled" ? "scheduled" : "approved",
+          job_detail: finalJobDetail,
+          admin_note: auditTag || o.admin_note || null,
         } as never)
         .eq("id", o.id);
 
     setBusy(null);
     if (error) return toast.error(error.message);
-    toast.success("อนุมัติและเพิ่มลงปฏิทินแล้ว");
+
+    if (override) {
+      void logAudit({
+        table: "work_orders",
+        recordId: o.id,
+        action: "update",
+        summary: `Admin Override อนุมัติงานซ้อน: ${overrideConflicts.join(" · ")}`,
+        changes: {
+          admin_override: true,
+          conflicts: overrideConflicts,
+          appointment_id: insertedAppt?.id ?? null,
+          staff: m.staff_name,
+          date: m.visit_date,
+          time: m.visit_time,
+        },
+      });
+      toast.success("อนุมัติสำเร็จด้วยสิทธิ์ Admin Override (ลงงานซ้อน)");
+    } else {
+      toast.success("อนุมัติและเพิ่มลงปฏิทินแล้ว");
+    }
+    setConflictTarget(null);
     if (autoAlert) {
-      const sent = await sendJobApprovalAlert(m);
+      const sent = await sendJobApprovalAlert({ ...m, job_detail: finalJobDetail });
       if (sent > 0) toast.success(`ส่งแจ้งเตือน LINE ให้เซลล์/ช่างแล้ว (${sent} ราย)`);
     }
     reload();
@@ -1438,7 +1494,17 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
                     .join(" · ")}
                 </p>
               </div>
-              <JobStatusBadge status="pending" />
+              <div className="flex flex-col items-end gap-1">
+                <JobStatusBadge status="pending" />
+                {o.job_detail?.includes("[Admin Override") && (
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300 gap-1 text-[11px]"
+                  >
+                    <ShieldAlert className="h-3 w-3" /> งานซ้อน (Override)
+                  </Badge>
+                )}
+              </div>
             </div>
 
             <p className="whitespace-pre-wrap break-words text-sm">{val(o, "job_detail")}</p>
@@ -1612,6 +1678,16 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
           initial={dup ? workOrderToDraft(dup) : undefined}
           onCreated={reload}
         />
+
+        <ScheduleConflictDialog
+          open={!!conflictTarget}
+          onOpenChange={(v) => !v && setConflictTarget(null)}
+          conflicts={conflictTarget?.conflicts ?? []}
+          onConfirmOverride={() =>
+            conflictTarget && approve(conflictTarget.order, true, conflictTarget.conflicts)
+          }
+          busy={busy === conflictTarget?.order.id}
+        />
       </CardContent>
     </Card>
   );
@@ -1684,7 +1760,16 @@ function ApprovedOrders({
     void loadApproved();
   }, [loadApproved]);
 
-  const confirmAppointment = async (o: WorkOrder) => {
+  const [conflictTarget, setConflictTarget] = useState<{
+    order: WorkOrder;
+    conflicts: string[];
+  } | null>(null);
+
+  const confirmAppointment = async (
+    o: WorkOrder,
+    override = false,
+    overrideConflicts: string[] = [],
+  ) => {
     const a = appointments[o.id];
     const chosen = schedule[o.id];
     if (!a) return toast.error("ไม่พบรายการงานที่เชื่อมกับปฏิทิน");
@@ -1693,30 +1778,78 @@ function ApprovedOrders({
     if (!isAdmin && chosen.date !== currentApprovedDate) {
       return toast.error("เฉพาะแอดมินเท่านั้นที่มีสิทธิ์แก้ไขวันที่นัดหมายหลังจากใบงานอนุมัติแล้ว");
     }
-    const conflicts = await checkScheduleConflicts({
-      id: a.id,
-      visit_date: chosen.date,
-      visit_time: chosen.time || null,
-      staff_name: a.staff_name,
-      vehicle_plate: a.vehicle_plate,
-    });
-    if (conflicts.length)
-      return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
+    if (!override) {
+      const conflicts = await checkScheduleConflicts({
+        id: a.id,
+        visit_date: chosen.date,
+        visit_time: chosen.time || null,
+        staff_name: a.staff_name,
+        vehicle_plate: a.vehicle_plate,
+      });
+      if (conflicts.length) {
+        if (!isAdmin) {
+          return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
+        }
+        setConflictTarget({ order: o, conflicts });
+        return;
+      }
+    }
     setBusy(o.id + "schedule");
+
+    const auditTag = override
+      ? `[Admin Override: ลงงานซ้อน - ${overrideConflicts.join(" · ")}]`
+      : "";
+    const finalJobDetail = override
+      ? a.job_detail
+        ? a.job_detail.includes("[Admin Override: ลงงานซ้อน")
+          ? a.job_detail
+          : `${a.job_detail}\n${auditTag}`
+        : auditTag
+      : a.job_detail;
+
     const [apptResult, orderResult] = await Promise.all([
       supabase
         .from("appointments")
-        .update({ visit_date: chosen.date, visit_time: chosen.time || null, status: "scheduled" })
+        .update({
+          visit_date: chosen.date,
+          visit_time: chosen.time || null,
+          status: "scheduled",
+          job_detail: finalJobDetail,
+        })
         .eq("id", a.id),
       supabase
         .from("work_orders")
-        .update({ visit_date: chosen.date, visit_time: chosen.time || null, status: "scheduled" })
+        .update({
+          visit_date: chosen.date,
+          visit_time: chosen.time || null,
+          status: "scheduled",
+          job_detail: finalJobDetail,
+          admin_note: auditTag || o.admin_note || null,
+        })
         .eq("id", o.id),
     ]);
     setBusy("");
     const error = apptResult.error ?? orderResult.error;
     if (error) return toast.error("ยืนยันนัดหมายไม่สำเร็จ: " + error.message);
-    toast.success("ยืนยันนัดหมายและอัปเดตปฏิทินแล้ว");
+
+    if (override) {
+      void logAudit({
+        table: "appointments",
+        recordId: a.id,
+        action: "update",
+        summary: `Admin Override ยืนยันนัดหมายงานซ้อน: ${overrideConflicts.join(" · ")}`,
+        changes: {
+          admin_override: true,
+          conflicts: overrideConflicts,
+          date: chosen.date,
+          time: chosen.time,
+        },
+      });
+      toast.success("ยืนยันนัดหมายสำเร็จด้วยสิทธิ์ Admin Override (ลงงานซ้อน)");
+    } else {
+      toast.success("ยืนยันนัดหมายและอัปเดตปฏิทินแล้ว");
+    }
+    setConflictTarget(null);
     await loadApproved();
     reloadPlanner();
   };
@@ -2161,6 +2294,16 @@ function ApprovedOrders({
         initial={dup ? workOrderToDraft(dup) : undefined}
         onCreated={() => void loadApproved()}
       />
+
+      <ScheduleConflictDialog
+        open={!!conflictTarget}
+        onOpenChange={(v) => !v && setConflictTarget(null)}
+        conflicts={conflictTarget?.conflicts ?? []}
+        onConfirmOverride={() =>
+          conflictTarget && confirmAppointment(conflictTarget.order, true, conflictTarget.conflicts)
+        }
+        busy={!!busy}
+      />
     </div>
   );
 }
@@ -2468,6 +2611,11 @@ function MonthGrid({
                         {a.cust_id ? `[${a.cust_id}] ` : ""}
                         {a.customer_name || "ไม่ระบุลูกค้า"}
                       </span>
+                      {a.job_detail?.includes("[Admin Override") && (
+                        <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-200">
+                          ⚡ งานซ้อน (Override)
+                        </span>
+                      )}
                       <span className="block truncate text-xs opacity-80">
                         👤 {splitNames(a.staff_name).join(", ") || "-"}
                       </span>
@@ -2599,6 +2747,11 @@ function TimeGrid({
                   {a.cust_id ? `[${a.cust_id}] ` : ""}
                   {a.customer_name || "ไม่ระบุลูกค้า"}
                 </span>
+                {a.job_detail?.includes("[Admin Override") && (
+                  <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-200">
+                    ⚡ งานซ้อน (Override)
+                  </span>
+                )}
                 <span className="block truncate text-[10px] opacity-80">
                   {splitNames(a.service_type).join(" / ") || a.job_detail || "-"}
                 </span>
@@ -3373,6 +3526,8 @@ function AppointmentDialog({
   const [editMode, setEditMode] = useState(!value.id);
   const [saving, setSaving] = useState(false);
   const [liveConflicts, setLiveConflicts] = useState<string[]>([]);
+  const [conflictList, setConflictList] = useState<string[]>([]);
+  const [conflictOpen, setConflictOpen] = useState(false);
   useEffect(() => {
     let off = false;
     const t = setTimeout(() => {
@@ -3495,7 +3650,7 @@ function AppointmentDialog({
     } else setForm((f) => ({ ...f, cust_id: id }));
   };
 
-  const save = async () => {
+  const save = async (override = false, overrideConflicts: string[] = []) => {
     if (!form.id && !isAdmin) {
       return toast.error(
         "ห้ามสร้างงานใหม่ลงในตารางแพลนเนอร์โดยตรง หากต้องการเพิ่มงานใหม่ กรุณา 'เขียนใบสั่งงาน (Work Order)' เพื่อรอแอดมินอนุมัติเท่านั้น",
@@ -3508,16 +3663,23 @@ function AppointmentDialog({
     if (!form.customer_name?.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     setSaving(true);
     const finalVisitDate = isApproved && !isAdmin ? value.visit_date : form.visit_date;
-    const conflicts = await checkScheduleConflicts({
-      id: form.id,
-      visit_date: finalVisitDate,
-      visit_time: form.visit_time,
-      staff_name: form.staff_name,
-      vehicle_plate: form.vehicle_plate,
-    });
-    if (conflicts.length) {
-      setSaving(false);
-      return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
+    if (!override) {
+      const conflicts = await checkScheduleConflicts({
+        id: form.id,
+        visit_date: finalVisitDate,
+        visit_time: form.visit_time,
+        staff_name: form.staff_name,
+        vehicle_plate: form.vehicle_plate,
+      });
+      if (conflicts.length) {
+        setSaving(false);
+        if (!isAdmin) {
+          return toast.error("ลงตารางไม่ได้: " + conflicts.join(" · "), { duration: 8000 });
+        }
+        setConflictList(conflicts);
+        setConflictOpen(true);
+        return;
+      }
     }
     const serials = splitNames(form.serial_number);
     const plates = splitNames(form.vehicle_plate);
@@ -3545,6 +3707,18 @@ function AppointmentDialog({
       .select("id")
       .eq("serial_number", serials[0] ?? "")
       .maybeSingle();
+
+    const auditTag = override
+      ? `[Admin Override: ลงงานซ้อน - ${overrideConflicts.join(" · ")}]`
+      : "";
+    const finalJobDetail = override
+      ? form.job_detail
+        ? form.job_detail.includes("[Admin Override: ลงงานซ้อน")
+          ? form.job_detail
+          : `${form.job_detail}\n${auditTag}`
+        : auditTag
+      : form.job_detail;
+
     const payload = {
       cust_id: form.cust_id?.trim() || null,
       customer_name: form.customer_name,
@@ -3554,7 +3728,7 @@ function AppointmentDialog({
       machine_label: form.machine_label,
       serial_number: form.serial_number,
       machine_unit_id: unit?.id ?? null,
-      job_detail: form.job_detail,
+      job_detail: finalJobDetail,
       service_type: form.service_type,
       visit_date: finalVisitDate,
       visit_time: form.visit_time,
@@ -3565,12 +3739,41 @@ function AppointmentDialog({
 
       status: form.status,
     };
-    const { error } = form.id
-      ? await supabase.from("appointments").update(payload).eq("id", form.id)
-      : await supabase.from("appointments").insert(payload);
+    const { data: savedAppt, error } = form.id
+      ? await supabase.from("appointments").update(payload).eq("id", form.id).select("id").maybeSingle()
+      : await supabase.from("appointments").insert(payload).select("id").maybeSingle();
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("บันทึกนัดหมายแล้ว");
+
+    if (override) {
+      void logAudit({
+        table: "appointments",
+        recordId: savedAppt?.id || form.id || null,
+        action: form.id ? "update" : "create",
+        summary: `Admin Override บันทึกงานซ้อน: ${overrideConflicts.join(" · ")}`,
+        changes: {
+          admin_override: true,
+          conflicts: overrideConflicts,
+          reason: "ช่างเปลี่ยนรถ/สลับงาน",
+          staff: form.staff_name,
+          date: finalVisitDate,
+          time: form.visit_time,
+        },
+      });
+      if (form.work_order_id) {
+        await supabase
+          .from("work_orders")
+          .update({
+            admin_note: auditTag,
+            job_detail: finalJobDetail,
+          })
+          .eq("id", form.work_order_id);
+      }
+      toast.success("บันทึกสำเร็จด้วยสิทธิ์ Admin Override (ลงงานซ้อน)");
+    } else {
+      toast.success("บันทึกนัดหมายแล้ว");
+    }
+    setConflictOpen(false);
     onSaved();
   };
 
@@ -3627,6 +3830,14 @@ function AppointmentDialog({
             <span>
               {formatDate(form.visit_date)} {form.visit_time?.slice(0, 5)}
             </span>
+            {form.job_detail?.includes("[Admin Override") && (
+              <Badge
+                variant="outline"
+                className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300 gap-1 text-xs"
+              >
+                <ShieldAlert className="h-3.5 w-3.5" /> บันทึกแบบ Admin Override (งานซ้อน)
+              </Badge>
+            )}
             {form.status !== "closed" && (
               <label className="ml-auto flex cursor-pointer items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 text-xs font-medium">
                 <input
@@ -3944,11 +4155,19 @@ function AppointmentDialog({
             </Button>
           )}
           {canEdit && editMode && (isAdmin || form.id) && (
-            <Button onClick={save} disabled={saving}>
+            <Button onClick={() => save()} disabled={saving}>
               {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} บันทึก
             </Button>
           )}
         </DialogFooter>
+
+        <ScheduleConflictDialog
+          open={conflictOpen}
+          onOpenChange={setConflictOpen}
+          conflicts={conflictList}
+          onConfirmOverride={() => save(true, conflictList)}
+          busy={saving}
+        />
       </DialogContent>
     </Dialog>
   );
