@@ -1743,6 +1743,12 @@ function ApprovedOrders({
   });
   const selected = visible.filter((o) => picked[o.id]);
 
+  const orderFilename = (orders: WorkOrder[], type: string, extension: "pdf" | "jpg") => {
+    const dates = orders.map((o) => appointments[o.id]?.visit_date || o.visit_date).filter(Boolean).sort();
+    const start = dates[0] || iso(new Date());
+    return exportFilename(type, start, extension, dates[dates.length - 1] || start);
+  };
+
   const toggleHidden = async (o: WorkOrder) => {
     const next = !(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden;
     const { error } = await supabase
@@ -1775,14 +1781,13 @@ function ApprovedOrders({
   const exportOne = async (o: WorkOrder, kind: "image" | "pdf") => {
     const el = refs.current[o.id];
     if (!el) return;
-    const name = `ใบสั่งงาน-${o.customer_name || o.id.slice(0, 6)}`;
     setBusy(o.id + kind);
     try {
       const { elementToA4ImageBlob, elementsToA4PdfBlob } = await import("@/lib/report");
       const blob = await withExportMode([el], () =>
         kind === "pdf" ? elementsToA4PdfBlob([el]) : elementToA4ImageBlob(el),
       );
-      await saveFile(blob, `${name}.${kind === "pdf" ? "pdf" : "jpg"}`);
+      await saveFile(blob, orderFilename([o], `ใบสั่งงาน-${o.customer_name || o.id.slice(0, 6)}`, kind === "pdf" ? "pdf" : "jpg"));
       toast.success("บันทึกใบสั่งงานเรียบร้อย");
     } catch (e) {
       toast.error("บันทึกไม่สำเร็จ: " + (e as Error).message);
@@ -1800,13 +1805,13 @@ function ApprovedOrders({
       const els = selected.map((o) => refs.current[o.id]).filter(Boolean) as HTMLDivElement[];
       if (kind === "pdf") {
         const blob = await withExportMode(els, () => elementsToA4PdfBlob(els));
-        await saveFile(blob, `ใบสั่งงาน-${selected.length}ใบ.pdf`);
+        await saveFile(blob, orderFilename(selected, `ใบสั่งงาน-${selected.length}ใบ`, "pdf"));
       } else {
         for (const o of selected) {
           const el = refs.current[o.id];
           if (!el) continue;
           const blob = await withExportMode([el], () => elementToA4ImageBlob(el));
-          await saveFile(blob, `ใบสั่งงาน-${o.customer_name || o.id.slice(0, 6)}.jpg`);
+          await saveFile(blob, orderFilename([o], `ใบสั่งงาน-${o.customer_name || o.id.slice(0, 6)}`, "jpg"));
         }
       }
       toast.success(`บันทึก ${selected.length} ใบเรียบร้อย`);
@@ -1827,10 +1832,10 @@ function ApprovedOrders({
       const els = orders.map((o) => formRefs.current[o.id]).filter(Boolean) as HTMLDivElement[];
       if (els.length !== orders.length) throw new Error("ไม่พบแบบฟอร์มสำหรับส่งออก");
       const blob = await elementsToA4PdfBlob(els);
-      const filename =
+      const filename = orderFilename(orders,
         orders.length === 1
-          ? `ใบสั่งงาน-แบบฟอร์ม-${orders[0].customer_name || orders[0].id.slice(0, 6)}.pdf`
-          : `ใบสั่งงาน-แบบฟอร์ม-${orders.length}ใบ.pdf`;
+          ? `ใบสั่งงาน-แบบฟอร์ม-${orders[0].customer_name || orders[0].id.slice(0, 6)}`
+          : `ใบสั่งงาน-แบบฟอร์ม-${orders.length}ใบ`, "pdf");
       await saveFile(blob, filename);
       toast.success(`บันทึก PDF แบบฟอร์ม ${orders.length} ใบเรียบร้อย`);
     } catch (e) {
