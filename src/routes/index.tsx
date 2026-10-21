@@ -26,6 +26,7 @@ import { AlertToggles } from "@/lib/prefs";
 import { ThemePicker } from "@/components/ThemePicker";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { isMachineComplete } from "@/lib/report";
+import { exportFilename } from "@/lib/export-filename";
 import {
   CalendarDays,
   Search,
@@ -1519,7 +1520,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
                 onClick={async () => {
                   if (!blob) return;
                   const { downloadBlob } = await import("@/lib/report");
-                  downloadBlob(blob, `machine-${serial}.pdf`);
+                  downloadBlob(blob, exportFilename(`ข้อมูลเครื่อง-${serial}`, new Date(), "pdf"));
                 }}
               >
                 <Download className="mr-1 h-4 w-4" /> ดาวน์โหลด
@@ -1529,7 +1530,7 @@ function PdfPreviewButton({ unitId, serial }: { unitId: string; serial: string }
                 onClick={async () => {
                   if (!blob) return;
                   const { shareOrDownload } = await import("@/lib/report");
-                  await shareOrDownload(blob, `machine-${serial}.pdf`, `ข้อมูลเครื่อง ${serial}`);
+                  await shareOrDownload(blob, exportFilename(`ข้อมูลเครื่อง-${serial}`, new Date(), "pdf"), `ข้อมูลเครื่อง ${serial}`);
                 }}
               >
                 <Share2 className="mr-1 h-4 w-4" /> แชร์

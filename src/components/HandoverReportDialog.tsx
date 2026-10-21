@@ -29,6 +29,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { elementToPdfBlobPaged, formatDate, saveFile } from "@/lib/report";
+import { exportFilename } from "@/lib/export-filename";
 import { parseAttachments, type JobAttachment } from "@/components/JobAttachments";
 import { splitNames } from "@/components/ui/multi-combobox";
 import { Combobox } from "@/components/ui/combobox";
@@ -515,7 +516,7 @@ export function HandoverReportDialog({
     if (!el) return;
     setExporting("pdf");
     try {
-      const filename = `${report.reportNo}_${report.customerName || "ใบส่งมอบงาน"}.pdf`;
+      const filename = exportFilename(`ใบส่งมอบงาน-${report.reportNo}-${report.customerName || "ไม่ระบุลูกค้า"}`, report.reportDate, "pdf");
       const isSingleMachine = selectedMachines.length === 1;
       const targetPages = isSingleMachine ? 1 : 2;
       const blob = await elementToPdfBlobPaged(el, targetPages, {
