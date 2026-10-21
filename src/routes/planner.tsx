@@ -80,6 +80,7 @@ import {
   shareOrDownload,
 } from "@/lib/report";
 import { PartsAlertPanel } from "@/components/PartsAlertPanel";
+import { exportFilename, plannerExportLabel } from "@/lib/export-filename";
 import { JobReportsPanel, type RoleFilter } from "@/components/JobReportsPanel";
 import { PART_CATEGORIES } from "@/lib/job-fields";
 import { DateInput } from "@/components/ui/date-input";
@@ -503,14 +504,8 @@ function PlannerPage() {
     } else setCursor(addDays(cursor, dir * (view === "week" ? 7 : 1)));
   };
 
-  const monthName = `${TH_MONTHS[cursor.getMonth()]}-${cursor.getFullYear() + 543}`;
   const viewLabel = view === "month" ? "รายเดือน" : view === "week" ? "รายสัปดาห์" : "รายวัน";
-  const fileLabel =
-    view === "month"
-      ? monthName
-      : view === "week"
-        ? `สัปดาห์-${iso(startOfWeek(cursor))}`
-        : iso(cursor);
+  const fileLabel = plannerExportLabel(view, cursor);
   const activeRef = view === "month" ? monthRef : view === "week" ? weekRef : dayRef;
 
   /** บันทึกตารางปฏิทินเป็นไฟล์ภาพ หรือ PDF เต็มใบ */
@@ -2749,7 +2744,7 @@ function DayDetailDialog({
     const el = documentRef.current;
     if (!el) return;
     setExporting(kind);
-    const filename = `คิวงาน-${date}.${kind === "pdf" ? "pdf" : "png"}`;
+    const filename = exportFilename("คิวงาน", date, kind === "pdf" ? "pdf" : "png");
     try {
       let blob: Blob;
       if (kind === "pdf") {

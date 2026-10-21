@@ -16,6 +16,7 @@
 - Store employee leave separately from appointments, one entry per staff/date; verify existing passcodes server-side for reads and admin-only writes so leave never alters job history or relies on client permissions.
 - Admin deletes snapshot rows into deleted_items (service-role only) so the admin Trash tab can restore them with original ids.
 - Build planner spreadsheets from a shared pure view-layout module and write styled cells through the lazy-loaded spreadsheet writer; this preserves calendar/time-slot geometry and isolates browser color sampling from data layout.
+- Generate schedule and queue export date labels through the shared pure filename module; downloads and sharing reuse the same filename to prevent format drift and timezone shifts.
 - Dismiss shared notifications with browser-persisted IDs and a clear-before timestamp; notifications lack user ownership, so deletion must not erase other users' alerts or server deduplication keys.
 - Gate every business query and storage request through the allowlisted session-aware server gateway; public Data API grants stay revoked so client UI cannot bypass permissions.
 - Shared passcodes are exchanged for encrypted HttpOnly expiring sessions; every privileged action revalidates the server role and credential version, never browser storage.
