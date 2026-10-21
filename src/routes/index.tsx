@@ -814,7 +814,10 @@ function SnView({
         );
         return;
       }
-      return toast.error("โหลดข้อมูลผิดพลาด: " + (error?.message ?? "ไม่ทราบสาเหตุ"));
+      const msg = error?.message ?? "";
+      if (/401|เข้าใช้งานอีกครั้ง/.test(msg) || (error as { code?: string })?.code === "401")
+        return toast.warning("เซสชันหมดอายุ กรุณาใส่รหัสเข้าใช้งานอีกครั้ง");
+      return toast.error("สัญญาณไม่เสถียร โหลดข้อมูลไม่สำเร็จ (ลองซ้ำ 3 ครั้งแล้ว) — ระบบจะโหลดใหม่อัตโนมัติเมื่อเชื่อมต่อได้", { id: "load-error" });
     }
     const rows = data as unknown as MachineResult[];
     setUnits(rows);
