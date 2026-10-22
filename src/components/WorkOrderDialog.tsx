@@ -865,7 +865,9 @@ export function WorkOrderDialog({
             open={conflictOpen}
             onOpenChange={setConflictOpen}
             conflicts={conflictList}
-            onConfirmOverride={() => submit(true, conflictList)}
+            onConfirmOverride={() => {
+              void submit(true, conflictList);
+            }}
             busy={saving}
           />
         </DialogContent>

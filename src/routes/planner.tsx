@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/data-client";
+import { generateDueWorkOrders } from "@/lib/contracts.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -385,6 +386,9 @@ function PlannerPage() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [staffFilter, setStaffFilter] = useState("");
   const [vehicleFilter, setVehicleFilter] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const gridStart =
     view === "month"
       ? startOfWeek(new Date(cursor.getFullYear(), cursor.getMonth(), 1))
@@ -447,6 +451,13 @@ function PlannerPage() {
   }, [search.date, navigate]);
 
   const load = useCallback(async () => {
+    // งวดสัญญาคอนแทรที่ถึงกำหนด → สร้างใบสั่งงานอัตโนมัติก่อนโหลดข้อมูล
+    try {
+      const due = await generateDueWorkOrders();
+      if (due.created > 0) toast.info(`สร้างใบสั่งงานตามสัญญาอัตโนมัติ ${due.created} ใบ`);
+    } catch {
+      /* ไม่บล็อกการโหลดแพลนเนอร์ */
+    }
     const [a, w] = await Promise.all([
       supabase.from("appointments").select("*").order("visit_date"),
       supabase.from("work_orders").select("*").eq("status", "pending").order("created_at"),
@@ -527,9 +538,20 @@ function PlannerPage() {
         // กรองรถ
         if (vehicleFilter && !splitNames(a.vehicle_plate).includes(vehicleFilter)) return false;
 
+        // ค้นหาข้อความ: ชื่อลูกค้า / ผู้ขาย (เซลล์) / ช่างเทคนิค
+        const kw = searchText.trim().toLowerCase();
+        if (kw) {
+          const hay = `${a.customer_name ?? ""} ${a.sales_rep ?? ""} ${a.staff_name ?? ""}`.toLowerCase();
+          if (!hay.includes(kw)) return false;
+        }
+
+        // กรองช่วงวันที่ (เลือกแค่ฝั่งเดียวก็ได้)
+        if (dateFrom && (a.visit_date ?? "") < dateFrom) return false;
+        if (dateTo && (a.visit_date ?? "") > dateTo) return false;
+
         return true;
       }),
-    [appts, roleFilter, staffFilter, vehicleFilter],
+    [appts, roleFilter, staffFilter, vehicleFilter, searchText, dateFrom, dateTo],
   );
 
   const shift = (dir: number) => {
@@ -770,6 +792,17 @@ function PlannerPage() {
                 setDayDetail(v);
               }}
             />
+            {/* 0. ค้นหาข้อความ: ลูกค้า / ผู้ขาย / ช่าง */}
+            <div className="relative min-w-0 lg:col-span-2 2xl:w-64">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="h-9 w-full pl-9"
+                placeholder="ค้นหา ลูกค้า / ผู้ขาย / ช่าง..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                aria-label="ค้นหางานในแพลนเนอร์"
+              />
+            </div>
             {/* 1. กรองประเภทงาน (Role Filter) */}
             <Select
               value={roleFilter}
@@ -862,6 +895,24 @@ function PlannerPage() {
                 ))}
               </SelectContent>
             </Select>
+            {/* 3.5 กรองช่วงวันที่ */}
+            <div className="flex min-w-0 items-center gap-1 lg:col-span-2 2xl:w-auto">
+              <DateInput
+                aria-label="ตั้งแต่วันที่"
+                size="sm"
+                className="w-full 2xl:w-36"
+                value={dateFrom}
+                onChange={setDateFrom}
+              />
+              <span className="shrink-0 text-xs text-muted-foreground">ถึง</span>
+              <DateInput
+                aria-label="ถึงวันที่"
+                size="sm"
+                className="w-full 2xl:w-36"
+                value={dateTo}
+                onChange={setDateTo}
+              />
+            </div>
             {/* 4. เรียงลำดับ */}
             <Select
               value={sortBy}
@@ -879,7 +930,7 @@ function PlannerPage() {
                 </SelectItem>
               </SelectContent>
             </Select>
-            {(roleFilter !== "all" || staffFilter || vehicleFilter) && (
+            {(roleFilter !== "all" || staffFilter || vehicleFilter || searchText || dateFrom || dateTo) && (
               <Button
                 size="sm"
                 variant="ghost"
@@ -888,9 +939,12 @@ function PlannerPage() {
                   setRoleFilter("all");
                   setStaffFilter("");
                   setVehicleFilter("");
+                  setSearchText("");
+                  setDateFrom("");
+                  setDateTo("");
                 }}
               >
-                ล้างตัวกรอง
+                ล้างการค้นหา / ตัวกรอง
               </Button>
             )}
             {(view === "month" || view === "week" || view === "day") && (
@@ -1725,9 +1779,9 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
           open={!!conflictTarget}
           onOpenChange={(v) => !v && setConflictTarget(null)}
           conflicts={conflictTarget?.conflicts ?? []}
-          onConfirmOverride={() =>
-            conflictTarget && approve(conflictTarget.order, true, conflictTarget.conflicts)
-          }
+          onConfirmOverride={() => {
+            if (conflictTarget) void approve(conflictTarget.order, true, conflictTarget.conflicts);
+          }}
           busy={busy === conflictTarget?.order.id}
         />
       </CardContent>
@@ -2372,9 +2426,9 @@ function ApprovedOrders({
         open={!!conflictTarget}
         onOpenChange={(v) => !v && setConflictTarget(null)}
         conflicts={conflictTarget?.conflicts ?? []}
-        onConfirmOverride={() =>
-          conflictTarget && confirmAppointment(conflictTarget.order, true, conflictTarget.conflicts)
-        }
+        onConfirmOverride={() => {
+          if (conflictTarget) void confirmAppointment(conflictTarget.order, true, conflictTarget.conflicts);
+        }}
         busy={!!busy}
       />
     </div>
@@ -4238,7 +4292,9 @@ function AppointmentDialog({
           open={conflictOpen}
           onOpenChange={setConflictOpen}
           conflicts={conflictList}
-          onConfirmOverride={() => save(true, conflictList)}
+          onConfirmOverride={() => {
+            void save(true, conflictList);
+          }}
           busy={saving}
         />
       </DialogContent>

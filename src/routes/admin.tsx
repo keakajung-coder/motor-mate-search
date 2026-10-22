@@ -34,6 +34,7 @@ import { ChecklistTemplatesTab } from "@/components/admin/ChecklistTemplatesTab"
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { lineHref, telHref, visibleLineId } from "@/lib/contact";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { ContractDialog } from "@/components/ContractDialog";
 import { useUndoable } from "@/hooks/use-undoable";
 import { loadOptionList } from "@/lib/option-lists";
 import { THAI_PROVINCES, MACHINE_STATUSES, computeUsage, formatDate, isMachineComplete } from "@/lib/report";
@@ -845,6 +846,7 @@ function MachinesTab() {
   const form = formHistory.value;
   const setForm = formHistory.set;
   const [saving, setSaving] = useState(false);
+  const [contractOpen, setContractOpen] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [sellerFilter, setSellerFilter] = useState<string | null>(null);
@@ -1496,7 +1498,7 @@ function MachinesTab() {
                 onChange={(v) => setForm({ ...form, warranty_end: v })}
               />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <label className="flex w-full cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm">
                 <input
                   type="checkbox"
@@ -1506,6 +1508,11 @@ function MachinesTab() {
                 />
                 ติดสัญญาบริการ (Contract Maintenance)
               </label>
+              {form.id && (
+                <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={() => setContractOpen(true)}>
+                  จัดการสัญญารายปี
+                </Button>
+              )}
             </div>
             <div className="sm:col-span-2">
               <label
@@ -1582,6 +1589,17 @@ function MachinesTab() {
                 installDate={form.install_date || null}
               />
             </div>
+          )}
+          {form.id && (
+            <ContractDialog
+              open={contractOpen}
+              onOpenChange={setContractOpen}
+              machineUnitId={form.id}
+              serialNumber={form.serial_number}
+              machineLabel={`${form.brand_name ?? ""} ${form.model_name ?? ""}`.trim() || null}
+              customerId={null}
+              customerName={form.customer_name}
+            />
           )}
         </CardContent>
       </Card>

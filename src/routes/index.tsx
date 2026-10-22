@@ -33,6 +33,7 @@ import {
 import { AlertToggles } from "@/lib/prefs";
 import { ThemePicker } from "@/components/ThemePicker";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { ContractDialog } from "@/components/ContractDialog";
 import { isMachineComplete } from "@/lib/report";
 import { exportFilename } from "@/lib/export-filename";
 import {
@@ -1100,6 +1101,7 @@ function MachineCard({
   const grouped = groupByCategory(unit.machine_parts ?? []);
   const [logs, setLogs] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [contractOpen, setContractOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
     supabase
@@ -1184,7 +1186,19 @@ function MachineCard({
             <Button size="sm" variant="outline" onClick={() => shareMachine(unit)}>
               <Share2 className="mr-1 h-4 w-4" /> ส่งออก / แชร์
             </Button>
+            <Button size="sm" variant="outline" onClick={() => setContractOpen(true)}>
+              <CalendarClock className="mr-1 h-4 w-4" /> สัญญาคอนแทร
+            </Button>
           </div>
+          <ContractDialog
+            open={contractOpen}
+            onOpenChange={setContractOpen}
+            machineUnitId={unit.id}
+            serialNumber={unit.serial_number}
+            machineLabel={model}
+            customerId={(unit as any).customer_id ?? null}
+            customerName={unit.customers?.name ?? ""}
+          />
           <div className="grid gap-3 sm:grid-cols-2">
             <Info label="S/N" value={unit.serial_number} />
             <Info label="S/N ลูกค้า" value={unit.customer_sn || "-"} />
