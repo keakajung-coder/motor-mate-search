@@ -41,7 +41,7 @@ function filterSelectNodes(
       const filteredGroup = React.Children.map(p.children, traverse);
       const valid = React.Children.toArray(filteredGroup).filter(Boolean);
       if (valid.length === 0) return null;
-      return React.cloneElement(child, { ...p, children: filteredGroup });
+      return React.cloneElement(child, { ...p, children: filteredGroup } as Record<string, unknown>);
     }
     const text = extractSearchableText(child).toLowerCase();
     if (text.includes(q)) {
