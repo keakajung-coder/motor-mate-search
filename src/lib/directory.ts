@@ -410,7 +410,32 @@ export async function deleteDirectoryEntry(kind: DirectoryKind, value: string) {
   listeners.forEach((fn) => fn(cache));
 
   toast.success(`ลบ "${value}" แล้ว`);
-  invalidateData(["directory"]);
+  const tablesToInvalidate = ["directory"];
+  if (kind === "staff") tablesToInvalidate.push("service_staff");
+  if (kind === "vehicle") tablesToInvalidate.push("vehicles");
+  if (kind === "engineer") tablesToInvalidate.push("engineers");
+  if (kind === "seller") tablesToInvalidate.push("sellers", "sales_contacts");
+  if (kind === "customer" || kind === "cust_id") tablesToInvalidate.push("customers");
+  if (kind === "serial") tablesToInvalidate.push("machine_units");
+  invalidateData(tablesToInvalidate);
+
+  try {
+    const { getQueryClient, QUERY_KEYS } = await import("@/lib/query-client");
+    const qc = getQueryClient();
+    void qc.invalidateQueries({ queryKey: QUERY_KEYS.directory });
+    if (kind === "staff") void qc.invalidateQueries({ queryKey: QUERY_KEYS.staff });
+    if (kind === "vehicle") void qc.invalidateQueries({ queryKey: QUERY_KEYS.vehicles });
+    if (kind === "engineer") void qc.invalidateQueries({ queryKey: QUERY_KEYS.engineers });
+    if (kind === "seller") {
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.sellers });
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.salesContacts });
+    }
+    if (kind === "customer" || kind === "cust_id") void qc.invalidateQueries({ queryKey: QUERY_KEYS.customers });
+    if (kind === "serial") void qc.invalidateQueries({ queryKey: QUERY_KEYS.machines });
+  } catch {
+    /* ignore */
+  }
+
   // ซิงก์ข้อมูลจริงจากฐานข้อมูลอีกครั้งเบื้องหลัง (กันกรณีมีการลบซ้ำ/ข้อมูลเปลี่ยนจากที่อื่น)
   await refreshDirectory().catch(() => {});
   return true;

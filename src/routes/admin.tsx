@@ -1477,7 +1477,7 @@ function MachinesTab() {
                 onChange={(v) => setForm({ ...form, status: v })}
               />
               <div className="mt-1 flex flex-wrap gap-1">
-                {MACHINE_STATUSES.map((s: string) => (
+                {machineStatuses.map((s: string) => (
                   <Button
                     key={s}
                     type="button"

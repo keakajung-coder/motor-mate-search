@@ -85,8 +85,10 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] min-w-[min(100vw-2rem,280px)] max-w-[calc(100vw-1rem)] p-0"
+        className="w-[var(--radix-popover-trigger-width)] min-w-[min(100vw-2rem,280px)] max-w-[calc(100vw-1rem)] p-0 z-[100]"
         align="start"
+        sideOffset={4}
+        avoidCollisions
         collisionPadding={8}
       >
         <Command
@@ -155,6 +157,12 @@ export function Combobox({
                             await onDelete(o.value);
                           } catch (err) {
                             console.error(err);
+                          }
+                          try {
+                            const { getQueryClient } = await import("@/lib/query-client");
+                            void getQueryClient().invalidateQueries();
+                          } catch {
+                            /* recover silently */
                           }
                           if (
                             value &&

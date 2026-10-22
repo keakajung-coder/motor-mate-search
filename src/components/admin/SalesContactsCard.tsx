@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { Briefcase, Check, Loader2, MessageCircle, Pencil, Phone, Plus, Trash2, X } from "lucide-react";
 import { lineHref, telHref, visibleLineId } from "@/lib/contact";
 import { loadOptionList, saveOptionList } from "@/lib/option-lists";
+import { markValueRemoved, invalidateData } from "@/lib/data-sync";
+import { getQueryClient, QUERY_KEYS } from "@/lib/query-client";
 
 type Row = {
   id: string;
@@ -110,6 +112,7 @@ export function SalesContactsCard() {
   };
 
   const remove = async (id: string, name: string) => {
+    markValueRemoved(name);
     const { error } = await deleteAsAdmin("sales_contacts", { id });
     if (error) return toast.error(error.message);
     // ลบชื่อออกจากลิสต์ "ผู้ขาย" ด้วย ถ้าไม่มีรายชื่ออื่นใช้ชื่อนี้อยู่
@@ -117,6 +120,15 @@ export function SalesContactsCard() {
     if (!stillUsed) {
       const sellers = await loadOptionList("sellers");
       await saveOptionList("sellers", sellers.filter((s) => s.trim() !== name.trim()));
+    }
+    invalidateData(["sellers", "sales_contacts", "directory"]);
+    try {
+      const qc = getQueryClient();
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.sellers });
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.salesContacts });
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.directory });
+    } catch {
+      /* ignore */
     }
     toast.success("ลบแล้ว");
     window.dispatchEvent(new Event("sales-contacts-changed"));

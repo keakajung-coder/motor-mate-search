@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/data-client";
 import { loadOptionList, saveOptionList } from "@/lib/option-lists";
 import { splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { logAudit } from "@/lib/audit";
 import { invalidateData, isValueRemoved, markValueRemoved } from "@/lib/data-sync";
+import { getQueryClient, QUERY_KEYS } from "@/lib/query-client";
 
 export const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 export const DEFAULT_PUMP_TYPES = PUMP_TYPE_PRESETS;
@@ -281,6 +283,19 @@ export async function deletePumpType(
 
   // 5. แจ้ง Event และ Invalidate ข้อมูลทั่วทั้งระบบ
   markValueRemoved(targetName);
+  try {
+    const qc = getQueryClient();
+    qc.setQueryData(QUERY_KEYS.pumpTypes, (old?: string[]) =>
+      (old ?? []).filter((x) => x.toLowerCase() !== targetName.toLowerCase()),
+    );
+    void qc.invalidateQueries({ queryKey: QUERY_KEYS.pumpTypes });
+    void qc.invalidateQueries({ queryKey: QUERY_KEYS.models });
+    void qc.invalidateQueries({ queryKey: QUERY_KEYS.checklistTemplates });
+    void qc.invalidateQueries({ queryKey: QUERY_KEYS.settings });
+    void qc.invalidateQueries({ queryKey: QUERY_KEYS.directory });
+  } catch {
+    /* ignore */
+  }
   notifyPumpTypesChanged();
 
   return { affectedModels: matchingModels.length, affectedTemplates };
@@ -294,32 +309,34 @@ export function notifyPumpTypesChanged() {
   }
 }
 
-export function usePumpTypes() {
-  const [types, setTypes] = useState<string[]>([]);
+export function usePumpTypes(): string[] {
+  const qc = useQueryClient();
+  const [, setTick] = useState(0);
+
+  const query = useQuery({
+    queryKey: QUERY_KEYS.pumpTypes,
+    queryFn: loadPumpTypes,
+    staleTime: 1000 * 30,
+    select: (list) => list.filter((t) => !isValueRemoved(t)),
+  });
+
   useEffect(() => {
-    let active = true;
-    const reload = () => {
-      void loadPumpTypes()
-        .then((list) => {
-          if (active) setTypes(list);
-        })
-        .catch(() => {});
-    };
-    reload();
-
     const onOptionRemoved = () => {
-      setTypes((prev) => prev.filter((t) => !isValueRemoved(t)));
+      setTick((n) => n + 1);
+    };
+    const onReload = () => {
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.pumpTypes });
     };
 
-    window.addEventListener(EVENT, reload);
+    window.addEventListener(EVENT, onReload);
     window.addEventListener("app:option-removed", onOptionRemoved);
-    window.addEventListener("app:data-changed", reload);
+    window.addEventListener("app:data-changed", onReload);
     return () => {
-      active = false;
-      window.removeEventListener(EVENT, reload);
+      window.removeEventListener(EVENT, onReload);
       window.removeEventListener("app:option-removed", onOptionRemoved);
-      window.removeEventListener("app:data-changed", reload);
+      window.removeEventListener("app:data-changed", onReload);
     };
-  }, []);
-  return types;
+  }, [qc]);
+
+  return (query.data ?? []).filter((t) => !isValueRemoved(t));
 }

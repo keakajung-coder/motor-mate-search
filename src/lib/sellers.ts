@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/data-client";
 import { loadOptionList, saveOptionList } from "@/lib/option-lists";
-import { isValueRemoved } from "@/lib/data-sync";
+import { isValueRemoved, invalidateData } from "@/lib/data-sync";
+import { QUERY_KEYS, getQueryClient } from "@/lib/query-client";
 
 /** รวมรายชื่อเซลล์/ผู้ขายจากทุกแหล่ง เพื่อใช้เป็นตัวเลือกใน Dropdown */
 export async function loadSellerNames(): Promise<string[]> {
@@ -27,6 +29,14 @@ export async function ensureSeller(name?: string | null) {
     await supabase.from("sales_contacts").insert({ kind: "vendor", name: value });
     const sellers = await loadOptionList("sellers");
     await saveOptionList("sellers", [...sellers, value]);
+    invalidateData(["sellers", "sales_contacts", "directory"]);
+    try {
+      const qc = getQueryClient();
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.sellers });
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.salesContacts });
+    } catch {
+      /* ignore */
+    }
     window.dispatchEvent(new Event("sales-contacts-changed"));
     return true;
   } catch {
@@ -34,31 +44,37 @@ export async function ensureSeller(name?: string | null) {
   }
 }
 
-/** ตัวเลือกเซลล์แบบสด รีเฟรชเมื่อมีการเพิ่มรายชื่อใหม่ */
+/** ตัวเลือกเซลล์แบบสด รีเฟรชเมื่อมีการเพิ่มหรือลบรายชื่อใหม่ ผ่าน TanStack Query */
 export function useSellerNames(): string[] {
-  const [names, setNames] = useState<string[]>([]);
-  useEffect(() => {
-    let alive = true;
-    const load = () => {
-      loadSellerNames().then((list) => {
-        if (alive) setNames(list);
-      });
-    };
-    load();
+  const qc = useQueryClient();
+  const [, setTick] = useState(0);
 
+  const query = useQuery({
+    queryKey: QUERY_KEYS.sellers,
+    queryFn: loadSellerNames,
+    staleTime: 1000 * 30,
+    select: (list) => list.filter((n) => !isValueRemoved(n)),
+  });
+
+  useEffect(() => {
     const onOptionRemoved = () => {
-      setNames((prev) => prev.filter((n) => !isValueRemoved(n)));
+      setTick((n) => n + 1);
+    };
+    const load = () => {
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.sellers });
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.salesContacts });
     };
 
     window.addEventListener("sales-contacts-changed", load);
     window.addEventListener("app:option-removed", onOptionRemoved);
     window.addEventListener("app:data-changed", load);
     return () => {
-      alive = false;
       window.removeEventListener("sales-contacts-changed", load);
       window.removeEventListener("app:option-removed", onOptionRemoved);
       window.removeEventListener("app:data-changed", load);
     };
-  }, []);
-  return names;
+  }, [qc]);
+
+  return (query.data ?? []).filter((n) => !isValueRemoved(n));
 }
+

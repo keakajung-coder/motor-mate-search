@@ -4,6 +4,8 @@ import { th } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 /** แปลง ISO (ค.ศ.) เป็นข้อความ วว-ดด-ปปปป แบบ พ.ศ. */
@@ -52,8 +54,11 @@ type Props = {
 /**
  * ช่องวันที่: พิมพ์เองได้ (วว-ดด-ปปปป พ.ศ. หรือ ค.ศ.) หรือกดไอคอนปฏิทินเพื่อเลือก
  * แสดงผลเป็น พ.ศ. แต่เก็บค่าเป็น ISO (ค.ศ.)
+ * - Desktop: ปฏิทินลอยผ่าน Portal พร้อม auto-placement ปรับเด้งบน/ล่างอัตโนมัติ z-[100]
+ * - Mobile/Tablet: เปิดเป็น Center Modal ไม่หลุดขอบจอ เห็นครบ 1-31 วัน
  */
 export function DateInput({ value, onChange, disabled, className, id, size = "default", ...rest }: Props) {
+  const isMobile = useIsMobile();
   const [text, setText] = React.useState(toBEDisplay(value));
   const [bad, setBad] = React.useState(false);
   const [open, setOpen] = React.useState(false);
@@ -88,9 +93,63 @@ export function DateInput({ value, onChange, disabled, className, id, size = "de
     setOpen(next);
   };
 
-  return (
-    <Popover open={open && !disabled} onOpenChange={changeOpen}>
-    <PopoverAnchor asChild>
+  const handleSelect = (date?: Date) => {
+    if (!date) return;
+    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    setText(toBEDisplay(iso));
+    setBad(false);
+    onChange(iso);
+    setOpen(false);
+  };
+
+  const selectToday = () => {
+    const today = new Date();
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    setText(toBEDisplay(iso));
+    setBad(false);
+    onChange(iso);
+    setOpen(false);
+  };
+
+  const calendarComponent = (
+    <div className="w-full">
+      <Calendar
+        mode="single"
+        locale={th}
+        selected={selected}
+        month={month}
+        onMonthChange={setMonth}
+        captionLayout="dropdown"
+        startMonth={new Date(1900, 0)}
+        endMonth={new Date(2100, 11)}
+        formatters={{ formatYearDropdown: (date) => String(date.getFullYear() + 543) }}
+        className="pointer-events-auto w-full p-2"
+        onSelect={handleSelect}
+      />
+      <div className="flex items-center justify-between border-t border-border/50 px-2 pt-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 px-2.5 text-xs"
+          onClick={selectToday}
+        >
+          วันนี้
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => setOpen(false)}
+        >
+          ปิด
+        </Button>
+      </div>
+    </div>
+  );
+
+  const inputNode = (
     <div data-readonly-allow className={cn("relative min-w-0 w-full", className)}>
       <input
         ref={inputRef}
@@ -128,7 +187,6 @@ export function DateInput({ value, onChange, disabled, className, id, size = "de
           bad && "border-destructive",
         )}
       />
-      <PopoverTrigger asChild>
       <Button
         type="button"
         variant="ghost"
@@ -136,49 +194,66 @@ export function DateInput({ value, onChange, disabled, className, id, size = "de
         disabled={disabled}
         aria-label="เลือกจากปฏิทิน"
         title="เลือกจากปฏิทิน"
+        onClick={() => changeOpen(true)}
         className="absolute right-0 top-0 h-full w-9 rounded-l-none p-0 text-muted-foreground"
       >
         <CalendarDays className="h-4 w-4" />
       </Button>
-      </PopoverTrigger>
     </div>
-    </PopoverAnchor>
-    <PopoverContent
-      id={calendarId}
-      aria-label="เลือกวันที่"
-      data-readonly-allow
-      align="start"
-      sideOffset={6}
-      collisionPadding={8}
-      avoidCollisions
-      className="date-picker-popover pointer-events-auto p-0"
-      onOpenAutoFocus={(event) => event.preventDefault()}
-      onCloseAutoFocus={(event) => {
-        event.preventDefault();
-        inputRef.current?.focus({ preventScroll: true });
-      }}
-    >
-      <Calendar
-        mode="single"
-        locale={th}
-        selected={selected}
-        month={month}
-        onMonthChange={setMonth}
-        captionLayout="dropdown"
-        startMonth={new Date(1900, 0)}
-        endMonth={new Date(2100, 11)}
-        formatters={{ formatYearDropdown: (date) => String(date.getFullYear() + 543) }}
-        className="pointer-events-auto w-full p-3"
-        onSelect={(date) => {
-          if (!date) return;
-          const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-          setText(toBEDisplay(iso));
-          setBad(false);
-          onChange(iso);
-          setOpen(false);
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        {inputNode}
+        <Dialog open={open && !disabled} onOpenChange={changeOpen}>
+          <DialogContent
+            data-readonly-allow
+            className="z-[100] w-[min(calc(100vw-1.5rem),340px)] max-w-[340px] p-3 rounded-2xl border bg-background shadow-2xl"
+            onOpenAutoFocus={(event) => event.preventDefault()}
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              inputRef.current?.focus({ preventScroll: true });
+            }}
+          >
+            <DialogHeader className="pb-1">
+              <DialogTitle className="text-center text-sm font-semibold">
+                เลือกวันที่
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex justify-center">
+              {calendarComponent}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
+  return (
+    <Popover open={open && !disabled} onOpenChange={changeOpen}>
+      <PopoverAnchor asChild>
+        {inputNode}
+      </PopoverAnchor>
+      <PopoverContent
+        id={calendarId}
+        aria-label="เลือกวันที่"
+        data-readonly-allow
+        align="start"
+        side="bottom"
+        sideOffset={6}
+        collisionPadding={12}
+        avoidCollisions
+        className="date-picker-popover z-[100] pointer-events-auto p-2 bg-popover shadow-2xl border border-border/70 rounded-xl"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          inputRef.current?.focus({ preventScroll: true });
         }}
-      />
-    </PopoverContent>
+      >
+        {calendarComponent}
+      </PopoverContent>
     </Popover>
   );
 }
+

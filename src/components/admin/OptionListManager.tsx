@@ -110,7 +110,19 @@ export function OptionListManager({
     markValueRemoved(name);
     await supabase.from("machine_units").update({ [column]: null } as any).eq(column, name);
     await saveOptionList(listKey, custom.filter((s) => s !== name));
-    invalidateData([listKey, "machine_units", "app_settings", "machine_statuses", "sellers"]);
+    invalidateData([listKey, "machine_units", "app_settings", "machine_statuses", "statuses", "sellers"]);
+    try {
+      const { getQueryClient } = await import("@/lib/query-client");
+      const qc = getQueryClient();
+      void qc.invalidateQueries({ queryKey: [listKey] });
+      void qc.invalidateQueries({ queryKey: ["machine_statuses"] });
+      void qc.invalidateQueries({ queryKey: ["statuses"] });
+      void qc.invalidateQueries({ queryKey: ["sellers"] });
+      void qc.invalidateQueries({ queryKey: ["machine_units"] });
+      void qc.invalidateQueries({ queryKey: ["app_settings"] });
+    } catch {
+      /* ignore */
+    }
     await load();
     setBusy(false);
     onChanged?.();

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Truck, UserCog } from "lucide-react";
+import { markValueRemoved, invalidateData } from "@/lib/data-sync";
+import { getQueryClient, QUERY_KEYS } from "@/lib/query-client";
 
 type Staff = { id: string; name: string; phone: string | null; line_contact: string | null };
 type Vehicle = { id: string; plate: string; note: string | null };
@@ -82,6 +84,7 @@ function StaffCard() {
 
   const remove = async (id: string, staffName: string) => {
     // Soft Delete: ตั้งค่า active = false เพื่อรักษาประวัติการปฏิบัติงานและวันลาย้อนหลัง
+    markValueRemoved(staffName);
     const { error } = await supabase.from("service_staff").update({ active: false }).eq("id", id);
     if (error) return toast.error(error.message);
     const { logAudit } = await import("@/lib/audit");
@@ -92,6 +95,14 @@ function StaffCard() {
       summary: `ลบพนักงาน (Soft Delete: active = false): ${staffName}`,
       changes: { id, name: staffName, active: false },
     });
+    invalidateData(["service_staff", "directory"]);
+    try {
+      const qc = getQueryClient();
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.staff });
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.directory });
+    } catch {
+      /* ignore */
+    }
     window.dispatchEvent(new Event("service-staff-changed"));
     toast.success(`ลบพนักงาน "${staffName}" แล้ว (กู้คืนได้ที่หน้าถังขยะ)`);
     refreshDirectory();
@@ -204,9 +215,18 @@ function VehicleCard() {
     else refreshDirectory();
   };
 
-  const remove = async (id: string) => {
+  const remove = async (id: string, vehiclePlate?: string) => {
+    if (vehiclePlate) markValueRemoved(vehiclePlate);
     const { error } = await deleteAsAdmin("vehicles", { id });
     if (error) return toast.error(error.message);
+    invalidateData(["vehicles", "directory"]);
+    try {
+      const qc = getQueryClient();
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.vehicles });
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.directory });
+    } catch {
+      /* ignore */
+    }
     toast.success("ลบแล้ว");
     load();
   };
@@ -248,7 +268,7 @@ function VehicleCard() {
                 />
                 {isAdmin && (
                   <ConfirmButton
-                    onConfirm={() => remove(r.id)}
+                    onConfirm={() => remove(r.id, r.plate)}
                     title="ลบรถคันนี้?"
                     description={`ลบทะเบียน ${r.plate} ออกจากระบบถาวร`}
                   >
