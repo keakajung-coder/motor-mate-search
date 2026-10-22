@@ -842,6 +842,133 @@ export type Database = {
         }
         Relationships: []
       }
+      service_contract_visits: {
+        Row: {
+          appointment_id: string | null
+          contract_id: string
+          created_at: string
+          id: string
+          job_detail: string | null
+          parts_note: string | null
+          status: string
+          updated_at: string
+          visit_date: string
+          visit_no: number
+          visit_time: string | null
+          work_order_id: string | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          contract_id: string
+          created_at?: string
+          id?: string
+          job_detail?: string | null
+          parts_note?: string | null
+          status?: string
+          updated_at?: string
+          visit_date: string
+          visit_no: number
+          visit_time?: string | null
+          work_order_id?: string | null
+        }
+        Update: {
+          appointment_id?: string | null
+          contract_id?: string
+          created_at?: string
+          id?: string
+          job_detail?: string | null
+          parts_note?: string | null
+          status?: string
+          updated_at?: string
+          visit_date?: string
+          visit_no?: number
+          visit_time?: string | null
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_contract_visits_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_contract_visits_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "service_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_contract_visits_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_contracts: {
+        Row: {
+          active: boolean
+          created_at: string
+          customer_id: string | null
+          customer_name: string
+          id: string
+          machine_label: string | null
+          machine_unit_id: string | null
+          note: string | null
+          serial_number: string | null
+          start_date: string
+          updated_at: string
+          visits_per_year: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          customer_id?: string | null
+          customer_name: string
+          id?: string
+          machine_label?: string | null
+          machine_unit_id?: string | null
+          note?: string | null
+          serial_number?: string | null
+          start_date?: string
+          updated_at?: string
+          visits_per_year?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string
+          id?: string
+          machine_label?: string | null
+          machine_unit_id?: string | null
+          note?: string | null
+          serial_number?: string | null
+          start_date?: string
+          updated_at?: string
+          visits_per_year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_contracts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_contracts_machine_unit_id_fkey"
+            columns: ["machine_unit_id"]
+            isOneToOne: false
+            referencedRelation: "machine_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_staff: {
         Row: {
           active: boolean
