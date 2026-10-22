@@ -11,6 +11,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { isValueRemoved, markValueRemoved } from "@/lib/data-sync";
 
 export type ComboOption = { value: string; label?: string; hint?: string };
 
@@ -41,8 +42,21 @@ export function Combobox({
   const [query, setQuery] = React.useState("");
   // รายการที่เพิ่งกดลบ — ตัดออกจากตัวเลือกทันที ไม่ต้องรอฐานข้อมูลตอบกลับ
   const [removed, setRemoved] = React.useState<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    const onRemoved = (e: Event) => {
+      const val = (e as CustomEvent)?.detail?.value;
+      if (val) setRemoved((prev) => new Set(prev).add(val.trim().toLowerCase()));
+    };
+    window.addEventListener("app:option-removed", onRemoved);
+    return () => window.removeEventListener("app:option-removed", onRemoved);
+  }, []);
+
   const visibleOptions = React.useMemo(
-    () => options.filter((o) => !removed.has(o.value.trim().toLowerCase())),
+    () =>
+      options.filter(
+        (o) => !removed.has(o.value.trim().toLowerCase()) && !isValueRemoved(o.value),
+      ),
     [options, removed],
   );
 
@@ -59,7 +73,7 @@ export function Combobox({
           role="combobox"
           disabled={disabled}
           className={cn(
-            "h-11 min-w-0 w-full justify-between font-normal",
+            "h-10 min-h-10 min-w-0 w-full justify-between font-normal text-sm",
             !value && "text-muted-foreground",
             className,
           )}
@@ -70,7 +84,11 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] min-w-[min(100vw-2rem,280px)] max-w-[calc(100vw-1rem)] p-0"
+        align="start"
+        collisionPadding={8}
+      >
         <Command
           filter={(val, search) => (val.toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}
         >
@@ -131,6 +149,7 @@ export function Combobox({
                         e.preventDefault();
                         e.stopPropagation();
                         if (window.confirm(`ลบ "${o.value}" ออกจากฐานข้อมูลกลาง?`)) {
+                          markValueRemoved(o.value);
                           setRemoved((prev) => new Set(prev).add(o.value.trim().toLowerCase()));
                           try {
                             await onDelete(o.value);

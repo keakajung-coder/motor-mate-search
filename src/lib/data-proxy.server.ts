@@ -33,34 +33,63 @@ export async function proxyBusinessRequest(request: Request) {
       }
     } else if (path.startsWith("/storage/v1/object/")) {
       const pieces = path.split("/").filter(Boolean);
-      const operation = pieces[3];
-      const isSign = operation === "sign";
-      const bucket = isSign || operation === "authenticated" ? pieces[4] : operation;
+      let bucket = "";
+      let isSign = false;
+      let objectPath = "";
+      if (pieces[3] === "sign") {
+        isSign = true;
+        bucket = pieces[4] || "";
+        objectPath = pieces.slice(5).join("/");
+      } else if (pieces[3] === "upload" && pieces[4] === "sign") {
+        bucket = pieces[5] || "";
+        objectPath = pieces.slice(6).join("/");
+      } else if (pieces[3] === "authenticated") {
+        bucket = pieces[4] || "";
+        objectPath = pieces.slice(5).join("/");
+      } else {
+        bucket = pieces[3] || "";
+        objectPath = pieces.slice(4).join("/");
+      }
+
       if (!bucket || !BUCKETS.has(bucket)) return Response.json({ message: "Forbidden" }, { status: 403 });
+
       if (isSign && method === "POST") {
         // Return an authenticated URL instead of a bearer link lasting years.
-        const object = pieces.slice(5).join("/");
-        if (!object) return Response.json({ message: "Invalid path" }, { status: 400 });
-        return Response.json({ signedURL: `/object/authenticated/${bucket}/${object}` }, { headers: { "cache-control": "no-store" } });
+        if (!objectPath) return Response.json({ message: "Invalid path" }, { status: 400 });
+        return Response.json({ signedURL: `/object/authenticated/${bucket}/${objectPath}` }, { headers: { "cache-control": "no-store" } });
       }
-      if (!["GET", "HEAD", "POST", "DELETE"].includes(method) || (bucket === "product-images" && method !== "GET" && method !== "HEAD" && role !== "admin")) return Response.json({ message: "Forbidden" }, { status: 403 });
+
+      if (!["GET", "HEAD", "POST", "DELETE"].includes(method) || (bucket === "product-images" && method !== "GET" && method !== "HEAD" && role !== "admin")) {
+        return Response.json({ message: "Forbidden" }, { status: 403 });
+      }
       if (method === "DELETE" && role !== "admin") return Response.json({ message: "Forbidden" }, { status: 403 });
+
       if (method === "POST") {
-        const type = request.headers.get("content-type") ?? "";
-        if (!/^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm|quicktime))($|;)/.test(type) && !type.startsWith("multipart/form-data")) return Response.json({ message: "Unsupported file" }, { status: 400 });
-        if (type.startsWith("multipart/form-data")) {
-          const form = await request.clone().formData();
-          const files = Array.from(form.values()).filter((v): v is File => typeof v !== "string");
-          if (files.length !== 1 || !/^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm|quicktime))$/.test(files[0].type)) return Response.json({ message: "Unsupported file" }, { status: 400 });
-          if (bucket === "product-images" && !files[0].type.startsWith("image/")) return Response.json({ message: "Images only" }, { status: 400 });
+        const type = (request.headers.get("content-type") ?? "").toLowerCase();
+        const ext = objectPath.split(".").pop()?.toLowerCase() ?? "";
+
+        const isImage = /image\/(jpeg|jpg|png|webp|gif|heic|heif)/.test(type) || /^(jpe?g|png|webp|gif|heic|heif)$/.test(ext);
+        const isVideo = /video\/(mp4|webm|quicktime|x-matroska|3gpp)/.test(type) || /^(mp4|webm|mov|quicktime)$/.test(ext);
+        const isMultipart = type.startsWith("multipart/form-data");
+
+        if (bucket === "product-images" && !isImage && (!isMultipart || !/^(jpe?g|png|webp|gif)$/.test(ext))) {
+          return Response.json({ message: "Images only (jpg, png, webp, gif)" }, { status: 400 });
         }
+
+        if (bucket === "job-attachments" && !isImage && !isVideo && (!isMultipart || !/^(jpe?g|png|webp|gif|heic|heif|mp4|webm|mov)$/.test(ext))) {
+          return Response.json({ message: "Unsupported file format" }, { status: 400 });
+        }
+
         body = await request.arrayBuffer();
-        if (body.byteLength > (bucket === "product-images" ? 10 : 50) * 1024 * 1024) return Response.json({ message: "Too large" }, { status: 413 });
-      } else if (method === "DELETE") body = await request.text();
+        const maxBytes = (bucket === "product-images" ? 10 : 50) * 1024 * 1024;
+        if (body.byteLength > maxBytes) return Response.json({ message: "Too large" }, { status: 413 });
+      } else if (method === "DELETE") {
+        body = await request.text();
+      }
     } else return Response.json({ message: "Forbidden" }, { status: 403 });
 
-    const base = process.env["SUPABASE_URL"];
-    const key = process.env["SUPABASE_SERVICE_ROLE_KEY"] || process.env["SUPABASE_PUBLISHABLE_KEY"];
+    const base = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+    const key = process.env["SUPABASE_SERVICE_ROLE_KEY"] || process.env["SUPABASE_PUBLISHABLE_KEY"] || process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
     if (!base || !key) throw new Error("Unavailable");
     const headers = new Headers();
     for (const name of ["content-type", "prefer", "range", "range-unit", "accept", "x-upsert"]) {
@@ -77,6 +106,18 @@ export async function proxyBusinessRequest(request: Request) {
   } catch (e) {
     const reason = e instanceof Error ? e.message : String(e);
     console.error("[data-proxy]", reason);
-    return Response.json({ message: "กรุณาเข้าใช้งานอีกครั้ง" }, { status: 401, headers: { "cache-control": "no-store" } });
+    if (reason === "Forbidden") {
+      return Response.json({ message: "ไม่มีสิทธิ์เข้าถึง (Forbidden)" }, { status: 403, headers: { "cache-control": "no-store" } });
+    }
+    if (reason.includes("ปลดล็อก") || reason.includes("เข้าใช้งานอีกครั้ง")) {
+      return Response.json({ message: reason }, { status: 401, headers: { "cache-control": "no-store" } });
+    }
+    if (reason.includes("ถี่เกินไป")) {
+      return Response.json({ message: reason }, { status: 429, headers: { "cache-control": "no-store" } });
+    }
+    if (reason === "Unavailable") {
+      return Response.json({ message: "บริการไม่พร้อมใช้งานชั่วคราว" }, { status: 503, headers: { "cache-control": "no-store" } });
+    }
+    return Response.json({ message: reason || "เกิดข้อผิดพลาดในการประมวลผลคำขอ" }, { status: 500, headers: { "cache-control": "no-store" } });
   }
 }

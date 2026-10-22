@@ -130,6 +130,8 @@ export async function deleteAsAdmin(
         summary: `ลบข้อมูลในตาราง ${table} (${Object.entries(filters).map(([k, v]) => `${k}=${v}`).join(", ")})`,
         changes: filters,
       });
+      const { invalidateData } = await import("@/lib/data-sync");
+      invalidateData(table);
     }
     return res?.ok ? { error: null } : { error: { message: res?.error ?? "ลบไม่สำเร็จ" } };
   } catch (e) {

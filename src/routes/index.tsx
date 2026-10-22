@@ -22,6 +22,14 @@ import { PartsAlertPanel } from "@/components/PartsAlertPanel";
 import { SmartSearchDialog } from "@/components/SmartSearchDialog";
 import { AdminLockButton } from "@/components/AccessGate";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
+import { invalidateData, isValueRemoved, markValueRemoved } from "@/lib/data-sync";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AlertToggles } from "@/lib/prefs";
 import { ThemePicker } from "@/components/ThemePicker";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -820,14 +828,27 @@ function SnView({
         return toast.warning("เซสชันหมดอายุ กรุณาใส่รหัสเข้าใช้งานอีกครั้ง");
       return toast.error("สัญญาณไม่เสถียร โหลดข้อมูลไม่สำเร็จ (ลองซ้ำ 3 ครั้งแล้ว) — ระบบจะโหลดใหม่อัตโนมัติเมื่อเชื่อมต่อได้", { id: "load-error" });
     }
-    const rows = data as unknown as MachineResult[];
+    const rows = (data as unknown as MachineResult[]).filter(
+      (u) => !isValueRemoved(u.serial_number) && !isValueRemoved(u.id),
+    );
     setUnits(rows);
     saveOffline("machine_units", rows);
   }
   useEffect(() => {
     void load();
+    const onOptionRemoved = () => {
+      setUnits((prev) =>
+        prev.filter((u) => !isValueRemoved(u.serial_number) && !isValueRemoved(u.id)),
+      );
+    };
     window.addEventListener("app:connection-restored", load);
-    return () => window.removeEventListener("app:connection-restored", load);
+    window.addEventListener("app:data-changed", load);
+    window.addEventListener("app:option-removed", onOptionRemoved);
+    return () => {
+      window.removeEventListener("app:connection-restored", load);
+      window.removeEventListener("app:data-changed", load);
+      window.removeEventListener("app:option-removed", onOptionRemoved);
+    };
   }, []);
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
@@ -1043,18 +1064,20 @@ function BundleApply({ unitId, onApplied }: { unitId: string; onApplied: () => v
   return (
     <div className="no-print mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-2">
       <span className="text-xs text-muted-foreground">📦 ใส่ชุดอะไหล่สำเร็จรูป:</span>
-      <select
-        className="h-9 min-w-0 w-full rounded-md border bg-background px-2 text-sm lg:w-auto"
-        value={pick}
-        onChange={(e) => setPick(e.target.value)}
-      >
-        <option value="">— เลือกชุด —</option>
-        {bundles.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.name} ({b.items.length} รายการ)
-          </option>
-        ))}
-      </select>
+      <div className="w-full sm:w-64">
+        <Select value={pick} onValueChange={setPick}>
+          <SelectTrigger className="h-9 w-full">
+            <SelectValue placeholder="— เลือกชุด —" />
+          </SelectTrigger>
+          <SelectContent>
+            {bundles.map((b) => (
+              <SelectItem key={b.id} value={b.id}>
+                {b.name} ({b.items.length} รายการ)
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <Button size="sm" onClick={apply} disabled={busy || !pick}>
         {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}เพิ่มทั้งชุด
       </Button>
@@ -1097,6 +1120,9 @@ function MachineCard({
     const { error } = await deleteAsAdmin("machine_units", { id: unit.id });
     setDeleting(false);
     if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
+    markValueRemoved(unit.serial_number);
+    markValueRemoved(unit.id);
+    void invalidateData(["machine_units", "machine_parts", "directory"]);
     toast.success(`ลบเครื่อง S/N ${unit.serial_number} แล้ว`);
     onDeleted?.();
   }

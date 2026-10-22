@@ -51,6 +51,8 @@ import { Combobox } from "@/components/ui/combobox";
 import { PumpTypeChecklist } from "@/components/PumpTypeChecklist";
 import { ensurePumpType, notifyPumpTypesChanged, usePumpTypes } from "@/lib/pump-types";
 import { PumpTypeManagerCard, PumpTypeManagerDialog } from "@/components/admin/PumpTypeManager";
+import { useSellerNames } from "@/lib/sellers";
+import { useMachineStatuses } from "@/lib/machine-statuses";
 
 
 
@@ -152,7 +154,15 @@ function BrandsTab() {
     const { data } = await supabase.from("brands").select("*").order("name");
     setItems(data ?? []);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    window.addEventListener("app:connection-restored", load);
+    window.addEventListener("app:data-changed", load);
+    return () => {
+      window.removeEventListener("app:connection-restored", load);
+      window.removeEventListener("app:data-changed", load);
+    };
+  }, []);
 
   const dup = items.some(
     (b) => b.name.trim().toLowerCase() === name.trim().toLowerCase() && b.id !== editId,
@@ -243,7 +253,15 @@ function ModelsTab() {
     setItems(m.data ?? []);
     setBrands(b.data ?? []);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    window.addEventListener("app:connection-restored", load);
+    window.addEventListener("app:data-changed", load);
+    return () => {
+      window.removeEventListener("app:connection-restored", load);
+      window.removeEventListener("app:data-changed", load);
+    };
+  }, []);
 
   function reset() { setEditId(null); setName(""); setBrandId(""); setPumpType(""); }
 
@@ -347,7 +365,15 @@ function CustomersTab() {
     });
     setMachinesByCust(map);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    window.addEventListener("app:connection-restored", load);
+    window.addEventListener("app:data-changed", load);
+    return () => {
+      window.removeEventListener("app:connection-restored", load);
+      window.removeEventListener("app:data-changed", load);
+    };
+  }, []);
 
   const dup =
     form.name.trim() !== "" &&
@@ -566,7 +592,15 @@ function ProductsTab() {
     });
     setMachinesByProduct(map);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    window.addEventListener("app:connection-restored", load);
+    window.addEventListener("app:data-changed", load);
+    return () => {
+      window.removeEventListener("app:connection-restored", load);
+      window.removeEventListener("app:data-changed", load);
+    };
+  }, []);
 
   async function uploadImage(file: File) {
     if (!file.type.startsWith("image/")) return toast.error("รองรับเฉพาะไฟล์รูปภาพ");
@@ -816,8 +850,8 @@ function MachinesTab() {
   const [sellerFilter, setSellerFilter] = useState<string | null>(null);
   const [sellerQ, setSellerQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [customSellers, setCustomSellers] = useState<string[]>([]);
-  const [customStatuses, setCustomStatuses] = useState<string[]>([]);
+  const sellerNames = useSellerNames();
+  const machineStatuses = useMachineStatuses();
   const [completeFilter, setCompleteFilter] = useState<"all" | "yes" | "no">("all");
   useEffect(() => {
     const reload = () => {
@@ -825,7 +859,6 @@ function MachinesTab() {
       loadOptionList("statuses").then(setCustomStatuses);
     };
     reload();
-    // รีโหลดทันทีเมื่อผู้ขาย/สถานะถูกเพิ่ม แก้ไข หรือลบ จากที่ใดก็ได้ในระบบ
     window.addEventListener("option-list-changed", reload);
     return () => window.removeEventListener("option-list-changed", reload);
   }, []);
@@ -858,7 +891,17 @@ function MachinesTab() {
     setBrands(b.data ?? []);
     setModels(m.data ?? []);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    window.addEventListener("app:connection-restored", load);
+    window.addEventListener("app:data-changed", load);
+    window.addEventListener("option-list-changed", load);
+    return () => {
+      window.removeEventListener("app:connection-restored", load);
+      window.removeEventListener("app:data-changed", load);
+      window.removeEventListener("option-list-changed", load);
+    };
+  }, []);
 
   function resetForm() { formHistory.reset(empty); }
 
@@ -1280,65 +1323,85 @@ function MachinesTab() {
             </div>
             <div>
               <Label>รหัสลูกค้า (cust_id)</Label>
-              <Input
-                list="custid-options"
+              <Combobox
                 value={form.cust_id}
-                placeholder="เช่น C0001"
-                onChange={(e) => {
-                  const v = e.target.value;
-                  const hit = customers.find((c) => (c.cust_id ?? "").toLowerCase() === v.trim().toLowerCase());
+                placeholder="เลือกหรือพิมพ์รหัสลูกค้า"
+                searchPlaceholder="ค้นหารหัสลูกค้า..."
+                allowCustom
+                options={customers
+                  .filter((c) => c.cust_id)
+                  .map((c) => ({
+                    value: c.cust_id,
+                    label: `${c.cust_id} (${c.name})`,
+                  }))}
+                onChange={(v) => {
+                  const hit = customers.find(
+                    (c) => (c.cust_id ?? "").toLowerCase() === v.trim().toLowerCase(),
+                  );
                   setForm({ ...form, cust_id: v, ...(hit ? { customer_name: hit.name } : {}) });
                 }}
               />
-              <datalist id="custid-options">
-                {customers.filter((c) => c.cust_id).map((c) => <option key={c.id} value={c.cust_id}>{c.name}</option>)}
-              </datalist>
             </div>
             <div>
               <Label>ลูกค้า (พิมพ์เพิ่มหรือเลือก)</Label>
-              <Input
-                list="customer-options"
+              <Combobox
                 value={form.customer_name}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  const hit = customers.find((c) => c.name.toLowerCase() === v.trim().toLowerCase());
+                placeholder="เลือกหรือพิมพ์ชื่อลูกค้า"
+                searchPlaceholder="ค้นหาลูกค้า..."
+                allowCustom
+                options={customers.map((c) => ({
+                  value: c.name,
+                  label: c.cust_id ? `${c.name} [${c.cust_id}]` : c.name,
+                }))}
+                onChange={(v) => {
+                  const hit = customers.find(
+                    (c) => c.name.toLowerCase() === v.trim().toLowerCase(),
+                  );
                   setForm({ ...form, customer_name: v, ...(hit ? { cust_id: hit.cust_id ?? "" } : {}) });
                 }}
-                placeholder="เช่น บริษัท ABC"
               />
-              <datalist id="customer-options">
-                {customers.map((c) => <option key={c.id} value={c.name}>{c.cust_id ?? ""}</option>)}
-              </datalist>
             </div>
             <div>
               <Label>ยี่ห้อ (พิมพ์เพิ่มหรือเลือก)</Label>
-              <Input
-                list="brand-options"
+              <Combobox
                 value={form.brand_name}
-                onChange={(e) => setForm({ ...form, brand_name: e.target.value })}
-                placeholder="เช่น Atlas Copco"
+                placeholder="เลือกหรือพิมพ์ยี่ห้อ"
+                searchPlaceholder="ค้นหายี่ห้อ..."
+                allowCustom
+                options={brands.map((b) => ({ value: b.name }))}
+                onChange={(v) => setForm({ ...form, brand_name: v })}
               />
-              <datalist id="brand-options">
-                {brands.map((b) => <option key={b.id} value={b.name} />)}
-              </datalist>
             </div>
             <div>
               <Label>รุ่น (พิมพ์เพิ่มหรือเลือก)</Label>
-              <Input
-                list="model-options"
+              <Combobox
                 value={form.model_name}
-                onChange={(e) => {
-                  const model_name = e.target.value;
-                  const hit = models.find((m) => m.name.toLowerCase() === model_name.trim().toLowerCase() && (!form.brand_name || m.brands?.name?.toLowerCase() === form.brand_name.toLowerCase()));
-                  setForm({ ...form, model_name, ...(hit ? { pump_type: hit.pump_type ?? "", brand_name: hit.brands?.name ?? form.brand_name } : {}) });
+                placeholder="เลือกหรือพิมพ์รุ่นเครื่อง"
+                searchPlaceholder="ค้นหารุ่นเครื่อง..."
+                allowCustom
+                options={models
+                  .filter(
+                    (m) =>
+                      !form.brand_name ||
+                      m.brands?.name?.toLowerCase() === form.brand_name.toLowerCase(),
+                  )
+                  .map((m) => ({ value: m.name, hint: m.brands?.name }))}
+                onChange={(v) => {
+                  const hit = models.find(
+                    (m) =>
+                      m.name.toLowerCase() === v.trim().toLowerCase() &&
+                      (!form.brand_name ||
+                        m.brands?.name?.toLowerCase() === form.brand_name.toLowerCase()),
+                  );
+                  setForm({
+                    ...form,
+                    model_name: v,
+                    ...(hit
+                      ? { pump_type: hit.pump_type ?? "", brand_name: hit.brands?.name ?? form.brand_name }
+                      : {}),
+                  });
                 }}
-                placeholder="เช่น GA37"
               />
-              <datalist id="model-options">
-                {models
-                  .filter((m) => !form.brand_name || m.brands?.name?.toLowerCase() === form.brand_name.toLowerCase())
-                  .map((m) => <option key={m.id} value={m.name}>{m.brands?.name}</option>)}
-              </datalist>
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -1381,51 +1444,36 @@ function MachinesTab() {
             </div>
             <div>
               <Label>จังหวัด</Label>
-              <Input
-                list="province-options"
+              <Combobox
                 value={form.province}
-                onChange={(e) => setForm({ ...form, province: e.target.value })}
-                placeholder="เช่น สมุทรปราการ"
+                placeholder="เลือกหรือพิมพ์จังหวัด"
+                searchPlaceholder="ค้นหาจังหวัด..."
+                allowCustom
+                options={THAI_PROVINCES.map((p) => ({ value: p }))}
+                onChange={(v) => setForm({ ...form, province: v })}
               />
-              <datalist id="province-options">
-                {THAI_PROVINCES.map((p) => <option key={p} value={p} />)}
-              </datalist>
             </div>
             <div>
               <Label>ผู้ขาย</Label>
-              <Input
-                list="seller-options"
+              <Combobox
                 value={form.seller}
-                onChange={(e) => setForm({ ...form, seller: e.target.value })}
-                placeholder="ชื่อพนักงาน/ร้านที่ขายเครื่องนี้"
+                placeholder="เลือกหรือพิมพ์ผู้ขาย"
+                searchPlaceholder="ค้นหาผู้ขาย..."
+                allowCustom
+                options={sellerNames.map((s) => ({ value: s }))}
+                onChange={(v) => setForm({ ...form, seller: v })}
               />
-              <datalist id="seller-options">
-                {Array.from(
-                  new Set([...customSellers, ...units.map((u) => u.seller).filter(Boolean)]),
-                ).map((s: any) => (
-                  <option key={s} value={s} />
-                ))}
-              </datalist>
             </div>
             <div>
               <Label>สถานะเครื่อง (เลือกหรือพิมพ์เพิ่ม)</Label>
-              <Input
-                list="status-options"
+              <Combobox
                 value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value })}
-                placeholder="เช่น อยู่ในประกัน / คอนแทรค"
+                placeholder="เลือกหรือพิมพ์สถานะเครื่อง"
+                searchPlaceholder="ค้นหาสถานะ..."
+                allowCustom
+                options={machineStatuses.map((s) => ({ value: s }))}
+                onChange={(v) => setForm({ ...form, status: v })}
               />
-              <datalist id="status-options">
-                {Array.from(
-                  new Set([
-                    ...MACHINE_STATUSES,
-                    ...customStatuses,
-                    ...units.map((u) => (u.status ?? "").trim()).filter(Boolean),
-                  ]),
-                ).map((s: any) => (
-                  <option key={s} value={s} />
-                ))}
-              </datalist>
               <div className="mt-1 flex flex-wrap gap-1">
                 {MACHINE_STATUSES.map((s: string) => (
                   <Button
@@ -1572,7 +1620,12 @@ function MachinePartsEditor({
     setProducts(p.data ?? []);
     setCats(c.data ?? []);
   }
-  useEffect(() => { load(); }, [machineId]);
+  useEffect(() => {
+    load();
+    const onDataChanged = () => load();
+    window.addEventListener("app:data-changed", onDataChanged);
+    return () => window.removeEventListener("app:data-changed", onDataChanged);
+  }, [machineId]);
 
   const filteredProducts = catId ? products.filter((p) => p.category_id === catId) : products;
 
@@ -1609,6 +1662,7 @@ function MachinePartsEditor({
     });
     if (error) return toast.error(error.message);
     setPartNumber(""); setPartName(""); setQty("1"); setInterval("");
+    void invalidateData(["machine_parts", "products"]);
     load();
   }
   async function del(id: string) {
@@ -1617,11 +1671,13 @@ function MachinePartsEditor({
   }
   async function updatePart(id: string, patch: any) {
     await supabase.from("machine_parts").update(patch).eq("id", id);
+    void invalidateData(["machine_parts"]);
     load();
   }
   async function updateProduct(productId: string, patch: { name?: string; part_number?: string }) {
     const { error } = await supabase.from("products").update(patch).eq("id", productId);
     if (error) return toast.error(error.message);
+    void invalidateData(["products", "machine_parts"]);
     load();
   }
 
@@ -1639,17 +1695,19 @@ function MachinePartsEditor({
         </div>
         <div>
           <Label className="text-xs">Part Number (พิมพ์เพิ่มใหม่ หรือเลือก)</Label>
-          <Input
-            list={`part-num-${machineId}`}
+          <Combobox
+            options={filteredProducts
+              .filter((p) => !isValueRemoved(p.id) && !isValueRemoved(p.name) && !isValueRemoved(p.part_number))
+              .map((p) => ({
+                value: p.part_number,
+                label: `${p.part_number} — ${p.name}`,
+              }))}
             value={partNumber}
-            onChange={(e) => pickPart(e.target.value)}
+            onChange={(val) => pickPart(val)}
+            allowCustom={true}
             placeholder="รหัสอะไหล่"
+            searchPlaceholder="ค้นหารหัสหรือชื่อ..."
           />
-          <datalist id={`part-num-${machineId}`}>
-            {filteredProducts.map((p) => (
-              <option key={p.id} value={p.part_number}>{p.name}</option>
-            ))}
-          </datalist>
         </div>
         <div>
           <Label className="text-xs">ชื่ออะไหล่ (Part Description)</Label>
@@ -1662,15 +1720,17 @@ function MachinePartsEditor({
           </div>
           <div>
             <Label className="text-xs">รอบ (ชม.)</Label>
-            <Input
-              list="service-hour-presets"
-              type="number"
+            <Combobox
+              options={SERVICE_HOUR_PRESETS.map((h) => ({
+                value: String(h),
+                label: `${h} ชม.`,
+              }))}
               value={interval}
-              onChange={(e) => setInterval(e.target.value)}
+              onChange={setInterval}
+              allowCustom={true}
+              placeholder="รอบ (ชม.)"
+              searchPlaceholder="ค้นหาหรือระบุรอบ..."
             />
-            <datalist id="service-hour-presets">
-              {SERVICE_HOUR_PRESETS.map((h) => <option key={h} value={h} />)}
-            </datalist>
           </div>
           <div className="self-end">
             <Button onClick={add}><Plus className="h-4 w-4" /></Button>
@@ -1729,7 +1789,6 @@ function MachinePartsEditor({
               <div>
                 <Label className="text-xs">รอบเปลี่ยน (ชม.)</Label>
                 <Input
-                  list="service-hour-presets"
                   type="number"
                   defaultValue={mp.service_interval_hours ?? ""}
                   onBlur={(e) => updatePart(mp.id, { service_interval_hours: e.target.value ? Number(e.target.value) : null })}

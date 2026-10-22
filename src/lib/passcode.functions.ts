@@ -37,10 +37,23 @@ export const lockAccess = createServerFn({ method: "POST" })
     } else await session.clear();
     return { ok: true };
   });
+export const refreshSession = createServerFn({ method: "POST" }).handler(async () => {
+  try {
+    const { requireAccess, accessSession, passcodeVersion } = await import("./access-session.server");
+    const { role } = await requireAccess();
+    const session = await accessSession();
+    const current = await passcodeVersion(role);
+    await session.update({ role, version: current.version });
+    return { ok: true, role };
+  } catch {
+    return { ok: false };
+  }
+});
+
 export const updatePasscodes = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ currentAdminCode: z.string().max(128), viewerCode: z.string().max(128).optional(), adminCode: z.string().max(128).optional() }).parse(d))
   .handler(async ({ data }) => {
-    const { requireAccess, passcodeVersion, matchesSecret, accessSession } = await import("./access-session.server");
+    const { requireAccess, passcodeVersion, matchesSecret, accessSession, invalidatePasscodeCache } = await import("./access-session.server");
     await requireAccess("admin");
     const current = await passcodeVersion("admin");
     if (!matchesSecret(data.currentAdminCode.trim(), current.code)) return { ok: false as const, error: "รหัสแอดมินปัจจุบันไม่ถูกต้อง" };
@@ -52,6 +65,7 @@ export const updatePasscodes = createServerFn({ method: "POST" })
       const { error } = await supabaseAdmin.from("security_settings").update({ value: row.value }).eq("key", row.key);
       if (error) return { ok: false as const, error: "บันทึกรหัสไม่สำเร็จ" };
     }
+    invalidatePasscodeCache();
     const session = await accessSession();
     const refreshed = await passcodeVersion("admin");
     await session.update({ role: "admin", version: refreshed.version });

@@ -12,6 +12,8 @@ import { KIND_LABEL, loadTemplates, type ChecklistItem, type ChecklistKind, type
 import { MultiCombobox, splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { ensurePumpType, notifyPumpTypesChanged, usePumpTypes } from "@/lib/pump-types";
 import { PumpTypeManagerDialog } from "@/components/admin/PumpTypeManager";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { invalidateData } from "@/lib/data-sync";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -37,6 +39,9 @@ export function ChecklistTemplatesTab() {
   };
   useEffect(() => {
     reload();
+    const onDataChanged = () => reload();
+    window.addEventListener("app:data-changed", onDataChanged);
+    return () => window.removeEventListener("app:data-changed", onDataChanged);
   }, []);
 
   const addTemplate = async () => {
@@ -46,6 +51,7 @@ export function ChecklistTemplatesTab() {
       .select("id")
       .single();
     if (error) return toast.error(error.message);
+    void invalidateData(["checklist_templates"]);
     await reload((data as any).id);
   };
 
@@ -74,6 +80,7 @@ export function ChecklistTemplatesTab() {
     if (error) return toast.error(error.message);
     toast.success("บันทึกเทมเพลตแล้ว");
     notifyPumpTypesChanged();
+    void invalidateData(["checklist_templates"]);
     reload(sel.id);
   };
 
@@ -210,16 +217,23 @@ export function ChecklistTemplatesTab() {
               {sel.items.map((it, i) => (
                 <div key={it.id} className="grid min-w-0 grid-cols-1 items-center gap-2 rounded border p-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
                   <Input className="h-8" value={it.label} placeholder="ชื่อหัวข้อ" onChange={(e) => setItem(i, { label: e.target.value })} />
-                  <select
-                    className="h-8 rounded border bg-background px-2 text-sm"
+                  <Select
                     value={it.kind}
-                    onChange={(e) => {
-                      const kind = e.target.value as ChecklistKind;
+                    onValueChange={(kind: ChecklistKind) => {
                       setItem(i, { kind, fields: kind === "status" ? [] : it.fields.length ? it.fields : [""] });
                     }}
                   >
-                    {(Object.keys(KIND_LABEL) as ChecklistKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
-                  </select>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(KIND_LABEL) as ChecklistKind[]).map((k) => (
+                        <SelectItem key={k} value={k}>
+                          {KIND_LABEL[k]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {it.kind !== "status" && (
                     <Input
                        className="h-8 w-full"

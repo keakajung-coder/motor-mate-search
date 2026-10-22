@@ -6,6 +6,7 @@ import {
   restoreDeletedItem,
 } from "@/lib/admin-write.functions";
 import { refreshDirectory } from "@/lib/directory";
+import { invalidateData } from "@/lib/data-sync";
 import { supabase } from "@/lib/data-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -100,8 +101,13 @@ export function TrashTab() {
   useEffect(() => {
     load();
     const onStaffChanged = () => load();
+    const onDataChanged = () => load();
     window.addEventListener("service-staff-changed", onStaffChanged);
-    return () => window.removeEventListener("service-staff-changed", onStaffChanged);
+    window.addEventListener("app:data-changed", onDataChanged);
+    return () => {
+      window.removeEventListener("service-staff-changed", onStaffChanged);
+      window.removeEventListener("app:data-changed", onDataChanged);
+    };
   }, []);
 
   const shown = useMemo(() => {
@@ -153,6 +159,7 @@ export function TrashTab() {
       setItems((l) => l.filter((i) => i.id !== item.id));
       window.dispatchEvent(new Event("service-staff-changed"));
       await refreshDirectory();
+      void invalidateData(["service_staff", "directory", "deleted_items"]);
       return;
     }
 
@@ -165,6 +172,9 @@ export function TrashTab() {
     if (res.table === "sales_contacts") window.dispatchEvent(new Event("sales-contacts-changed"));
     if (res.table === "service_staff") window.dispatchEvent(new Event("service-staff-changed"));
     refreshDirectory();
+    if (res.table) {
+      void invalidateData([res.table, "deleted_items", "directory"]);
+    }
   };
 
   const purge = async (item: TrashItem) => {
@@ -178,6 +188,7 @@ export function TrashTab() {
       setItems((l) => l.filter((i) => i.id !== item.id));
       window.dispatchEvent(new Event("service-staff-changed"));
       refreshDirectory();
+      void invalidateData(["service_staff", "deleted_items", "directory"]);
       toast.success(`ลบพนักงาน "${item.label}" ถาวรแล้ว`);
       return;
     }
@@ -186,6 +197,7 @@ export function TrashTab() {
     setBusy(null);
     if (!res.ok) return toast.error(res.error);
     setItems((l) => l.filter((i) => i.id !== item.id));
+    void invalidateData([item.table_name, "deleted_items"]);
     toast.success("ลบถาวรแล้ว");
   };
 

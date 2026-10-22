@@ -18,6 +18,8 @@ import { logAudit } from "@/lib/audit";
 import { DateInput } from "@/components/ui/date-input";
 import { ChecklistView } from "@/components/ChecklistView";
 import type { ChecklistResult } from "@/lib/checklist";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { isValueRemoved } from "@/lib/data-sync";
 
 type Row = {
   id: string;
@@ -140,6 +142,9 @@ export function JobReportsPanel({
 
   useEffect(() => {
     load();
+    const onDataChanged = () => load();
+    window.addEventListener("app:data-changed", onDataChanged);
+    return () => window.removeEventListener("app:data-changed", onDataChanged);
   }, [load]);
 
   const custSn = useCallback(
@@ -149,19 +154,26 @@ export function JobReportsPanel({
 
   const techOptions = useMemo(() => {
     const set = new Set<string>();
-    allRows.forEach((r) => splitNames(r.staff_name ?? "").forEach((n) => set.add(n)));
+    allRows.forEach((r) => splitNames(r.staff_name ?? "").forEach((n) => {
+      if (!isValueRemoved(n)) set.add(n);
+    }));
     return [...set].sort((a, b) => a.localeCompare(b, "th"));
   }, [allRows]);
 
   const repOptions = useMemo(() => {
     const set = new Set<string>();
-    allRows.forEach((r) => r.sales_rep?.trim() && set.add(r.sales_rep.trim()));
+    allRows.forEach((r) => {
+      const rep = r.sales_rep?.trim();
+      if (rep && !isValueRemoved(rep)) set.add(rep);
+    });
     return [...set].sort((a, b) => a.localeCompare(b, "th"));
   }, [allRows]);
 
   const vehicleOptions = useMemo(() => {
     const set = new Set<string>();
-    allRows.forEach((r) => splitNames(r.vehicle_plate ?? "").forEach((p) => set.add(p)));
+    allRows.forEach((r) => splitNames(r.vehicle_plate ?? "").forEach((p) => {
+      if (!isValueRemoved(p)) set.add(p);
+    }));
     return [...set].sort((a, b) => a.localeCompare(b, "th"));
   }, [allRows]);
 
@@ -481,69 +493,71 @@ export function JobReportsPanel({
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">
               กรองประเภทงาน
             </label>
-            <select
-              aria-label="กรองประเภทงาน"
-              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm font-medium"
-              value={roleFilter}
-              onChange={(e) => handleRoleChange(e.target.value as RoleFilter)}
-            >
-              <option value="all">ทั้งหมด (แสดงงานทั้งช่างและผู้ขาย)</option>
-              <option value="seller">เฉพาะงานผู้ขาย</option>
-              <option value="tech">เฉพาะงานช่าง</option>
-            </select>
+            <Select value={roleFilter} onValueChange={(val) => handleRoleChange(val as RoleFilter)}>
+              <SelectTrigger aria-label="กรองประเภทงาน" className="h-9 min-w-0 w-full font-medium">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทั้งหมด (แสดงงานทั้งช่างและผู้ขาย)</SelectItem>
+                <SelectItem value="seller">เฉพาะงานผู้ขาย</SelectItem>
+                <SelectItem value="tech">เฉพาะงานช่าง</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">
               {roleFilter === "seller" ? "เลือกผู้ขาย / เซลล์" : roleFilter === "tech" ? "เลือกช่างเทคนิค" : "เลือกรายบุคคล"}
             </label>
-            <select
-              aria-label="กรองรายบุคคล"
-              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm"
-              value={personFilter}
-              onChange={(e) => handlePersonChange(e.target.value)}
-            >
-              {roleFilter === "tech" ? (
-                <>
-                  <option value="">ช่างทุกคน</option>
-                  {techOptions.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </>
-              ) : roleFilter === "seller" ? (
-                <>
-                  <option value="">ผู้ขายทุกคน</option>
-                  {repOptions.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </>
-              ) : (
-                <>
-                  <option value="">ทุกคน (ช่าง / ผู้ขาย)</option>
-                  {techOptions.length > 0 && (
-                    <optgroup label="ช่าง">
-                      {techOptions.map((t) => (
-                        <option key={"tech-" + t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {repOptions.length > 0 && (
-                    <optgroup label="ผู้ขาย / เซลล์">
-                      {repOptions.map((r) => (
-                        <option key={"rep-" + r} value={r}>
-                          {r}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </>
-              )}
-            </select>
+            <Select value={personFilter || "__all__"} onValueChange={(val) => handlePersonChange(val === "__all__" ? "" : val)}>
+              <SelectTrigger aria-label="กรองรายบุคคล" className="h-9 min-w-0 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {roleFilter === "tech" ? (
+                  <>
+                    <SelectItem value="__all__">ช่างทุกคน</SelectItem>
+                    {techOptions.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </>
+                ) : roleFilter === "seller" ? (
+                  <>
+                    <SelectItem value="__all__">ผู้ขายทุกคน</SelectItem>
+                    {repOptions.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value="__all__">ทุกคน (ช่าง / ผู้ขาย)</SelectItem>
+                    {techOptions.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>ช่าง</SelectLabel>
+                        {techOptions.map((t) => (
+                          <SelectItem key={"tech-" + t} value={t}>
+                            {t}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                    {repOptions.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>ผู้ขาย / เซลล์</SelectLabel>
+                        {repOptions.map((r) => (
+                          <SelectItem key={"rep-" + r} value={r}>
+                            {r}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between">
@@ -564,19 +578,19 @@ export function JobReportsPanel({
                 </button>
               )}
             </div>
-            <select
-              aria-label="กรองรถ"
-              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm"
-              value={vehicleFilter}
-              onChange={(e) => handleVehicleChange(e.target.value)}
-            >
-              <option value="">รถทุกคัน</option>
-              {vehicleOptions.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
+            <Select value={vehicleFilter || "__all__"} onValueChange={(val) => handleVehicleChange(val === "__all__" ? "" : val)}>
+              <SelectTrigger aria-label="กรองรถ" className="h-9 min-w-0 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">รถทุกคัน</SelectItem>
+                {vehicleOptions.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {v}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

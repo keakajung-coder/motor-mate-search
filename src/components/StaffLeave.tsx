@@ -9,6 +9,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { storedAdminCode } from "@/lib/access";
 import { staffLeaveRequest } from "@/lib/staff-leave.functions";
 import { LEAVE_LABELS, LEAVE_SHORT_LABELS, LEAVE_PERIODS, isLeavePeriod, type StaffLeave, type LeavePeriod } from "@/lib/staff-leave";
+import { invalidateData, isValueRemoved } from "@/lib/data-sync";
 import { toast } from "sonner";
 
 function readCode() { return storedAdminCode() || localStorage.getItem("pc_viewer") || ""; }
@@ -20,14 +21,20 @@ export function useStaffLeave() {
     try {
       const result = await staffLeaveRequest({ data: { code: readCode(), action: "list" } });
       setRows(result.rows.filter((row): row is StaffLeave => isLeavePeriod(row.period)));
-      setStaff(result.staff);
+      setStaff(result.staff.filter((s) => !isValueRemoved(s.name) && !isValueRemoved(s.id)));
       setError("");
     } catch { setError("โหลดวันลาไม่สำเร็จ กรุณาลองอีกครั้ง"); }
   }, []);
   useEffect(() => {
     void load();
     window.addEventListener("app:connection-restored", load);
-    return () => window.removeEventListener("app:connection-restored", load);
+    window.addEventListener("app:data-changed", load);
+    window.addEventListener("service-staff-changed", load);
+    return () => {
+      window.removeEventListener("app:connection-restored", load);
+      window.removeEventListener("app:data-changed", load);
+      window.removeEventListener("service-staff-changed", load);
+    };
   }, [load]);
   return { rows, staff, error, load };
 }
@@ -57,13 +64,21 @@ export function StaffLeaveDialog({ date, onClose, staff, rows, reload }: { date:
     setBusy(true);
     try {
       await staffLeaveRequest({ data: { code: storedAdminCode(), action: "save", staffId, date: day, period } });
-      await reload(); toast.success("บันทึกวันลาแล้ว"); onClose();
+      await reload();
+      void invalidateData(["staff_leave"]);
+      toast.success("บันทึกวันลาแล้ว");
+      onClose();
     } catch (e) { toast.error(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ"); }
     finally { setBusy(false); }
   };
   const remove = async (id: string) => {
     setBusy(true);
-    try { await staffLeaveRequest({ data: { code: storedAdminCode(), action: "delete", id } }); await reload(); toast.success("ยกเลิกวันลาแล้ว"); }
+    try {
+      await staffLeaveRequest({ data: { code: storedAdminCode(), action: "delete", id } });
+      await reload();
+      void invalidateData(["staff_leave"]);
+      toast.success("ยกเลิกวันลาแล้ว");
+    }
     catch (e) { toast.error(e instanceof Error ? e.message : "ยกเลิกไม่สำเร็จ"); }
     finally { setBusy(false); }
   };

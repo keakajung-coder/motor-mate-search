@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/data-client";
 import { logAudit } from "@/lib/audit";
+import { invalidateData, isValueRemoved, markValueRemoved } from "@/lib/data-sync";
 
 export type Engineer = {
   id: string;
@@ -45,7 +46,7 @@ export async function loadEngineers(includeInactive = false): Promise<Engineer[]
           created_at: item.created_at || new Date().toISOString(),
         };
       })
-      .filter((e) => e.name.length > 0);
+      .filter((e) => e.name.length > 0 && !isValueRemoved(e.name));
 
     return includeInactive ? list : list.filter((e) => e.active);
   } catch {
@@ -73,6 +74,7 @@ export async function saveEngineers(list: Engineer[]): Promise<boolean> {
 
   if (error) return false;
 
+  invalidateData(["engineers", "app_settings", "directory"]);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("engineers-changed"));
   }
@@ -190,6 +192,7 @@ export async function removeEngineer(
     updatedList = current.map((e) => (e.id === id ? { ...e, active: false } : e));
   }
 
+  markValueRemoved(target.name);
   const ok = await saveEngineers(updatedList);
   if (!ok) return { success: false, error: "ลบข้อมูลไม่สำเร็จ" };
 
@@ -201,6 +204,7 @@ export async function removeEngineer(
     changes: { id, name: target.name, active: false },
   });
 
+  invalidateData(["engineers", "app_settings", "directory"]);
   return { success: true };
 }
 

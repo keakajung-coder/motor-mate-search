@@ -5,6 +5,7 @@ import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp, Search, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { isValueRemoved } from "@/lib/data-sync";
 
 /** สกัดข้อความค้นหาจาก React Node (รวมถึงค่า value, label, children) */
 function extractSearchableText(node: React.ReactNode): string {
@@ -27,21 +28,25 @@ function filterSelectNodes(
   nodes: React.ReactNode,
   search: string,
 ): { filtered: React.ReactNode; matchCount: number } {
-  if (!search.trim()) {
-    return { filtered: nodes, matchCount: React.Children.count(nodes) };
-  }
   const q = search.trim().toLowerCase();
   let matchCount = 0;
 
   function traverse(child: React.ReactNode): React.ReactNode {
     if (!React.isValidElement(child)) return child;
     const p = child.props as Record<string, any>;
+    if (p.value && isValueRemoved(String(p.value))) {
+      return null;
+    }
     // ถ้าเป็นกลุ่มย่อย หรือมี children โดยไม่มี value
     if (p.children && p.value === undefined) {
       const filteredGroup = React.Children.map(p.children, traverse);
       const valid = React.Children.toArray(filteredGroup).filter(Boolean);
       if (valid.length === 0) return null;
       return React.cloneElement(child, { ...p, children: filteredGroup });
+    }
+    if (!q) {
+      matchCount++;
+      return child;
     }
     const text = extractSearchableText(child).toLowerCase();
     if (text.includes(q)) {
@@ -68,7 +73,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background cursor-pointer data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "flex h-10 sm:h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background cursor-pointer data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       className,
     )}
     {...props}
@@ -133,9 +138,16 @@ const SelectContent = React.forwardRef<
     const [query, setQuery] = React.useState("");
     const inputRef = React.useRef<HTMLInputElement>(null);
 
+    const [removedTick, setRemovedTick] = React.useState(0);
+    React.useEffect(() => {
+      const onRemoved = () => setRemovedTick((n) => n + 1);
+      window.addEventListener("app:option-removed", onRemoved);
+      return () => window.removeEventListener("app:option-removed", onRemoved);
+    }, []);
+
     const { filtered, matchCount } = React.useMemo(
       () => filterSelectNodes(children, query),
-      [children, query],
+      [children, query, removedTick],
     );
 
     return (
@@ -143,12 +155,13 @@ const SelectContent = React.forwardRef<
         <SelectPrimitive.Content
           ref={ref}
           className={cn(
-            "dropdown-scroll relative z-50 max-h-[min(340px,var(--radix-select-content-available-height))] min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-select-content-transform-origin)",
+            "relative z-50 max-h-[min(340px,var(--radix-select-content-available-height,340px))] min-w-[min(100vw-2rem,8rem)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-select-content-transform-origin)",
             position === "popper" &&
               "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
             className,
           )}
           position={position}
+          collisionPadding={8}
           {...props}
         >
           {searchable && (
@@ -195,9 +208,9 @@ const SelectContent = React.forwardRef<
           <SelectScrollUpButton />
           <SelectPrimitive.Viewport
             className={cn(
-              "dropdown-scroll max-h-48 sm:max-h-52 overflow-y-auto overscroll-contain p-1",
+              "p-1 max-h-56 sm:max-h-64 overflow-y-auto overscroll-contain",
               position === "popper" &&
-                "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+                "w-full min-w-[var(--radix-select-trigger-width)]",
             )}
           >
             {matchCount === 0 && query.trim() ? (

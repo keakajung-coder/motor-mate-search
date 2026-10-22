@@ -1,11 +1,9 @@
-import { QueryClient } from "@tanstack/react-query";
+import { getQueryClient } from "@/lib/query-client";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
 export const getRouter = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: 3, retryDelay: (n) => Math.min(1000 * 2 ** n, 8000) }, mutations: { retry: 0 } },
-  });
+  const queryClient = getQueryClient();
 
   const router = createRouter({
     routeTree,

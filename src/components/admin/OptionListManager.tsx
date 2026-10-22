@@ -9,6 +9,7 @@ import { Plus, Trash2, Pencil, Check, X, Phone, MessageCircle } from "lucide-rea
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { loadOptionList, saveOptionList, type OptionListKey } from "@/lib/option-lists";
 import { lineHref, telHref, visibleLineId } from "@/lib/contact";
+import { markValueRemoved, isValueRemoved, invalidateData } from "@/lib/data-sync";
 
 /**
  * จัดการรายการตัวเลือก "ผู้ขาย" หรือ "สถานะเครื่อง"
@@ -72,7 +73,7 @@ export function OptionListManager({
   const all = useMemo(
     () =>
       Array.from(new Set([...presets, ...custom, ...Object.keys(counts)]))
-        .filter(Boolean)
+        .filter((s) => Boolean(s) && !isValueRemoved(s))
         .sort((a, b) => a.localeCompare(b, "th")),
     [presets, custom, counts],
   );
@@ -96,6 +97,7 @@ export function OptionListManager({
     setBusy(true);
     await supabase.from("machine_units").update({ [column]: n } as any).eq(column, oldName);
     await saveOptionList(listKey, [...custom.filter((s) => s !== oldName), n]);
+    invalidateData([listKey, "machine_units", "app_settings", "machine_statuses", "sellers"]);
     setEditing(null);
     await load();
     setBusy(false);
@@ -105,8 +107,10 @@ export function OptionListManager({
 
   async function remove(name: string) {
     setBusy(true);
+    markValueRemoved(name);
     await supabase.from("machine_units").update({ [column]: null } as any).eq(column, name);
     await saveOptionList(listKey, custom.filter((s) => s !== name));
+    invalidateData([listKey, "machine_units", "app_settings", "machine_statuses", "sellers"]);
     await load();
     setBusy(false);
     onChanged?.();

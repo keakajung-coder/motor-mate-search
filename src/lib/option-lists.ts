@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/data-client";
+import { invalidateData, isValueRemoved } from "@/lib/data-sync";
 
 /** รายการตัวเลือกที่ผู้ใช้เพิ่มเอง (ผู้ขาย / สถานะ) เก็บใน app_settings */
 export type OptionListKey = "sellers" | "statuses" | "pump_types";
@@ -8,14 +9,18 @@ export async function loadOptionList(key: OptionListKey): Promise<string[]> {
   if (!data?.value) return [];
   try {
     const arr = JSON.parse(data.value);
-    return Array.isArray(arr) ? arr.filter((s) => typeof s === "string") : [];
+    return Array.isArray(arr)
+      ? arr.filter((s) => typeof s === "string" && !isValueRemoved(s))
+      : [];
   } catch {
     return [];
   }
 }
 
 export async function saveOptionList(key: OptionListKey, list: string[]) {
-  const value = JSON.stringify(Array.from(new Set(list.map((s) => s.trim()).filter(Boolean))));
+  const value = JSON.stringify(
+    Array.from(new Set(list.map((s) => s.trim()).filter((s) => Boolean(s) && !isValueRemoved(s)))),
+  );
   const { data } = await supabase.from("app_settings").select("id").eq("key", key).maybeSingle();
   if (data?.id) {
     await supabase.from("app_settings").update({ value }).eq("id", data.id);
@@ -23,6 +28,7 @@ export async function saveOptionList(key: OptionListKey, list: string[]) {
     await supabase.from("app_settings").insert({ key, value });
   }
   // แจ้งทุกส่วนที่ใช้รายการนี้ให้โหลดใหม่ทันที (เพิ่ม/แก้ไข/ลบ → dropdown ไม่ค้างชื่อเดิม)
+  invalidateData([key, "app_settings"]);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("option-list-changed", { detail: { key } }));
     if (key === "sellers") window.dispatchEvent(new Event("sales-contacts-changed"));

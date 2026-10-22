@@ -15,6 +15,9 @@ async function fetchWithRetry(url: string, init: RequestInit | undefined): Promi
     if (init?.signal?.aborted) break;
     try {
       const res = await fetch(url, init);
+      if (res.status === 401 && typeof window !== "undefined") {
+        window.dispatchEvent(new Event("app:session-expired"));
+      }
       if (res.status < 500 || !retryable || attempt === RETRIES) return res;
       lastError = new Error(`HTTP ${res.status}`);
     } catch (e) {

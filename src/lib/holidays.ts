@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/data-client";
+import { invalidateData } from "@/lib/data-sync";
 
 export type Holiday = {
   id: string;
@@ -98,6 +99,7 @@ export async function saveHolidays(list: Holiday[]): Promise<boolean> {
   writeLocal(list);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("app:holidays-changed"));
+    void invalidateData(["holidays", "app_settings"]);
   }
 
   try {
@@ -144,7 +146,11 @@ export async function updateHoliday(holiday: Holiday): Promise<boolean> {
 export async function deleteHoliday(idOrDate: string): Promise<boolean> {
   const current = await loadHolidays();
   const updated = current.filter((h) => h.id !== idOrDate && h.date !== idOrDate);
-  return saveHolidays(updated);
+  const ok = await saveHolidays(updated);
+  if (ok && typeof window !== "undefined") {
+    void invalidateData(["holidays", "app_settings"]);
+  }
+  return ok;
 }
 
 export function useHolidays() {
@@ -165,10 +171,12 @@ export function useHolidays() {
     };
 
     window.addEventListener("app:holidays-changed", onChange);
+    window.addEventListener("app:data-changed", reload);
     window.addEventListener("app:connection-restored", reload);
 
     return () => {
       window.removeEventListener("app:holidays-changed", onChange);
+      window.removeEventListener("app:data-changed", reload);
       window.removeEventListener("app:connection-restored", reload);
     };
   }, [reload]);

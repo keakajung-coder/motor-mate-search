@@ -10,6 +10,8 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { useBundles, type PartBundle } from "@/lib/bundles";
 import { Loader2, Plus, Trash2, PackagePlus } from "lucide-react";
 import { toast } from "sonner";
+import { Combobox } from "@/components/ui/combobox";
+import { invalidateData, isValueRemoved } from "@/lib/data-sync";
 
 type Product = { id: string; name: string; part_number: string };
 
@@ -21,13 +23,32 @@ export function BundlesTab() {
   const [desc, setDesc] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  const loadProducts = () => {
     void supabase
       .from("products")
       .select("id, name, part_number")
       .order("part_number")
-      .then(({ data }) => setProducts((data as Product[]) ?? []));
-  }, []);
+      .then(({ data }) =>
+        setProducts(
+          ((data as Product[]) ?? []).filter(
+            (p) =>
+              !isValueRemoved(p.id) &&
+              !isValueRemoved(p.name) &&
+              !isValueRemoved(p.part_number),
+          ),
+        ),
+      );
+  };
+
+  useEffect(() => {
+    loadProducts();
+    const onDataChanged = () => {
+      loadProducts();
+      void reload();
+    };
+    window.addEventListener("app:data-changed", onDataChanged);
+    return () => window.removeEventListener("app:data-changed", onDataChanged);
+  }, [reload]);
 
   const create = async () => {
     const n = name.trim();
@@ -39,6 +60,7 @@ export function BundlesTab() {
     setName("");
     setDesc("");
     toast.success("สร้างชุดอะไหล่แล้ว");
+    void invalidateData(["part_bundles"]);
     void reload();
   };
 
@@ -104,6 +126,7 @@ function BundleEditor({
     if (error) return toast.error(error.message);
     setPick("");
     setQty("1");
+    void invalidateData(["part_bundles", "part_bundle_items"]);
     onChanged();
   };
 
@@ -113,6 +136,7 @@ function BundleEditor({
       product_id: productId,
     });
     if (error) return toast.error(error.message);
+    void invalidateData(["part_bundles", "part_bundle_items"]);
     onChanged();
   };
 
@@ -120,6 +144,7 @@ function BundleEditor({
     const { error } = await deleteAsAdmin("part_bundles", { id: bundle.id });
     if (error) return toast.error(error.message);
     toast.success("ลบชุดอะไหล่แล้ว");
+    void invalidateData(["part_bundles", "part_bundle_items"]);
     onChanged();
   };
 
@@ -150,12 +175,23 @@ function BundleEditor({
         <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_6rem_auto] lg:items-end">
           <div className="space-y-1">
             <Label className="text-xs">เพิ่มอะไหล่เข้าชุด (พิมพ์ค้นหาได้)</Label>
-            <Input list={`prod-${bundle.id}`} value={pick} onChange={(e) => setPick(e.target.value)} />
-            <datalist id={`prod-${bundle.id}`}>
-              {products.map((p) => (
-                <option key={p.id} value={`${p.part_number} — ${p.name}`} />
-              ))}
-            </datalist>
+            <Combobox
+              options={products
+                .filter(
+                  (p) =>
+                    !isValueRemoved(p.id) &&
+                    !isValueRemoved(p.name) &&
+                    !isValueRemoved(p.part_number),
+                )
+                .map((p) => ({
+                  value: `${p.part_number} — ${p.name}`,
+                  label: `${p.part_number} — ${p.name}`,
+                }))}
+              value={pick}
+              onChange={setPick}
+              placeholder="พิมพ์ค้นหาหรือเลือกอะไหล่..."
+              searchPlaceholder="ค้นหาอะไหล่..."
+            />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">จำนวน</Label>

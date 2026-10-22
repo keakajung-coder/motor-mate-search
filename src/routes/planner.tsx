@@ -18,6 +18,16 @@ import {
 import { toast } from "sonner";
 import { notifyUsers } from "@/lib/notify";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { invalidateData, isValueRemoved } from "@/lib/data-sync";
 import { loadAutoJobAlert, saveAutoJobAlert, sendJobApprovalAlert } from "@/lib/job-alerts";
 import { ensureSeller, useSellerNames } from "@/lib/sellers";
 import { JobAttachments, parseAttachments } from "@/components/JobAttachments";
@@ -450,24 +460,47 @@ function PlannerPage() {
     load();
     window.addEventListener("app:connection-restored", load);
     window.addEventListener("planner:reload", load);
+    window.addEventListener("app:data-changed", load);
     return () => {
       window.removeEventListener("app:connection-restored", load);
       window.removeEventListener("planner:reload", load);
+      window.removeEventListener("app:data-changed", load);
     };
   }, [load]);
 
   const staffNames = useMemo(
-    () => Array.from(new Set(appts.flatMap((a) => splitNames(a.staff_name)))).sort((a, b) => a.localeCompare(b, "th")),
+    () =>
+      Array.from(
+        new Set(
+          appts
+            .flatMap((a) => splitNames(a.staff_name))
+            .filter((n) => !isValueRemoved(n)),
+        ),
+      ).sort((a, b) => a.localeCompare(b, "th")),
     [appts],
   );
 
   const sellerNames = useMemo(
-    () => Array.from(new Set(appts.map((a) => (a.sales_rep ?? "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "th")),
+    () =>
+      Array.from(
+        new Set(
+          appts
+            .map((a) => (a.sales_rep ?? "").trim())
+            .filter((n) => Boolean(n) && !isValueRemoved(n)),
+        ),
+      ).sort((a, b) => a.localeCompare(b, "th")),
     [appts],
   );
 
   const vehiclePlates = useMemo(
-    () => Array.from(new Set(appts.flatMap((a) => splitNames(a.vehicle_plate)))).sort((a, b) => a.localeCompare(b, "th")),
+    () =>
+      Array.from(
+        new Set(
+          appts
+            .flatMap((a) => splitNames(a.vehicle_plate))
+            .filter((p) => !isValueRemoved(p)),
+        ),
+      ).sort((a, b) => a.localeCompare(b, "th")),
     [appts],
   );
 
@@ -738,100 +771,114 @@ function PlannerPage() {
               }}
             />
             {/* 1. กรองประเภทงาน (Role Filter) */}
-            <select
-              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm font-medium 2xl:w-auto"
+            <Select
               value={roleFilter}
-              onChange={(e) => {
-                const nextRole = e.target.value as RoleFilter;
+              onValueChange={(val) => {
+                const nextRole = val as RoleFilter;
                 setRoleFilter(nextRole);
                 if (staffFilter) {
                   if (nextRole === "seller" && !sellerNames.includes(staffFilter)) setStaffFilter("");
                   if (nextRole === "tech" && !staffNames.includes(staffFilter)) setStaffFilter("");
                 }
               }}
-              aria-label="กรองประเภทงาน"
             >
-              <option value="all">ทั้งหมด (แสดงงานทั้งช่างและผู้ขาย)</option>
-              <option value="seller">เฉพาะงานผู้ขาย</option>
-              <option value="tech">เฉพาะงานช่าง</option>
-            </select>
+              <SelectTrigger aria-label="กรองประเภทงาน" className="h-9 min-w-0 w-full font-medium 2xl:w-auto">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทั้งหมด (แสดงงานทั้งช่างและผู้ขาย)</SelectItem>
+                <SelectItem value="seller">เฉพาะงานผู้ขาย</SelectItem>
+                <SelectItem value="tech">เฉพาะงานช่าง</SelectItem>
+              </SelectContent>
+            </Select>
             {/* 2. กรองรายบุคคล */}
-            <select
-              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm 2xl:w-auto"
-              value={staffFilter}
-              onChange={(e) => setStaffFilter(e.target.value)}
-              aria-label="กรองรายบุคคล"
+            <Select
+              value={staffFilter || "__all__"}
+              onValueChange={(val) => setStaffFilter(val === "__all__" ? "" : val)}
             >
-              {roleFilter === "tech" ? (
-                <>
-                  <option value="">ช่างทุกคน</option>
-                  {staffNames.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </>
-              ) : roleFilter === "seller" ? (
-                <>
-                  <option value="">ผู้ขายทุกคน</option>
-                  {sellerNames.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </>
-              ) : (
-                <>
-                  <option value="">ทุกคน (ช่าง / ผู้ขาย)</option>
-                  {staffNames.length > 0 && (
-                    <optgroup label="ช่าง">
-                      {staffNames.map((n) => (
-                        <option key={"tech-" + n} value={n}>
-                          {n}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {sellerNames.length > 0 && (
-                    <optgroup label="ผู้ขาย / เซลล์">
-                      {sellerNames.map((n) => (
-                        <option key={"rep-" + n} value={n}>
-                          {n}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </>
-              )}
-            </select>
+              <SelectTrigger aria-label="กรองรายบุคคล" className="h-9 min-w-0 w-full 2xl:w-auto">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {roleFilter === "tech" ? (
+                  <>
+                    <SelectItem value="__all__">ช่างทุกคน</SelectItem>
+                    {staffNames.map((n) => (
+                      <SelectItem key={n} value={n}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </>
+                ) : roleFilter === "seller" ? (
+                  <>
+                    <SelectItem value="__all__">ผู้ขายทุกคน</SelectItem>
+                    {sellerNames.map((n) => (
+                      <SelectItem key={n} value={n}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value="__all__">ทุกคน (ช่าง / ผู้ขาย)</SelectItem>
+                    {staffNames.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>ช่าง</SelectLabel>
+                        {staffNames.map((n) => (
+                          <SelectItem key={"tech-" + n} value={n}>
+                            {n}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                    {sellerNames.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>ผู้ขาย / เซลล์</SelectLabel>
+                        {sellerNames.map((n) => (
+                          <SelectItem key={"rep-" + n} value={n}>
+                            {n}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
             {/* 3. กรองรถ */}
-            <select
-              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm 2xl:w-auto"
-              value={vehicleFilter}
-              onChange={(e) => setVehicleFilter(e.target.value)}
-              aria-label="กรองรถ"
+            <Select
+              value={vehicleFilter || "__all__"}
+              onValueChange={(val) => setVehicleFilter(val === "__all__" ? "" : val)}
             >
-              <option value="">รถทุกคัน</option>
-              {vehiclePlates.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger aria-label="กรองรถ" className="h-9 min-w-0 w-full 2xl:w-auto">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">รถทุกคัน</SelectItem>
+                {vehiclePlates.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {p}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {/* 4. เรียงลำดับ */}
-            <select
-              className="h-9 min-w-0 w-full rounded-md border border-input bg-background px-2 text-sm 2xl:w-auto"
+            <Select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              aria-label="เรียงลำดับข้อมูล"
+              onValueChange={setSortBy}
             >
-              <option value="date-asc">เรียง: วันที่ เก่า → ใหม่</option>
-              <option value="date-desc">เรียง: วันที่ ใหม่ → เก่า</option>
-              <option value="customer">เรียง: ชื่อลูกค้า ก-ฮ</option>
-              <option value="staff">
-                {roleFilter === "seller" ? "เรียง: ชื่อผู้ขาย ก-ฮ" : "เรียง: ชื่อช่าง ก-ฮ"}
-              </option>
-            </select>
+              <SelectTrigger aria-label="เรียงลำดับข้อมูล" className="h-9 min-w-0 w-full 2xl:w-auto">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date-asc">เรียง: วันที่ เก่า → ใหม่</SelectItem>
+                <SelectItem value="date-desc">เรียง: วันที่ ใหม่ → เก่า</SelectItem>
+                <SelectItem value="customer">เรียง: ชื่อลูกค้า ก-ฮ</SelectItem>
+                <SelectItem value="staff">
+                  {roleFilter === "seller" ? "เรียง: ชื่อผู้ขาย ก-ฮ" : "เรียง: ชื่อช่าง ก-ฮ"}
+                </SelectItem>
+              </SelectContent>
+            </Select>
             {(roleFilter !== "all" || staffFilter || vehicleFilter) && (
               <Button
                 size="sm"
@@ -1753,6 +1800,9 @@ function ApprovedOrders({
 
   useEffect(() => {
     void loadApproved();
+    const onDataChanged = () => void loadApproved();
+    window.addEventListener("app:data-changed", onDataChanged);
+    return () => window.removeEventListener("app:data-changed", onDataChanged);
   }, [loadApproved]);
 
   const [conflictTarget, setConflictTarget] = useState<{
@@ -1856,11 +1906,25 @@ function ApprovedOrders({
   const [fStaff, setFStaff] = useState("");
   const [showHidden, setShowHidden] = useState(false);
   const sellerOpts = useMemo(
-    () => Array.from(new Set(rows.map((o) => (o.sales_rep ?? "").trim()).filter(Boolean))).sort(),
+    () =>
+      Array.from(
+        new Set(
+          rows
+            .map((o) => (o.sales_rep ?? "").trim())
+            .filter((s) => Boolean(s) && !isValueRemoved(s)),
+        ),
+      ).sort(),
     [rows],
   );
   const staffOpts = useMemo(
-    () => Array.from(new Set(rows.flatMap((o) => splitNames(o.staff_name)))).sort(),
+    () =>
+      Array.from(
+        new Set(
+          rows
+            .flatMap((o) => splitNames(o.staff_name))
+            .filter((s) => !isValueRemoved(s)),
+        ),
+      ).sort(),
     [rows],
   );
   const visible = rows.filter((o) => {
@@ -1985,49 +2049,58 @@ function ApprovedOrders({
     <div className="space-y-3">
       <div className="grid min-w-0 grid-cols-1 gap-2 rounded-lg border bg-card p-2 lg:grid-cols-5">
         <DateInput size="sm" aria-label="กรองวันที่นัดหมาย" value={fDate} onChange={setFDate} />
-        <select
-          className="h-8 rounded-md border bg-background px-2 text-xs font-medium"
+        <Select
           value={fRole}
-          onChange={(e) => {
-            const next = e.target.value as RoleFilter;
+          onValueChange={(val) => {
+            const next = val as RoleFilter;
             setFRole(next);
             if (next === "seller") setFStaff("");
             if (next === "tech") setFSeller("");
           }}
-          aria-label="กรองประเภทงาน"
         >
-          <option value="all">ทั้งหมด (ช่างและผู้ขาย)</option>
-          <option value="seller">เฉพาะงานผู้ขาย</option>
-          <option value="tech">เฉพาะงานช่าง</option>
-        </select>
-        <select
-          className="h-8 rounded-md border bg-background px-2 text-xs"
-          value={fSeller}
-          onChange={(e) => setFSeller(e.target.value)}
-          aria-label="กรองผู้ขาย"
+          <SelectTrigger aria-label="กรองประเภทงาน" className="h-8 text-xs font-medium">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">ทั้งหมด (ช่างและผู้ขาย)</SelectItem>
+            <SelectItem value="seller">เฉพาะงานผู้ขาย</SelectItem>
+            <SelectItem value="tech">เฉพาะงานช่าง</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={fSeller || "__all__"}
+          onValueChange={(val) => setFSeller(val === "__all__" ? "" : val)}
           disabled={fRole === "tech"}
         >
-          <option value="">ผู้ขายทั้งหมด</option>
-          {sellerOpts.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-        <select
-          className="h-8 rounded-md border bg-background px-2 text-xs"
-          value={fStaff}
-          onChange={(e) => setFStaff(e.target.value)}
-          aria-label="กรองช่าง"
+          <SelectTrigger aria-label="กรองผู้ขาย" className="h-8 text-xs">
+            <SelectValue placeholder="ผู้ขายทั้งหมด" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">ผู้ขายทั้งหมด</SelectItem>
+            {sellerOpts.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={fStaff || "__all__"}
+          onValueChange={(val) => setFStaff(val === "__all__" ? "" : val)}
           disabled={fRole === "seller"}
         >
-          <option value="">ช่างทั้งหมด</option>
-          {staffOpts.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger aria-label="กรองช่าง" className="h-8 text-xs">
+            <SelectValue placeholder="ช่างทั้งหมด" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">ช่างทั้งหมด</SelectItem>
+            {staffOpts.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Button
             size="sm"
@@ -4298,17 +4371,19 @@ function CloseJobDialog({
         supabase.from("categories").select("id, name").order("sort_order").order("name"),
       ]);
       if (!alive) return;
-      const list: CatalogPart[] = (prodRes.data ?? []).map((p: any) => ({
-        id: p.id,
-        label: [p.part_number, p.name]
-          .filter(Boolean)
-          .filter((v, i, a) => a.indexOf(v) === i)
-          .join(" · "),
-        category: p.categories?.name ?? "อื่นๆ",
-        model_id: p.model_id,
-      }));
+      const list: CatalogPart[] = (prodRes.data ?? [])
+        .filter((p: any) => !isValueRemoved(p.id) && !isValueRemoved(p.name) && !isValueRemoved(p.part_number))
+        .map((p: any) => ({
+          id: p.id,
+          label: [p.part_number, p.name]
+            .filter(Boolean)
+            .filter((v, i, a) => a.indexOf(v) === i)
+            .join(" · "),
+          category: p.categories?.name ?? "อื่นๆ",
+          model_id: p.model_id,
+        }));
       setProducts(list);
-      setCategories(catRes.data ?? []);
+      setCategories((catRes.data ?? []).filter((c: any) => !isValueRemoved(c.id) && !isValueRemoved(c.name)));
 
       if (!appt.serial_number) return;
       const { data: unit } = await supabase
@@ -4636,24 +4711,25 @@ function CloseJobDialog({
             </label>
             {useChecklist && (
               <>
-                <select
-                  className="h-9 w-full rounded border bg-background px-2 text-sm"
+                <Select
                   value={checklist?.template_id ?? ""}
-                  onChange={(e) => {
-                    const t = templates.find((x) => x.id === e.target.value);
+                  onValueChange={(val) => {
+                    const t = templates.find((x) => x.id === val);
                     if (t) setChecklist(newResult(t, checklist));
                   }}
                 >
-                  <option value="" disabled>
-                    เลือกชุดเช็คลิสต์
-                  </option>
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                      {t.machine_types ? ` (${t.machine_types})` : ""}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-9 w-full">
+                    <SelectValue placeholder="เลือกชุดเช็คลิสต์" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.filter((t) => !isValueRemoved(t.id) && !isValueRemoved(t.name)).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                        {t.machine_types ? ` (${t.machine_types})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {pumpType && (
                   <p className="text-xs text-muted-foreground">ประเภทเครื่องนี้: {pumpType}</p>
                 )}
@@ -4754,18 +4830,22 @@ function CloseJobDialog({
                   }
                 }}
               />
-              <select
-                className="h-9 min-w-0 w-full rounded-md border bg-background px-2 text-sm"
-                value={newCat}
-                onChange={(e) => setNewCat(e.target.value)}
+              <Select
+                value={newCat || "__none__"}
+                onValueChange={(val) => setNewCat(val === "__none__" ? "" : val)}
               >
-                <option value="">หมวด: อื่นๆ</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-9 min-w-0 w-full text-sm">
+                  <SelectValue placeholder="หมวด: อื่นๆ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">หมวด: อื่นๆ</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 type="button"
                 size="sm"
@@ -4886,19 +4966,22 @@ function CloseJobDialog({
                   }
                 }}
               />
-              <select
-                className="h-9 min-w-0 w-full rounded-md border bg-background px-2 text-sm sm:w-auto"
-                value={quoteCat}
-                onChange={(e) => setQuoteCat(e.target.value)}
-                aria-label="หมวดอะไหล่เสนอราคา"
+              <Select
+                value={quoteCat || "__none__"}
+                onValueChange={(val) => setQuoteCat(val === "__none__" ? "" : val)}
               >
-                <option value="">หมวด: อื่นๆ</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger aria-label="หมวดอะไหล่เสนอราคา" className="h-9 min-w-0 w-full text-sm sm:w-auto">
+                  <SelectValue placeholder="หมวด: อื่นๆ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">หมวด: อื่นๆ</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 type="button"
                 size="sm"

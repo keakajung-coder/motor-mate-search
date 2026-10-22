@@ -3,6 +3,7 @@ import { supabase } from "@/lib/data-client";
 import { loadOptionList, saveOptionList } from "@/lib/option-lists";
 import { splitNames, joinNames } from "@/components/ui/multi-combobox";
 import { logAudit } from "@/lib/audit";
+import { invalidateData, isValueRemoved, markValueRemoved } from "@/lib/data-sync";
 
 export const PUMP_TYPE_PRESETS = ["ปั๊มลมสกรู", "ปั๊มลมสกอร์", "ปั๊มลมลูกสูบ", "อื่นๆ"];
 export const DEFAULT_PUMP_TYPES = PUMP_TYPE_PRESETS;
@@ -38,7 +39,9 @@ export async function loadPumpTypes(): Promise<string[]> {
   const unique = new Map<string, string>();
   for (const value of values) {
     const clean = value.trim();
-    if (clean && !unique.has(clean.toLowerCase())) unique.set(clean.toLowerCase(), clean);
+    if (clean && !unique.has(clean.toLowerCase()) && !isValueRemoved(clean)) {
+      unique.set(clean.toLowerCase(), clean);
+    }
   }
   return [...unique.values()].sort((a, b) => a.localeCompare(b, "th"));
 }
@@ -276,13 +279,15 @@ export async function deletePumpType(
     },
   });
 
-  // 5. แจ้ง Event ให้ UI อัปเดตทันที
+  // 5. แจ้ง Event และ Invalidate ข้อมูลทั่วทั้งระบบ
+  markValueRemoved(targetName);
   notifyPumpTypesChanged();
 
   return { affectedModels: matchingModels.length, affectedTemplates };
 }
 
 export function notifyPumpTypesChanged() {
+  invalidateData(["pump_types", "compressor_models", "checklist_templates", "app_settings"]);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(EVENT));
     window.dispatchEvent(new CustomEvent("option-list-changed", { detail: { key: "pump_types" } }));
@@ -301,10 +306,19 @@ export function usePumpTypes() {
         .catch(() => {});
     };
     reload();
+
+    const onOptionRemoved = () => {
+      setTypes((prev) => prev.filter((t) => !isValueRemoved(t)));
+    };
+
     window.addEventListener(EVENT, reload);
+    window.addEventListener("app:option-removed", onOptionRemoved);
+    window.addEventListener("app:data-changed", reload);
     return () => {
       active = false;
       window.removeEventListener(EVENT, reload);
+      window.removeEventListener("app:option-removed", onOptionRemoved);
+      window.removeEventListener("app:data-changed", reload);
     };
   }, []);
   return types;

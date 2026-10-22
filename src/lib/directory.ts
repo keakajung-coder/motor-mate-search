@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/data-client";
+import { isValueRemoved, markValueRemoved, invalidateData } from "@/lib/data-sync";
 
 /** ข้อมูลกลางสำหรับ Dropdown ทุกหน้า (ลูกค้า / เครื่องจักร / ช่าง / รถ) */
 export type DirCustomer = { cust_id: string; name: string; phone: string; address: string };
@@ -33,6 +34,9 @@ const listeners = new Set<(d: Directory) => void>();
 
 if (typeof window !== "undefined") {
   window.addEventListener("engineers-changed", () => {
+    void refreshDirectory();
+  });
+  window.addEventListener("app:data-changed", () => {
     void refreshDirectory();
   });
 }
@@ -69,32 +73,35 @@ async function fetchAll() {
 
   cache = {
     loading: false,
-    customers: (c.data ?? []).map((r: any) => ({
-      cust_id: r.cust_id ?? "",
-      name: r.name ?? "",
-      phone: r.phone ?? "",
-      address: r.address ?? "",
-    })),
-    machines: (m.data ?? []).map((r: any) => ({
-      serial: r.serial_number ?? "",
-      label: [r.compressor_models?.brands?.name, r.compressor_models?.name]
-        .filter(Boolean)
-        .join(" "),
-      brand: r.compressor_models?.brands?.name ?? "",
-      model: r.compressor_models?.name ?? "",
-      customer_sn: r.customer_sn ?? "",
-
-      customer: r.customers?.name ?? "",
-      cust_id: r.customers?.cust_id ?? "",
-      address:
-        [r.address_line, r.district, r.province].filter(Boolean).join(" ") ||
-        (r.customers?.address ?? ""),
-      phone: r.customers?.phone ?? "",
-      seller: r.seller ?? "",
-    })),
-    staff: (s.data ?? []).map((r: any) => r.name).filter(Boolean),
-    vehicles: (v.data ?? []).map((r: any) => r.plate).filter(Boolean),
-    engineers: engineerNames,
+    customers: (c.data ?? [])
+      .map((r: any) => ({
+        cust_id: r.cust_id ?? "",
+        name: r.name ?? "",
+        phone: r.phone ?? "",
+        address: r.address ?? "",
+      }))
+      .filter((cust) => !isValueRemoved(cust.name) && !isValueRemoved(cust.cust_id)),
+    machines: (m.data ?? [])
+      .map((r: any) => ({
+        serial: r.serial_number ?? "",
+        label: [r.compressor_models?.brands?.name, r.compressor_models?.name]
+          .filter(Boolean)
+          .join(" "),
+        brand: r.compressor_models?.brands?.name ?? "",
+        model: r.compressor_models?.name ?? "",
+        customer_sn: r.customer_sn ?? "",
+        customer: r.customers?.name ?? "",
+        cust_id: r.customers?.cust_id ?? "",
+        address:
+          [r.address_line, r.district, r.province].filter(Boolean).join(" ") ||
+          (r.customers?.address ?? ""),
+        phone: r.customers?.phone ?? "",
+        seller: r.seller ?? "",
+      }))
+      .filter((mach) => !isValueRemoved(mach.serial)),
+    staff: (s.data ?? []).map((r: any) => r.name).filter((name) => Boolean(name) && !isValueRemoved(name)),
+    vehicles: (v.data ?? []).map((r: any) => r.plate).filter((plate) => Boolean(plate) && !isValueRemoved(plate)),
+    engineers: engineerNames.filter((name) => !isValueRemoved(name)),
   };
   listeners.forEach((fn) => fn(cache));
 }
@@ -377,6 +384,7 @@ export async function deleteDirectoryEntry(kind: DirectoryKind, value: string) {
   }
 
   // ตัดรายการออกจากแคชทันที เพื่อให้ Dropdown ทุกจุดอัปเดตแบบเรียลไทม์โดยไม่ต้องรอโหลดใหม่
+  markValueRemoved(value);
   const target = value.trim().toLowerCase();
   cache = {
     ...cache,
@@ -402,6 +410,7 @@ export async function deleteDirectoryEntry(kind: DirectoryKind, value: string) {
   listeners.forEach((fn) => fn(cache));
 
   toast.success(`ลบ "${value}" แล้ว`);
+  invalidateData(["directory"]);
   // ซิงก์ข้อมูลจริงจากฐานข้อมูลอีกครั้งเบื้องหลัง (กันกรณีมีการลบซ้ำ/ข้อมูลเปลี่ยนจากที่อื่น)
   await refreshDirectory().catch(() => {});
   return true;

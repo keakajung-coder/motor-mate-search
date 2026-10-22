@@ -47,6 +47,12 @@ export function useBundles() {
   }, []);
   useEffect(() => {
     void reload();
+    window.addEventListener("part-bundles-changed", reload);
+    window.addEventListener("app:data-changed", reload);
+    return () => {
+      window.removeEventListener("part-bundles-changed", reload);
+      window.removeEventListener("app:data-changed", reload);
+    };
   }, [reload]);
   return { bundles, loading, reload };
 }
