@@ -29,6 +29,13 @@
       "when": 1792455581293,
       "tag": "0003_checklist_template_pump_type",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792628830125,
+      "tag": "0004_add_service_contracts",
+      "breakpoints": true
     }
   ]
 }
