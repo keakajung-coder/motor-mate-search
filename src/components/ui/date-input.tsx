@@ -209,7 +209,7 @@ export function DateInput({ value, onChange, disabled, className, id, size = "de
         <Dialog open={open && !disabled} onOpenChange={changeOpen}>
           <DialogContent
             data-readonly-allow
-            className="z-[100] w-[min(calc(100vw-1.5rem),340px)] max-w-[340px] p-3 rounded-2xl border bg-background shadow-2xl"
+            className="z-[99999] w-[min(calc(100vw-1.5rem),340px)] max-w-[340px] p-3 rounded-2xl border bg-background shadow-2xl"
             onOpenAutoFocus={(event) => event.preventDefault()}
             onCloseAutoFocus={(event) => {
               event.preventDefault();
@@ -244,7 +244,7 @@ export function DateInput({ value, onChange, disabled, className, id, size = "de
         sideOffset={6}
         collisionPadding={12}
         avoidCollisions
-        className="date-picker-popover z-[100] pointer-events-auto p-2 bg-popover shadow-2xl border border-border/70 rounded-xl"
+        className="date-picker-popover z-[99999] pointer-events-auto p-2 bg-popover shadow-2xl border border-border/70 rounded-xl"
         onOpenAutoFocus={(event) => event.preventDefault()}
         onCloseAutoFocus={(event) => {
           event.preventDefault();

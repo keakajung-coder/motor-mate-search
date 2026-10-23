@@ -10,6 +10,7 @@ import { DateInput } from "@/components/ui/date-input";
 import { spreadVisits } from "@/lib/contract-schedule";
 import { listContracts, saveContract, deactivateContract, type ContractVisitInput } from "@/lib/contracts.functions";
 import { useAccess } from "@/lib/access";
+import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
 
 type VisitRow = ContractVisitInput & { status?: string };
 
@@ -46,6 +47,7 @@ export function ContractDialog({
   const { isAdmin } = useAccess();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [contractId, setContractId] = useState<string | null>(null);
   const [visitsPerYear, setVisitsPerYear] = useState(4);
   const [startDate, setStartDate] = useState(todayISO());
@@ -178,12 +180,28 @@ export function ContractDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CalendarClock className="h-5 w-5" /> สัญญาคอนแทรครายปี
-          </DialogTitle>
-          <DialogDescription>
-            {customerName} · {machineLabel ?? "-"} · S/N {serialNumber ?? "-"}
-          </DialogDescription>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <DialogTitle className="flex items-center gap-2">
+                <CalendarClock className="h-5 w-5" /> สัญญาคอนแทรครายปี
+              </DialogTitle>
+              <DialogDescription>
+                {customerName} · {machineLabel ?? "-"} · S/N {serialNumber ?? "-"}
+              </DialogDescription>
+            </div>
+            {(serialNumber || machineUnitId) && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary/10 cursor-pointer font-semibold shadow-2xs"
+                onClick={() => setHistoryOpen(true)}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                ดูประวัติเครื่อง (Digital Passport)
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         {loading ? (
@@ -295,6 +313,14 @@ export function ContractDialog({
           </div>
         </DialogFooter>
       </DialogContent>
+      {historyOpen && (
+        <MachineHistoryDialog
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          machineUnitId={machineUnitId}
+          serialNumber={serialNumber}
+        />
+      )}
     </Dialog>
   );
 }

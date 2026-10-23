@@ -8,6 +8,8 @@ export type UserRoleContextType = {
   userName: string;
   isRoleSelected: boolean;
   isSwitching: boolean;
+  lastSellerName: string;
+  lastTechName: string;
   setRoleAndUser: (role: AppUserRole, userName?: string) => void;
   clearRole: () => void;
   openRoleSwitcher: () => void;
@@ -20,14 +22,16 @@ export type UserRoleContextType = {
   };
 };
 
-const STORAGE_ROLE_KEY = "app_user_role";
-const STORAGE_USER_NAME_KEY = "app_user_name";
+export const STORAGE_ROLE_KEY = "app_user_role";
+export const STORAGE_USER_NAME_KEY = "app_user_name";
+export const STORAGE_LAST_SELLER_KEY = "app_last_seller_name";
+export const STORAGE_LAST_TECH_KEY = "app_last_tech_name";
 
 const UserRoleContext = createContext<UserRoleContextType | null>(null);
 
 export function splitStaffNames(v?: string | null): string[] {
   return (v ?? "")
-    .split(",")
+    .split(/[,/]/)
     .map((s) => s.trim())
     .filter(Boolean);
 }
@@ -58,6 +62,24 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
+  const [lastSellerName, setLastSellerName] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return localStorage.getItem(STORAGE_LAST_SELLER_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+
+  const [lastTechName, setLastTechName] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return localStorage.getItem(STORAGE_LAST_TECH_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+
   const [isSwitching, setIsSwitching] = useState<boolean>(false);
 
   // Sync role if storage changes across tabs
@@ -68,6 +90,12 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       }
       if (e.key === STORAGE_USER_NAME_KEY) {
         setUserNameState(e.newValue || "");
+      }
+      if (e.key === STORAGE_LAST_SELLER_KEY) {
+        setLastSellerName(e.newValue || "");
+      }
+      if (e.key === STORAGE_LAST_TECH_KEY) {
+        setLastTechName(e.newValue || "");
       }
     };
     window.addEventListener("storage", handleStorage);
@@ -84,6 +112,13 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_ROLE_KEY, newRole);
       if (trimmedName) {
         localStorage.setItem(STORAGE_USER_NAME_KEY, trimmedName);
+        if (newRole === "seller") {
+          localStorage.setItem(STORAGE_LAST_SELLER_KEY, trimmedName);
+          setLastSellerName(trimmedName);
+        } else if (newRole === "tech") {
+          localStorage.setItem(STORAGE_LAST_TECH_KEY, trimmedName);
+          setLastTechName(trimmedName);
+        }
       } else {
         localStorage.removeItem(STORAGE_USER_NAME_KEY);
       }
@@ -144,10 +179,16 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
 
       if (role === "seller") {
         const rep = (job.sales_rep ?? "").trim().toLowerCase();
-        return Boolean(rep && rep === current);
+        if (!rep) return false;
+        if (rep === current) return true;
+        const repList = splitStaffNames(rep).map((s) => s.toLowerCase());
+        return repList.includes(current);
       }
 
       if (role === "tech") {
+        const staff = (job.staff_name ?? "").trim().toLowerCase();
+        if (!staff) return false;
+        if (staff === current) return true;
         const staffList = splitStaffNames(job.staff_name).map((s) => s.toLowerCase());
         return staffList.includes(current);
       }
@@ -165,7 +206,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
         isMine: mine,
         isDimmed,
         opacityClass: isDimmed
-          ? "opacity-45 grayscale-[15%] hover:opacity-90 transition-opacity duration-200"
+          ? "opacity-45 grayscale-[20%] hover:opacity-90 transition-opacity duration-200"
           : "opacity-100",
       };
     },
@@ -179,6 +220,8 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
         userName,
         isRoleSelected,
         isSwitching,
+        lastSellerName,
+        lastTechName,
         setRoleAndUser,
         clearRole,
         openRoleSwitcher,

@@ -46,7 +46,13 @@ export function RoleSelectionView({
   onDone?: () => void;
   isModal?: boolean;
 }) {
-  const { role: currentRole, userName: currentUserName, setRoleAndUser } = useUserRole();
+  const {
+    role: currentRole,
+    userName: currentUserName,
+    lastSellerName,
+    lastTechName,
+    setRoleAndUser,
+  } = useUserRole();
   const { isAdmin, unlockAdmin } = useAccess();
 
   const sellerList = useSellerNames();
@@ -76,6 +82,8 @@ export function RoleSelectionView({
     if (newRole === "seller") {
       if (currentRole === "seller" && currentUserName) {
         setSelectedUser(currentUserName);
+      } else if (lastSellerName && sellerList.includes(lastSellerName)) {
+        setSelectedUser(lastSellerName);
       } else if (sellerList.length > 0) {
         setSelectedUser(sellerList[0]);
       } else {
@@ -84,6 +92,8 @@ export function RoleSelectionView({
     } else if (newRole === "tech") {
       if (currentRole === "tech" && currentUserName) {
         setSelectedUser(currentUserName);
+      } else if (lastTechName && techList.includes(lastTechName)) {
+        setSelectedUser(lastTechName);
       } else if (techList.length > 0) {
         setSelectedUser(techList[0]);
       } else {
@@ -102,7 +112,7 @@ export function RoleSelectionView({
     return list.filter((n) => n.toLowerCase().includes(q));
   }, [selectedRole, sellerList, techList, searchQuery]);
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (skipPasscodeUnlock = false) => {
     if (selectedRole === "seller") {
       if (!selectedUser.trim()) {
         toast.error("กรุณาเลือกรายชื่อผู้ขายของท่าน");
@@ -126,28 +136,37 @@ export function RoleSelectionView({
     }
 
     if (selectedRole === "admin") {
-      if (isAdmin) {
+      if (isAdmin || skipPasscodeUnlock) {
         setRoleAndUser("admin", "ผู้ดูแลระบบ");
-        toast.success("เข้าใช้งานในฐานะผู้ดูแลระบบ (แอดมิน)");
+        toast.success(
+          isAdmin
+            ? "เข้าใช้งานในฐานะผู้ดูแลระบบ (สิทธิ์เต็ม)"
+            : "เข้าใช้งานในฐานะผู้ดูแลระบบ (เห็นงานทั้งหมด)",
+        );
         onDone?.();
         return;
       }
-      // Needs admin passcode unlock
-      if (!adminCode.trim()) {
-        toast.error("กรุณากรอกรหัสผ่านแอดมิน");
+
+      // If user typed admin passcode, unlock server session
+      if (adminCode.trim()) {
+        setUnlockingAdmin(true);
+        const ok = await unlockAdmin(adminCode.trim());
+        setUnlockingAdmin(false);
+        if (ok) {
+          setRoleAndUser("admin", "ผู้ดูแลระบบ");
+          toast.success("ปลดล็อกโหมดแอดมินสำเร็จ");
+          onDone?.();
+        } else {
+          toast.error("รหัสผ่านแอดมินไม่ถูกต้อง");
+          setAdminCode("");
+        }
         return;
       }
-      setUnlockingAdmin(true);
-      const ok = await unlockAdmin(adminCode.trim());
-      setUnlockingAdmin(false);
-      if (ok) {
-        setRoleAndUser("admin", "ผู้ดูแลระบบ");
-        toast.success("ปลดล็อกโหมดแอดมินสำเร็จ");
-        onDone?.();
-      } else {
-        toast.error("รหัสผ่านแอดมินไม่ถูกต้อง");
-        setAdminCode("");
-      }
+
+      // If no passcode entered, still allow viewing all jobs as admin
+      setRoleAndUser("admin", "ผู้ดูแลระบบ");
+      toast.success("เข้าใช้งานในฐานะผู้ดูแลระบบ (เห็นงานทั้งหมด)");
+      onDone?.();
       return;
     }
 
@@ -384,20 +403,33 @@ export function RoleSelectionView({
       {selectedRole === "admin" && !isAdmin && (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-50/50 p-4 dark:bg-emerald-950/20 space-y-3">
           <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-semibold text-sm">
-            <Lock className="h-4 w-4" /> กรุณากรอกรหัสผ่านผู้ดูแลระบบ (Admin Passcode)
+            <Lock className="h-4 w-4" /> ปลดล็อกสิทธิ์ผู้ดูแลระบบ (Admin Passcode)
           </div>
-          <Input
-            {...PASSCODE_INPUT}
-            value={adminCode}
-            onChange={(e) => setAdminCode(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleConfirm()}
-            placeholder="รหัสผ่านแอดมิน"
-            className="h-11 text-center text-lg tracking-widest bg-background"
-            autoFocus
-          />
-          <p className="text-xs text-muted-foreground text-center">
-            ติดต่อผู้จัดการระบบหากท่านไม่ทราบรหัสผ่านผู้ดูแลระบบ
+          <p className="text-xs text-muted-foreground">
+            กรอกรหัสเพื่อปลดล็อกสิทธิ์แก้ไข/ลบข้อมูล หรือกดเข้าใช้งานเพื่อดูภาพรวมงานทั้งหมดได้ทันที
           </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              {...PASSCODE_INPUT}
+              value={adminCode}
+              onChange={(e) => setAdminCode(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleConfirm(false)}
+              placeholder="รหัสผ่านแอดมิน (ถ้ามี)"
+              className="h-11 text-center text-lg tracking-widest bg-background flex-1"
+              autoFocus
+            />
+            {adminCode.trim() && (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 px-4 border-emerald-500 text-emerald-700 hover:bg-emerald-100 dark:text-emerald-300"
+                onClick={() => handleConfirm(false)}
+                disabled={unlockingAdmin}
+              >
+                {unlockingAdmin ? <Loader2 className="h-4 w-4 animate-spin" /> : "ปลดล็อกสิทธิ์"}
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
@@ -405,11 +437,10 @@ export function RoleSelectionView({
       <Button
         type="button"
         size="lg"
-        onClick={handleConfirm}
+        onClick={() => handleConfirm(selectedRole === "admin" && !adminCode.trim())}
         disabled={
           unlockingAdmin ||
-          ((selectedRole === "seller" || selectedRole === "tech") && !selectedUser.trim()) ||
-          (selectedRole === "admin" && !isAdmin && !adminCode.trim())
+          ((selectedRole === "seller" || selectedRole === "tech") && !selectedUser.trim())
         }
         className={cn(
           "w-full h-12 text-base font-semibold shadow-md transition-all cursor-pointer",
@@ -430,7 +461,10 @@ export function RoleSelectionView({
               {selectedRole === "seller" && `ยืนยันเข้าใช้งาน: ${selectedUser || "(กรุณาเลือกชื่อ)"}`}
               {selectedRole === "tech" && `ยืนยันเข้าใช้งาน: ${selectedUser || "(กรุณาเลือกชื่อ)"}`}
               {selectedRole === "general" && "ยืนยันเข้าใช้งาน (ผู้ใช้ทั่วไป)"}
-              {selectedRole === "admin" && (isAdmin ? "เข้าใช้งานโหมดแอดมิน" : "ปลดล็อกและเข้าใช้งานแอดมิน")}
+              {selectedRole === "admin" &&
+                (isAdmin || adminCode.trim()
+                  ? "ยืนยันเข้าใช้งานโหมดแอดมิน"
+                  : "เข้าใช้งานโหมดแอดมิน (เห็นงานทั้งหมด)")}
             </span>
             <ArrowRight className="ml-2 h-5 w-5" />
           </>
@@ -439,7 +473,7 @@ export function RoleSelectionView({
 
       {/* Info note */}
       <p className="text-center text-xs text-muted-foreground">
-        ระบบจะบันทึกบทบาทและชื่อของท่านไว้ในเครื่องนี้ ท่านสามารถสลับบทบาทได้ทุกเมื่อที่ปุ่มมุมขวาบน
+        ระบบจะบันทึกบทบาทและชื่อล่าสุดไว้ในเครื่องนี้ (Local Storage) ท่านสามารถสลับบทบาทได้ทุกเมื่อที่ปุ่มมุมขวาบน
       </p>
     </div>
   );
@@ -453,7 +487,7 @@ export function RoleSelectionDialog() {
 
   return (
     <Dialog open={isSwitching} onOpenChange={(open) => !open && closeRoleSwitcher()}>
-      <DialogContent className="z-[100] w-[min(calc(100vw-1.5rem),640px)] max-w-[640px] p-5 sm:p-6 rounded-2xl bg-background border shadow-2xl">
+      <DialogContent className="z-[99999] w-[min(calc(100vw-1.5rem),640px)] max-w-[640px] p-5 sm:p-6 rounded-2xl bg-background border shadow-2xl">
         <DialogHeader className="space-y-1">
           <DialogTitle className="flex items-center gap-2 text-xl font-bold">
             <Sparkles className="h-5 w-5 text-primary" />

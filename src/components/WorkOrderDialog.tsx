@@ -29,6 +29,7 @@ import { ensureSeller, useSellerNames } from "@/lib/sellers";
 import { JobAttachments } from "@/components/JobAttachments";
 
 import { BILLING_TYPES, PRIORITIES, SAFETY_GEAR, WORK_TYPES } from "@/lib/job-fields";
+import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
 import { DateInput } from "@/components/ui/date-input";
 import { notifyAdmins, notifyUsers } from "@/lib/notify";
 import { ContactShare } from "@/components/ContactShare";
@@ -274,6 +275,7 @@ export function WorkOrderDialog({
   const [booked, setBooked] = useState(false);
   const [conflictList, setConflictList] = useState<string[]>([]);
   const [conflictOpen, setConflictOpen] = useState(false);
+  const [historySn, setHistorySn] = useState<string | null>(null);
   const { isAdmin } = useAccess();
   const sellerNames = useSellerNames();
   const dir = useDirectory();
@@ -683,6 +685,22 @@ export function WorkOrderDialog({
                 placeholder="ติ๊กเลือก S/N"
                 searchPlaceholder="ค้นหา S/N..."
               />
+              {splitNames(form.serial_number).length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {splitNames(form.serial_number).map((sn) => (
+                    <Button
+                      key={sn}
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-xs font-semibold text-primary hover:underline"
+                      onClick={() => setHistorySn(sn)}
+                    >
+                      📜 ดูประวัติเครื่อง {sn}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </Field>
             <Field label="หมายเลขเครื่องของลูกค้า (S/N ลูกค้า)">
               <Input
@@ -870,6 +888,14 @@ export function WorkOrderDialog({
             }}
             busy={saving}
           />
+
+          {historySn && (
+            <MachineHistoryDialog
+              serialNumber={historySn}
+              open={!!historySn}
+              onOpenChange={(v) => !v && setHistorySn(null)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>

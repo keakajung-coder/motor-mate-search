@@ -890,15 +890,16 @@
 /* ==========================================================================
    Visible Custom Scrollbar & Portalled Menus for All Devices (Mobile, Tablet, Desktop)
    - Guaranteed visible thumb for effortless scrolling on touch & desktop
-   - Max-height capped at 4-5 items (~180-200px) so dropdowns never push viewport
-   - Highest z-index portal protection against edge clipping
+   - Max-height strictly capped at 4-5 items (~180-195px) so dropdowns never push viewport
+   - Highest z-index portal protection (99999) against edge clipping
    ========================================================================== */
 
 .dropdown-scroll,
 [data-radix-select-viewport],
-.custom-visible-scrollbar {
+.custom-visible-scrollbar,
+[cmdk-list] {
   scrollbar-width: thin !important;
-  scrollbar-color: rgba(100, 116, 139, 0.65) rgba(140, 150, 165, 0.12) !important;
+  scrollbar-color: rgba(100, 116, 139, 0.75) rgba(140, 150, 165, 0.16) !important;
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
   touch-action: pan-y !important;
@@ -906,66 +907,78 @@
 
 .dropdown-scroll::-webkit-scrollbar,
 [data-radix-select-viewport]::-webkit-scrollbar,
-.custom-visible-scrollbar::-webkit-scrollbar {
-  width: 7px !important;
-  height: 7px !important;
+.custom-visible-scrollbar::-webkit-scrollbar,
+[cmdk-list]::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
   display: block !important;
 }
 
 .dropdown-scroll::-webkit-scrollbar-track,
 [data-radix-select-viewport]::-webkit-scrollbar-track,
-.custom-visible-scrollbar::-webkit-scrollbar-track {
-  background: rgba(140, 150, 165, 0.12) !important;
-  border-radius: 6px !important;
+.custom-visible-scrollbar::-webkit-scrollbar-track,
+[cmdk-list]::-webkit-scrollbar-track {
+  background: rgba(140, 150, 165, 0.15) !important;
+  border-radius: 8px !important;
 }
 
 .dropdown-scroll::-webkit-scrollbar-thumb,
 [data-radix-select-viewport]::-webkit-scrollbar-thumb,
-.custom-visible-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.65) !important;
-  border-radius: 6px !important;
+.custom-visible-scrollbar::-webkit-scrollbar-thumb,
+[cmdk-list]::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.75) !important;
+  border-radius: 8px !important;
   border: 1.5px solid transparent !important;
   background-clip: padding-box !important;
 }
 
 .dropdown-scroll::-webkit-scrollbar-thumb:hover,
 [data-radix-select-viewport]::-webkit-scrollbar-thumb:hover,
-.custom-visible-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.9) !important;
+.custom-visible-scrollbar::-webkit-scrollbar-thumb:hover,
+[cmdk-list]::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.95) !important;
 }
 
 .dark .dropdown-scroll,
 .dark [data-radix-select-viewport],
-.dark .custom-visible-scrollbar {
-  scrollbar-color: rgba(148, 163, 184, 0.6) rgba(255, 255, 255, 0.08) !important;
+.dark .custom-visible-scrollbar,
+.dark [cmdk-list] {
+  scrollbar-color: rgba(148, 163, 184, 0.75) rgba(255, 255, 255, 0.12) !important;
 }
 
 .dark .dropdown-scroll::-webkit-scrollbar-track,
 .dark [data-radix-select-viewport]::-webkit-scrollbar-track,
-.dark .custom-visible-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.08) !important;
+.dark .custom-visible-scrollbar::-webkit-scrollbar-track,
+.dark [cmdk-list]::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.12) !important;
 }
 
 .dark .dropdown-scroll::-webkit-scrollbar-thumb,
 .dark [data-radix-select-viewport]::-webkit-scrollbar-thumb,
-.dark .custom-visible-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.6) !important;
+.dark .custom-visible-scrollbar::-webkit-scrollbar-thumb,
+.dark [cmdk-list]::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.75) !important;
 }
 
 .dark .dropdown-scroll::-webkit-scrollbar-thumb:hover,
 .dark [data-radix-select-viewport]::-webkit-scrollbar-thumb:hover,
-.dark .custom-visible-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(203, 213, 225, 0.9) !important;
+.dark .custom-visible-scrollbar::-webkit-scrollbar-thumb:hover,
+.dark [cmdk-list]::-webkit-scrollbar-thumb:hover {
+  background: rgba(226, 232, 240, 0.95) !important;
 }
 
-/* Ensure Radix select viewport stays within 4-5 items height */
+/* Ensure Radix select viewport and cmdk list stay strictly within 4-5 items height */
 [data-radix-select-viewport] {
-  max-height: min(200px, 45vh) !important;
+  max-height: min(190px, 42vh) !important;
 }
 
-/* React Portal top z-index for dropdowns, popovers, and date pickers */
+/* React Portal top z-index for dropdowns, popovers, select, and date pickers */
 [data-radix-popper-content-wrapper],
-[data-radix-select-content] {
-  z-index: 9999 !important;
+[data-radix-select-content],
+.date-picker-popover,
+[data-radix-dropdown-menu-content],
+[data-radix-context-menu-content] {
+  z-index: 99999 !important;
 }
+
 

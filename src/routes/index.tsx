@@ -34,13 +34,16 @@ import { AlertToggles } from "@/lib/prefs";
 import { ThemePicker } from "@/components/ThemePicker";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { ContractDialog } from "@/components/ContractDialog";
+import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
+import { MachineQrScannerDialog } from "@/components/MachineQrScannerDialog";
 import { isMachineComplete } from "@/lib/report";
 import { exportFilename } from "@/lib/export-filename";
 import {
   CalendarDays,
   Search,
   Loader2,
-
+  Sparkles,
+  Camera,
   Package,
   MapPin,
   Clock,
@@ -108,20 +111,43 @@ function HomePage() {
   const [q, setQ] = useState("");
   const [tab, setTab] = useState("sn");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<string | null>(null);
   const [seller, setSeller] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [focusToken, setFocusToken] = useState(0);
 
+  // Check URL query parameters for ?history=SN or ?passport=SN
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const hist = sp.get("history") || sp.get("passport");
+    if (hist) {
+      setHistoryTarget(hist.trim());
+    }
+  }, []);
+
   return (
     <div className="min-w-0 space-y-5 pb-[calc(6rem+env(safe-area-inset-bottom))]">
-      {/* ===== แถวที่ 1: ปุ่มค้นหาทางลัดอัจฉริยะ ===== */}
+      {/* ===== แถวที่ 1: ปุ่มค้นหาทางลัดอัจฉริยะ & สแกนประวัติเครื่องจักร ===== */}
       <div className="sticky top-0 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-card sm:px-4 sm:shadow-sm">
-        <Button
-          className="h-14 w-full justify-start rounded-xl text-base"
-          onClick={() => setSearchOpen(true)}
-        >
-          <Search className="mr-3 h-6 w-6" /> 🔍 ค้นหาทางลัดอัจฉริยะ (Smart Search Popup)
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button
+            className="h-14 flex-1 justify-start rounded-xl text-base"
+            onClick={() => setSearchOpen(true)}
+          >
+            <Search className="mr-3 h-6 w-6" /> 🔍 ค้นหาทางลัดอัจฉริยะ (Smart Search Popup)
+          </Button>
+          <Button
+            type="button"
+            className="h-14 px-4 bg-primary/90 hover:bg-primary font-semibold text-sm gap-2 rounded-xl shrink-0 shadow-xs cursor-pointer text-primary-foreground"
+            onClick={() => setScannerOpen(true)}
+          >
+            <QrCode className="h-5 w-5" />
+            <span>สแกน QR / Digital Passport</span>
+          </Button>
+        </div>
+
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Button asChild variant="outline" size="sm">
             <Link to="/planner">
@@ -170,6 +196,7 @@ function HomePage() {
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
             focusToken={focusToken}
+            onOpenHistory={(sn) => setHistoryTarget(sn)}
           />
         </TabsContent>
         <TabsContent value="catalog" className="mt-4">
@@ -189,6 +216,22 @@ function HomePage() {
           setTab("sn");
           setFocusToken((n) => n + 1);
         }}
+      />
+
+      {/* Dialog แฟ้มประวัติเครื่องจักร (Digital Passport & Maintenance Timeline) */}
+      {historyTarget && (
+        <MachineHistoryDialog
+          open={!!historyTarget}
+          onOpenChange={(open) => !open && setHistoryTarget(null)}
+          serialNumber={historyTarget}
+        />
+      )}
+
+      {/* Dialog สแกน QR Code / ค้นหาเปิดประวัติเครื่องจักร */}
+      <MachineQrScannerDialog
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onSelectMachine={(sn) => setHistoryTarget(sn)}
       />
 
       {/* ปุ่มเขียนใบสั่งงานใหม่ — ขอบล่างสุดของหน้าจอ */}
@@ -777,6 +820,7 @@ function SnView({
   statusFilter,
   setStatusFilter,
   focusToken,
+  onOpenHistory,
 }: {
   q: string;
   setQ: (v: string) => void;
@@ -785,8 +829,10 @@ function SnView({
   statusFilter: string | null;
   setStatusFilter: (v: string | null) => void;
   focusToken: number;
+  onOpenHistory?: (sn: string) => void;
 }) {
   const [sellerQ, setSellerQ] = useState("");
+  const [zoneFilter, setZoneFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [units, setUnits] = useState<MachineResult[]>([]);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
@@ -881,6 +927,20 @@ function SnView({
     return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
   }, [units]);
 
+  // Distinct zones/provinces/areas
+  const availableZones = useMemo(() => {
+    const set = new Set<string>();
+    for (const u of units) {
+      const p = ((u as any).province ?? "").trim();
+      if (p) set.add(p);
+      const d = ((u as any).district ?? "").trim();
+      if (d) set.add(d);
+      const s = ((u as any).site_name ?? "").trim();
+      if (s) set.add(s);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "th"));
+  }, [units]);
+
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
     const sellerKw = sellerQ.trim().toLowerCase();
@@ -890,6 +950,16 @@ function SnView({
       if (seller && unitSeller !== seller) return false;
       if (statusFilter && unitStatus !== statusFilter) return false;
       if (sellerKw && !unitSeller.toLowerCase().includes(sellerKw)) return false;
+      if (zoneFilter) {
+        const uProv = ((u as any).province ?? "").trim().toLowerCase();
+        const uDist = ((u as any).district ?? "").trim().toLowerCase();
+        const uSite = ((u as any).site_name ?? "").trim().toLowerCase();
+        const uAddr = ((u as any).address_line ?? "").trim().toLowerCase();
+        const z = zoneFilter.toLowerCase();
+        if (!uProv.includes(z) && !uDist.includes(z) && !uSite.includes(z) && !uAddr.includes(z)) {
+          return false;
+        }
+      }
       if (!kw) return true;
       const brand = u.compressor_models?.brands?.name ?? "";
       const model = u.compressor_models?.name ?? "";
@@ -905,13 +975,13 @@ function SnView({
         .toLowerCase()
         .includes(kw);
     }).sort((a, b) => a.serial_number.localeCompare(b.serial_number, "th"));
-  }, [units, q, seller, sellerQ, statusFilter]);
+  }, [units, q, seller, sellerQ, statusFilter, zoneFilter]);
 
 
   // ค่าเริ่มต้น: พับปิดทุกเครื่อง
   useEffect(() => {
     setOpenIds(new Set());
-  }, [q, seller, statusFilter]);
+  }, [q, seller, statusFilter, zoneFilter]);
 
   // กด "ตกลง" ในป๊อปอัป → กางแถวที่ตรงและเลื่อนหน้าจอไปหา
   useEffect(() => {
@@ -967,6 +1037,29 @@ function SnView({
         </div>
       )}
 
+      {/* กรองตามโซน / พื้นที่ติดตั้ง */}
+      {availableZones.length > 0 && (
+        <CollapsibleSection
+          title={`โซน / พื้นที่ติดตั้ง (${availableZones.length} พื้นที่)`}
+          subtitle="กรองรายการตามโซน จังหวัด หรือสถานที่ติดตั้งเครื่อง"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterChip active={zoneFilter === null} onClick={() => setZoneFilter(null)}>
+              ทุกพื้นที่
+            </FilterChip>
+            {availableZones.map((z) => (
+              <FilterChip
+                key={z}
+                active={zoneFilter === z}
+                onClick={() => setZoneFilter(zoneFilter === z ? null : z)}
+              >
+                {z}
+              </FilterChip>
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
+
       {units.length > 0 && (
         <CollapsibleSection
           title={`สถานะเครื่อง (ทั้งหมด ${units.length} เครื่อง)`}
@@ -1003,7 +1096,7 @@ function SnView({
       ) : (
         <CollapsibleSection
           title={`ข้อมูลเครื่องจักรทั้งหมด (พบ ${filtered.length} เครื่อง)`}
-          subtitle="แสดงชื่อลูกค้าและ S/N — กด 👁️ ดูเพิ่มเติม เพื่อกางอะไหล่"
+          subtitle="แสดงชื่อลูกค้าและ S/N — กด แฟ้มประวัติ เพื่อดูประวัติการบริการ"
         >
           <div className="space-y-2">
             {filtered.map((u) => (
@@ -1012,6 +1105,7 @@ function SnView({
                 unit={u}
                 open={openIds.has(u.id)}
                 onDeleted={load}
+                onOpenHistory={onOpenHistory}
                 onToggle={() =>
                   setOpenIds((prev) => {
                     const next = new Set(prev);
@@ -1091,11 +1185,13 @@ function MachineCard({
   open,
   onToggle,
   onDeleted,
+  onOpenHistory,
 }: {
   unit: MachineResult;
   open: boolean;
   onToggle: () => void;
   onDeleted?: () => void;
+  onOpenHistory?: (sn: string) => void;
 }) {
   const { isAdmin } = useAccess();
   const grouped = groupByCategory(unit.machine_parts ?? []);
@@ -1158,10 +1254,25 @@ function MachineCard({
             {complete ? "✅ ข้อมูลครบถ้วน" : "⚠️ ข้อมูลยังไม่ครบ"}
           </span>
         </div>
-        <span className="flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
-          {open ? "👁️ ซ่อนข้อมูล" : "👁️ ดูเพิ่มเติม"}
-          <ChevronDown className={"h-4 w-4 transition-transform " + (open ? "rotate-180" : "")} />
-        </span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenHistory?.(unit.serial_number);
+            }}
+            className="h-8 px-2.5 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/10 cursor-pointer font-semibold shadow-2xs"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span className="hidden xs:inline">แฟ้มประวัติ</span>
+          </Button>
+          <span className="flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
+            {open ? "👁️ ซ่อนข้อมูล" : "👁️ ดูเพิ่มเติม"}
+            <ChevronDown className={"h-4 w-4 transition-transform " + (open ? "rotate-180" : "")} />
+          </span>
+        </div>
       </button>
       {isAdmin && (
         <ConfirmButton
@@ -1182,6 +1293,13 @@ function MachineCard({
       {open && (
         <CardContent id={`print-${unit.id}`} className="space-y-4 border-t pt-4">
           <div className="no-print flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xs gap-1.5 cursor-pointer"
+              onClick={() => onOpenHistory?.(unit.serial_number)}
+            >
+              <Sparkles className="h-4 w-4" /> แฟ้มประวัติเครื่อง (Digital Passport)
+            </Button>
             <PdfPreviewButton unitId={unit.id} serial={unit.serial_number} />
             <Button size="sm" variant="outline" onClick={() => shareMachine(unit)}>
               <Share2 className="mr-1 h-4 w-4" /> ส่งออก / แชร์

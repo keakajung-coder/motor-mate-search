@@ -155,47 +155,97 @@ function NavBar() {
   const { isAdmin } = useAccess();
 
   return (
-    <header className="min-w-0 border-b bg-card">
-      <div className="grid w-full min-w-0 grid-cols-1 gap-2 px-3 py-3 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-        <Link to="/" className="flex min-w-0 items-center gap-2 font-semibold">
-          <Wrench className="h-5 w-5 text-primary" />
-          <span className="hidden sm:inline">อะไหล่ปั๊มลม</span>
-        </Link>
-        <nav className="flex min-w-0 flex-wrap items-center gap-1 text-sm lg:justify-end">
+    <header className="sticky top-0 z-40 min-w-0 border-b bg-card/95 backdrop-blur-md shadow-2xs">
+      <div className="w-full min-w-0 px-3 py-2 sm:px-5">
+        <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-4">
+          {/* Left: Brand & Desktop Nav Links */}
+          <div className="flex min-w-0 items-center gap-3 sm:gap-5">
+            <Link
+              to="/"
+              className="flex min-w-0 items-center gap-2 font-semibold text-foreground hover:opacity-85 shrink-0"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Wrench className="h-4 w-4" />
+              </div>
+              <span className="font-bold tracking-tight text-sm sm:text-base hidden xs:inline">
+                อะไหล่ปั๊มลม
+              </span>
+            </Link>
+
+            {/* Desktop Navigation Links (>= lg) */}
+            <nav className="hidden lg:flex items-center gap-1 text-sm font-medium">
+              <Link
+                to="/"
+                className="rounded-md px-3 py-1.5 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold transition-colors"
+                activeOptions={{ exact: true }}
+              >
+                ค้นหา
+              </Link>
+              <Link
+                to="/planner"
+                className="flex items-center gap-1.5 rounded-md px-3 py-1.5 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold transition-colors"
+              >
+                <CalendarDays className="h-4 w-4 text-primary" />
+                ปฏิทิน / แพลนเนอร์
+              </Link>
+              <Link
+                to="/admin"
+                className="rounded-md px-3 py-1.5 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold transition-colors"
+              >
+                จัดการข้อมูล
+              </Link>
+              {isAdmin && (
+                <Link
+                  to="/trash"
+                  className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-destructive hover:bg-destructive/10 [&.active]:bg-destructive/15 [&.active]:font-semibold transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  ถังขยะ
+                </Link>
+              )}
+            </nav>
+          </div>
+
+          {/* Right: Persistent Role Switcher & Controls (Always Top Right) */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto">
+            <UserRoleSwitcherButton />
+            <NotificationBell />
+            <ThemeQuickToggle />
+            <AdminLockButton />
+          </div>
+        </div>
+
+        {/* Mobile / Tablet Scrollable Navigation Bar (< lg) */}
+        <nav className="lg:hidden mt-1.5 flex min-w-0 items-center gap-1 overflow-x-auto scrollbar-none border-t border-border/40 pt-1 text-xs font-medium">
           <Link
             to="/"
-            className="rounded-md px-3 py-2 hover:bg-accent [&.active]:bg-accent [&.active]:font-medium"
+            className="shrink-0 rounded-md px-2.5 py-1 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold"
             activeOptions={{ exact: true }}
           >
             ค้นหา
           </Link>
           <Link
             to="/planner"
-            className="flex items-center gap-1 rounded-md px-3 py-2 hover:bg-accent [&.active]:bg-accent [&.active]:font-medium"
+            className="shrink-0 flex items-center gap-1 rounded-md px-2.5 py-1 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold"
           >
-            <CalendarDays className="h-4 w-4" />
+            <CalendarDays className="h-3.5 w-3.5 text-primary" />
             ปฏิทิน / แพลนเนอร์
           </Link>
-
           <Link
             to="/admin"
-            className="rounded-md px-3 py-2 hover:bg-accent [&.active]:bg-accent [&.active]:font-medium"
+            className="shrink-0 rounded-md px-2.5 py-1 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold"
           >
             จัดการข้อมูล
           </Link>
           {isAdmin && (
             <Link
               to="/trash"
-              className="flex items-center gap-1 rounded-md px-3 py-2 text-destructive hover:bg-destructive/10 [&.active]:bg-destructive/15 [&.active]:font-medium"
+              className="shrink-0 flex items-center gap-1 rounded-md px-2.5 py-1 text-destructive hover:bg-destructive/10 [&.active]:bg-destructive/15 [&.active]:font-semibold"
             >
-              <Trash2 className="h-4 w-4" />
-              ถังขยะ / กู้คืน
+              <Trash2 className="h-3.5 w-3.5" />
+              ถังขยะ
             </Link>
           )}
-          <ThemeQuickToggle />
-          <NotificationBell />
-          <UserRoleSwitcherButton />
-          <AdminLockButton />
         </nav>
       </div>
     </header>

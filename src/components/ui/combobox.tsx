@@ -85,7 +85,7 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] min-w-[min(100vw-2rem,280px)] max-w-[calc(100vw-1rem)] p-0 z-[100]"
+        className="w-[var(--radix-popover-trigger-width)] min-w-[min(100vw-2rem,280px)] max-w-[calc(100vw-1rem)] p-0 z-[99999]"
         align="start"
         sideOffset={4}
         avoidCollisions

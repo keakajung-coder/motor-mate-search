@@ -28,11 +28,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { invalidateData, isValueRemoved } from "@/lib/data-sync";
+import { invalidateData, isValueRemoved, syncLatestData } from "@/lib/data-sync";
 import { loadAutoJobAlert, saveAutoJobAlert, sendJobApprovalAlert } from "@/lib/job-alerts";
 import { ensureSeller, useSellerNames } from "@/lib/sellers";
 import { JobAttachments, parseAttachments } from "@/components/JobAttachments";
 import { HandoverReportDialog } from "@/components/HandoverReportDialog";
+import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
 
 import {
   AlertTriangle,
@@ -53,6 +54,7 @@ import {
   Pencil,
   Phone,
   RotateCcw,
+  RotateCw,
   Search,
   Share2,
   Trash2,
@@ -413,6 +415,14 @@ function PlannerPage() {
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [viewing, setViewing] = useState<Appointment | null>(null);
   const [handoverAppt, setHandoverAppt] = useState<Appointment | null>(null);
+  const [machineHistoryTarget, setMachineHistoryTarget] = useState<{
+    serialNumber?: string | null;
+    machineUnitId?: string | null;
+  } | null>(null);
+  const openMachineHistory = (serialNumber?: string | null, machineUnitId?: string | null) => {
+    if (!serialNumber && !machineUnitId) return;
+    setMachineHistoryTarget({ serialNumber, machineUnitId });
+  };
   const pickAppt = (a: Appointment) => (a.status === "closed" ? setViewing(a) : setEditing(a));
   const [dayDetail, setDayDetail] = useState<string | null>(null);
   const { holidays, holidaysMap, addHoliday, updateHoliday, deleteHoliday } = useHolidays();
@@ -676,7 +686,19 @@ function PlannerPage() {
             วางแผนงานเข้าบริการ ตรวจใบสั่งงาน และแจ้งเตือนอะไหล่ล่วงหน้า
           </p>
         </div>
-        <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:flex-wrap lg:justify-end">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
+          <Button
+            variant="outline"
+            className="h-11 border-border/80 hover:bg-accent gap-1.5 cursor-pointer"
+            onClick={async () => {
+              await syncLatestData();
+              toast.success("รีเฟรชข้อมูลงานและปฏิทินล่าสุดแล้ว");
+            }}
+            title="รีเฟรช / ซิงก์ข้อมูลงานล่าสุด"
+          >
+            <RotateCw className="h-4 w-4 text-primary" />
+            รีเฟรชงานล่าสุด
+          </Button>
           <WorkOrderDialog onCreated={load} />
           {isAdmin && (
             <Button
@@ -711,12 +733,20 @@ function PlannerPage() {
             title={`ใบสั่งงานรออนุมัติ (${orders.length})`}
             className="lg:col-span-2 2xl:col-span-1"
           >
-            <PendingOrders orders={orders} reload={load} />
+            <PendingOrders
+              orders={orders}
+              reload={load}
+              onOpenMachineHistory={openMachineHistory}
+            />
           </FoldSection>
         )}
 
         <FoldSection title="งานที่อนุมัติแล้ว / ฝ่ายขายยืนยันนัดหมาย">
-          <ApprovedOrders reloadPlanner={load} onCloseJob={setClosing} />
+          <ApprovedOrders
+            reloadPlanner={load}
+            onCloseJob={setClosing}
+            onOpenMachineHistory={openMachineHistory}
+          />
         </FoldSection>
 
         <FoldSection title="แจ้งเตือนอะไหล่ล่วงหน้า 30 วัน">
@@ -1080,6 +1110,7 @@ function PlannerPage() {
                   sortBy={sortBy}
                   onEdit={setEditing}
                   onClose={setClosing}
+                  onOpenMachineHistory={openMachineHistory}
                   onEditHoliday={(h) => {
                     setEditingHoliday(h);
                     setHolidayFormOpen(true);
@@ -1113,6 +1144,7 @@ function PlannerPage() {
             setDayDetail(null);
             setClosing(a);
           }}
+          onOpenMachineHistory={openMachineHistory}
           onEditHoliday={(h) => {
             setEditingHoliday(h);
             setHolidayFormOpen(true);
@@ -1176,6 +1208,7 @@ function PlannerPage() {
             setEditing(null);
             setHandoverAppt(a);
           }}
+          onOpenMachineHistory={openMachineHistory}
           onDuplicate={(a) => {
             setEditing(null);
             setTimeout(() => setEditing(duplicateAppointment(a)), 0);
@@ -1195,6 +1228,7 @@ function PlannerPage() {
             setViewing(null);
             setEditing(a);
           }}
+          onOpenMachineHistory={openMachineHistory}
           onDuplicate={isAdmin ? (a) => {
             setViewing(null);
             setEditing(duplicateAppointment(a));
@@ -1224,6 +1258,16 @@ function PlannerPage() {
         <HandoverReportDialog
           appt={handoverAppt}
           onClose={() => setHandoverAppt(null)}
+        />
+      )}
+      {machineHistoryTarget && (
+        <MachineHistoryDialog
+          serialNumber={machineHistoryTarget.serialNumber}
+          machineUnitId={machineHistoryTarget.machineUnitId}
+          open={!!machineHistoryTarget}
+          onOpenChange={(open) => {
+            if (!open) setMachineHistoryTarget(null);
+          }}
         />
       )}
     </div>
@@ -1362,7 +1406,15 @@ function workOrderToDraft(o: WorkOrder): Partial<WorkOrderDraft> {
   return draft;
 }
 
-function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => void }) {
+function PendingOrders({
+  orders,
+  reload,
+  onOpenMachineHistory,
+}: {
+  orders: WorkOrder[];
+  reload: () => void;
+  onOpenMachineHistory?: (sn?: string | null, unitId?: string | null) => void;
+}) {
   const [edit, setEdit] = useState<Record<string, Partial<WorkOrder>>>({});
   const { staff, vehicles } = useServiceOptions();
   const [busy, setBusy] = useState<string | null>(null);
@@ -1581,7 +1633,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
               className={cn(
                 "relative space-y-3 overflow-hidden rounded-lg border py-3 pl-6 pr-3 transition-all",
                 visual.opacityClass,
-                visual.isMine && "ring-2 ring-primary/40 shadow-sm border-primary/40",
+                visual.isMine && "ring-2 ring-primary/60 shadow-md border-primary bg-card/95",
               )}
             >
               <StatusRail status="pending" />
@@ -1756,20 +1808,48 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
               </div>
             )}
 
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => approve(o)} disabled={busy === o.id}>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {val(o, "serial_number") && onOpenMachineHistory && (
+                <Button
+                  size={visual.isMine ? "default" : "sm"}
+                  variant="outline"
+                  className={cn(
+                    "cursor-pointer gap-1 border-primary/40 text-primary hover:bg-primary/10",
+                    visual.isMine && "h-10 px-3.5 text-sm font-semibold",
+                  )}
+                  onClick={() => onOpenMachineHistory(splitNames(val(o, "serial_number"))[0])}
+                >
+                  <FileText className="h-3.5 w-3.5" /> ประวัติเครื่อง
+                </Button>
+              )}
+              <Button
+                size={visual.isMine ? "default" : "sm"}
+                className={cn("cursor-pointer font-medium", visual.isMine && "h-10 px-4 text-sm font-semibold shadow-xs")}
+                onClick={() => approve(o)}
+                disabled={busy === o.id}
+              >
                 {busy === o.id ? (
-                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                 ) : (
-                  <CheckCircle2 className="mr-1 h-4 w-4" />
+                  <CheckCircle2 className="mr-1.5 h-4 w-4" />
                 )}
                 อนุมัติ
               </Button>
-              <Button size="sm" variant="secondary" onClick={() => shareNow(o)}>
-                <Phone className="mr-1 h-4 w-4" /> ส่งแจ้งเตือนผ่าน LINE
+              <Button
+                size={visual.isMine ? "default" : "sm"}
+                variant="secondary"
+                className={cn("cursor-pointer font-medium", visual.isMine && "h-10 px-4 text-sm font-semibold")}
+                onClick={() => shareNow(o)}
+              >
+                <Phone className="mr-1.5 h-4 w-4 text-emerald-600" /> ส่งแจ้งเตือนผ่าน LINE
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setDup(o)}>
-                <Copy className="mr-1 h-4 w-4" /> คัดลอกใบงาน
+              <Button
+                size={visual.isMine ? "default" : "sm"}
+                variant="outline"
+                className={cn("cursor-pointer", visual.isMine && "h-10 px-3.5 text-sm")}
+                onClick={() => setDup(o)}
+              >
+                <Copy className="mr-1.5 h-4 w-4" /> คัดลอกใบงาน
               </Button>
               <ConfirmButton
                 variant="outline"
@@ -1779,7 +1859,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
                 description="รายการนี้จะไม่ถูกนำขึ้นปฏิทิน"
                 confirmText="ปฏิเสธ"
               >
-                <XCircle className="mr-1 h-4 w-4" /> ปฏิเสธ
+                <XCircle className="mr-1.5 h-4 w-4" /> ปฏิเสธ
               </ConfirmButton>
             </div>
           </div>
@@ -1825,9 +1905,11 @@ function EditField({ label, children }: { label: string; children: React.ReactNo
 function ApprovedOrders({
   reloadPlanner,
   onCloseJob,
+  onOpenMachineHistory,
 }: {
   reloadPlanner: () => void;
   onCloseJob: (appt: Appointment) => void;
+  onOpenMachineHistory?: (sn?: string | null, unitId?: string | null) => void;
 }) {
   const [rows, setRows] = useState<WorkOrder[]>([]);
   const [appointments, setAppointments] = useState<Record<string, Appointment>>({});
@@ -1877,7 +1959,13 @@ function ApprovedOrders({
     void loadApproved();
     const onDataChanged = () => void loadApproved();
     window.addEventListener("app:data-changed", onDataChanged);
-    return () => window.removeEventListener("app:data-changed", onDataChanged);
+    window.addEventListener("planner:reload", onDataChanged);
+    window.addEventListener("app:user-role-changed", onDataChanged);
+    return () => {
+      window.removeEventListener("app:data-changed", onDataChanged);
+      window.removeEventListener("planner:reload", onDataChanged);
+      window.removeEventListener("app:user-role-changed", onDataChanged);
+    };
   }, [loadApproved]);
 
   const [conflictTarget, setConflictTarget] = useState<{
@@ -2286,7 +2374,7 @@ function ApprovedOrders({
               `relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3 transition-all ${STAGE_BG[statusStage(appointments[o.id]?.status ?? o.status)]}`,
               (o as WorkOrder & { approved_hidden?: boolean }).approved_hidden && "opacity-60",
               visual.opacityClass,
-              visual.isMine && "ring-2 ring-primary/40 shadow-sm border-primary/40",
+              visual.isMine && "ring-2 ring-primary/60 shadow-md border-primary bg-card/95",
             )}
           >
             <StatusRail status={appointments[o.id]?.status ?? o.status} />
@@ -2388,54 +2476,98 @@ function ApprovedOrders({
               <WorkOrderFormPrint order={o} />
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            {(appointments[o.id]?.serial_number || o.serial_number) && onOpenMachineHistory && (
+              <Button
+                size={visual.isMine ? "default" : "sm"}
+                variant="outline"
+                className={cn(
+                  "cursor-pointer gap-1 border-primary/40 text-primary hover:bg-primary/10",
+                  visual.isMine && "h-10 px-3.5 text-sm font-semibold",
+                )}
+                onClick={() =>
+                  onOpenMachineHistory(
+                    splitNames(appointments[o.id]?.serial_number || o.serial_number || "")[0],
+                    appointments[o.id]?.machine_unit_id,
+                  )
+                }
+              >
+                <FileText className="h-3.5 w-3.5" /> ประวัติเครื่อง
+              </Button>
+            )}
             {appointments[o.id] && appointments[o.id].status !== "closed" && (
-              <Button size="sm" variant="secondary" onClick={() => onCloseJob(appointments[o.id])}>
-                <CheckCircle2 className="mr-1 h-4 w-4" /> ปิดใบงาน
+              <Button
+                size={visual.isMine ? "default" : "sm"}
+                variant="secondary"
+                className={cn(
+                  "cursor-pointer font-medium",
+                  visual.isMine &&
+                    "h-10 px-4 font-semibold text-sm shadow-xs border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary",
+                )}
+                onClick={() => onCloseJob(appointments[o.id])}
+              >
+                <CheckCircle2 className="mr-1.5 h-4 w-4 text-primary" /> ปิดใบงาน
               </Button>
             )}
             <Button
-              size="sm"
+              size={visual.isMine ? "default" : "sm"}
               variant="outline"
               disabled={!!busy}
+              className={cn("cursor-pointer", visual.isMine && "h-10 px-3.5 text-sm")}
               onClick={() => exportOne(o, "image")}
             >
               {busy === o.id + "image" ? (
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
               ) : (
-                <Camera className="mr-1 h-4 w-4" />
+                <Camera className="mr-1.5 h-4 w-4" />
               )}
               บันทึกรูปภาพ
             </Button>
             <Button
-              size="sm"
+              size={visual.isMine ? "default" : "sm"}
               variant="outline"
               disabled={!!busy}
+              className={cn("cursor-pointer", visual.isMine && "h-10 px-3.5 text-sm")}
               onClick={() => exportOne(o, "pdf")}
             >
               {busy === o.id + "pdf" ? (
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
               ) : (
-                <FileDown className="mr-1 h-4 w-4" />
+                <FileDown className="mr-1.5 h-4 w-4" />
               )}
               บันทึก PDF
             </Button>
-            <Button size="sm" disabled={!!busy} onClick={() => exportFormPdf([o])}>
+            <Button
+              size={visual.isMine ? "default" : "sm"}
+              disabled={!!busy}
+              className={cn("cursor-pointer", visual.isMine && "h-10 px-3.5 text-sm")}
+              onClick={() => exportFormPdf([o])}
+            >
               {busy === o.id + "formpdf" ? (
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
               ) : (
-                <FileDown className="mr-1 h-4 w-4" />
+                <FileDown className="mr-1.5 h-4 w-4" />
               )}
               PDF แบบฟอร์ม
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setDup(o)}>
-              <Copy className="mr-1 h-4 w-4" /> คัดลอกใบงาน
+            <Button
+              size={visual.isMine ? "default" : "sm"}
+              variant="outline"
+              className={cn("cursor-pointer", visual.isMine && "h-10 px-3.5 text-sm")}
+              onClick={() => setDup(o)}
+            >
+              <Copy className="mr-1.5 h-4 w-4" /> คัดลอกใบงาน
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => toggleHidden(o)}>
+            <Button
+              size={visual.isMine ? "default" : "sm"}
+              variant="ghost"
+              className={cn("cursor-pointer", visual.isMine && "h-10 px-3 text-sm")}
+              onClick={() => toggleHidden(o)}
+            >
               {(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? (
-                <Eye className="mr-1 h-4 w-4" />
+                <Eye className="mr-1.5 h-4 w-4" />
               ) : (
-                <EyeOff className="mr-1 h-4 w-4" />
+                <EyeOff className="mr-1.5 h-4 w-4" />
               )}
               {(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? "แสดง" : "ซ่อน"}
             </Button>
@@ -3043,6 +3175,7 @@ function DayDetailDialog({
   onClose,
   onPick,
   onCloseJob,
+  onOpenMachineHistory,
   onEditHoliday,
   onDeleteHoliday,
   onAddHoliday,
@@ -3054,6 +3187,7 @@ function DayDetailDialog({
   onClose: () => void;
   onPick: (a: Appointment) => void;
   onCloseJob: (a: Appointment) => void;
+  onOpenMachineHistory?: (sn?: string | null, unitId?: string | null) => void;
   onEditHoliday?: (h: Holiday) => void;
   onDeleteHoliday?: (id: string) => void;
   onAddHoliday?: (date: string) => void;
@@ -3213,7 +3347,7 @@ function DayDetailDialog({
                       "relative grid min-w-0 grid-cols-1 gap-2 overflow-hidden rounded-xl border py-3 pl-6 pr-3 sm:grid-cols-[minmax(0,1fr)_auto] transition-all",
                       vehicleColor(a.vehicle_plate),
                       visual.opacityClass,
-                      visual.isMine && "ring-2 ring-primary/50 shadow-sm border-primary/40 bg-card",
+                      visual.isMine && "ring-2 ring-primary/60 shadow-md border-primary bg-card/95",
                     )}
                   >
                     <StatusRail status={a.status} />
@@ -3259,6 +3393,19 @@ function DayDetailDialog({
                     </span>
                   </Button>
                   <div className="flex flex-wrap items-center gap-2 self-start">
+                    {a.serial_number && onOpenMachineHistory && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="cursor-pointer gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                        onClick={() =>
+                          onOpenMachineHistory(splitNames(a.serial_number)[0], a.machine_unit_id)
+                        }
+                      >
+                        <FileText className="h-3.5 w-3.5" /> ประวัติเครื่อง
+                      </Button>
+                    )}
                     {a.status !== "closed" && (
                       <label
                         className={
@@ -3300,11 +3447,16 @@ function DayDetailDialog({
                     {a.status !== "closed" && (
                       <Button
                         type="button"
-                        size="sm"
+                        size={visual.isMine ? "default" : "sm"}
                         variant="secondary"
+                        className={cn(
+                          "cursor-pointer font-medium",
+                          visual.isMine &&
+                            "h-9.5 px-3.5 font-semibold text-sm shadow-xs border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary",
+                        )}
                         onClick={() => onCloseJob(a)}
                       >
-                        <CheckCircle2 className="mr-1 h-4 w-4" /> ปิดใบงาน
+                        <CheckCircle2 className="mr-1.5 h-4 w-4 text-primary" /> ปิดใบงาน
                       </Button>
                     )}
                   </div>
@@ -3529,6 +3681,7 @@ function DayList({
   sortBy = "date-asc",
   onEdit,
   onClose,
+  onOpenMachineHistory,
   onEditHoliday,
   onDeleteHoliday,
   onAddHoliday,
@@ -3541,6 +3694,7 @@ function DayList({
   sortBy?: string;
   onEdit: (a: Appointment) => void;
   onClose: (a: Appointment) => void;
+  onOpenMachineHistory?: (sn?: string | null, unitId?: string | null) => void;
   onEditHoliday?: (h: Holiday) => void;
   onDeleteHoliday?: (id: string) => void;
   onAddHoliday?: (date: string) => void;
@@ -3610,7 +3764,7 @@ function DayList({
                   className={cn(
                     "relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3 transition-all",
                     visual.opacityClass,
-                    visual.isMine && "ring-2 ring-primary/40 bg-primary/5",
+                    visual.isMine && "ring-2 ring-primary/60 shadow-md border-primary bg-card/95",
                   )}
                 >
                   <StatusRail status={a.status} />
@@ -3638,7 +3792,7 @@ function DayList({
                     <div className="flex flex-col items-end gap-1">
                       <JobStatusBadge status={a.status} />
                       {visual.isMine && (
-                        <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                        <span className="inline-flex items-center gap-1 rounded bg-primary/15 border border-primary/30 px-2 py-0.5 text-xs font-bold text-primary">
                           ⭐ งานของฉัน
                         </span>
                       )}
@@ -3655,24 +3809,57 @@ function DayList({
                     >
                       <input
                         type="checkbox"
-                        className="h-4 w-4 accent-amber-500"
+                        className="h-4 w-4 accent-amber-500 cursor-pointer"
                         checked={a.status === "scheduled"}
                         onChange={(e) => setStatus(a, e.target.checked ? "scheduled" : "approved")}
                       />
                       นัดหมายแล้ว
                     </label>
                   )}
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => onEdit(a)}>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {a.serial_number && onOpenMachineHistory && (
+                      <Button
+                        size={visual.isMine ? "default" : "sm"}
+                        variant="outline"
+                        className={cn(
+                          "cursor-pointer gap-1 border-primary/40 text-primary hover:bg-primary/10",
+                          visual.isMine && "h-9.5 px-3 text-sm font-semibold",
+                        )}
+                        onClick={() =>
+                          onOpenMachineHistory(splitNames(a.serial_number)[0], a.machine_unit_id)
+                        }
+                      >
+                        <FileText className="h-3.5 w-3.5" /> ประวัติเครื่อง
+                      </Button>
+                    )}
+                    <Button
+                      size={visual.isMine ? "default" : "sm"}
+                      variant="outline"
+                      className={cn("cursor-pointer", visual.isMine && "h-9.5 px-3.5 text-sm")}
+                      onClick={() => onEdit(a)}
+                    >
                       แก้ไข
                     </Button>
                     {a.status !== "in_progress" && a.status !== "closed" && (
-                      <Button size="sm" onClick={() => setStatus(a, "in_progress")}>
+                      <Button
+                        size={visual.isMine ? "default" : "sm"}
+                        className={cn("cursor-pointer", visual.isMine && "h-9.5 px-3.5 text-sm font-semibold")}
+                        onClick={() => setStatus(a, "in_progress")}
+                      >
                         เริ่มดำเนินการ
                       </Button>
                     )}
 
-                    <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
+                    <Button
+                      size={visual.isMine ? "default" : "sm"}
+                      variant="secondary"
+                      className={cn(
+                        "cursor-pointer font-medium",
+                        visual.isMine &&
+                          "h-9.5 px-4 font-semibold text-sm shadow-xs border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary",
+                      )}
+                      onClick={() => onClose(a)}
+                    >
                       {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดใบงาน"}
                     </Button>
                     {isAdmin && (
@@ -3725,6 +3912,7 @@ function AppointmentDialog({
   onDeleted,
   onCloseJob,
   onOpenHandover,
+  onOpenMachineHistory,
   onDuplicate,
 }: {
   value: Appointment;
@@ -3734,6 +3922,7 @@ function AppointmentDialog({
   onDeleted?: () => void;
   onCloseJob: (a: Appointment) => void;
   onOpenHandover?: (a: Appointment) => void;
+  onOpenMachineHistory?: (sn?: string | null, unitId?: string | null) => void;
   onDuplicate?: (a: Appointment) => void;
 }) {
   const [form, setForm] = useState<Appointment>(value);
@@ -4344,6 +4533,16 @@ function AppointmentDialog({
           <Button variant="outline" onClick={onClose}>
             ปิด
           </Button>
+          {form.serial_number && onOpenMachineHistory && (
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+              onClick={() => onOpenMachineHistory(splitNames(form.serial_number)[0], form.machine_unit_id)}
+            >
+              <FileText className="h-4 w-4" /> ดูประวัติเครื่อง (Passport)
+            </Button>
+          )}
           {form.id && form.status !== "closed" && !editMode && (
             <Button variant="secondary" onClick={() => onCloseJob(form)}>
               <CheckCircle2 className="mr-1 h-4 w-4" /> ปิดใบงาน
@@ -5216,6 +5415,7 @@ function ClosedJobResultDialog({
   onEditClose,
   onEditDetail,
   onOpenHandover,
+  onOpenMachineHistory,
   onDuplicate,
 }: {
   onDuplicate?: (a: Appointment) => void;
@@ -5224,6 +5424,7 @@ function ClosedJobResultDialog({
   onEditClose: (a: Appointment) => void;
   onEditDetail: (a: Appointment) => void;
   onOpenHandover?: (a: Appointment) => void;
+  onOpenMachineHistory?: (sn?: string | null, unitId?: string | null) => void;
 }) {
   const [row, setRow] = useState<Record<string, any> | null>(null);
   useEffect(() => {
@@ -5295,6 +5496,15 @@ function ClosedJobResultDialog({
             </Button>
           )}
           <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            {r.serial_number && onOpenMachineHistory && (
+              <Button
+                variant="outline"
+                className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                onClick={() => onOpenMachineHistory(splitNames(r.serial_number)[0], r.machine_unit_id)}
+              >
+                <FileText className="h-4 w-4" /> ประวัติเครื่อง (Passport)
+              </Button>
+            )}
             {onDuplicate && (
               <Button variant="outline" onClick={() => onDuplicate({ ...(appt as any), ...(row ?? {}) })}>
                 <Copy className="mr-1 h-4 w-4" /> คัดลอกใบงาน

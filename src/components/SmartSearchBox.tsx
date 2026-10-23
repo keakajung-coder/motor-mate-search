@@ -63,7 +63,7 @@ export function SmartSearchBox({
       />
       {show && (
         <div
-          className="dropdown-scroll absolute z-[100] mt-1 max-h-[180px] sm:max-h-[200px] w-full overflow-y-auto overflow-x-hidden rounded-lg border bg-popover p-1 shadow-xl"
+          className="dropdown-scroll absolute z-[99999] mt-1 max-h-[190px] w-full overflow-y-auto overflow-x-hidden rounded-lg border bg-popover p-1 shadow-xl"
           onMouseDown={() => blurTimer.current && clearTimeout(blurTimer.current)}
         >
           {matched.map((s) => (
