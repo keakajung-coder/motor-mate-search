@@ -148,3 +148,28 @@ export function invalidateData(
     }
   }
 }
+
+/**
+ * ซิงก์ข้อมูลล่าสุดทั้งระบบทันที (ดึงข้อมูลงาน คิวงาน และตารางตัวเลือกล่าสุด)
+ */
+export async function syncLatestData(): Promise<void> {
+  if (typeof window !== "undefined") {
+    invalidateData([
+      "appointments",
+      "work_orders",
+      "machine_units",
+      "customers",
+      "directory",
+      "service_staff",
+      "sales_contacts",
+      "sellers",
+    ]);
+    window.dispatchEvent(new CustomEvent("planner:reload"));
+    window.dispatchEvent(new CustomEvent("app:data-changed"));
+    try {
+      await refreshDirectory();
+    } catch {
+      /* ignore */
+    }
+  }
+}

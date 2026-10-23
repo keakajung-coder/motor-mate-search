@@ -23,6 +23,9 @@ import { ConnectionKeeper } from "@/components/ConnectionKeeper";
 import { ExcelExportButton } from "@/components/ExcelExportButton";
 import { ThemeQuickToggle } from "@/components/ThemePicker";
 import { useTheme } from "@/lib/theme";
+import { UserRoleProvider } from "@/lib/user-role";
+import { UserRoleSwitcherButton } from "@/components/UserRoleSwitcherButton";
+import { RoleSelectionDialog } from "@/components/RoleSelectionModal";
 
 function NotFoundComponent() {
   return (
@@ -191,6 +194,7 @@ function NavBar() {
           )}
           <ThemeQuickToggle />
           <NotificationBell />
+          <UserRoleSwitcherButton />
           <AdminLockButton />
         </nav>
       </div>
@@ -209,16 +213,19 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AccessProvider>
-        <AccessGate>
-          <div className="min-h-dvh min-w-0 overflow-x-clip bg-background">
-            <ConnectionKeeper />
-            <ExcelExportButton />
-            <NavBar />
-            <main className="w-full min-w-0 max-w-none px-3 py-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-6 sm:pb-[calc(6rem+env(safe-area-inset-bottom))]">
-              <Outlet />
-            </main>
-          </div>
-        </AccessGate>
+        <UserRoleProvider>
+          <AccessGate>
+            <div className="min-h-dvh min-w-0 overflow-x-clip bg-background">
+              <ConnectionKeeper />
+              <ExcelExportButton />
+              <NavBar />
+              <main className="w-full min-w-0 max-w-none px-3 py-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-6 sm:pb-[calc(6rem+env(safe-area-inset-bottom))]">
+                <Outlet />
+              </main>
+              <RoleSelectionDialog />
+            </div>
+          </AccessGate>
+        </UserRoleProvider>
       </AccessProvider>
       <Toaster />
     </QueryClientProvider>

@@ -24,6 +24,7 @@ import { StaffVehiclesTab } from "@/components/admin/StaffVehiclesTab";
 import { EngineersTab } from "@/components/admin/EngineersTab";
 import { SellerTransfer } from "@/components/admin/SellerTransfer";
 import { refreshDirectory } from "@/lib/directory";
+import { invalidateData, isValueRemoved } from "@/lib/data-sync";
 
 import { PasscodeSettings } from "@/components/admin/PasscodeSettings";
 import { BackupRestore } from "@/components/admin/BackupRestore";
@@ -855,15 +856,6 @@ function MachinesTab() {
   const sellerNames = useSellerNames();
   const machineStatuses = useMachineStatuses();
   const [completeFilter, setCompleteFilter] = useState<"all" | "yes" | "no">("all");
-  useEffect(() => {
-    const reload = () => {
-      loadOptionList("sellers").then(setCustomSellers);
-      loadOptionList("statuses").then(setCustomStatuses);
-    };
-    reload();
-    window.addEventListener("option-list-changed", reload);
-    return () => window.removeEventListener("option-list-changed", reload);
-  }, []);
 
   const statusCounts = useMemo(() => {
     const map = new Map<string, number>();

@@ -450,37 +450,37 @@
   display: none;
 }
 
-/* รายการตัวเลือก: แถบเลื่อนชัดเจน ลื่นไหล ทุกแพลตฟอร์มทั้งมือถือ ไอแพด และ PC */
+/* รายการตัวเลือก: แถบเลื่อนชัดเจน มองเห็นได้ชัดเจน ลื่นไหล ทุกแพลตฟอร์มทั้งมือถือ ไอแพด และ PC */
 .dropdown-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklch, var(--muted-foreground) 65%, transparent) color-mix(in oklch, var(--muted) 40%, transparent);
+  scrollbar-width: thin !important;
+  scrollbar-color: color-mix(in oklch, var(--primary) 70%, var(--muted-foreground)) color-mix(in oklch, var(--muted) 50%, transparent) !important;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
   overscroll-behavior: contain;
 }
 .dropdown-scroll::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-  display: block;
+  width: 7px !important;
+  height: 7px !important;
+  display: block !important;
 }
 .dropdown-scroll::-webkit-scrollbar-track {
-  background: color-mix(in oklch, var(--muted) 35%, transparent);
-  border-radius: 999px;
+  background: color-mix(in oklch, var(--muted) 40%, transparent) !important;
+  border-radius: 999px !important;
 }
 .dropdown-scroll::-webkit-scrollbar-thumb {
-  background: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
-  border-radius: 999px;
-  border: 1px solid transparent;
+  background: color-mix(in oklch, var(--primary) 65%, var(--muted-foreground)) !important;
+  border-radius: 999px !important;
+  border: 1px solid color-mix(in oklch, var(--background) 70%, transparent) !important;
 }
 .dropdown-scroll::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in oklch, var(--muted-foreground) 80%, transparent);
+  background: var(--primary) !important;
 }
 
-/* ทะเบียบปดแถบเลื่อนของช่องเลือกแบบเดิมไว้เอง — บังคับให้แสดง Scrollbar ชัดเจนเสมอ */
+/* ทะเบียนปิดแถบเลื่อนของช่องเลือกแบบเดิมไว้เอง — บังคับให้แสดง Scrollbar ชัดเจนเสมอ */
 [data-radix-select-viewport],
 [data-radix-select-viewport].dropdown-scroll {
   scrollbar-width: thin !important;
-  scrollbar-color: color-mix(in oklch, var(--muted-foreground) 65%, transparent) color-mix(in oklch, var(--muted) 40%, transparent) !important;
+  scrollbar-color: color-mix(in oklch, var(--primary) 70%, var(--muted-foreground)) color-mix(in oklch, var(--muted) 50%, transparent) !important;
   -ms-overflow-style: auto !important;
   -webkit-overflow-scrolling: touch !important;
   touch-action: pan-y !important;
@@ -490,22 +490,23 @@
 [data-radix-select-viewport]::-webkit-scrollbar,
 [data-radix-select-viewport].dropdown-scroll::-webkit-scrollbar {
   display: block !important;
-  width: 6px !important;
-  height: 6px !important;
+  width: 7px !important;
+  height: 7px !important;
 }
 [data-radix-select-viewport]::-webkit-scrollbar-track,
 [data-radix-select-viewport].dropdown-scroll::-webkit-scrollbar-track {
-  background: color-mix(in oklch, var(--muted) 35%, transparent) !important;
+  background: color-mix(in oklch, var(--muted) 40%, transparent) !important;
   border-radius: 999px !important;
 }
 [data-radix-select-viewport]::-webkit-scrollbar-thumb,
 [data-radix-select-viewport].dropdown-scroll::-webkit-scrollbar-thumb {
-  background: color-mix(in oklch, var(--muted-foreground) 55%, transparent) !important;
+  background: color-mix(in oklch, var(--primary) 65%, var(--muted-foreground)) !important;
   border-radius: 999px !important;
+  border: 1px solid color-mix(in oklch, var(--background) 70%, transparent) !important;
 }
 [data-radix-select-viewport]::-webkit-scrollbar-thumb:hover,
 [data-radix-select-viewport].dropdown-scroll::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in oklch, var(--muted-foreground) 80%, transparent) !important;
+  background: var(--primary) !important;
 }
 
 /* ปฏิทินลอยเหนือฟอร์ม z-[100] ลอยพ้น Parent Container แสดงผลครบทุกวัน 1-31 ไม่ถูกตัดขอบล่าง */
@@ -884,5 +885,87 @@
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+}
+
+/* ==========================================================================
+   Visible Custom Scrollbar & Portalled Menus for All Devices (Mobile, Tablet, Desktop)
+   - Guaranteed visible thumb for effortless scrolling on touch & desktop
+   - Max-height capped at 4-5 items (~180-200px) so dropdowns never push viewport
+   - Highest z-index portal protection against edge clipping
+   ========================================================================== */
+
+.dropdown-scroll,
+[data-radix-select-viewport],
+.custom-visible-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(100, 116, 139, 0.65) rgba(140, 150, 165, 0.12) !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
+}
+
+.dropdown-scroll::-webkit-scrollbar,
+[data-radix-select-viewport]::-webkit-scrollbar,
+.custom-visible-scrollbar::-webkit-scrollbar {
+  width: 7px !important;
+  height: 7px !important;
+  display: block !important;
+}
+
+.dropdown-scroll::-webkit-scrollbar-track,
+[data-radix-select-viewport]::-webkit-scrollbar-track,
+.custom-visible-scrollbar::-webkit-scrollbar-track {
+  background: rgba(140, 150, 165, 0.12) !important;
+  border-radius: 6px !important;
+}
+
+.dropdown-scroll::-webkit-scrollbar-thumb,
+[data-radix-select-viewport]::-webkit-scrollbar-thumb,
+.custom-visible-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.65) !important;
+  border-radius: 6px !important;
+  border: 1.5px solid transparent !important;
+  background-clip: padding-box !important;
+}
+
+.dropdown-scroll::-webkit-scrollbar-thumb:hover,
+[data-radix-select-viewport]::-webkit-scrollbar-thumb:hover,
+.custom-visible-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.9) !important;
+}
+
+.dark .dropdown-scroll,
+.dark [data-radix-select-viewport],
+.dark .custom-visible-scrollbar {
+  scrollbar-color: rgba(148, 163, 184, 0.6) rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .dropdown-scroll::-webkit-scrollbar-track,
+.dark [data-radix-select-viewport]::-webkit-scrollbar-track,
+.dark .custom-visible-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .dropdown-scroll::-webkit-scrollbar-thumb,
+.dark [data-radix-select-viewport]::-webkit-scrollbar-thumb,
+.dark .custom-visible-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.6) !important;
+}
+
+.dark .dropdown-scroll::-webkit-scrollbar-thumb:hover,
+.dark [data-radix-select-viewport]::-webkit-scrollbar-thumb:hover,
+.dark .custom-visible-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(203, 213, 225, 0.9) !important;
+}
+
+/* Ensure Radix select viewport stays within 4-5 items height */
+[data-radix-select-viewport] {
+  max-height: min(200px, 45vh) !important;
+}
+
+/* React Portal top z-index for dropdowns, popovers, and date pickers */
+[data-radix-popper-content-wrapper],
+[data-radix-select-content] {
+  z-index: 9999 !important;
 }
 

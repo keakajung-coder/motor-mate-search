@@ -103,6 +103,8 @@ import { ScheduleConflictDialog } from "@/components/ScheduleConflictDialog";
 import { logAudit } from "@/lib/audit";
 import { ChecklistForm } from "@/components/ChecklistForm";
 import { ChecklistView } from "@/components/ChecklistView";
+import { cn } from "@/lib/utils";
+import { useUserRole } from "@/lib/user-role";
 import {
   loadTemplates,
   matchesType,
@@ -1372,6 +1374,7 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
     conflicts: string[];
   } | null>(null);
   const { isAdmin } = useAccess();
+  const { getJobVisualState } = useUserRole();
 
   useEffect(() => {
     loadAutoJobAlert().then(setAutoAlert);
@@ -1567,18 +1570,34 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
         {orders.length === 0 && (
           <p className="text-sm text-muted-foreground">ไม่มีใบสั่งงานรอตรวจ</p>
         )}
-        {orders.map((o) => (
-          <div
-            key={o.id}
-            className="relative space-y-3 overflow-hidden rounded-lg border py-3 pl-6 pr-3"
-          >
-            <StatusRail status="pending" />
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="break-words font-semibold leading-snug">
-                  {o.cust_id ? `[${o.cust_id}] ` : ""}
-                  {val(o, "customer_name")}
-                </p>
+        {orders.map((o) => {
+          const visual = getJobVisualState({
+            staff_name: val(o, "staff_name"),
+            sales_rep: val(o, "sales_rep"),
+          });
+          return (
+            <div
+              key={o.id}
+              className={cn(
+                "relative space-y-3 overflow-hidden rounded-lg border py-3 pl-6 pr-3 transition-all",
+                visual.opacityClass,
+                visual.isMine && "ring-2 ring-primary/40 shadow-sm border-primary/40",
+              )}
+            >
+              <StatusRail status="pending" />
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {visual.isMine && (
+                      <span className="inline-flex items-center gap-1 rounded bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 text-xs font-bold">
+                        ⭐ งานของฉัน
+                      </span>
+                    )}
+                    <p className="break-words font-semibold leading-snug">
+                      {o.cust_id ? `[${o.cust_id}] ` : ""}
+                      {val(o, "customer_name")}
+                    </p>
+                  </div>
                 <p className="break-words text-xs leading-snug text-muted-foreground">
                   {[val(o, "machine_label"), val(o, "serial_number"), val(o, "service_type")]
                     .filter(Boolean)
@@ -1764,7 +1783,8 @@ function PendingOrders({ orders, reload }: { orders: WorkOrder[]; reload: () => 
               </ConfirmButton>
             </div>
           </div>
-        ))}
+        );
+      })}
 
         {/* ฟอร์มคัดลอกใบงาน — เติมข้อมูลจากใบเดิมทั้งหมด แก้ไขได้ทุกช่องก่อนบันทึก */}
         <WorkOrderDialog
@@ -1817,6 +1837,7 @@ function ApprovedOrders({
   const [schedule, setSchedule] = useState<Record<string, { date: string; time: string }>>({});
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
   const formRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const { getJobVisualState } = useUserRole();
 
   const loadApproved = useCallback(async () => {
     const [{ data: workOrders }, { data: apptRows }] = await Promise.all([
@@ -2252,18 +2273,36 @@ function ApprovedOrders({
       {visible.length === 0 && (
         <p className="text-sm text-muted-foreground">ไม่พบใบงานตามตัวกรอง</p>
       )}
-      {visible.map((o) => (
-        <div
-          key={o.id}
-          className={`relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3 ${STAGE_BG[statusStage(appointments[o.id]?.status ?? o.status)]} ${(o as WorkOrder & { approved_hidden?: boolean }).approved_hidden ? "opacity-60" : ""}`}
-        >
-          <StatusRail status={appointments[o.id]?.status ?? o.status} />
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <JobStatusBadge status={appointments[o.id]?.status ?? o.status} />
-            <span className="text-xs text-muted-foreground">
-              เซลล์: {o.sales_rep || "ยังไม่ระบุ"}
-            </span>
-          </div>
+      {visible.map((o) => {
+        const a = appointments[o.id];
+        const visual = getJobVisualState({
+          staff_name: a?.staff_name ?? o.staff_name,
+          sales_rep: a?.sales_rep ?? o.sales_rep,
+        });
+        return (
+          <div
+            key={o.id}
+            className={cn(
+              `relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3 transition-all ${STAGE_BG[statusStage(appointments[o.id]?.status ?? o.status)]}`,
+              (o as WorkOrder & { approved_hidden?: boolean }).approved_hidden && "opacity-60",
+              visual.opacityClass,
+              visual.isMine && "ring-2 ring-primary/40 shadow-sm border-primary/40",
+            )}
+          >
+            <StatusRail status={appointments[o.id]?.status ?? o.status} />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <JobStatusBadge status={appointments[o.id]?.status ?? o.status} />
+                {visual.isMine && (
+                  <span className="inline-flex items-center gap-1 rounded bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 text-xs font-bold">
+                    ⭐ งานของฉัน
+                  </span>
+                )}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                เซลล์: {o.sales_rep || "ยังไม่ระบุ"}
+              </span>
+            </div>
           <div className="grid min-w-0 grid-cols-1 gap-2 rounded-md border bg-muted/30 p-2 lg:grid-cols-[minmax(0,1fr)_8rem_auto]">
             <DateInput
               aria-label={`วันที่นัดหมาย ${o.customer_name}`}
@@ -2412,7 +2451,8 @@ function ApprovedOrders({
             )}
           </div>
         </div>
-      ))}
+      );
+    })}
       {/* ฟอร์มคัดลอกใบงาน — เติมข้อมูลจากใบเดิมทั้งหมด แก้ไขได้ทุกช่องก่อนบันทึก */}
       <WorkOrderDialog
         hideTrigger
@@ -2560,6 +2600,7 @@ function MonthGrid({
   const start = startOfWeek(first);
   const days = Array.from({ length: 42 }, (_, i) => addDays(start, i));
   const today = iso(new Date());
+  const { getJobVisualState } = useUserRole();
 
   return (
     <div className="space-y-2">
@@ -2720,47 +2761,53 @@ function MonthGrid({
                 )}
 
                 <div className="scrollbar-none min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-                  {list.map((a) => (
-                    <button
-                      key={a.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPick(a);
-                      }}
-                      className={
-                        "block w-full rounded px-1 py-0.5 text-left text-[10px] font-medium leading-snug " +
-                        apptCardClass(a)
-                      }
-                      title={apptSummary(a)}
-                    >
-                      <StatusRail status={a.status} />
-                      <span className="block truncate">
-                        {a.cust_id ? `[${a.cust_id}] ` : ""}
-                        {a.customer_name || "ไม่ระบุลูกค้า"}
-                      </span>
-                      {a.job_detail?.includes("[Admin Override") && (
-                        <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-200">
-                          ⚡ งานซ้อน (Override)
+                  {list.map((a) => {
+                    const visual = getJobVisualState(a);
+                    return (
+                      <button
+                        key={a.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPick(a);
+                        }}
+                        className={cn(
+                          "block w-full rounded px-1 py-0.5 text-left text-[10px] font-medium leading-snug transition-all",
+                          apptCardClass(a),
+                          visual.opacityClass,
+                          visual.isMine && "ring-1.5 ring-primary/80 font-bold shadow-2xs",
+                        )}
+                        title={apptSummary(a)}
+                      >
+                        <StatusRail status={a.status} />
+                        <span className="block truncate">
+                          {visual.isMine && <span className="mr-0.5 text-primary font-bold">★</span>}
+                          {a.cust_id ? `[${a.cust_id}] ` : ""}
+                          {a.customer_name || "ไม่ระบุลูกค้า"}
                         </span>
-                      )}
-                      <span className="block truncate text-xs opacity-80">
-                        👤 {splitNames(a.staff_name).join(", ") || "-"}
-                      </span>
-                      <span className="block truncate text-xs opacity-80">
-                        🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
-                      </span>
-                      {(a.serial_number || a.machine_label) && (
-                        <span className="block truncate text-[10px] opacity-80">
-                          ⚙️{" "}
-                          {splitNames(a.serial_number).join(" / ") ||
-                            splitNames(a.machine_label).join(" / ")}
+                        {a.job_detail?.includes("[Admin Override") && (
+                          <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-200">
+                            ⚡ งานซ้อน (Override)
+                          </span>
+                        )}
+                        <span className="block truncate text-xs opacity-80">
+                          👤 {splitNames(a.staff_name).join(", ") || "-"}
                         </span>
-                      )}
-                      {a.sales_rep && (
-                        <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>
-                      )}
-                    </button>
-                  ))}
+                        <span className="block truncate text-xs opacity-80">
+                          🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
+                        </span>
+                        {(a.serial_number || a.machine_label) && (
+                          <span className="block truncate text-[10px] opacity-80">
+                            ⚙️{" "}
+                            {splitNames(a.serial_number).join(" / ") ||
+                              splitNames(a.machine_label).join(" / ")}
+                          </span>
+                        )}
+                        {a.sales_rep && (
+                          <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -2794,6 +2841,7 @@ function TimeGrid({
   const today = iso(new Date());
   const isWeek = days.length > 1;
   const cols = isWeek ? `56px ${WEEK_COLS}` : "56px minmax(0,1fr)";
+  const { getJobVisualState } = useUserRole();
   const hourOf = (a: Appointment) => {
     let h = Number((a.visit_time ?? "").slice(0, 2));
     if (Number.isNaN(h)) h = morning[0];
@@ -2850,53 +2898,59 @@ function TimeGrid({
               (onPickSlot ? "cursor-pointer hover:bg-accent/40" : "")
             }
           >
-            {list.map((a) => (
-              <button
-                key={a.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPick(a);
-                }}
-                className={
-                  "block w-full whitespace-normal break-words rounded px-1.5 py-1 text-left leading-tight " +
-                  apptCardClass(a)
-                }
-                title={apptSummary(a)}
-              >
-                <StatusRail status={a.status} />
-                <span className="flex items-baseline gap-1 text-[10px]">
-                  <span className="font-semibold">{a.visit_time?.slice(0, 5) || "--:--"}</span>
-                  <span className="truncate text-xs opacity-70">
-                    {splitNames(a.staff_name).join(", ") || "-"}
+            {list.map((a) => {
+              const visual = getJobVisualState(a);
+              return (
+                <button
+                  key={a.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPick(a);
+                  }}
+                  className={cn(
+                    "block w-full whitespace-normal break-words rounded px-1.5 py-1 text-left leading-tight transition-all",
+                    apptCardClass(a),
+                    visual.opacityClass,
+                    visual.isMine && "ring-1.5 ring-primary/80 font-bold shadow-2xs",
+                  )}
+                  title={apptSummary(a)}
+                >
+                  <StatusRail status={a.status} />
+                  <span className="flex items-baseline gap-1 text-[10px]">
+                    {visual.isMine && <span className="text-primary font-bold">★ งานฉัน</span>}
+                    <span className="font-semibold">{a.visit_time?.slice(0, 5) || "--:--"}</span>
+                    <span className="truncate text-xs opacity-70">
+                      {splitNames(a.staff_name).join(", ") || "-"}
+                    </span>
                   </span>
-                </span>
-                <span className="block truncate text-xs font-bold">
-                  {a.cust_id ? `[${a.cust_id}] ` : ""}
-                  {a.customer_name || "ไม่ระบุลูกค้า"}
-                </span>
-                {a.job_detail?.includes("[Admin Override") && (
-                  <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-200">
-                    ⚡ งานซ้อน (Override)
+                  <span className="block truncate text-xs font-bold">
+                    {a.cust_id ? `[${a.cust_id}] ` : ""}
+                    {a.customer_name || "ไม่ระบุลูกค้า"}
                   </span>
-                )}
-                <span className="block truncate text-[10px] opacity-80">
-                  {splitNames(a.service_type).join(" / ") || a.job_detail || "-"}
-                </span>
-                <span className="block truncate text-xs opacity-80">
-                  🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
-                </span>
-                {(a.serial_number || a.machine_label) && (
+                  {a.job_detail?.includes("[Admin Override") && (
+                    <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-200">
+                      ⚡ งานซ้อน (Override)
+                    </span>
+                  )}
                   <span className="block truncate text-[10px] opacity-80">
-                    ⚙️{" "}
-                    {splitNames(a.serial_number).join(" / ") ||
-                      splitNames(a.machine_label).join(" / ")}
+                    {splitNames(a.service_type).join(" / ") || a.job_detail || "-"}
                   </span>
-                )}
-                {a.sales_rep && (
-                  <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>
-                )}
-              </button>
-            ))}
+                  <span className="block truncate text-xs opacity-80">
+                    🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
+                  </span>
+                  {(a.serial_number || a.machine_label) && (
+                    <span className="block truncate text-[10px] opacity-80">
+                      ⚙️{" "}
+                      {splitNames(a.serial_number).join(" / ") ||
+                        splitNames(a.machine_label).join(" / ")}
+                    </span>
+                  )}
+                  {a.sales_rep && (
+                    <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         );
       })}
@@ -3014,6 +3068,7 @@ function DayDetailDialog({
   const [exporting, setExporting] = useState<"" | "image" | "pdf">("");
   const [outputAction, setOutputAction] = useState<"share" | "download">("share");
   const documentRef = useRef<HTMLDivElement>(null);
+  const { getJobVisualState } = useUserRole();
 
   useEffect(() => {
     if (!preview || !documentRef.current) return;
@@ -3149,26 +3204,37 @@ function DayDetailDialog({
               {list.length === 0 && (
                 <p className="text-sm text-muted-foreground">ไม่มีนัดหมายในวันนี้</p>
               )}
-              {list.map((a) => (
-                <div
-                  key={a.id}
-                  className={
-                    "relative grid min-w-0 grid-cols-1 gap-2 overflow-hidden rounded-xl border py-3 pl-6 pr-3 sm:grid-cols-[minmax(0,1fr)_auto] " +
-                    vehicleColor(a.vehicle_plate)
-                  }
-                >
-                  <StatusRail status={a.status} />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => onPick(a)}
-                    className="h-auto min-w-0 justify-start whitespace-normal p-0 text-left hover:bg-transparent"
+              {list.map((a) => {
+                const visual = getJobVisualState(a);
+                return (
+                  <div
+                    key={a.id}
+                    className={cn(
+                      "relative grid min-w-0 grid-cols-1 gap-2 overflow-hidden rounded-xl border py-3 pl-6 pr-3 sm:grid-cols-[minmax(0,1fr)_auto] transition-all",
+                      vehicleColor(a.vehicle_plate),
+                      visual.opacityClass,
+                      visual.isMine && "ring-2 ring-primary/50 shadow-sm border-primary/40 bg-card",
+                    )}
                   >
-                    <span className="min-w-0 space-y-0.5">
-                      <span className="block break-words font-medium">
-                        {a.visit_time?.slice(0, 5) || "-"} · {a.cust_id ? `[${a.cust_id}] ` : ""}
-                        {a.customer_name || "ไม่ระบุลูกค้า"}
-                      </span>
+                    <StatusRail status={a.status} />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => onPick(a)}
+                      className="h-auto min-w-0 justify-start whitespace-normal p-0 text-left hover:bg-transparent"
+                    >
+                      <span className="min-w-0 space-y-0.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {visual.isMine && (
+                            <span className="inline-flex items-center gap-1 rounded bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 text-xs font-bold">
+                              ⭐ งานของฉัน
+                            </span>
+                          )}
+                          <span className="block break-words font-medium">
+                            {a.visit_time?.slice(0, 5) || "-"} · {a.cust_id ? `[${a.cust_id}] ` : ""}
+                            {a.customer_name || "ไม่ระบุลูกค้า"}
+                          </span>
+                        </div>
                       <span className="block break-words text-xs opacity-80">
                         เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}
                         {a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}
@@ -3243,7 +3309,8 @@ function DayDetailDialog({
                     )}
                   </div>
                 </div>
-              ))}
+              );
+            })}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>
@@ -3479,6 +3546,8 @@ function DayList({
   onAddHoliday?: (date: string) => void;
   reload: () => void;
 }) {
+  const { getJobVisualState } = useUserRole();
+
   const setStatus = async (a: Appointment, status: string) => {
     const { error } = await supabase.from("appointments").update({ status }).eq("id", a.id);
     if (error) return toast.error(error.message);
@@ -3529,74 +3598,92 @@ function DayList({
               />
             )}
             {list.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีนัดหมาย</p>}
-            {list.map((a) => (
-              <div
-                key={a.id}
-                className="relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3"
-              >
-                <StatusRail status={a.status} />
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium">
-                      {a.visit_time?.slice(0, 5)} · {a.cust_id ? `[${a.cust_id}] ` : ""}
-                      {a.customer_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {[a.serial_number, a.machine_label, a.service_type]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ:{" "}
-                      {a.vehicle_plate || "-"}
-                      {a.sales_rep ? ` · เซลล์: ${a.sales_rep}` : ""}
-                    </p>
-                    {a.job_detail && <p className="mt-1 text-sm">{a.job_detail}</p>}
-                    {a.status === "closed" && a.close_note && (
-                      <p className="mt-1 text-xs text-muted-foreground">สรุป: {a.close_note}</p>
+            {list.map((a) => {
+              const visual = getJobVisualState({
+                sales_rep: a.sales_rep,
+                staff_name: a.staff_name,
+              });
+
+              return (
+                <div
+                  key={a.id}
+                  className={cn(
+                    "relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3 transition-all",
+                    visual.opacityClass,
+                    visual.isMine && "ring-2 ring-primary/40 bg-primary/5",
+                  )}
+                >
+                  <StatusRail status={a.status} />
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium">
+                        {a.visit_time?.slice(0, 5)} · {a.cust_id ? `[${a.cust_id}] ` : ""}
+                        {a.customer_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {[a.serial_number, a.machine_label, a.service_type]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ:{" "}
+                        {a.vehicle_plate || "-"}
+                        {a.sales_rep ? ` · เซลล์: ${a.sales_rep}` : ""}
+                      </p>
+                      {a.job_detail && <p className="mt-1 text-sm">{a.job_detail}</p>}
+                      {a.status === "closed" && a.close_note && (
+                        <p className="mt-1 text-xs text-muted-foreground">สรุป: {a.close_note}</p>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <JobStatusBadge status={a.status} />
+                      {visual.isMine && (
+                        <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                          ⭐ งานของฉัน
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {a.status !== "closed" && (
+                    <label
+                      className={
+                        "flex w-fit cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-xs font-medium " +
+                        (a.status === "scheduled"
+                          ? "border-amber-400 bg-amber-50 text-amber-700"
+                          : "text-muted-foreground")
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-amber-500"
+                        checked={a.status === "scheduled"}
+                        onChange={(e) => setStatus(a, e.target.checked ? "scheduled" : "approved")}
+                      />
+                      นัดหมายแล้ว
+                    </label>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => onEdit(a)}>
+                      แก้ไข
+                    </Button>
+                    {a.status !== "in_progress" && a.status !== "closed" && (
+                      <Button size="sm" onClick={() => setStatus(a, "in_progress")}>
+                        เริ่มดำเนินการ
+                      </Button>
+                    )}
+
+                    <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
+                      {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดใบงาน"}
+                    </Button>
+                    {isAdmin && (
+                      <ConfirmButton onConfirm={() => remove(a)} description="ลบนัดหมายนี้?">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </ConfirmButton>
                     )}
                   </div>
-                  <JobStatusBadge status={a.status} />
                 </div>
-                {a.status !== "closed" && (
-                  <label
-                    className={
-                      "flex w-fit cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-xs font-medium " +
-                      (a.status === "scheduled"
-                        ? "border-amber-400 bg-amber-50 text-amber-700"
-                        : "text-muted-foreground")
-                    }
-                  >
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-amber-500"
-                      checked={a.status === "scheduled"}
-                      onChange={(e) => setStatus(a, e.target.checked ? "scheduled" : "approved")}
-                    />
-                    นัดหมายแล้ว
-                  </label>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => onEdit(a)}>
-                    แก้ไข
-                  </Button>
-                  {a.status !== "in_progress" && a.status !== "closed" && (
-                    <Button size="sm" onClick={() => setStatus(a, "in_progress")}>
-                      เริ่มดำเนินการ
-                    </Button>
-                  )}
-
-                  <Button size="sm" variant="secondary" onClick={() => onClose(a)}>
-                    {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดใบงาน"}
-                  </Button>
-                  {isAdmin && (
-                    <ConfirmButton onConfirm={() => remove(a)} description="ลบนัดหมายนี้?">
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </ConfirmButton>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         );
       })}

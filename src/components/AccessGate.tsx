@@ -27,9 +27,13 @@ const PASSCODE_INPUT = {
   spellCheck: false,
 } as const;
 
-/** หน้าจอบังคับกรอกรหัสเข้าดู (ชั้นที่ 1) */
+import { useUserRole } from "@/lib/user-role";
+import { RoleSelectionGateScreen } from "@/components/RoleSelectionModal";
+
+/** หน้าจอบังคับกรอกรหัสเข้าดู (ชั้นที่ 1) และเลือกบทบาท (ชั้นที่ 2) */
 export function AccessGate({ children }: { children: React.ReactNode }) {
   const { ready, viewerOk, unlockViewer } = useAccess();
+  const { isRoleSelected } = useUserRole();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -41,50 +45,58 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (viewerOk) return <>{children}</>;
+  // ชั้นที่ 1: ตรวจสอบรหัสผ่านกลาง
+  if (!viewerOk) {
+    const submit = async () => {
+      if (!code.trim()) return;
+      setBusy(true);
+      const ok = await unlockViewer(code.trim());
+      setBusy(false);
+      if (!ok) {
+        toast.error("รหัสผ่านไม่ถูกต้อง");
+        setCode("");
+      }
+    };
 
-  const submit = async () => {
-    if (!code.trim()) return;
-    setBusy(true);
-    const ok = await unlockViewer(code.trim());
-    setBusy(false);
-    if (!ok) {
-      toast.error("รหัสผ่านไม่ถูกต้อง");
-      setCode("");
-    }
-  };
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-none">
+          <CardHeader className="items-center text-center">
+            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <ShieldCheck className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle>กรอกรหัสเข้าใช้งาน</CardTitle>
+            <p className="text-sm text-muted-foreground">ระบบค้นหาอะไหล่ปั๊มลม (ใช้ภายในองค์กร)</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Input
+              {...PASSCODE_INPUT}
+              autoFocus
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submit()}
+              placeholder="รหัสผ่าน"
+              className="h-12 text-center text-lg tracking-widest"
+            />
+            <Button className="h-11 w-full" onClick={submit} disabled={busy}>
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <LockOpen className="mr-1 h-4 w-4" />}
+              เข้าใช้งาน
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              ติดต่อผู้ดูแลระบบหากไม่ทราบรหัสผ่าน
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-none">
-        <CardHeader className="items-center text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <ShieldCheck className="h-6 w-6 text-primary" />
-          </div>
-          <CardTitle>กรอกรหัสเข้าใช้งาน</CardTitle>
-          <p className="text-sm text-muted-foreground">ระบบค้นหาอะไหล่ปั๊มลม (ใช้ภายในองค์กร)</p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Input
-            {...PASSCODE_INPUT}
-            autoFocus
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submit()}
-            placeholder="รหัสผ่าน"
-            className="h-12 text-center text-lg tracking-widest"
-          />
-          <Button className="h-11 w-full" onClick={submit} disabled={busy}>
-            {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <LockOpen className="mr-1 h-4 w-4" />}
-            เข้าใช้งาน
-          </Button>
-          <p className="text-center text-xs text-muted-foreground">
-            ติดต่อผู้ดูแลระบบหากไม่ทราบรหัสผ่าน
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  // ชั้นที่ 2: เลือกบทบาทและชื่อผู้ใช้งาน (Role & User Selection)
+  if (!isRoleSelected) {
+    return <RoleSelectionGateScreen />;
+  }
+
+  return <>{children}</>;
 }
 
 /** ปุ่มกุญแจสำหรับปลดล็อกโหมดแอดมิน (ชั้นที่ 2) */
