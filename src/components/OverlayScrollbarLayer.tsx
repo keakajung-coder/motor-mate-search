@@ -1,22 +1,33 @@
 import * as React from "react";
 
 /**
- * แถบเลื่อน (Scrollbar) แบบวาดเองที่ทำงานได้ 100% บน iPhone/iPad
+ * แถบเลื่อน (Scrollbar) แบบวาดเองที่ทำงานได้บน iPhone/iPad
  * เพราะ iOS ไม่อนุญาตให้ CSS บังคับแสดงแถบเลื่อนเดิมของระบบบนหน้าจอสัมผัส
  *
- * ทำงานโดยหากล่องที่เลื่อนได้ทุกกล่อง (คลาส force-scrollbar / dropdown-scroll)
- * แล้ววาดแถบบาง ๆ ลอยอยู่ข้างกล่อง แสดงตลอดเมื่อรายการเกินความสูง
- * และเลื่อนตามตำแหน่งจริงแบบเรียลไทม์
+ * ครอบคลุม: ทั้งหน้าจอ (page scroll), กล่องรายการ, ป๊อปอัป/หน้าต่าง และกล่องที่เลื่อนได้
+ * ยกเว้นรายการในตารางแพลนเนอร์ (กล่องที่ใช้ scrollbar-none หรืออยู่ใน [data-no-osb])
  */
 
-const TRACK_SELECTOR = ".force-scrollbar, .dropdown-scroll";
+const TRACK_SELECTOR =
+  ".force-scrollbar, .dropdown-scroll, .overflow-y-auto, .overflow-auto, .overflow-y-scroll, [role='dialog'], [role='listbox'], [data-radix-scroll-area-viewport]";
 const MIN_THUMB_HEIGHT = 28;
 const EDGE_PAD = 5;
+
+function isExcluded(el: HTMLElement) {
+  if (el.classList.contains("scrollbar-none")) return true;
+  if (el.closest("[data-no-osb]")) return true;
+  const oy = getComputedStyle(el).overflowY;
+  if (oy !== "auto" && oy !== "scroll") return true;
+  return false;
+}
 
 export function OverlayScrollbarLayer() {
   React.useEffect(() => {
     const thumbs = new Map<HTMLElement, HTMLDivElement>();
+    let pageThumb: HTMLDivElement | null = null;
     let raf = 0;
+    let frame = 0;
+    let tracked: HTMLElement[] = [];
 
     const ensureThumb = (el: HTMLElement): HTMLDivElement => {
       let thumb = thumbs.get(el);
@@ -30,17 +41,55 @@ export function OverlayScrollbarLayer() {
       return thumb;
     };
 
+    const updatePage = () => {
+      const doc = document.documentElement;
+      const viewH = window.innerHeight;
+      const total = Math.max(doc.scrollHeight, document.body.scrollHeight);
+      const overflow = total - viewH;
+      if (!pageThumb) {
+        pageThumb = document.createElement("div");
+        pageThumb.className = "osb-thumb osb-page";
+        pageThumb.setAttribute("aria-hidden", "true");
+        document.body.appendChild(pageThumb);
+      }
+      // ซ่อนแถบทั้งหน้าเมื่อมีหน้าต่างป๊อปอัปเปิดอยู่ (หน้าถูกล็อก)
+      const locked = document.body.hasAttribute("data-scroll-locked");
+      if (overflow <= 4 || locked) {
+        pageThumb.style.display = "none";
+        return;
+      }
+      const track = viewH - EDGE_PAD * 2;
+      const h = Math.max(MIN_THUMB_HEIGHT * 1.5, Math.round((viewH / total) * track));
+      const ratio = Math.min(1, Math.max(0, window.scrollY / overflow));
+      pageThumb.style.display = "";
+      pageThumb.style.height = `${h}px`;
+      pageThumb.style.left = `${window.innerWidth - 8}px`;
+      pageThumb.style.top = `${Math.round(EDGE_PAD + (track - h) * ratio)}px`;
+    };
+
     const update = () => {
-      for (const el of document.querySelectorAll<HTMLElement>(TRACK_SELECTOR)) {
+      // สแกนหากล่องใหม่ทุก ~10 เฟรม เพื่อไม่ให้หนักเครื่อง
+      if (frame++ % 10 === 0) {
+        tracked = Array.from(document.querySelectorAll<HTMLElement>(TRACK_SELECTOR)).filter(
+          (el) => !isExcluded(el),
+        );
+        for (const [el, thumb] of thumbs) {
+          if (!el.isConnected || !tracked.includes(el)) {
+            thumb.remove();
+            thumbs.delete(el);
+          }
+        }
+      }
+
+      for (const el of tracked) {
         if (!el.isConnected) continue;
         const overflow = el.scrollHeight - el.clientHeight;
         const thumb = ensureThumb(el);
-        if (overflow <= 4) {
-          // ไม่มีรายการเกิน — ไม่ต้องแสดงแถบ
+        const rect = el.getBoundingClientRect();
+        if (overflow <= 4 || rect.height < 40 || rect.width === 0) {
           if (thumb.style.display !== "none") thumb.style.display = "none";
           continue;
         }
-        const rect = el.getBoundingClientRect();
         const trackHeight = Math.max(0, el.clientHeight - EDGE_PAD * 2);
         const thumbHeight = Math.max(
           MIN_THUMB_HEIGHT,
@@ -56,13 +105,7 @@ export function OverlayScrollbarLayer() {
         thumb.style.top = `${Math.round(top)}px`;
       }
 
-      // ลบแถบของกล่องที่ถูกปิด/ถอดออกจากหน้าจอแล้ว
-      for (const [el, thumb] of thumbs) {
-        if (!el.isConnected) {
-          thumb.remove();
-          thumbs.delete(el);
-        }
-      }
+      updatePage();
     };
 
     const loop = () => {
@@ -74,6 +117,7 @@ export function OverlayScrollbarLayer() {
     return () => {
       cancelAnimationFrame(raf);
       thumbs.forEach((thumb) => thumb.remove());
+      pageThumb?.remove();
     };
   }, []);
 
