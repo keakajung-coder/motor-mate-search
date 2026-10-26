@@ -446,8 +446,29 @@
   background-color: color-mix(in oklch, var(--report-pending) 24%, var(--card));
 }
 
+/* แถบเลื่อนบาง: แสดงบนมือถือ/iPad ขณะปัด แทนการซ่อนสนิท */
+.scrollbar-none {
+  scrollbar-width: thin !important;
+  -webkit-overflow-scrolling: touch;
+}
 .scrollbar-none::-webkit-scrollbar {
-  display: none;
+  display: block !important;
+  width: 4px !important;
+  height: 4px !important;
+}
+
+/* เงาบอกว่ายังเลื่อนต่อได้ (ทำงานบน iOS/Android): เงาจางหายเมื่อเลื่อนถึงขอบ */
+.force-scrollbar,
+.dropdown-scroll {
+  background-image:
+    linear-gradient(var(--popover) 30%, transparent),
+    linear-gradient(transparent, var(--popover) 70%),
+    radial-gradient(farthest-side at 50% 0, color-mix(in oklch, var(--foreground) 22%, transparent), transparent),
+    radial-gradient(farthest-side at 50% 100%, color-mix(in oklch, var(--foreground) 22%, transparent), transparent);
+  background-position: center top, center bottom, center top, center bottom;
+  background-repeat: no-repeat;
+  background-size: 100% 28px, 100% 28px, 100% 10px, 100% 10px;
+  background-attachment: local, local, scroll, scroll;
 }
 
 
