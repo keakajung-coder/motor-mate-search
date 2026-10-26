@@ -516,7 +516,9 @@
   width: 4px;
   border-radius: 9999px;
   background: color-mix(in oklch, var(--foreground) 10%, transparent);
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
   z-index: 999999;
   will-change: top, height;
 }
