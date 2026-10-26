@@ -483,6 +483,9 @@
   display: none;
 }
 
+.osb-thumb.osb-page {
+  width: 6px;
+}
 .osb-thumb {
   position: fixed;
   width: 4px;
