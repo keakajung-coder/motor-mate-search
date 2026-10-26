@@ -331,8 +331,8 @@ export function AutoScheduleRuleModal({
             </div>
 
             <div
-              className="space-y-2 max-h-56 dropdown-scroll !overflow-y-scroll pr-1"
-              style={{ overflowY: "scroll" }}
+              className="space-y-2 max-h-56 dropdown-scroll force-scrollbar !overflow-y-scroll pr-1"
+              style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
             >
               {previewVisits.map((v) => (
                 <div

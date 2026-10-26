@@ -63,8 +63,8 @@ export function SmartSearchBox({
       />
       {show && (
         <div
-          className="dropdown-scroll absolute z-[99999] mt-1 !max-h-[200px] w-full !overflow-y-scroll overflow-x-hidden rounded-lg border bg-popover p-1 shadow-xl"
-          style={{ maxHeight: "200px", overflowY: "scroll" }}
+          className="dropdown-scroll force-scrollbar absolute z-[99999] mt-1 !max-h-[200px] w-full !overflow-y-scroll rounded-lg border bg-popover p-1 shadow-xl"
+          style={{ maxHeight: "200px", overflowY: "scroll", scrollbarGutter: "stable" }}
           onMouseDown={() => blurTimer.current && clearTimeout(blurTimer.current)}
         >
           {matched.map((s) => (

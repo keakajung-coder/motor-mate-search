@@ -788,8 +788,8 @@ export function JobReportsPanel({
               <p className="text-xs text-muted-foreground">ไม่มีงานค้าง 🎉</p>
             ) : (
               <ul
-                className="space-y-1 overflow-y-auto scrollbar-none"
-                style={{ maxHeight: visibleCount <= 2 ? 520 : 224 }}
+                className="space-y-1 dropdown-scroll force-scrollbar !overflow-y-scroll"
+                style={{ maxHeight: visibleCount <= 2 ? 520 : 224, overflowY: "scroll", scrollbarGutter: "stable" }}
               >
                 {pendingRows.map((r) => (
                   <li key={r.id}>

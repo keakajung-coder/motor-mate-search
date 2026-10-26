@@ -117,8 +117,8 @@ export function NotificationBell() {
           )}
         </div>
         <ul
-          className="dropdown-scroll max-h-96 divide-y !overflow-y-scroll"
-          style={{ overflowY: "scroll" }}
+          className="dropdown-scroll force-scrollbar max-h-96 divide-y !overflow-y-scroll"
+          style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
         >
           {rows.length === 0 && <li className="p-4 text-sm text-muted-foreground">ยังไม่มีการแจ้งเตือน</li>}
           {rows.map((r) => (

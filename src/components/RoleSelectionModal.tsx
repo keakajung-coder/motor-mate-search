@@ -362,10 +362,10 @@ export function RoleSelectionView({
             )}
           </div>
 
-          <div className="relative rounded-lg border border-border/80 bg-background overflow-hidden shadow-xs">
+          <div className="relative rounded-lg border border-border/80 bg-background shadow-xs">
             <div
-              className="dropdown-scroll !max-h-[200px] !overflow-y-scroll p-1.5 divide-y divide-border/40"
-              style={{ maxHeight: "200px", overflowY: "scroll" }}
+              className="dropdown-scroll force-scrollbar !max-h-[200px] !overflow-y-scroll p-1.5 divide-y divide-border/40"
+              style={{ maxHeight: "200px", overflowY: "scroll", scrollbarGutter: "stable" }}
             >
               {filteredNames.length === 0 ? (
                 <div className="py-6 text-center text-sm text-muted-foreground">

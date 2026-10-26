@@ -117,8 +117,8 @@ export function MultiCombobox({
         >
           <CommandInput placeholder={searchPlaceholder} value={query} onValueChange={setQuery} />
           <CommandList
-            className="!max-h-[200px] !overflow-y-scroll"
-            style={{ maxHeight: "200px", overflowY: "scroll" }}
+            className="!max-h-[200px] !overflow-y-scroll force-scrollbar"
+            style={{ maxHeight: "200px", overflowY: "scroll", scrollbarGutter: "stable" }}
           >
             <CommandEmpty className="px-3 py-3 text-sm text-muted-foreground">
               ไม่พบข้อมูล

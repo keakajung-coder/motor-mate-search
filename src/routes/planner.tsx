@@ -5206,8 +5206,8 @@ function CloseJobDialog({
               </p>
             )}
             <div
-              className="max-h-64 space-y-2 dropdown-scroll !overflow-y-scroll pr-1"
-              style={{ overflowY: "scroll" }}
+              className="max-h-64 space-y-2 dropdown-scroll force-scrollbar !overflow-y-scroll pr-1"
+              style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
             >
               {Object.entries(grouped)
                 .sort(([a], [b]) => a.localeCompare(b, "th"))
@@ -5335,8 +5335,8 @@ function CloseJobDialog({
               </p>
             )}
             <div
-              className="max-h-64 space-y-2 dropdown-scroll !overflow-y-scroll pr-1"
-              style={{ overflowY: "scroll" }}
+              className="max-h-64 space-y-2 dropdown-scroll force-scrollbar !overflow-y-scroll pr-1"
+              style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
             >
               {Object.entries(quoteGrouped)
                 .sort(([a], [b]) => a.localeCompare(b, "th"))

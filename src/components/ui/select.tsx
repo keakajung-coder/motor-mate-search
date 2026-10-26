@@ -205,14 +205,14 @@ const SelectContent = React.forwardRef<
             </div>
           )}
 
-          <SelectScrollUpButton />
+          {position !== "popper" && <SelectScrollUpButton />}
           <SelectPrimitive.Viewport
             className={cn(
-              "p-1 !max-h-[200px] !overflow-y-scroll overscroll-contain dropdown-scroll",
+              "p-1 !max-h-[200px] !overflow-y-scroll overscroll-contain dropdown-scroll force-scrollbar",
               position === "popper" &&
                 "w-full min-w-[var(--radix-select-trigger-width)]",
             )}
-            style={{ maxHeight: "200px", overflowY: "scroll" }}
+            style={{ maxHeight: "200px", overflowY: "scroll", scrollbarGutter: "stable" }}
           >
             {matchCount === 0 && query.trim() ? (
               <div className="py-4 text-center text-xs text-muted-foreground select-none">
@@ -222,7 +222,7 @@ const SelectContent = React.forwardRef<
               filtered
             )}
           </SelectPrimitive.Viewport>
-          <SelectScrollDownButton />
+          {position !== "popper" && <SelectScrollDownButton />}
         </SelectPrimitive.Content>
       </SelectPrimitive.Portal>
     );
