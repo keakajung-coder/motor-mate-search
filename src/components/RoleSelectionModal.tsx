@@ -362,9 +362,11 @@ export function RoleSelectionView({
             )}
           </div>
 
-          {/* User Names List: Visible Custom Scrollbar & Max-height 4-5 items (approx 190px) */}
           <div className="relative rounded-lg border border-border/80 bg-background overflow-hidden shadow-xs">
-            <div className="dropdown-scroll max-h-[190px] overflow-y-auto p-1.5 divide-y divide-border/40">
+            <div
+              className="dropdown-scroll !max-h-[200px] !overflow-y-scroll p-1.5 divide-y divide-border/40"
+              style={{ maxHeight: "200px", overflowY: "scroll" }}
+            >
               {filteredNames.length === 0 ? (
                 <div className="py-6 text-center text-sm text-muted-foreground">
                   ไม่พบรายชื่อที่ตรงกับ &ldquo;{searchQuery}&rdquo;

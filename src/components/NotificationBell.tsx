@@ -116,7 +116,10 @@ export function NotificationBell() {
             </ConfirmButton>
           )}
         </div>
-        <ul className="max-h-96 divide-y overflow-y-auto">
+        <ul
+          className="dropdown-scroll max-h-96 divide-y !overflow-y-scroll"
+          style={{ overflowY: "scroll" }}
+        >
           {rows.length === 0 && <li className="p-4 text-sm text-muted-foreground">ยังไม่มีการแจ้งเตือน</li>}
           {rows.map((r) => (
             <li key={r.id} className={`p-3 text-sm ${r.read ? "" : "bg-accent/40"}`}>

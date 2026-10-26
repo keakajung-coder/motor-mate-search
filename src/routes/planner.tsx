@@ -5205,7 +5205,10 @@ function CloseJobDialog({
                 {visibleParts.length === 0 ? " — ไม่มีในระบบ สามารถพิมพ์เพิ่มใหม่ด้านล่างได้" : ""}
               </p>
             )}
-            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+            <div
+              className="max-h-64 space-y-2 dropdown-scroll !overflow-y-scroll pr-1"
+              style={{ overflowY: "scroll" }}
+            >
               {Object.entries(grouped)
                 .sort(([a], [b]) => a.localeCompare(b, "th"))
                 .map(([cat, items]) => (
@@ -5331,7 +5334,10 @@ function CloseJobDialog({
                 {quoteParts.length === 0 ? " — ไม่มีในระบบ สามารถพิมพ์เพิ่มใหม่ด้านล่างได้" : ""}
               </p>
             )}
-            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+            <div
+              className="max-h-64 space-y-2 dropdown-scroll !overflow-y-scroll pr-1"
+              style={{ overflowY: "scroll" }}
+            >
               {Object.entries(quoteGrouped)
                 .sort(([a], [b]) => a.localeCompare(b, "th"))
                 .map(([cat, items]) => (

@@ -888,18 +888,71 @@
 }
 
 /* ==========================================================================
-   Visible Custom Scrollbar & Portalled Menus for All Devices (Mobile, Tablet, Desktop)
-   - Guaranteed visible thumb for effortless scrolling on touch & desktop
-   - Max-height strictly capped at 4-5 items (~180-195px) so dropdowns never push viewport
-   - Highest z-index portal protection (99999) against edge clipping
+   PERMANENT SCROLLBAR FIX FOR ALL DEVICES (iOS, Android, macOS, Windows)
+   - Guaranteed visible scrollbar thumb at all times on all devices
+   - Strict max-height capped at 4-5 items (max-height: 200px !important)
+   - Mandatory overflow-y: scroll !important (prevents OS overlay hiding)
    ========================================================================== */
 
+/* 1. Global WebKit Scrollbar rules */
+::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 4px !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 4px !important;
+  visibility: visible !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}
+
+/* Dark mode WebKit Scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b !important;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #64748b !important;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
+}
+
+/* Firefox & Standards-compliant scrollbar */
+* {
+  scrollbar-width: thin !important;
+  scrollbar-color: #94a3b8 #f1f5f9 !important;
+}
+
+.dark * {
+  scrollbar-color: #64748b #1e293b !important;
+}
+
+/* 2. Dropdowns, Selects, Comboboxes, Menus & Pop-up lists */
 .dropdown-scroll,
 [data-radix-select-viewport],
+[cmdk-list],
+[cmdk-list-sizer],
 .custom-visible-scrollbar,
-[cmdk-list] {
+[data-radix-dropdown-menu-content],
+[data-radix-context-menu-content] {
+  max-height: 200px !important;
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
   scrollbar-width: thin !important;
-  scrollbar-color: rgba(100, 116, 139, 0.75) rgba(140, 150, 165, 0.16) !important;
+  scrollbar-color: #94a3b8 #f1f5f9 !important;
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
   touch-action: pan-y !important;
@@ -907,69 +960,95 @@
 
 .dropdown-scroll::-webkit-scrollbar,
 [data-radix-select-viewport]::-webkit-scrollbar,
+[cmdk-list]::-webkit-scrollbar,
+[cmdk-list-sizer]::-webkit-scrollbar,
 .custom-visible-scrollbar::-webkit-scrollbar,
-[cmdk-list]::-webkit-scrollbar {
+[data-radix-dropdown-menu-content]::-webkit-scrollbar,
+[data-radix-context-menu-content]::-webkit-scrollbar {
   width: 8px !important;
   height: 8px !important;
   display: block !important;
+  visibility: visible !important;
 }
 
 .dropdown-scroll::-webkit-scrollbar-track,
 [data-radix-select-viewport]::-webkit-scrollbar-track,
+[cmdk-list]::-webkit-scrollbar-track,
+[cmdk-list-sizer]::-webkit-scrollbar-track,
 .custom-visible-scrollbar::-webkit-scrollbar-track,
-[cmdk-list]::-webkit-scrollbar-track {
-  background: rgba(140, 150, 165, 0.15) !important;
-  border-radius: 8px !important;
+[data-radix-dropdown-menu-content]::-webkit-scrollbar-track,
+[data-radix-context-menu-content]::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 4px !important;
 }
 
 .dropdown-scroll::-webkit-scrollbar-thumb,
 [data-radix-select-viewport]::-webkit-scrollbar-thumb,
+[cmdk-list]::-webkit-scrollbar-thumb,
+[cmdk-list-sizer]::-webkit-scrollbar-thumb,
 .custom-visible-scrollbar::-webkit-scrollbar-thumb,
-[cmdk-list]::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.75) !important;
-  border-radius: 8px !important;
-  border: 1.5px solid transparent !important;
-  background-clip: padding-box !important;
+[data-radix-dropdown-menu-content]::-webkit-scrollbar-thumb,
+[data-radix-context-menu-content]::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 4px !important;
+  visibility: visible !important;
 }
 
 .dropdown-scroll::-webkit-scrollbar-thumb:hover,
 [data-radix-select-viewport]::-webkit-scrollbar-thumb:hover,
+[cmdk-list]::-webkit-scrollbar-thumb:hover,
+[cmdk-list-sizer]::-webkit-scrollbar-thumb:hover,
 .custom-visible-scrollbar::-webkit-scrollbar-thumb:hover,
-[cmdk-list]::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 0.95) !important;
+[data-radix-dropdown-menu-content]::-webkit-scrollbar-thumb:hover,
+[data-radix-context-menu-content]::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
 }
 
 .dark .dropdown-scroll,
 .dark [data-radix-select-viewport],
+.dark [cmdk-list],
+.dark [cmdk-list-sizer],
 .dark .custom-visible-scrollbar,
-.dark [cmdk-list] {
-  scrollbar-color: rgba(148, 163, 184, 0.75) rgba(255, 255, 255, 0.12) !important;
+.dark [data-radix-dropdown-menu-content],
+.dark [data-radix-context-menu-content] {
+  scrollbar-color: #64748b #1e293b !important;
 }
 
 .dark .dropdown-scroll::-webkit-scrollbar-track,
 .dark [data-radix-select-viewport]::-webkit-scrollbar-track,
+.dark [cmdk-list]::-webkit-scrollbar-track,
+.dark [cmdk-list-sizer]::-webkit-scrollbar-track,
 .dark .custom-visible-scrollbar::-webkit-scrollbar-track,
-.dark [cmdk-list]::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.12) !important;
+.dark [data-radix-dropdown-menu-content]::-webkit-scrollbar-track,
+.dark [data-radix-context-menu-content]::-webkit-scrollbar-track {
+  background: #1e293b !important;
 }
 
 .dark .dropdown-scroll::-webkit-scrollbar-thumb,
 .dark [data-radix-select-viewport]::-webkit-scrollbar-thumb,
+.dark [cmdk-list]::-webkit-scrollbar-thumb,
+.dark [cmdk-list-sizer]::-webkit-scrollbar-thumb,
 .dark .custom-visible-scrollbar::-webkit-scrollbar-thumb,
-.dark [cmdk-list]::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.75) !important;
+.dark [data-radix-dropdown-menu-content]::-webkit-scrollbar-thumb,
+.dark [data-radix-context-menu-content]::-webkit-scrollbar-thumb {
+  background: #64748b !important;
 }
 
 .dark .dropdown-scroll::-webkit-scrollbar-thumb:hover,
 .dark [data-radix-select-viewport]::-webkit-scrollbar-thumb:hover,
+.dark [cmdk-list]::-webkit-scrollbar-thumb:hover,
+.dark [cmdk-list-sizer]::-webkit-scrollbar-thumb:hover,
 .dark .custom-visible-scrollbar::-webkit-scrollbar-thumb:hover,
-.dark [cmdk-list]::-webkit-scrollbar-thumb:hover {
-  background: rgba(226, 232, 240, 0.95) !important;
+.dark [data-radix-dropdown-menu-content]::-webkit-scrollbar-thumb:hover,
+.dark [data-radix-context-menu-content]::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
 }
 
-/* Ensure Radix select viewport and cmdk list stay strictly within 4-5 items height */
-[data-radix-select-viewport] {
-  max-height: min(190px, 42vh) !important;
+/* Strictly cap Radix Select Viewport and cmdk list to 200px (4-5 items) */
+[data-radix-select-viewport],
+[cmdk-list] {
+  max-height: 200px !important;
+  overflow-y: scroll !important;
 }
 
 /* React Portal top z-index for dropdowns, popovers, select, and date pickers */
@@ -980,5 +1059,6 @@
 [data-radix-context-menu-content] {
   z-index: 99999 !important;
 }
+
 
 

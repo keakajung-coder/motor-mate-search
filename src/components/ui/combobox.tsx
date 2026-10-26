@@ -95,7 +95,10 @@ export function Combobox({
           filter={(val, search) => (val.toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}
         >
           <CommandInput placeholder={searchPlaceholder} value={query} onValueChange={setQuery} />
-          <CommandList>
+          <CommandList
+            className="!max-h-[200px] !overflow-y-scroll"
+            style={{ maxHeight: "200px", overflowY: "scroll" }}
+          >
             <CommandEmpty className="px-3 py-3 text-sm text-muted-foreground">
               ไม่พบข้อมูล
             </CommandEmpty>

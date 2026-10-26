@@ -208,10 +208,11 @@ const SelectContent = React.forwardRef<
           <SelectScrollUpButton />
           <SelectPrimitive.Viewport
             className={cn(
-              "p-1 max-h-[190px] overflow-y-auto overscroll-contain dropdown-scroll",
+              "p-1 !max-h-[200px] !overflow-y-scroll overscroll-contain dropdown-scroll",
               position === "popper" &&
                 "w-full min-w-[var(--radix-select-trigger-width)]",
             )}
+            style={{ maxHeight: "200px", overflowY: "scroll" }}
           >
             {matchCount === 0 && query.trim() ? (
               <div className="py-4 text-center text-xs text-muted-foreground select-none">

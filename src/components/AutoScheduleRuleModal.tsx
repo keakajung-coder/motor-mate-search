@@ -330,7 +330,10 @@ export function AutoScheduleRuleModal({
               </Badge>
             </div>
 
-            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+            <div
+              className="space-y-2 max-h-56 dropdown-scroll !overflow-y-scroll pr-1"
+              style={{ overflowY: "scroll" }}
+            >
               {previewVisits.map((v) => (
                 <div
                   key={v.visit_no}
