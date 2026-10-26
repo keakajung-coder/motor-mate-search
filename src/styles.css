@@ -471,6 +471,29 @@
   background-attachment: local, local, scroll, scroll;
 }
 
+/* แถบเลื่อนแบบวาดเอง (OverlayScrollbarLayer):
+   ซ่อนแถบเลื่อนเดิมของระบบในกล่องรายการ แล้วใช้แถบที่วาดเองแทน
+   เพราะ iOS/iPadOS ไม่อนุญาตให้ CSS บังคับแสดงแถบเลื่อนเดิมบนหน้าจอสัมผัส */
+.force-scrollbar,
+.dropdown-scroll {
+  scrollbar-width: none;
+}
+.force-scrollbar::-webkit-scrollbar,
+.dropdown-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.osb-thumb {
+  position: fixed;
+  width: 4px;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--foreground) 32%, transparent);
+  pointer-events: none;
+  z-index: 1000000;
+  will-change: top, height;
+}
+
+
 
 
 /* ปฏิทินลอยเหนือฟอร์ม z-[100] ลอยพ้น Parent Container แสดงผลครบทุกวัน 1-31 ไม่ถูกตัดขอบล่าง */

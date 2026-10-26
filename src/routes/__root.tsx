@@ -266,6 +266,7 @@ function RootComponent() {
         <UserRoleProvider>
           <AccessGate>
             <div className="min-h-dvh min-w-0 overflow-x-clip bg-background">
+              <OverlayScrollbarLayer />
               <ConnectionKeeper />
               <ExcelExportButton />
               <NavBar />
