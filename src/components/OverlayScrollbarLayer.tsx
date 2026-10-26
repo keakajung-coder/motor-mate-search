@@ -6,10 +6,13 @@ import * as React from "react";
  *
  * ครอบคลุม: ทั้งหน้าจอ (page scroll), กล่องรายการ, ป๊อปอัป/หน้าต่าง และกล่องที่เลื่อนได้
  * ยกเว้นรายการในตารางแพลนเนอร์ (กล่องที่ใช้ scrollbar-none หรืออยู่ใน [data-no-osb])
+ *
+ * กล่องเลือกบางชนิด (เช่น cmdk Combobox) มี 2 ชั้น:
+ * ชั้นนอกเป็นกรอบ ส่วนชั้นใน ([cmdk-list-sizer] หรือลูกที่ overflow) เป็นตัวเลื่อนจริง
+ * จึงไต่ลงไปหาชั้นในสุดที่เลื่อนได้จริงก่อนวาดแถบเสมอ
  */
-
 const TRACK_SELECTOR =
-  ".force-scrollbar, .dropdown-scroll, .overflow-y-auto, .overflow-auto, .overflow-y-scroll, [role='dialog'], [role='listbox'], [data-radix-scroll-area-viewport]";
+  ".force-scrollbar, .dropdown-scroll, .overflow-y-auto, .overflow-auto, .overflow-y-scroll, [role='dialog'], [role='listbox'], [data-radix-scroll-area-viewport], [cmdk-list], [cmdk-list-sizer]";
 const MIN_THUMB_HEIGHT = 28;
 const EDGE_PAD = 5;
 
@@ -21,16 +24,31 @@ function isExcluded(el: HTMLElement) {
   return false;
 }
 
+function findInnerScroller(root: HTMLElement): HTMLElement | null {
+  // หาลูกชั้นในสุดที่เลื่อนได้จริง (มีเนื้อหายาวเกินกรอบ)
+  const all = root.getElementsByTagName("*");
+  for (let i = 0; i < all.length; i++) {
+    const n = all[i] as HTMLElement;
+    const oy = getComputedStyle(n).overflowY;
+    if ((oy === "auto" || oy === "scroll") && n.scrollHeight - n.clientHeight > 4) {
+      return n;
+    }
+  }
+  return null;
+}
+
 export function OverlayScrollbarLayer() {
   React.useEffect(() => {
     const thumbs = new Map<HTMLElement, HTMLDivElement>();
+    const tracks = new Map<HTMLElement, HTMLDivElement>();
     let pageThumb: HTMLDivElement | null = null;
     let raf = 0;
     let frame = 0;
-    let tracked: HTMLElement[] = [];
+    let scrollers: HTMLElement[] = [];
 
-    const ensureThumb = (el: HTMLElement): HTMLDivElement => {
+    const ensureParts = (el: HTMLElement): { thumb: HTMLDivElement; track: HTMLDivElement } => {
       let thumb = thumbs.get(el);
+      let track = tracks.get(el);
       if (!thumb) {
         thumb = document.createElement("div");
         thumb.className = "osb-thumb";
@@ -38,7 +56,14 @@ export function OverlayScrollbarLayer() {
         document.body.appendChild(thumb);
         thumbs.set(el, thumb);
       }
-      return thumb;
+      if (!track) {
+        track = document.createElement("div");
+        track.className = "osb-track";
+        track.setAttribute("aria-hidden", "true");
+        document.body.appendChild(track);
+        tracks.set(el, track);
+      }
+      return { thumb, track };
     };
 
     const updatePage = () => {
@@ -70,24 +95,44 @@ export function OverlayScrollbarLayer() {
     const update = () => {
       // สแกนหากล่องใหม่ทุก ~10 เฟรม เพื่อไม่ให้หนักเครื่อง
       if (frame++ % 10 === 0) {
-        tracked = Array.from(document.querySelectorAll<HTMLElement>(TRACK_SELECTOR)).filter(
+        const matched = Array.from(document.querySelectorAll<HTMLElement>(TRACK_SELECTOR)).filter(
           (el) => !isExcluded(el),
         );
+        const next: HTMLElement[] = [];
+        const seen = new Set<HTMLElement>();
+        for (const el of matched) {
+          // ตัวที่เลื่อนจริง: ตัวมันเองถ้ามีเนื้อหาล้น ไม่งั้นไต่หาลูกชั้นในที่เลื่อนได้
+          let sc: HTMLElement | null = el;
+          if (el.scrollHeight - el.clientHeight <= 4) {
+            sc = findInnerScroller(el);
+          }
+          if (!sc || seen.has(sc)) continue;
+          seen.add(sc);
+          next.push(sc);
+        }
+        scrollers = next;
         for (const [el, thumb] of thumbs) {
-          if (!el.isConnected || !tracked.includes(el)) {
+          if (!el.isConnected || !seen.has(el)) {
             thumb.remove();
             thumbs.delete(el);
           }
         }
+        for (const [el, track] of tracks) {
+          if (!el.isConnected || !seen.has(el)) {
+            track.remove();
+            tracks.delete(el);
+          }
+        }
       }
 
-      for (const el of tracked) {
+      for (const el of scrollers) {
         if (!el.isConnected) continue;
         const overflow = el.scrollHeight - el.clientHeight;
-        const thumb = ensureThumb(el);
         const rect = el.getBoundingClientRect();
+        const { thumb, track } = ensureParts(el);
         if (overflow <= 4 || rect.height < 40 || rect.width === 0) {
           if (thumb.style.display !== "none") thumb.style.display = "none";
+          if (track.style.display !== "none") track.style.display = "none";
           continue;
         }
         const trackHeight = Math.max(0, el.clientHeight - EDGE_PAD * 2);
@@ -103,6 +148,16 @@ export function OverlayScrollbarLayer() {
         thumb.style.height = `${thumbHeight}px`;
         thumb.style.left = `${Math.round(rect.right - 9)}px`;
         thumb.style.top = `${Math.round(top)}px`;
+
+        // แถบ Track จาง ๆ ด้านหลัง ให้เห็นทันทีว่ากล่องนี้เลื่อนได้
+        if (trackHeight > thumbHeight + 10) {
+          track.style.display = "";
+          track.style.height = `${trackHeight}px`;
+          track.style.left = `${Math.round(rect.right - 9)}px`;
+          track.style.top = `${Math.round(rect.top + EDGE_PAD)}px`;
+        } else {
+          track.style.display = "none";
+        }
       }
 
       updatePage();
@@ -117,6 +172,7 @@ export function OverlayScrollbarLayer() {
     return () => {
       cancelAnimationFrame(raf);
       thumbs.forEach((thumb) => thumb.remove());
+      tracks.forEach((track) => track.remove());
       pageThumb?.remove();
     };
   }, []);
