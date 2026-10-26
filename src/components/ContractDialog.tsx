@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { CalendarClock, Loader2, Plus, Sparkles, Trash2, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { DateInput } from "@/components/ui/date-input";
-import { spreadVisits } from "@/lib/contract-schedule";
+import { cn } from "@/lib/utils";
+import { spreadVisits, type GeneratedVisitPreview } from "@/lib/contract-schedule";
 import { listContracts, saveContract, deactivateContract, type ContractVisitInput } from "@/lib/contracts.functions";
 import { useAccess } from "@/lib/access";
 import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
+import { AutoScheduleRuleModal } from "@/components/AutoScheduleRuleModal";
 
 type VisitRow = ContractVisitInput & { status?: string };
 
@@ -22,8 +25,9 @@ function todayISO() {
 
 /**
  * หน้าต่างจัดการ "สัญญาคอนแทรครายปี" ของเครื่องจักร 1 เครื่อง
- * - กำหนดจำนวนครั้งเข้าบริการต่อปี → สร้างงวดอัตโนมัติ (แก้วันที่/เวลา/รายละเอียดแยกแต่ละครั้งได้)
- * - บันทึกแล้วซิงค์นัดหมายลงแพลนเนอร์ทันที และงวดที่ถึงกำหนดจะถูกสร้างเป็นใบสั่งงานอัตโนมัติ
+ * - กำหนดรอบบริการและรูปแบบวัน (Auto-Schedule Rules) → สร้างงวดอัตโนมัติทั้งสัญญา
+ * - ทุกงวดเริ่มต้นเป็น "ยังไม่ได้นัดหมาย (Unscheduled)" สามารถแก้ไขวัน/เวลาแยกงวดหลบวันหยุดได้อิสระ
+ * - กดติ๊กยืนยันนัดหมายเมื่อโทรคอนเฟิร์มกับลูกค้าแล้ว
  */
 export function ContractDialog({
   open,
@@ -48,6 +52,7 @@ export function ContractDialog({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [autoScheduleModalOpen, setAutoScheduleModalOpen] = useState(false);
   const [contractId, setContractId] = useState<string | null>(null);
   const [visitsPerYear, setVisitsPerYear] = useState(4);
   const [startDate, setStartDate] = useState(todayISO());
@@ -76,7 +81,7 @@ export function ContractDialog({
                 visit_time: v.visit_time ?? "",
                 job_detail: v.job_detail ?? "",
                 parts_note: v.parts_note ?? "",
-                status: v.status,
+                status: v.status || "unscheduled",
               })),
           );
         } else {
@@ -93,24 +98,28 @@ export function ContractDialog({
   }, [open, machineUnitId]);
 
   const doneCount = useMemo(() => visits.filter((v) => v.status === "done").length, [visits]);
+  const unscheduledCount = useMemo(
+    () => visits.filter((v) => v.status !== "done" && v.status !== "scheduled").length,
+    [visits],
+  );
 
-  const generateVisits = () => {
-    const dates = spreadVisits(startDate, visitsPerYear);
+  const handleApplyAutoSchedule = (generated: GeneratedVisitPreview[]) => {
+    setVisitsPerYear(generated.length);
     setVisits((prev) =>
-      dates.map((d, i) => {
+      generated.map((g, i) => {
         const old = prev.find((v) => v.visit_no === i + 1);
-        return old && old.status === "done"
-          ? old
-          : {
-              visit_no: i + 1,
-              visit_date: d,
-              visit_time: old?.visit_time ?? "",
-              job_detail: old?.job_detail ?? "",
-              parts_note: old?.parts_note ?? "",
-              status: old?.status,
-            };
+        if (old && old.status === "done") return old;
+        return {
+          visit_no: i + 1,
+          visit_date: g.visit_date,
+          visit_time: g.visit_time || old?.visit_time || "",
+          job_detail: old?.job_detail || g.job_detail || "",
+          parts_note: old?.parts_note || g.parts_note || "",
+          status: old?.status || "unscheduled",
+        };
       }),
     );
+    toast.success(`คำนวณและตั้งงวดบริการอัตโนมัติ ${generated.length} ครั้งเรียบร้อยแล้ว`);
   };
 
   const setVisit = (no: number, patch: Partial<VisitRow>) =>
@@ -122,7 +131,14 @@ export function ContractDialog({
   const addVisit = () =>
     setVisits((prev) => [
       ...prev,
-      { visit_no: prev.length + 1, visit_date: startDate, visit_time: "", job_detail: "", parts_note: "" },
+      {
+        visit_no: prev.length + 1,
+        visit_date: startDate,
+        visit_time: "",
+        job_detail: "",
+        parts_note: "",
+        status: "unscheduled",
+      },
     ]);
 
   const save = async () => {
@@ -147,6 +163,7 @@ export function ContractDialog({
             visit_time: v.visit_time || null,
             job_detail: v.job_detail || null,
             parts_note: v.parts_note || null,
+            status: v.status || "unscheduled",
           })),
         },
       });
@@ -227,8 +244,14 @@ export function ContractDialog({
                 <DateInput value={startDate} onChange={setStartDate} disabled={!isAdmin} />
               </div>
               <div className="flex items-end">
-                <Button type="button" variant="outline" className="w-full" disabled={!isAdmin} onClick={generateVisits}>
-                  <Sparkles className="mr-1 h-4 w-4" /> สร้างงวดอัตโนมัติ
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-primary/40 text-primary hover:bg-primary/10 font-semibold"
+                  disabled={!isAdmin}
+                  onClick={() => setAutoScheduleModalOpen(true)}
+                >
+                  <Sparkles className="mr-1 h-4 w-4" /> สร้างงวดอัตโนมัติ (Auto-Schedule)
                 </Button>
               </div>
             </div>
@@ -239,10 +262,14 @@ export function ContractDialog({
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-base font-semibold">
-                  งวดเข้าบริการ ({visits.length} ครั้ง{doneCount > 0 ? ` · ทำแล้ว ${doneCount}` : ""})
-                </Label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Label className="text-base font-semibold">
+                    งวดเข้าบริการ ({visits.length} ครั้ง
+                    {doneCount > 0 ? ` · ทำแล้ว ${doneCount}` : ""}
+                    {unscheduledCount > 0 ? ` · รอยืนยัน ${unscheduledCount}` : ""})
+                  </Label>
+                </div>
                 {isAdmin && (
                   <Button type="button" size="sm" variant="outline" onClick={addVisit}>
                     <Plus className="mr-1 h-4 w-4" /> เพิ่มงวด
@@ -251,44 +278,131 @@ export function ContractDialog({
               </div>
 
               {visits.length === 0 && (
-                <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-                  ยังไม่มีงวด — ใส่จำนวนครั้งแล้วกด "สร้างงวดอัตโนมัติ" หรือ "เพิ่มงวด" เอง
-                </p>
+                <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground space-y-2">
+                  <p>ยังไม่มีงวดเข้าบริการ</p>
+                  <p className="text-xs">
+                    กดปุ่ม <strong>"สร้างงวดอัตโนมัติ (Auto-Schedule)"</strong> เพื่อเลือกรูปแบบวัน หรือกด <strong>"เพิ่มงวด"</strong> เอง
+                  </p>
+                </div>
               )}
 
-              {visits.map((v) => (
-                <div key={v.visit_no} className="space-y-2 rounded-xl border p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold">
-                      ครั้งที่ {v.visit_no}
-                      {v.status === "done" && <span className="ml-2 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-700">ปิดงานแล้ว</span>}
-                    </span>
-                    {isAdmin && v.status !== "done" && (
-                      <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeVisit(v.visit_no)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+              {visits.map((v) => {
+                const isDone = v.status === "done";
+                const isScheduled = v.status === "scheduled";
+                const isUnscheduled = !isDone && !isScheduled;
+
+                return (
+                  <div
+                    key={v.visit_no}
+                    className={cn(
+                      "space-y-2.5 rounded-xl border p-3.5 transition-all",
+                      isUnscheduled
+                        ? "border-rose-900/30 bg-rose-50/40 dark:bg-rose-950/20"
+                        : isScheduled
+                          ? "border-blue-200 bg-blue-50/30 dark:bg-blue-950/20"
+                          : "border-border bg-card",
                     )}
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div>
-                      <Label className="text-xs">วันที่</Label>
-                      <DateInput size="sm" value={v.visit_date} disabled={!isAdmin || v.status === "done"} onChange={(d) => setVisit(v.visit_no, { visit_date: d })} />
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-bold text-foreground">
+                          งวดที่ {v.visit_no}
+                        </span>
+
+                        {isDone ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-300 text-xs">
+                            ปิดงานแล้ว
+                          </Badge>
+                        ) : isScheduled ? (
+                          <Badge className="bg-blue-50 text-blue-700 border-blue-300 text-xs">
+                            นัดหมายแล้ว (Scheduled)
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-rose-900/15 text-rose-900 border-rose-800/40 dark:bg-rose-950/60 dark:text-rose-200 text-xs font-semibold">
+                            ยังไม่ได้นัดหมาย (Unscheduled)
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Toggle Confirm Scheduling */}
+                        {isAdmin && !isDone && (
+                          <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 text-xs font-medium shadow-2xs hover:bg-muted/50 transition-colors">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 accent-emerald-600 rounded cursor-pointer"
+                              checked={isScheduled}
+                              onChange={(e) =>
+                                setVisit(v.visit_no, {
+                                  status: e.target.checked ? "scheduled" : "unscheduled",
+                                })
+                              }
+                            />
+                            <span>
+                              {isScheduled ? "✓ ยืนยันนัดแล้ว" : "รอยืนยัน (คลิกเพื่อยืนยัน)"}
+                            </span>
+                          </label>
+                        )}
+
+                        {isAdmin && !isDone && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                            onClick={() => removeVisit(v.visit_no)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div>
+                        <div className="flex items-center justify-between pb-0.5">
+                          <Label className="text-xs">วันที่เข้าบริการ (แก้ไขหลบวันหยุดได้อิสระ)</Label>
+                        </div>
+                        <DateInput
+                          size="sm"
+                          value={v.visit_date}
+                          disabled={!isAdmin || isDone}
+                          onChange={(d) => setVisit(v.visit_no, { visit_date: d })}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">เวลา</Label>
+                        <Input
+                          type="time"
+                          value={v.visit_time ?? ""}
+                          disabled={!isAdmin || isDone}
+                          onChange={(e) => setVisit(v.visit_no, { visit_time: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
                     <div>
-                      <Label className="text-xs">เวลา</Label>
-                      <Input type="time" value={v.visit_time ?? ""} disabled={!isAdmin || v.status === "done"} onChange={(e) => setVisit(v.visit_no, { visit_time: e.target.value })} />
+                      <Label className="text-xs">รายละเอียดงาน</Label>
+                      <Input
+                        value={v.job_detail ?? ""}
+                        disabled={!isAdmin || isDone}
+                        onChange={(e) => setVisit(v.visit_no, { job_detail: e.target.value })}
+                        placeholder="เช่น เช็กระยะ 2,000 ชม. ตามสัญญาบริการ"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">อะไหล่ที่ต้องเตรียม</Label>
+                      <Input
+                        value={v.parts_note ?? ""}
+                        disabled={!isAdmin || isDone}
+                        onChange={(e) => setVisit(v.visit_no, { parts_note: e.target.value })}
+                        placeholder="เช่น ไส้กรองอากาศ, ไส้กรองน้ำมัน, น้ำมันหล่อลื่น"
+                      />
                     </div>
                   </div>
-                  <div>
-                    <Label className="text-xs">รายละเอียดงาน</Label>
-                    <Input value={v.job_detail ?? ""} disabled={!isAdmin || v.status === "done"} onChange={(e) => setVisit(v.visit_no, { job_detail: e.target.value })} placeholder="เช่น เช็กระยะ 2,000 ชม." />
-                  </div>
-                  <div>
-                    <Label className="text-xs">อะไหล่ที่ต้องเตรียม</Label>
-                    <Input value={v.parts_note ?? ""} disabled={!isAdmin || v.status === "done"} onChange={(e) => setVisit(v.visit_no, { parts_note: e.target.value })} placeholder="เช่น ไส้กรองอากาศ, น้ำมันหล่อลื่น" />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -313,6 +427,18 @@ export function ContractDialog({
           </div>
         </DialogFooter>
       </DialogContent>
+
+      {/* Auto-Schedule Rules Configuration Modal */}
+      {autoScheduleModalOpen && (
+        <AutoScheduleRuleModal
+          open={autoScheduleModalOpen}
+          onOpenChange={setAutoScheduleModalOpen}
+          initialStartDate={startDate}
+          initialVisitsPerYear={visitsPerYear}
+          onApply={handleApplyAutoSchedule}
+        />
+      )}
+
       {historyOpen && (
         <MachineHistoryDialog
           open={historyOpen}

@@ -157,8 +157,10 @@ type Appointment = {
   contact_phone: string | null;
   machine_label: string | null;
   serial_number: string | null;
+  machine_unit_id?: string | null;
   job_detail: string | null;
   service_type: string | null;
+  billing_type?: string | null;
   visit_date: string;
   visit_time: string | null;
   staff_name: string | null;
@@ -191,6 +193,8 @@ type WorkOrder = Appointment & {
 };
 
 const STATUS_LABEL: Record<string, string> = {
+  unscheduled: "ยังไม่ได้นัดหมาย (แพลนสัญญา)",
+  draft: "ยังไม่ได้นัดหมาย (แพลนสัญญา)",
   pending: "รอดำเนินการ",
   approved: "รอดำเนินการ",
   scheduled: "นัดหมายแล้ว",
@@ -198,15 +202,23 @@ const STATUS_LABEL: Record<string, string> = {
   closed: "เสร็จสิ้น",
 };
 
-type StatusStage = "pending" | "active" | "completed";
-// เหลือง = กด "นัดหมายแล้ว" หรือ "เริ่มดำเนินการ" เท่านั้น, แดง = ยังไม่กด, เขียว = ปิดงาน
+type StatusStage = "unscheduled" | "pending" | "active" | "completed";
+// แดงเลือดหมู = แพลนสัญญา (ยังไม่คอนเฟิร์ม), เหลือง = นัดหมายแล้ว / เริ่มดำเนินการ, แดง = ยังไม่ไป, เขียว = ปิดงาน
 const statusStage = (status?: string | null): StatusStage =>
   status === "closed"
     ? "completed"
-    : status === "scheduled" || status === "in_progress"
-      ? "active"
-      : "pending";
+    : status === "unscheduled" || status === "draft"
+      ? "unscheduled"
+      : status === "scheduled" || status === "in_progress"
+        ? "active"
+        : "pending";
+
 const STATUS_STAGE_STYLE: Record<StatusStage, { rail: string; badge: string; label: string }> = {
+  unscheduled: {
+    rail: "bg-rose-900",
+    badge: "border-rose-900/50 bg-rose-950/20 text-rose-900 dark:text-rose-200 dark:border-rose-700 font-bold",
+    label: "แพลนสัญญา (รอยืนยัน)",
+  },
   pending: {
     rail: "bg-red-500",
     badge: "border-red-300 bg-red-50 text-red-700",
@@ -225,6 +237,7 @@ const STATUS_STAGE_STYLE: Record<StatusStage, { rail: string; badge: string; lab
 };
 
 const STAGE_BG: Record<StatusStage, string> = {
+  unscheduled: "border-rose-900/40 bg-rose-100/70 dark:bg-rose-950/50",
   pending: "border-red-200 bg-red-50/60",
   active: "border-amber-200 bg-amber-50/60",
   completed: "border-emerald-200 bg-emerald-50/60",
@@ -250,11 +263,13 @@ function JobStatusBadge({
   const style = STATUS_STAGE_STYLE[statusStage(status)];
   return (
     <Badge variant="outline" className={`${style.badge} ${compact ? "px-1 py-0 text-[9px]" : ""}`}>
-      {status === "in_progress"
-        ? "กำลังดำเนินการ"
-        : status === "scheduled"
-          ? "นัดหมายแล้ว"
-          : style.label}
+      {status === "unscheduled" || status === "draft"
+        ? "แพลนสัญญา (รอยืนยัน)"
+        : status === "in_progress"
+          ? "กำลังดำเนินการ"
+          : status === "scheduled"
+            ? "นัดหมายแล้ว"
+            : style.label}
     </Badge>
   );
 }
@@ -2681,8 +2696,12 @@ function staffBg(name?: string | null) {
   for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) >>> 0;
   return STAFF_BGS[h % STAFF_BGS.length];
 }
-/** คลาสการ์ดนัดหมายมาตรฐาน: ขอบ 3px ตามรถ + พื้นพาสเทลตามช่าง + ตัวหนังสือ slate-800 */
+/** คลาสการ์ดนัดหมายมาตรฐาน: ขอบ 3px ตามรถ + พื้นพาสเทลตามช่าง หรือ แดงเลือดหมูสำหรับแพลนสัญญา */
 function apptCardClass(a: Appointment) {
+  const isDraftContract = a.status === "unscheduled" || a.status === "draft";
+  if (isDraftContract) {
+    return "relative overflow-hidden border-[3px] pl-3 border-rose-900 bg-rose-100/90 text-rose-950 dark:bg-rose-950/80 dark:text-rose-100 shadow-sm ring-1 ring-rose-900/40";
+  }
   return (
     "relative overflow-hidden border-[3px] pl-3 text-slate-800 " +
     vehicleBorder(a.vehicle_plate) +
@@ -2916,6 +2935,11 @@ function MonthGrid({
                           {a.cust_id ? `[${a.cust_id}] ` : ""}
                           {a.customer_name || "ไม่ระบุลูกค้า"}
                         </span>
+                        {(a.status === "unscheduled" || a.status === "draft") && (
+                          <span className="inline-flex items-center gap-0.5 rounded bg-rose-950/20 px-1 py-0.5 text-[9px] font-bold text-rose-900 dark:text-rose-200">
+                            🚨 แพลนสัญญา (รอยืนยัน)
+                          </span>
+                        )}
                         {a.job_detail?.includes("[Admin Override") && (
                           <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-200">
                             ⚡ งานซ้อน (Override)
@@ -3059,6 +3083,11 @@ function TimeGrid({
                     {a.cust_id ? `[${a.cust_id}] ` : ""}
                     {a.customer_name || "ไม่ระบุลูกค้า"}
                   </span>
+                  {(a.status === "unscheduled" || a.status === "draft") && (
+                    <span className="inline-flex items-center gap-0.5 rounded bg-rose-950/20 px-1 py-0.5 text-[9px] font-bold text-rose-900 dark:text-rose-200">
+                      🚨 แพลนสัญญา (รอยืนยัน)
+                    </span>
+                  )}
                   {a.job_detail?.includes("[Admin Override") && (
                     <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-200">
                       ⚡ งานซ้อน (Override)
@@ -3345,7 +3374,9 @@ function DayDetailDialog({
                     key={a.id}
                     className={cn(
                       "relative grid min-w-0 grid-cols-1 gap-2 overflow-hidden rounded-xl border py-3 pl-6 pr-3 sm:grid-cols-[minmax(0,1fr)_auto] transition-all",
-                      vehicleColor(a.vehicle_plate),
+                      (a.status === "unscheduled" || a.status === "draft")
+                        ? "border-rose-900/60 bg-rose-100/80 dark:bg-rose-950/60 text-rose-950 dark:text-rose-100 shadow-sm ring-1 ring-rose-900/40"
+                        : vehicleColor(a.vehicle_plate),
                       visual.opacityClass,
                       visual.isMine && "ring-2 ring-primary/60 shadow-md border-primary bg-card/95",
                     )}
@@ -3362,6 +3393,11 @@ function DayDetailDialog({
                           {visual.isMine && (
                             <span className="inline-flex items-center gap-1 rounded bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 text-xs font-bold">
                               ⭐ งานของฉัน
+                            </span>
+                          )}
+                          {(a.status === "unscheduled" || a.status === "draft") && (
+                            <span className="inline-flex items-center gap-1 rounded bg-rose-950/20 text-rose-900 dark:text-rose-200 border border-rose-900/40 px-2 py-0.5 text-xs font-bold">
+                              🚨 แพลนสัญญา (รอยืนยัน)
                             </span>
                           )}
                           <span className="block break-words font-medium">
@@ -4226,6 +4262,53 @@ function AppointmentDialog({
           </div>
         )}
 
+        {(form.status === "unscheduled" || form.status === "draft") && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-900/40 bg-rose-950/15 p-3 text-rose-950 dark:text-rose-100 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-900 text-white font-bold text-sm">
+                🚨
+              </span>
+              <div>
+                <p className="text-sm font-bold text-rose-900 dark:text-rose-200">
+                  งานแพลนล่วงหน้าจากสัญญา (ยังไม่ได้ยืนยันนัดหมาย)
+                </p>
+                <p className="text-xs text-rose-800/80 dark:text-rose-300/80">
+                  รายการนี้ถูกสร้างอัตโนมัติตามรอบสัญญา กรุณาโทรคอนเฟิร์มวันกับลูกค้าแล้วกดยืนยันนัดหมาย
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              className="shrink-0 bg-rose-900 hover:bg-rose-800 text-white font-semibold gap-1.5 shadow-xs"
+              onClick={async () => {
+                set("status", "scheduled");
+                if (form.id) {
+                  const { error } = await supabase
+                    .from("appointments")
+                    .update({ status: "scheduled" })
+                    .eq("id", form.id);
+                  if (error) {
+                    toast.error(error.message);
+                    set("status", form.status);
+                  } else {
+                    if (form.work_order_id) {
+                      await supabase
+                        .from("work_orders")
+                        .update({ status: "scheduled" })
+                        .eq("id", form.work_order_id);
+                    }
+                    toast.success("ยืนยันนัดหมายสำเร็จ! เปลี่ยนสถานะเป็นการ์ดงานปกติแล้ว");
+                    onSaved();
+                  }
+                }
+              }}
+            >
+              ✓ ยืนยันนัดหมายกับลูกค้าแล้ว
+            </Button>
+          </div>
+        )}
+
         {form.id && (
           <div className="relative flex flex-wrap items-center gap-2 overflow-hidden rounded-xl border bg-muted/40 py-3 pl-6 pr-3 text-sm">
             <StatusRail status={form.status} />
@@ -4242,13 +4325,21 @@ function AppointmentDialog({
               </Badge>
             )}
             {form.status !== "closed" && (
-              <label className="ml-auto flex cursor-pointer items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 text-xs font-medium">
+              <label className="ml-auto flex cursor-pointer items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 text-xs font-medium shadow-2xs hover:bg-muted/30">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 accent-amber-500 cursor-pointer"
+                  className="h-4 w-4 accent-rose-900 cursor-pointer"
                   checked={form.status === "scheduled"}
                   onChange={async (e) => {
-                    const next = e.target.checked ? "scheduled" : "approved";
+                    const isContractVisit =
+                      form.service_type?.includes("สัญญา") ||
+                      form.billing_type?.includes("สัญญา") ||
+                      form.job_detail?.includes("สัญญา");
+                    const next = e.target.checked
+                      ? "scheduled"
+                      : isContractVisit
+                        ? "unscheduled"
+                        : "approved";
                     set("status", next);
                     if (form.id) {
                       const { error } = await supabase
@@ -4266,7 +4357,9 @@ function AppointmentDialog({
                             .eq("id", form.work_order_id);
                         }
                         toast.success(
-                          next === "scheduled" ? "บันทึก: นัดหมายแล้ว" : "ยกเลิกสถานะนัดหมายแล้ว",
+                          next === "scheduled"
+                            ? "บันทึก: ยืนยันนัดหมายแล้ว (สถานะ Scheduled)"
+                            : "เปลี่ยนสถานะ: รอยืนยันนัดหมาย (สถานะ Unscheduled)",
                         );
                         onSaved();
                       }
@@ -4276,11 +4369,11 @@ function AppointmentDialog({
                 <span
                   className={
                     form.status === "scheduled"
-                      ? "font-semibold text-amber-700 dark:text-amber-300"
-                      : "text-muted-foreground"
+                      ? "font-semibold text-emerald-700 dark:text-emerald-400"
+                      : "font-semibold text-rose-900 dark:text-rose-300"
                   }
                 >
-                  นัดหมายแล้ว
+                  {form.status === "scheduled" ? "✓ นัดหมายแล้ว" : "รอยืนยันนัดหมาย (Draft)"}
                 </span>
               </label>
             )}

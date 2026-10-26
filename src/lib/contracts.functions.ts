@@ -7,6 +7,7 @@ export type ContractVisitInput = {
   visit_time?: string | null;
   job_detail?: string | null;
   parts_note?: string | null;
+  status?: string | null;
 };
 
 export type ContractInput = {
@@ -104,6 +105,18 @@ export const saveContract = createServerFn({ method: "POST" })
 
     // ซิงค์แต่ละงวด → นัดหมายในแพลนเนอร์
     for (const v of visits) {
+      const { data: oldVisit } = await supabaseAdmin
+        .from("service_contract_visits")
+        .select("id, appointment_id, work_order_id, status")
+        .eq("contract_id", contractId)
+        .eq("visit_no", v.visit_no)
+        .maybeSingle();
+
+      if (oldVisit?.status === "done") continue; // งวดที่ปิดงานแล้วไม่แตะต้อง
+
+      // สถานะเริ่มต้นของงวดที่สร้างอัตโนมัติเป็น "unscheduled" (ยังไม่ได้นัดหมาย)
+      const targetStatus = v.status || oldVisit?.status || "unscheduled";
+
       const apptPayload = {
         customer_name: customerName,
         machine_label: data.machine_label ?? null,
@@ -115,17 +128,10 @@ export const saveContract = createServerFn({ method: "POST" })
         billing_type: "ในสัญญาบริการ",
         visit_date: v.visit_date,
         visit_time: v.visit_time ?? null,
-        status: "scheduled",
+        status: targetStatus,
       };
-      const { data: oldVisit } = await supabaseAdmin
-        .from("service_contract_visits")
-        .select("id, appointment_id, work_order_id, status")
-        .eq("contract_id", contractId)
-        .eq("visit_no", v.visit_no)
-        .maybeSingle();
 
       let appointmentId = oldVisit?.appointment_id ?? null;
-      if (oldVisit?.status === "done") continue; // งวดที่ปิดงานแล้วไม่แตะต้อง
       if (appointmentId) {
         await supabaseAdmin.from("appointments").update(apptPayload).eq("id", appointmentId);
       } else {
@@ -141,6 +147,7 @@ export const saveContract = createServerFn({ method: "POST" })
         job_detail: v.job_detail ?? null,
         parts_note: v.parts_note ?? null,
         appointment_id: appointmentId,
+        status: targetStatus,
       };
       if (oldVisit?.id) {
         await supabaseAdmin.from("service_contract_visits").update(visitRow).eq("id", oldVisit.id);
@@ -150,6 +157,31 @@ export const saveContract = createServerFn({ method: "POST" })
     }
 
     return { ok: true as const, id: contractId };
+  });
+
+/** สลับสถานะงวดระหว่าง unscheduled กับ scheduled (ยืนยันนัดหมาย) */
+export const toggleContractVisitConfirm = createServerFn({ method: "POST" })
+  .inputValidator((d: { appointmentId?: string | null; visitId?: string | null; confirmed: boolean }) => d)
+  .handler(async ({ data }) => {
+    const supabaseAdmin = await adminCtx();
+    const nextStatus = data.confirmed ? "scheduled" : "unscheduled";
+
+    if (data.appointmentId) {
+      await supabaseAdmin.from("appointments").update({ status: nextStatus }).eq("id", data.appointmentId);
+      await supabaseAdmin.from("service_contract_visits").update({ status: nextStatus }).eq("appointment_id", data.appointmentId);
+    } else if (data.visitId) {
+      const { data: v } = await supabaseAdmin
+        .from("service_contract_visits")
+        .update({ status: nextStatus })
+        .eq("id", data.visitId)
+        .select("appointment_id")
+        .single();
+      if (v?.appointment_id) {
+        await supabaseAdmin.from("appointments").update({ status: nextStatus }).eq("id", v.appointment_id);
+      }
+    }
+
+    return { ok: true as const, status: nextStatus };
   });
 
 /** ยกเลิกสัญญา (ปิดการใช้งาน ไม่ลบประวัติ) */
@@ -171,9 +203,9 @@ export const generateDueWorkOrders = createServerFn({ method: "POST" }).handler(
   const today = new Date().toISOString().slice(0, 10);
   const { data: due, error } = await supabaseAdmin
     .from("service_contract_visits")
-    .select("id, visit_no, visit_date, visit_time, job_detail, parts_note, service_contracts!inner(id, customer_id, customer_name, machine_unit_id, serial_number, machine_label, active)")
+    .select("id, visit_no, visit_date, visit_time, job_detail, parts_note, status, service_contracts!inner(id, customer_id, customer_name, machine_unit_id, serial_number, machine_label, active)")
     .is("work_order_id", null)
-    .eq("status", "scheduled")
+    .in("status", ["scheduled", "unscheduled"])
     .eq("service_contracts.active", true)
     .lte("visit_date", today)
     .limit(50);

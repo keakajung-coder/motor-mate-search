@@ -55,25 +55,36 @@ export function ChecklistForm({ value, onChange }: { value: ChecklistResult; onC
             <div key={it.id} className="flex min-w-0 flex-col gap-1 xl:flex-row xl:items-center">
               <span className="text-sm xl:w-40 xl:shrink-0">{it.label}</span>
               <div className="flex flex-wrap gap-1">
-                {STATUSES.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setItem(i, { status: it.status === s ? null : s })}
-                    className={cn(
-                      "rounded border px-2 py-0.5 text-xs",
-                      it.status === s
-                        ? s === "normal" ? "border-primary bg-primary text-primary-foreground"
-                          : s === "replace" ? "border-secondary-foreground bg-secondary"
-                          : "border-destructive bg-destructive text-destructive-foreground"
-                        : "bg-background",
-                    )}
-                  >
-                    {STATUS_LABEL[s]}
-                  </button>
-                ))}
+                {STATUSES.map((s) => {
+                  const isSelected = it.status === s;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setItem(i, { status: isSelected ? null : s })}
+                      className={cn(
+                        "rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer",
+                        isSelected
+                          ? s === "normal"
+                            ? "border-emerald-600 bg-emerald-600 text-white shadow-xs"
+                            : s === "replace"
+                              ? "border-amber-600 bg-amber-500 text-white shadow-xs"
+                              : "border-rose-600 bg-rose-600 text-white shadow-xs"
+                          : "bg-background text-muted-foreground hover:bg-muted/60 border-border",
+                      )}
+                    >
+                      {s === "normal"
+                        ? "✓ ผ่าน (ปกติ)"
+                        : s === "replace"
+                          ? "⚠️ ควรเฝ้าระวัง"
+                          : "⚡ ต้องแก้ไข"}
+                    </button>
+                  );
+                })}
               </div>
-              {it.kind === "status_number" && <div className="flex min-w-0 flex-1 flex-col gap-2 lg:flex-row">{valueInputs(it, i)}</div>}
+              {it.kind === "status_number" && (
+                <div className="flex min-w-0 flex-1 flex-col gap-2 lg:flex-row">{valueInputs(it, i)}</div>
+              )}
             </div>
           ))}
         </div>

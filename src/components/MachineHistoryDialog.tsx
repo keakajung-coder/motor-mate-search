@@ -14,9 +14,12 @@ import {
   fetchMachineHistory,
   type MachineHistoryData,
   type TimelineEvent,
+  type InspectionRecord,
+  type ChecklistItemDetail,
 } from "@/lib/machine-history";
 import { HandoverReportDialog } from "@/components/HandoverReportDialog";
 import { ContractDialog } from "@/components/ContractDialog";
+import { ChecklistView } from "@/components/ChecklistView";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -49,6 +52,13 @@ import {
   X,
   Maximize2,
   Eye,
+  ChevronDown,
+  ChevronUp,
+  Table,
+  Layers,
+  Activity,
+  Gauge,
+  TrendingUp,
 } from "lucide-react";
 
 function formatDateTh(d?: string | null): string {
@@ -76,8 +86,10 @@ export function MachineHistoryDialog({
 }) {
   const [loading, setLoading] = useState<boolean>(false);
   const [data, setData] = useState<MachineHistoryData | null>(null);
-  const [tab, setTab] = useState<"timeline" | "profile" | "parts" | "passport">("timeline");
+  const [tab, setTab] = useState<"timeline" | "checklists" | "profile" | "parts" | "passport">("timeline");
   const [timelineFilter, setTimelineFilter] = useState<string>("all");
+  const [expandedChecklistId, setExpandedChecklistId] = useState<string | null>(null);
+  const [inspectionViewMode, setInspectionViewMode] = useState<"matrix" | "cards">("matrix");
 
   // Selected appointment for opening Handover / Service Report
   const [selectedApptForReport, setSelectedApptForReport] = useState<any | null>(null);
@@ -117,6 +129,8 @@ export function MachineHistoryDialog({
       setTab("timeline");
       setSelectedApptForReport(null);
       setPreviewImage(null);
+      setExpandedChecklistId(null);
+      setInspectionViewMode("matrix");
     }
   }, [open, serialNumber, machineUnitId]);
 
@@ -124,6 +138,37 @@ export function MachineHistoryDialog({
   const warranty = data?.warranty;
   const contract = data?.contract;
   const timeline = data?.timeline ?? [];
+  const inspections = data?.inspections ?? [];
+
+  const inspectionStats = useMemo(() => {
+    let totalItems = 0;
+    let passed = 0;
+    let warning = 0;
+    let failed = 0;
+    for (const insp of inspections) {
+      totalItems += insp.summary.total;
+      passed += insp.summary.passed;
+      warning += insp.summary.warning;
+      failed += insp.summary.failed;
+    }
+    return {
+      roundCount: inspections.length,
+      totalItems,
+      passed,
+      warning,
+      failed,
+    };
+  }, [inspections]);
+
+  const allInspectionItemLabels = useMemo(() => {
+    const set = new Set<string>();
+    for (const insp of inspections) {
+      for (const it of insp.items) {
+        if (it.label) set.add(it.label.trim());
+      }
+    }
+    return Array.from(set);
+  }, [inspections]);
 
   // Filtered timeline events
   const filteredTimeline = useMemo(() => {
@@ -292,10 +337,14 @@ export function MachineHistoryDialog({
               onValueChange={(v) => setTab(v as any)}
               className="w-full mt-3 pt-1"
             >
-              <TabsList className="grid grid-cols-4 w-full h-10 p-1 bg-muted/60">
+              <TabsList className="grid grid-cols-5 w-full h-10 p-1 bg-muted/60">
                 <TabsTrigger value="timeline" className="text-xs sm:text-sm gap-1.5 font-medium">
                   <Clock className="h-3.5 w-3.5 shrink-0 hidden xs:inline" />
                   <span>ไทม์ไลน์ ({timeline.length})</span>
+                </TabsTrigger>
+                <TabsTrigger value="checklists" className="text-xs sm:text-sm gap-1.5 font-medium">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 hidden xs:inline text-primary" />
+                  <span>เช็คลิสต์ ({inspections.length})</span>
                 </TabsTrigger>
                 <TabsTrigger value="profile" className="text-xs sm:text-sm gap-1.5 font-medium">
                   <Info className="h-3.5 w-3.5 shrink-0 hidden xs:inline" />
@@ -509,19 +558,58 @@ export function MachineHistoryDialog({
                                     </div>
                                   )}
 
-                                  {/* Checklist Summary */}
+                                  {/* Checklist Summary & Expander */}
                                   {ev.checklistSummary && (
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 px-2.5 py-1.5 rounded-md">
-                                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                                      <span>
-                                        ผลตรวจเช็คลิสต์: ผ่าน {ev.checklistSummary.passedItems}/
-                                        {ev.checklistSummary.totalItems} รายการ
-                                        {ev.checklistSummary.failedItems > 0 && (
-                                          <span className="text-rose-600 font-medium ml-1">
-                                            (ไม่ผ่าน {ev.checklistSummary.failedItems} รายการ)
+                                    <div className="space-y-2 rounded-lg bg-muted/30 p-2.5 border border-border/60">
+                                      <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                          <span>
+                                            ผลตรวจเช็คลิสต์: ผ่าน {ev.checklistSummary.passedItems}/
+                                            {ev.checklistSummary.totalItems} รายการ
+                                            {ev.checklistSummary.warningItems > 0 && (
+                                              <span className="text-amber-600 font-medium ml-1">
+                                                (ควรเฝ้าระวัง {ev.checklistSummary.warningItems})
+                                              </span>
+                                            )}
+                                            {ev.checklistSummary.failedItems > 0 && (
+                                              <span className="text-rose-600 font-medium ml-1">
+                                                (ต้องแก้ไข {ev.checklistSummary.failedItems})
+                                              </span>
+                                            )}
                                           </span>
+                                        </div>
+
+                                        {ev.checklistData && (
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-[11px] gap-1 text-primary hover:bg-primary/10 cursor-pointer font-medium"
+                                            onClick={() =>
+                                              setExpandedChecklistId(
+                                                expandedChecklistId === ev.id ? null : ev.id,
+                                              )
+                                            }
+                                          >
+                                            {expandedChecklistId === ev.id ? (
+                                              <>
+                                                <ChevronUp className="h-3 w-3" /> ซ่อนผลเช็คลิสต์
+                                              </>
+                                            ) : (
+                                              <>
+                                                <ChevronDown className="h-3 w-3" /> ดูค่าวัดฉบับเต็ม ({ev.checklistSummary.totalItems} ข้อ)
+                                              </>
+                                            )}
+                                          </Button>
                                         )}
-                                      </span>
+                                      </div>
+
+                                      {ev.checklistData && expandedChecklistId === ev.id && (
+                                        <div className="pt-2 border-t mt-1 bg-background/90 rounded-md p-2.5 shadow-2xs">
+                                          <ChecklistView value={ev.checklistData} />
+                                        </div>
+                                      )}
                                     </div>
                                   )}
 
@@ -580,7 +668,387 @@ export function MachineHistoryDialog({
                   </div>
                 )}
 
-                {/* TAB 2: PROFILE & CONTRACT DETAILS */}
+                {/* TAB: CHECKLIST & INSPECTION HISTORY */}
+                {tab === "checklists" && (
+                  <div className="space-y-5">
+                    {/* Top KPI Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <Card className="p-3.5 border shadow-2xs space-y-1">
+                        <span className="text-[11px] font-medium text-muted-foreground block flex items-center gap-1">
+                          <Activity className="h-3.5 w-3.5 text-primary" />
+                          รอบตรวจเช็คทั้งหมด
+                        </span>
+                        <div className="text-xl sm:text-2xl font-bold text-foreground">
+                          {inspectionStats.roundCount} <span className="text-xs font-normal text-muted-foreground">รอบ</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">บันทึกตรวจเช็คตามสัญญา</p>
+                      </Card>
+
+                      <Card className="p-3.5 border-l-4 border-l-emerald-500 shadow-2xs space-y-1">
+                        <span className="text-[11px] font-medium text-muted-foreground block flex items-center gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          ผ่านเกณฑ์ปกติ
+                        </span>
+                        <div className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                          {inspectionStats.passed} <span className="text-xs font-normal text-muted-foreground">รายการ</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">สภาพเครื่องสมบูรณ์</p>
+                      </Card>
+
+                      <Card className="p-3.5 border-l-4 border-l-amber-500 shadow-2xs space-y-1">
+                        <span className="text-[11px] font-medium text-muted-foreground block flex items-center gap-1">
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                          ควรเฝ้าระวัง
+                        </span>
+                        <div className="text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-400">
+                          {inspectionStats.warning} <span className="text-xs font-normal text-muted-foreground">รายการ</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">สังเกตหรือเปลี่ยนในรอบหน้า</p>
+                      </Card>
+
+                      <Card className="p-3.5 border-l-4 border-l-rose-500 shadow-2xs space-y-1">
+                        <span className="text-[11px] font-medium text-muted-foreground block flex items-center gap-1">
+                          <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
+                          ต้องแก้ไขด่วน
+                        </span>
+                        <div className="text-xl sm:text-2xl font-bold text-rose-600 dark:text-rose-400">
+                          {inspectionStats.failed} <span className="text-xs font-normal text-muted-foreground">รายการ</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">พบความผิดปกติ</p>
+                      </Card>
+                    </div>
+
+                    {/* Mode Toggle Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          type="button"
+                          variant={inspectionViewMode === "matrix" ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 text-xs gap-1.5 font-medium cursor-pointer"
+                          onClick={() => setInspectionViewMode("matrix")}
+                        >
+                          <Table className="h-3.5 w-3.5" />
+                          ตารางเปรียบเทียบค่าข้ามรอบ (Matrix)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={inspectionViewMode === "cards" ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 text-xs gap-1.5 font-medium cursor-pointer"
+                          onClick={() => setInspectionViewMode("cards")}
+                        >
+                          <Layers className="h-3.5 w-3.5" />
+                          รายละเอียดตามรอบวัน ({inspections.length})
+                        </Button>
+                      </div>
+
+                      <span className="text-xs text-muted-foreground">
+                        ผูกข้อมูลเข้ากับ S/N {unit?.serial_number}
+                      </span>
+                    </div>
+
+                    {inspections.length === 0 ? (
+                      <div className="rounded-xl border border-dashed py-14 text-center space-y-2 text-muted-foreground">
+                        <CheckCircle2 className="h-8 w-8 text-muted-foreground/60 mx-auto" />
+                        <p className="text-sm font-semibold text-foreground">ยังไม่มีประวัติการบันทึกเช็คลิสต์</p>
+                        <p className="text-xs max-w-md mx-auto">
+                          เมื่อช่างเข้าบริการและบันทึกผลการตรวจเช็คหน้างานพร้อมค่าวัดตัวเลขและรูปถ่าย ระบบจะซิงค์ข้อมูลเข้าสู่ Digital Passport ของเครื่องนี้อัตโนมัติ
+                        </p>
+                      </div>
+                    ) : inspectionViewMode === "matrix" ? (
+                      /* VIEW 1: COMPARISON MATRIX */
+                      <div className="space-y-4">
+                        <div className="rounded-xl border bg-card shadow-xs overflow-hidden">
+                          <div className="p-3 border-b bg-muted/30 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                              <TrendingUp className="h-4 w-4 text-primary" />
+                              เปรียบเทียบผลตรวจเช็คและค่าวัดตัวเลขแต่ละรอบบริการ (Inspection Trend & Abnormal Check)
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">
+                              {inspections.length} รอบตรวจล่าสุด
+                            </span>
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead>
+                                <tr className="border-b bg-muted/40 text-muted-foreground font-semibold">
+                                  <th className="p-3 min-w-[200px] sticky left-0 bg-muted/90 backdrop-blur-xs z-10 border-r shadow-xs">
+                                    รายการตรวจสอบ / ค่าวัด
+                                  </th>
+                                  {inspections.map((insp, idx) => (
+                                    <th key={insp.id} className="p-3 min-w-[170px] border-r last:border-r-0">
+                                      <div className="space-y-0.5">
+                                        <div className="text-foreground font-bold text-xs flex items-center gap-1">
+                                          <span>รอบที่ {inspections.length - idx}</span>
+                                          <span className="font-normal text-[11px] text-muted-foreground">
+                                            ({formatDateTh(insp.date)})
+                                          </span>
+                                        </div>
+                                        <div className="text-[10px] text-muted-foreground truncate">
+                                          ช่าง: {insp.staff_name}
+                                        </div>
+                                        <div className="flex items-center gap-1 pt-1">
+                                          <span className="rounded bg-emerald-500/15 text-emerald-700 px-1.5 py-0.2 text-[10px] font-semibold">
+                                            ผ่าน {insp.summary.passed}
+                                          </span>
+                                          {insp.summary.warning > 0 && (
+                                            <span className="rounded bg-amber-500/20 text-amber-800 px-1.5 py-0.2 text-[10px] font-semibold">
+                                              เตือน {insp.summary.warning}
+                                            </span>
+                                          )}
+                                          {insp.summary.failed > 0 && (
+                                            <span className="rounded bg-rose-500/20 text-rose-700 px-1.5 py-0.2 text-[10px] font-semibold">
+                                              แก้ไข {insp.summary.failed}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {allInspectionItemLabels.map((lbl, rowIdx) => {
+                                  return (
+                                    <tr
+                                      key={rowIdx}
+                                      className="border-b hover:bg-muted/20 transition-colors"
+                                    >
+                                      <td className="p-3 font-medium text-foreground sticky left-0 bg-background/95 backdrop-blur-xs z-10 border-r shadow-xs">
+                                        {lbl}
+                                      </td>
+                                      {inspections.map((insp) => {
+                                        const matchItem = insp.items.find((it) => it.label === lbl);
+                                        if (!matchItem) {
+                                          return (
+                                            <td key={insp.id} className="p-3 text-muted-foreground border-r last:border-r-0 text-center">
+                                              -
+                                            </td>
+                                          );
+                                        }
+
+                                        const isNormal = matchItem.status === "normal";
+                                        const isWarning = matchItem.status === "replace";
+                                        const isFailed = matchItem.status === "abnormal";
+
+                                        return (
+                                          <td
+                                            key={insp.id}
+                                            className={cn(
+                                              "p-3 border-r last:border-r-0 align-top transition-colors",
+                                              isWarning && "bg-amber-500/10 dark:bg-amber-950/20",
+                                              isFailed && "bg-rose-500/10 dark:bg-rose-950/20",
+                                            )}
+                                          >
+                                            <div className="space-y-1">
+                                              {matchItem.status && (
+                                                <span
+                                                  className={cn(
+                                                    "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold",
+                                                    isNormal && "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-300",
+                                                    isWarning && "bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300",
+                                                    isFailed && "bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-300",
+                                                  )}
+                                                >
+                                                  {isNormal && <CheckCircle2 className="h-3 w-3" />}
+                                                  {(isWarning || isFailed) && <AlertTriangle className="h-3 w-3" />}
+                                                  {matchItem.statusLabelTh}
+                                                </span>
+                                              )}
+
+                                              {matchItem.displayValue ? (
+                                                <div className="font-mono text-xs font-bold text-foreground">
+                                                  {matchItem.displayValue}
+                                                </div>
+                                              ) : (
+                                                !matchItem.status && <span className="text-muted-foreground">-</span>
+                                              )}
+                                            </div>
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* Photos from inspections */}
+                        <div className="space-y-2 pt-2">
+                          <h5 className="font-semibold text-xs text-muted-foreground flex items-center gap-1.5">
+                            <ImageIcon className="h-4 w-4 text-primary" />
+                            ภาพบันทึกหน้างานตามรอบตรวจเช็ค
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {inspections
+                              .filter((insp) => insp.attachments && insp.attachments.length > 0)
+                              .map((insp) => (
+                                <div key={insp.id} className="p-3 rounded-xl border bg-card space-y-2">
+                                  <div className="flex items-center justify-between text-xs border-b pb-1">
+                                    <span className="font-semibold text-foreground">
+                                      {formatDateTh(insp.date)} · ช่าง {insp.staff_name}
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                      {insp.attachments.length} รูป
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {insp.attachments.map((att, photoIdx) => (
+                                      <button
+                                        key={photoIdx}
+                                        type="button"
+                                        onClick={() => setPreviewImage(att.url)}
+                                        className="group relative h-16 w-16 overflow-hidden rounded-lg border bg-muted cursor-pointer hover:scale-105 transition-transform"
+                                      >
+                                        <img
+                                          src={att.url}
+                                          alt={att.name || `ภาพรอบตรวจ`}
+                                          className="h-full w-full object-cover"
+                                          loading="lazy"
+                                        />
+                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                          <Maximize2 className="h-3.5 w-3.5" />
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* VIEW 2: ROUND-BY-ROUND CARDS */
+                      <div className="space-y-4">
+                        {inspections.map((insp, idx) => (
+                          <Card key={insp.id} className="p-4 rounded-xl border shadow-2xs space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-sm text-foreground">
+                                    รอบตรวจที่ {inspections.length - idx} · {formatDateTh(insp.date)}
+                                  </span>
+                                  {insp.job_no && (
+                                    <span className="font-mono text-xs text-muted-foreground">
+                                      #{insp.job_no}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  {insp.template_name} · ช่างผู้ตรวจ: {insp.staff_name}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
+                                <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-300 text-xs">
+                                  ผ่าน {insp.summary.passed}
+                                </Badge>
+                                {insp.summary.warning > 0 && (
+                                  <Badge className="bg-amber-500/20 text-amber-800 border-amber-300 text-xs">
+                                    ควรเฝ้าระวัง {insp.summary.warning}
+                                  </Badge>
+                                )}
+                                {insp.summary.failed > 0 && (
+                                  <Badge className="bg-rose-500/20 text-rose-700 border-rose-300 text-xs">
+                                    ต้องแก้ไข {insp.summary.failed}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Inspection Items Table */}
+                            <div className="rounded-lg border overflow-hidden">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="bg-muted/40 text-muted-foreground font-semibold border-b">
+                                    <th className="p-2 text-left">รายการตรวจสอบ</th>
+                                    <th className="p-2 text-left w-32">สถานะ</th>
+                                    <th className="p-2 text-left">ค่าวัดตัวเลข / รายละเอียด</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {insp.items.map((it) => (
+                                    <tr key={it.id} className="border-b last:border-b-0">
+                                      <td className="p-2 font-medium text-foreground">{it.label}</td>
+                                      <td className="p-2">
+                                        {it.status ? (
+                                          <span
+                                            className={cn(
+                                              "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold",
+                                              it.status === "normal" && "bg-emerald-500/15 text-emerald-700 border border-emerald-300",
+                                              it.status === "replace" && "bg-amber-500/20 text-amber-800 border border-amber-300",
+                                              it.status === "abnormal" && "bg-rose-500/20 text-rose-700 border border-rose-300",
+                                            )}
+                                          >
+                                            {it.statusLabelTh}
+                                          </span>
+                                        ) : (
+                                          "-"
+                                        )}
+                                      </td>
+                                      <td className="p-2 font-mono font-bold text-foreground">
+                                        {it.displayValue || "-"}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Photos in this round */}
+                            {insp.attachments && insp.attachments.length > 0 && (
+                              <div className="space-y-1 pt-1">
+                                <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                  <ImageIcon className="h-3 w-3" /> รูปภาพหน้างานรอบนี้ ({insp.attachments.length} รูป):
+                                </span>
+                                <div className="flex flex-wrap gap-2">
+                                  {insp.attachments.map((att, photoIdx) => (
+                                    <button
+                                      key={photoIdx}
+                                      type="button"
+                                      onClick={() => setPreviewImage(att.url)}
+                                      className="group relative h-16 w-16 overflow-hidden rounded-lg border bg-muted cursor-pointer hover:scale-105 transition-transform"
+                                    >
+                                      <img
+                                        src={att.url}
+                                        alt={att.name || `ภาพรอบตรวจ`}
+                                        className="h-full w-full object-cover"
+                                        loading="lazy"
+                                      />
+                                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                        <Maximize2 className="h-3.5 w-3.5" />
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {insp.rawAppointment && (
+                              <div className="flex justify-end pt-1">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
+                                  onClick={() => setSelectedApptForReport(insp.rawAppointment)}
+                                >
+                                  <FileText className="h-3 w-3" /> ดูใบรายงานบริการ
+                                </Button>
+                              </div>
+                            )}
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TAB 3: PROFILE & CONTRACT DETAILS */}
                 {tab === "profile" && (
                   <div className="space-y-5">
                     {/* Top Stats Cards */}

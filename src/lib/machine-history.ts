@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/data-client";
 import { parseAttachments, type JobAttachment } from "@/components/JobAttachments";
 import { listContracts } from "@/lib/contracts.functions";
+import { normalizeChecklistStatus, type ChecklistResult, type ChecklistStatus } from "@/lib/checklist";
 
 export type MachineHistoryUnit = {
   id: string;
@@ -59,6 +60,38 @@ export type MachineHistoryUnit = {
   }> | null;
 };
 
+export type ChecklistItemDetail = {
+  id: string;
+  label: string;
+  kind: string;
+  status?: ChecklistStatus | null;
+  statusLabelTh: string; // ผ่าน, ควรเฝ้าระวัง, ต้องแก้ไข
+  values: string[];
+  displayValue: string; // ค่าวัดตัวเลข เช่น 82 °C, 7.5 bar, 1,200 ชม.
+};
+
+export type InspectionRecord = {
+  id: string;
+  appointmentId: string;
+  date: string; // ISO yyyy-mm-dd
+  time?: string | null;
+  job_no?: string | null;
+  staff_name: string;
+  service_type: string;
+  template_name: string;
+  check_no?: string;
+  year?: string;
+  items: ChecklistItemDetail[];
+  summary: {
+    total: number;
+    passed: number;
+    warning: number;
+    failed: number;
+  };
+  attachments: JobAttachment[];
+  rawAppointment?: any;
+};
+
 export type TimelineEvent = {
   id: string;
   source: "appointment" | "maintenance_log" | "contract_visit";
@@ -78,8 +111,10 @@ export type TimelineEvent = {
   checklistSummary?: {
     totalItems: number;
     passedItems: number;
+    warningItems: number;
     failedItems: number;
   } | null;
+  checklistData?: ChecklistResult | null;
   rawAppointment?: any | null;
 };
 
@@ -105,6 +140,7 @@ export type MachineHistoryData = {
   warranty: WarrantyStatus;
   contract: ServiceContractSummary;
   timeline: TimelineEvent[];
+  inspections: InspectionRecord[];
 };
 
 function calculateWarranty(warrantyEnd?: string | null): WarrantyStatus {
@@ -213,8 +249,9 @@ export async function fetchMachineHistory({
   const logRows = (logsRes.data ?? []) as any[];
   const contractsList = (contractsRes?.contracts ?? []) as any[];
 
-  // 3. รวมเหตุการณ์ Timeline
+  // 3. รวมเหตุการณ์ Timeline & ผลตรวจเช็คลิสต์
   const timeline: TimelineEvent[] = [];
+  const inspections: InspectionRecord[] = [];
   const processedApptIds = new Set<string>();
 
   // เพิ่มข้อมูลจาก Appointments (ระบบหลัก)
@@ -223,20 +260,73 @@ export async function fetchMachineHistory({
     const atts = parseAttachments(a.attachments);
 
     let checklistSummary: TimelineEvent["checklistSummary"] = null;
+    let checklistData: ChecklistResult | null = null;
     if (a.checklist && typeof a.checklist === "object") {
-      const items = (a.checklist as any).items;
-      if (Array.isArray(items)) {
+      const cl = a.checklist as any;
+      const items = Array.isArray(cl.items) ? cl.items : [];
+      if (items.length > 0) {
+        checklistData = cl as ChecklistResult;
         let passed = 0;
+        let warning = 0;
         let failed = 0;
         for (const it of items) {
-          if (it.status === "pass" || it.status === "ok") passed++;
-          else if (it.status === "fail" || it.status === "bad") failed++;
+          const s = normalizeChecklistStatus(it.status);
+          if (s === "normal") passed++;
+          else if (s === "replace") warning++;
+          else if (s === "abnormal") failed++;
         }
         checklistSummary = {
           totalItems: items.length,
           passedItems: passed,
+          warningItems: warning,
           failedItems: failed,
         };
+
+        const inspItems: ChecklistItemDetail[] = items.map((it: any) => {
+          const st = normalizeChecklistStatus(it.status);
+          const vals = (it.values ?? [])
+            .map((v: any, vi: number) => (v ? `${it.fields?.[vi] ? it.fields[vi] + " " : ""}${v}` : ""))
+            .filter(Boolean)
+            .join(" / ");
+          return {
+            id: it.id || it.label,
+            label: it.label,
+            kind: it.kind || "status",
+            status: st,
+            statusLabelTh:
+              st === "normal"
+                ? "ผ่าน"
+                : st === "replace"
+                  ? "ควรเฝ้าระวัง"
+                  : st === "abnormal"
+                    ? "ต้องแก้ไข"
+                    : "-",
+            values: Array.isArray(it.values) ? it.values : [],
+            displayValue: vals,
+          };
+        });
+
+        inspections.push({
+          id: `insp-${a.id}`,
+          appointmentId: a.id,
+          date: a.visit_date || a.closed_at?.slice(0, 10) || a.created_at?.slice(0, 10) || "",
+          time: a.visit_time || null,
+          job_no: a.job_no || null,
+          staff_name: a.staff_name || "ไม่ระบุช่าง",
+          service_type: a.service_type || "ตรวจเช็คตามระยะ",
+          template_name: cl.template_name || "แบบตรวจเช็คมาตรฐาน",
+          check_no: cl.check_no || "",
+          year: cl.year || "",
+          items: inspItems,
+          summary: {
+            total: items.length,
+            passed,
+            warning,
+            failed,
+          },
+          attachments: atts,
+          rawAppointment: a,
+        });
       }
     }
 
@@ -257,6 +347,7 @@ export async function fetchMachineHistory({
       attachments: atts,
       job_no: a.job_no || null,
       checklistSummary,
+      checklistData,
       rawAppointment: a,
     });
   }
@@ -355,10 +446,13 @@ export async function fetchMachineHistory({
     allContracts: contractsList,
   };
 
+  inspections.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
   return {
     unit,
     warranty,
     contract,
     timeline,
+    inspections,
   };
 }

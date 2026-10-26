@@ -13,10 +13,25 @@ export type ChecklistTemplate = {
 };
 export type ChecklistStatus = "normal" | "replace" | "abnormal";
 export const STATUS_LABEL: Record<ChecklistStatus, string> = {
-  normal: "ปกติ",
-  replace: "เปลี่ยน",
-  abnormal: "ไม่ปกติ",
+  normal: "ผ่าน (ปกติ)",
+  replace: "ควรเฝ้าระวัง (เปลี่ยน)",
+  abnormal: "ต้องแก้ไข (ไม่ปกติ)",
 };
+export const STATUS_SHORT_LABEL: Record<ChecklistStatus, string> = {
+  normal: "ผ่าน",
+  replace: "ควรเฝ้าระวัง",
+  abnormal: "ต้องแก้ไข",
+};
+
+export function normalizeChecklistStatus(status?: string | null): ChecklistStatus | null {
+  if (!status) return null;
+  const s = status.toLowerCase();
+  if (s === "normal" || s === "pass" || s === "ok" || s === "ผ่าน" || s === "ปกติ") return "normal";
+  if (s === "replace" || s === "warn" || s === "warning" || s === "เฝ้าระวัง" || s === "ควรเฝ้าระวัง" || s === "เปลี่ยน") return "replace";
+  if (s === "abnormal" || s === "fail" || s === "bad" || s === "แก้ไข" || s === "ต้องแก้ไข" || s === "ไม่ปกติ") return "abnormal";
+  return null;
+}
+
 export const KIND_LABEL: Record<ChecklistKind, string> = {
   number: "กรอกตัวเลข",
   status: "เลือกสถานะ",
