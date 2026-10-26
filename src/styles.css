@@ -491,9 +491,24 @@
   width: 4px;
   border-radius: 9999px;
   background: color-mix(in oklch, var(--foreground) 32%, transparent);
-  pointer-events: none;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
   z-index: 1000000;
   will-change: top, height;
+}
+/* พื้นที่รับนิ้วแบบล่องหน กว้างกว่าแท่งจริง ให้แตะติดง่าย */
+.osb-thumb::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  left: -14px;
+  right: -8px;
+}
+.osb-thumb.osb-dragging {
+  cursor: grabbing;
+  background: color-mix(in oklch, var(--foreground) 55%, transparent);
 }
 /* แถบ Track จาง ๆ ด้านหลัง thumb ช่วยให้เห็นทันทีว่ากล่องนี้มีรายการเลื่อนได้ */
 .osb-track {

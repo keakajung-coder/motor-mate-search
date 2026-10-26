@@ -46,6 +46,47 @@ export function OverlayScrollbarLayer() {
     let frame = 0;
     let scrollers: HTMLElement[] = [];
 
+    // แตะค้างแล้วลากแท่งเลื่อนเพื่อเลื่อนเนื้อหา (el = null คือทั้งหน้าจอ)
+    const attachDrag = (thumb: HTMLDivElement, el: HTMLElement | null) => {
+      thumb.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const startY = e.clientY;
+        const startScroll = el ? el.scrollTop : window.scrollY;
+        const viewH = el ? el.clientHeight : window.innerHeight;
+        const total = el
+          ? el.scrollHeight
+          : Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+        const trackH = viewH - EDGE_PAD * 2;
+        const thumbH = thumb.offsetHeight;
+        const factor = (total - viewH) / Math.max(1, trackH - thumbH);
+        try {
+          thumb.setPointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+        thumb.classList.add("osb-dragging");
+        const move = (ev: PointerEvent) => {
+          ev.preventDefault();
+          const next = startScroll + (ev.clientY - startY) * factor;
+          if (el) el.scrollTop = next;
+          else window.scrollTo(0, next);
+        };
+        const up = () => {
+          thumb.classList.remove("osb-dragging");
+          thumb.removeEventListener("pointermove", move);
+          thumb.removeEventListener("pointerup", up);
+          thumb.removeEventListener("pointercancel", up);
+        };
+        thumb.addEventListener("pointermove", move);
+        thumb.addEventListener("pointerup", up);
+        thumb.addEventListener("pointercancel", up);
+      });
+      // กันไม่ให้การแตะทะลุไปปิดกล่องตัวเลือก
+      thumb.addEventListener("mousedown", (e) => e.stopPropagation());
+      thumb.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+    };
+
     const ensureParts = (el: HTMLElement): { thumb: HTMLDivElement; track: HTMLDivElement } => {
       let thumb = thumbs.get(el);
       let track = tracks.get(el);
@@ -53,7 +94,10 @@ export function OverlayScrollbarLayer() {
         thumb = document.createElement("div");
         thumb.className = "osb-thumb";
         thumb.setAttribute("aria-hidden", "true");
-        document.body.appendChild(thumb);
+        attachDrag(thumb, el);
+        // วางในกล่องป๊อปอัปเดียวกัน เพื่อให้ Radix ไม่มองว่าแตะนอกกล่อง
+        const host = el.closest<HTMLElement>("[role='dialog'],[data-radix-popper-content-wrapper]") ?? document.body;
+        host.appendChild(thumb);
         thumbs.set(el, thumb);
       }
       if (!track) {
@@ -75,6 +119,7 @@ export function OverlayScrollbarLayer() {
         pageThumb = document.createElement("div");
         pageThumb.className = "osb-thumb osb-page";
         pageThumb.setAttribute("aria-hidden", "true");
+        attachDrag(pageThumb, null);
         document.body.appendChild(pageThumb);
       }
       // ซ่อนแถบทั้งหน้าเมื่อมีหน้าต่างป๊อปอัปเปิดอยู่ (หน้าถูกล็อก)
