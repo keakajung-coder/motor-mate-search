@@ -136,8 +136,9 @@ export function OverlayScrollbarLayer() {
         { passive: false },
       );
 
-      // กันไม่ให้การแตะทะลุไปปิดกล่องตัวเลือก (ป้องกันเพิ่มเติม นอกจาก stopPropagation ข้างบน)
+      // กันไม่ให้การแตะทะลุไปปิดกล่องตัวเลือก (เสริมจาก stopPropagation ในตัวจับลากข้างบน)
       thumb.addEventListener("mousedown", (e) => e.stopPropagation());
+    };
 
     // แตะที่แถบ Track (แถบจางด้านหลัง) เพื่อกระโดดไปตำแหน่งนั้นทันที
     const bindTrack = (track: HTMLDivElement, el: HTMLElement | null) => {
