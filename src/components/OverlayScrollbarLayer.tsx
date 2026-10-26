@@ -136,10 +136,8 @@ export function OverlayScrollbarLayer() {
         { passive: false },
       );
 
-      // กันไม่ให้การแตะทะลุไปปิดกล่องตัวเลือก
+      // กันไม่ให้การแตะทะลุไปปิดกล่องตัวเลือก (ป้องกันเพิ่มเติม นอกจาก stopPropagation ข้างบน)
       thumb.addEventListener("mousedown", (e) => e.stopPropagation());
-      thumb.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
-    };
 
     // แตะที่แถบ Track (แถบจางด้านหลัง) เพื่อกระโดดไปตำแหน่งนั้นทันที
     const bindTrack = (track: HTMLDivElement, el: HTMLElement | null) => {
@@ -171,7 +169,6 @@ export function OverlayScrollbarLayer() {
         thumb = document.createElement("div");
         thumb.className = "osb-thumb";
         thumb.setAttribute("aria-hidden", "true");
-        attachDrag = attachDrag; // no-op guard for lint
         bindDrag(thumb, el);
         // ฝังที่ body เท่านั้น — พิกัด fixed ตรงกับ viewport และไม่โดน transform ของป๊อปอัป
         document.body.appendChild(thumb);
