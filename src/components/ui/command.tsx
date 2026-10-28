@@ -7,6 +7,7 @@ import { Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { swipeTouchStyle, swipeUnlockHandlers } from "@/lib/touch-swipe";
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -57,11 +58,21 @@ CommandInput.displayName = CommandPrimitive.Input.displayName;
 const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, style, ...props }, ref) => (
+>(({ className, style, onTouchMoveCapture, onTouchStartCapture, ...props }, ref) => (
   <CommandPrimitive.List
     ref={ref}
-    className={cn("!max-h-[200px] !overflow-y-scroll dropdown-scroll force-scrollbar", className)}
-    style={{ maxHeight: "200px", overflowY: "scroll", scrollbarGutter: "stable", ...style }}
+    className={cn(
+      "!max-h-[200px] !overflow-y-auto dropdown-scroll force-scrollbar [&_[cmdk-list-sizer]]:!h-auto [&_[cmdk-list-sizer]]:!max-h-none [&_[cmdk-list-sizer]]:!overflow-visible",
+      className,
+    )}
+    style={{
+      maxHeight: "200px",
+      overflowY: "auto",
+      scrollbarGutter: "stable",
+      ...swipeTouchStyle,
+      ...style,
+    }}
+    {...swipeUnlockHandlers({ onTouchMoveCapture, onTouchStartCapture })}
     {...props}
   />
 ));

@@ -980,7 +980,6 @@
 .dropdown-scroll,
 [data-radix-select-viewport],
 [cmdk-list],
-[cmdk-list-sizer],
 .custom-visible-scrollbar,
 [data-radix-dropdown-menu-content],
 [data-radix-context-menu-content] {
@@ -1134,4 +1133,18 @@
 .osb-track {
   touch-action: none !important;
   pointer-events: auto !important;
+}
+
+/* cmdk: [cmdk-list] เป็นตัวเลื่อนเพียงจุดเดียว ส่วน sizer สูงตามเนื้อหาจริง
+   เพื่อให้ Safari/iOS รับรู้ความสูงทั้งหมดและปัดนิ้วเลื่อนได้ */
+[cmdk-list] {
+  max-height: 200px !important;
+  overflow-y: auto !important;
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+[cmdk-list-sizer] {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
 }
