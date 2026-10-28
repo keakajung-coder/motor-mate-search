@@ -1110,3 +1110,28 @@
 
 
 
+
+/* ปัดนิ้วได้ทั่วทั้งรายการใน Dropdown/Select/Popover/Dialog (แถบเลื่อนวาดเองยังลากได้) */
+.osb-swipe,
+.force-scrollbar,
+.dropdown-scroll,
+[data-radix-select-viewport],
+[data-radix-popper-content-wrapper] [cmdk-list],
+[role="listbox"],
+[role="menu"],
+[role="dialog"] .overflow-y-auto,
+[role="dialog"].overflow-y-auto {
+  overflow-y: auto !important;
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+  pointer-events: auto !important;
+}
+[data-radix-popper-content-wrapper] > *,
+[role="dialog"] {
+  touch-action: pan-y !important;
+}
+.osb-thumb,
+.osb-track {
+  touch-action: none !important;
+  pointer-events: auto !important;
+}
