@@ -483,6 +483,21 @@
   display: none;
 }
 
+/* เปิดการปัดนิ้วเลื่อนขึ้น-ลง (Touch Swipe / Pan) บนมือถือและไอแพด
+   สำหรับกล่องรายการทุกตัวที่เลื่อนได้ โดยแถบเลื่อนที่วาดเองยังทำงานเหมือนเดิม */
+.force-scrollbar,
+.dropdown-scroll,
+.overflow-y-auto,
+.overflow-auto,
+.overflow-y-scroll,
+[cmdk-list],
+[cmdk-list-sizer],
+[data-radix-scroll-area-viewport],
+[role="listbox"] {
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
 .osb-thumb.osb-page {
   width: 6px;
 }
