@@ -2,12 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { autoContractJobNo } from "@/lib/contract-schedule";
 
 export type ContractVisitInput = {
+  id?: string | null;
+  appointment_id?: string | null;
   visit_no: number;
   visit_date: string;
   visit_time?: string | null;
   job_detail?: string | null;
   parts_note?: string | null;
   status?: string | null;
+  vehicle_plate?: string | null;
 };
 
 export type ContractInput = {
@@ -47,12 +50,21 @@ export const listContracts = createServerFn({ method: "POST" })
     const supabaseAdmin = await viewerCtx();
     let q = supabaseAdmin
       .from("service_contracts")
-      .select("*, service_contract_visits(*)")
+      .select("*, service_contract_visits(*, appointments(vehicle_plate))")
       .order("created_at", { ascending: false });
     if (data.machineUnitId) q = q.eq("machine_unit_id", data.machineUnitId);
     const { data: rows, error } = await q;
     if (error) throw new Error("โหลดข้อมูลสัญญาไม่สำเร็จ");
-    return { contracts: rows ?? [] };
+
+    const normalized = (rows ?? []).map((c: any) => ({
+      ...c,
+      service_contract_visits: (c.service_contract_visits ?? []).map((v: any) => ({
+        ...v,
+        vehicle_plate: v.vehicle_plate || v.appointments?.vehicle_plate || null,
+      })),
+    }));
+
+    return { contracts: normalized };
   });
 
 /** บันทึกสัญญา + งวดบริการ แล้วซิงค์นัดหมายลงแพลนเนอร์ทันที (แอดมินเท่านั้น) */
@@ -129,6 +141,7 @@ export const saveContract = createServerFn({ method: "POST" })
         visit_date: v.visit_date,
         visit_time: v.visit_time ?? null,
         status: targetStatus,
+        vehicle_plate: v.vehicle_plate ?? null,
       };
 
       let appointmentId = oldVisit?.appointment_id ?? null;
@@ -139,7 +152,7 @@ export const saveContract = createServerFn({ method: "POST" })
         appointmentId = appt?.id ?? null;
       }
 
-      const visitRow = {
+      const visitRow: any = {
         contract_id: contractId,
         visit_no: v.visit_no,
         visit_date: v.visit_date,
@@ -148,15 +161,46 @@ export const saveContract = createServerFn({ method: "POST" })
         parts_note: v.parts_note ?? null,
         appointment_id: appointmentId,
         status: targetStatus,
+        vehicle_plate: v.vehicle_plate ?? null,
       };
       if (oldVisit?.id) {
-        await supabaseAdmin.from("service_contract_visits").update(visitRow).eq("id", oldVisit.id);
+        const { error: updErr } = await supabaseAdmin.from("service_contract_visits").update(visitRow).eq("id", oldVisit.id);
+        if (updErr) {
+          delete visitRow.vehicle_plate;
+          await supabaseAdmin.from("service_contract_visits").update(visitRow).eq("id", oldVisit.id);
+        }
       } else {
-        await supabaseAdmin.from("service_contract_visits").insert(visitRow);
+        const { error: insErr } = await supabaseAdmin.from("service_contract_visits").insert(visitRow);
+        if (insErr) {
+          delete visitRow.vehicle_plate;
+          await supabaseAdmin.from("service_contract_visits").insert(visitRow);
+        }
       }
     }
 
     return { ok: true as const, id: contractId };
+  });
+
+/** อัปเดต เปลี่ยนแปลง หรือสลับทะเบียนรถของงวดสัญญาได้ตลอดเวลา (Fully Editable) */
+export const updateContractVisitVehicle = createServerFn({ method: "POST" })
+  .inputValidator((d: { visitId?: string | null; appointmentId?: string | null; vehiclePlate: string | null }) => d)
+  .handler(async ({ data }) => {
+    const supabaseAdmin = await adminCtx();
+    const plate = data.vehiclePlate?.trim() || null;
+
+    if (data.appointmentId) {
+      await supabaseAdmin.from("appointments").update({ vehicle_plate: plate }).eq("id", data.appointmentId);
+    }
+
+    if (data.visitId) {
+      try {
+        await supabaseAdmin.from("service_contract_visits").update({ vehicle_plate: plate }).eq("id", data.visitId);
+      } catch {
+        /* fallback if column is not yet present */
+      }
+    }
+
+    return { ok: true as const, vehiclePlate: plate };
   });
 
 /** สลับสถานะงวดระหว่าง unscheduled กับ scheduled (ยืนยันนัดหมาย) */
@@ -203,7 +247,7 @@ export const generateDueWorkOrders = createServerFn({ method: "POST" }).handler(
   const today = new Date().toISOString().slice(0, 10);
   const { data: due, error } = await supabaseAdmin
     .from("service_contract_visits")
-    .select("id, visit_no, visit_date, visit_time, job_detail, parts_note, status, service_contracts!inner(id, customer_id, customer_name, machine_unit_id, serial_number, machine_label, active)")
+    .select("id, visit_no, visit_date, visit_time, job_detail, parts_note, status, vehicle_plate, service_contracts!inner(id, customer_id, customer_name, machine_unit_id, serial_number, machine_label, active)")
     .is("work_order_id", null)
     .in("status", ["scheduled", "unscheduled"])
     .eq("service_contracts.active", true)
@@ -226,6 +270,7 @@ export const generateDueWorkOrders = createServerFn({ method: "POST" }).handler(
         billing_type: "ในสัญญาบริการ",
         visit_date: v.visit_date,
         visit_time: v.visit_time,
+        vehicle_plate: (v as any).vehicle_plate ?? null,
         status: "pending",
       })
       .select("id")

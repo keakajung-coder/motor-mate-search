@@ -35,6 +35,7 @@ import { ChecklistTemplatesTab } from "@/components/admin/ChecklistTemplatesTab"
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { lineHref, telHref, visibleLineId } from "@/lib/contact";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { GoogleMapsPin } from "@/components/GoogleMapsPin";
 import { ContractDialog } from "@/components/ContractDialog";
 import { useUndoable } from "@/hooks/use-undoable";
 import { loadOptionList } from "@/lib/option-lists";
@@ -505,9 +506,10 @@ function CustomersTab() {
               <li key={c.id} className="px-3 py-2">
                 <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                   <div className="min-w-0">
-                    <div className="font-medium">
+                    <div className="font-medium flex items-center gap-1.5 flex-wrap">
                       {c.cust_id && <Badge variant="outline" className="mr-1.5 font-mono text-xs">{c.cust_id}</Badge>}
-                      {c.name}
+                      <span>{c.name}</span>
+                      <GoogleMapsPin customerName={c.name} address={c.address} />
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       {c.phone && (
@@ -528,7 +530,17 @@ function CustomersTab() {
                         ) : (
                           <span>LINE {visibleLineId(c.line_contact)}</span>
                         ))}
-                      {c.address && <span>• {c.address}</span>}
+                      {c.address && (
+                        <span className="flex items-center gap-1.5">
+                          • {c.address}
+                          <GoogleMapsPin
+                            customerName={c.name}
+                            address={c.address}
+                            variant="badge"
+                            label="นำทาง"
+                          />
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-1">
@@ -1259,12 +1271,21 @@ function MachinesTab() {
                         {isMachineComplete(u) ? "ลงข้อมูลครบถ้วน" : "ยังลงข้อมูลไม่ครบ"}
                       </span>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.cust_id ? `[${u.customers.cust_id}] ` : ""}{u.customers?.name ?? "-"}
+                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                      <span>{u.compressor_models ? `${u.compressor_models.brands?.name ?? ""} ${u.compressor_models.name}` : "-"} • {u.customers?.cust_id ? `[${u.customers.cust_id}] ` : ""}{u.customers?.name ?? "-"}</span>
+                      {u.customers?.name && (
+                        <GoogleMapsPin customerName={u.customers.name} address={[u.site_name, u.address_line, u.district, u.province].filter(Boolean).join(" ")} />
+                      )}
                     </div>
                     {(u.site_name || u.district || u.province) && (
-                      <div className="text-xs text-muted-foreground">
-                        📍 {[u.site_name, u.address_line, u.district, u.province].filter(Boolean).join(" • ")}
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                        <span>📍 {[u.site_name, u.address_line, u.district, u.province].filter(Boolean).join(" • ")}</span>
+                        <GoogleMapsPin
+                          customerName={u.customers?.name}
+                          address={[u.site_name, u.address_line, u.district, u.province].filter(Boolean).join(" ")}
+                          variant="badge"
+                          label="นำทาง"
+                        />
                       </div>
                     )}
                     {u.seller && (

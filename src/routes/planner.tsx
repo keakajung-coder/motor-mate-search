@@ -63,7 +63,18 @@ import {
   ZoomOut,
   Palmtree,
   ShieldAlert,
+  Truck,
+  MapPin,
+  Navigation,
+  Clock,
 } from "lucide-react";
+import { GoogleMapsPin } from "@/components/GoogleMapsPin";
+import {
+  extractZoneInfo,
+  groupAppointmentsByZone,
+  getVehicleZoneSummary,
+  type ZoneGroup,
+} from "@/lib/geo-zone";
 import { useHolidays, type Holiday } from "@/lib/holidays";
 import { HolidayManagerDialog, HolidayFormDialog, HolidayBanner } from "@/components/HolidayDialog";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
@@ -405,6 +416,7 @@ function PlannerPage() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [staffFilter, setStaffFilter] = useState("");
   const [vehicleFilter, setVehicleFilter] = useState("");
+  const [zoneFilter, setZoneFilter] = useState("");
   const [searchText, setSearchText] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -542,6 +554,23 @@ function PlannerPage() {
     [appts],
   );
 
+  const availableZones = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const a of appts) {
+      const info = extractZoneInfo(a.customer_address);
+      counts.set(info.zoneName, (counts.get(info.zoneName) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => {
+        if (a.name.includes("อื่นๆ")) return 1;
+        if (b.name.includes("อื่นๆ")) return -1;
+        return b.count - a.count;
+      });
+  }, [appts]);
+
+  const vehicleZoneSummary = useMemo(() => getVehicleZoneSummary(appts), [appts]);
+
   const visible = useMemo(
     () =>
       appts.filter((a) => {
@@ -565,10 +594,16 @@ function PlannerPage() {
         // กรองรถ
         if (vehicleFilter && !splitNames(a.vehicle_plate).includes(vehicleFilter)) return false;
 
-        // ค้นหาข้อความ: ชื่อลูกค้า / ผู้ขาย (เซลล์) / ช่างเทคนิค
+        // กรองโซน / พื้นที่ (Zone / District)
+        if (zoneFilter) {
+          const info = extractZoneInfo(a.customer_address);
+          if (info.zoneName !== zoneFilter && info.province !== zoneFilter) return false;
+        }
+
+        // ค้นหาข้อความ: ชื่อลูกค้า / ผู้ขาย (เซลล์) / ช่างเทคนิค / ที่อยู่
         const kw = searchText.trim().toLowerCase();
         if (kw) {
-          const hay = `${a.customer_name ?? ""} ${a.sales_rep ?? ""} ${a.staff_name ?? ""}`.toLowerCase();
+          const hay = `${a.customer_name ?? ""} ${a.sales_rep ?? ""} ${a.staff_name ?? ""} ${a.customer_address ?? ""}`.toLowerCase();
           if (!hay.includes(kw)) return false;
         }
 
@@ -578,7 +613,7 @@ function PlannerPage() {
 
         return true;
       }),
-    [appts, roleFilter, staffFilter, vehicleFilter, searchText, dateFrom, dateTo],
+    [appts, roleFilter, staffFilter, vehicleFilter, zoneFilter, searchText, dateFrom, dateTo],
   );
 
   const shift = (dir: number) => {
@@ -942,6 +977,26 @@ function PlannerPage() {
                 ))}
               </SelectContent>
             </Select>
+            {/* 3.2 กรองตามโซน / พื้นที่ */}
+            <Select
+              value={zoneFilter || "__all__"}
+              onValueChange={(val) => setZoneFilter(val === "__all__" ? "" : val)}
+            >
+              <SelectTrigger aria-label="กรองตามโซนพื้นที่" className="h-9 min-w-0 w-full 2xl:w-auto">
+                <div className="flex items-center gap-1.5 truncate">
+                  <MapPin className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                  <SelectValue placeholder="ทุกพื้นที่ / ทุกโซน" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">ทุกพื้นที่ / ทุกโซน</SelectItem>
+                {availableZones.map((z) => (
+                  <SelectItem key={z.name} value={z.name}>
+                    📍 {z.name} ({z.count})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {/* 3.5 กรองช่วงวันที่ */}
             <div className="flex min-w-0 items-center gap-1 lg:col-span-2 2xl:w-auto">
               <DateInput
@@ -977,7 +1032,7 @@ function PlannerPage() {
                 </SelectItem>
               </SelectContent>
             </Select>
-            {(roleFilter !== "all" || staffFilter || vehicleFilter || searchText || dateFrom || dateTo) && (
+            {(roleFilter !== "all" || staffFilter || vehicleFilter || zoneFilter || searchText || dateFrom || dateTo) && (
               <Button
                 size="sm"
                 variant="ghost"
@@ -986,6 +1041,7 @@ function PlannerPage() {
                   setRoleFilter("all");
                   setStaffFilter("");
                   setVehicleFilter("");
+                  setZoneFilter("");
                   setSearchText("");
                   setDateFrom("");
                   setDateTo("");
@@ -993,6 +1049,18 @@ function PlannerPage() {
               >
                 ล้างการค้นหา / ตัวกรอง
               </Button>
+            )}
+            {vehicleFilter && vehicleZoneSummary.get(vehicleFilter) && (
+              <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs text-primary col-span-full">
+                <Truck className="h-3.5 w-3.5 shrink-0" />
+                <span className="font-semibold">รถ {vehicleFilter} วิ่งโซน:</span>
+                {vehicleZoneSummary.get(vehicleFilter)!.map((z) => (
+                  <Badge key={z.zoneName} variant="secondary" className="text-[11px] font-normal gap-1">
+                    <MapPin className="h-2.5 w-2.5 text-rose-500" />
+                    {z.zoneName} ({z.count} งาน)
+                  </Badge>
+                ))}
+              </div>
             )}
             {(view === "month" || view === "week" || view === "day") && (
               <>
@@ -1660,21 +1728,38 @@ function PendingOrders({
                         ⭐ งานของฉัน
                       </span>
                     )}
-                    <p className="break-words font-semibold leading-snug">
-                      {o.cust_id ? `[${o.cust_id}] ` : ""}
-                      {val(o, "customer_name")}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-1.5 font-semibold leading-snug">
+                      <span>
+                        {o.cust_id ? `[${o.cust_id}] ` : ""}
+                        {val(o, "customer_name")}
+                      </span>
+                      <GoogleMapsPin
+                        customerName={val(o, "customer_name")}
+                        address={val(o, "customer_address")}
+                        title={`Google Maps นำทาง: ${val(o, "customer_name") ?? ""}`}
+                      />
+                    </div>
                   </div>
                 <p className="break-words text-xs leading-snug text-muted-foreground">
                   {[val(o, "machine_label"), val(o, "serial_number"), val(o, "service_type")]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
-                <p className="break-words text-xs leading-snug text-muted-foreground">
-                  {[val(o, "contact_name"), val(o, "contact_phone"), val(o, "customer_address")]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs leading-snug text-muted-foreground">
+                  <span>
+                    {[val(o, "contact_name"), val(o, "contact_phone"), val(o, "customer_address")]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                  {val(o, "customer_address") && (
+                    <GoogleMapsPin
+                      customerName={val(o, "customer_name")}
+                      address={val(o, "customer_address")}
+                      variant="badge"
+                      label="นำทาง"
+                    />
+                  )}
+                </div>
               </div>
               <div className="flex flex-col items-end gap-1">
                 <JobStatusBadge status="pending" />
@@ -2465,13 +2550,28 @@ function ApprovedOrders({
               <p className="text-base font-bold">ใบสั่งงานบริการ</p>
               <JobStatusBadge status={appointments[o.id]?.status ?? o.status} />
             </div>
-            <p className="font-semibold">
-              {o.cust_id ? `[${o.cust_id}] ` : ""}
-              {o.customer_name}
-            </p>
-            <p className="text-xs">
-              {[o.contact_name, o.contact_phone, o.customer_address].filter(Boolean).join(" · ")}
-            </p>
+            <div className="flex flex-wrap items-center gap-1.5 font-semibold">
+              <span>
+                {o.cust_id ? `[${o.cust_id}] ` : ""}
+                {o.customer_name}
+              </span>
+              <GoogleMapsPin
+                customerName={o.customer_name}
+                address={o.customer_address}
+                title={`Google Maps นำทาง: ${o.customer_name ?? ""}`}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span>{[o.contact_name, o.contact_phone, o.customer_address].filter(Boolean).join(" · ")}</span>
+              {o.customer_address && (
+                <GoogleMapsPin
+                  customerName={o.customer_name}
+                  address={o.customer_address}
+                  variant="badge"
+                  label="นำทาง"
+                />
+              )}
+            </div>
             <p className="text-xs">
               {[o.machine_label, o.serial_number, o.service_type].filter(Boolean).join(" · ")}
             </p>
@@ -3225,6 +3325,8 @@ function DayDetailDialog({
     appts.filter((a) => a.visit_date === date),
     sortBy,
   ).sort(byVehicleThenTime);
+  const [groupMode, setGroupMode] = useState<"time" | "zone">("time");
+  const zoneGroups = useMemo(() => groupAppointmentsByZone(list), [list]);
   const [preview, setPreview] = useState(false);
   const [zoom, setZoom] = useState(0.7);
   const [documentHeight, setDocumentHeight] = useState(1100);
@@ -3232,6 +3334,163 @@ function DayDetailDialog({
   const [outputAction, setOutputAction] = useState<"share" | "download">("share");
   const documentRef = useRef<HTMLDivElement>(null);
   const { getJobVisualState } = useUserRole();
+
+  const renderJobCard = (a: Appointment) => {
+    const visual = getJobVisualState(a);
+    const zone = extractZoneInfo(a.customer_address);
+    return (
+      <div
+        key={a.id}
+        className={cn(
+          "relative grid min-w-0 grid-cols-1 gap-2 overflow-hidden rounded-xl border py-3 pl-6 pr-3 sm:grid-cols-[minmax(0,1fr)_auto] transition-all",
+          a.status === "unscheduled" || a.status === "draft"
+            ? "border-rose-900/60 bg-rose-100/80 dark:bg-rose-950/60 text-rose-950 dark:text-rose-100 shadow-sm ring-1 ring-rose-900/40"
+            : vehicleColor(a.vehicle_plate),
+          visual.opacityClass,
+          visual.isMine && "ring-2 ring-primary/60 shadow-md border-primary bg-card/95",
+        )}
+      >
+        <StatusRail status={a.status} />
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => onPick(a)}
+          className="h-auto min-w-0 justify-start whitespace-normal p-0 text-left hover:bg-transparent"
+        >
+          <span className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {visual.isMine && (
+                <span className="inline-flex items-center gap-1 rounded bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 text-xs font-bold">
+                  ⭐ งานของฉัน
+                </span>
+              )}
+              {(a.status === "unscheduled" || a.status === "draft") && (
+                <span className="inline-flex items-center gap-1 rounded bg-rose-950/20 text-rose-900 dark:text-rose-200 border border-rose-900/40 px-2 py-0.5 text-xs font-bold">
+                  🚨 แพลนสัญญา (รอยืนยัน)
+                </span>
+              )}
+              <span className="break-words font-medium">
+                {a.visit_time?.slice(0, 5) || "-"} · {a.cust_id ? `[${a.cust_id}] ` : ""}
+                {a.customer_name || "ไม่ระบุลูกค้า"}
+              </span>
+              <GoogleMapsPin
+                customerName={a.customer_name}
+                address={a.customer_address}
+                title={`เปิด Google Maps นำทางไปหา ${a.customer_name ?? ""}`}
+              />
+            </div>
+            <span className="block break-words text-xs opacity-80">
+              เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}
+              {a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}
+            </span>
+            <span className="block break-words text-xs opacity-80">
+              ประเภทงาน: {splitNames(a.service_type).join(" / ") || "-"}
+            </span>
+            <span className="block break-words text-xs opacity-80">
+              {a.sales_rep ? `เซลล์: ${a.sales_rep} · ` : ""}ช่าง:{" "}
+              {splitNames(a.staff_name).join(", ") || "-"} · รถ:{" "}
+              <span className="font-semibold text-foreground/90">{splitNames(a.vehicle_plate).join(" / ") || "-"}</span> ·{" "}
+              {STATUS_LABEL[a.status] ?? a.status}
+            </span>
+            {a.customer_address && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-xs opacity-90">
+                <span className="break-words">{a.customer_address}</span>
+                <GoogleMapsPin
+                  customerName={a.customer_name}
+                  address={a.customer_address}
+                  variant="badge"
+                  label="Google Maps นำทาง"
+                />
+                <Badge
+                  variant="outline"
+                  className="text-[11px] font-normal border-rose-300/80 bg-rose-50/70 text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200"
+                >
+                  📍 {zone.zoneName}
+                </Badge>
+              </div>
+            )}
+            {a.job_detail && (
+              <span className="mt-1 block break-words text-sm">{a.job_detail}</span>
+            )}
+          </span>
+        </Button>
+        <div className="flex flex-wrap items-center gap-2 self-start">
+          <GoogleMapsPin
+            customerName={a.customer_name}
+            address={a.customer_address}
+            variant="button"
+            label="นำทาง"
+          />
+          {a.serial_number && onOpenMachineHistory && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="cursor-pointer gap-1 border-primary/40 text-primary hover:bg-primary/10"
+              onClick={() =>
+                onOpenMachineHistory(splitNames(a.serial_number)[0], a.machine_unit_id)
+              }
+            >
+              <FileText className="h-3.5 w-3.5" /> ประวัติเครื่อง
+            </Button>
+          )}
+          {a.status !== "closed" && (
+            <label
+              className={
+                "flex cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium " +
+                (a.status === "scheduled"
+                  ? "border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+                  : "bg-card text-muted-foreground hover:bg-muted/40")
+              }
+            >
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-amber-500 cursor-pointer"
+                checked={a.status === "scheduled"}
+                onChange={async (e) => {
+                  e.stopPropagation();
+                  const next = e.target.checked ? "scheduled" : "approved";
+                  const { error } = await supabase
+                    .from("appointments")
+                    .update({ status: next })
+                    .eq("id", a.id);
+                  if (error) return toast.error(error.message);
+                  if (a.work_order_id) {
+                    await supabase
+                      .from("work_orders")
+                      .update({ status: next })
+                      .eq("id", a.work_order_id);
+                  }
+                  toast.success(
+                    next === "scheduled"
+                      ? "บันทึก: นัดหมายแล้ว"
+                      : "ยกเลิกสถานะนัดหมายแล้ว",
+                  );
+                  window.dispatchEvent(new CustomEvent("planner:reload"));
+                }}
+              />
+              นัดหมายแล้ว
+            </label>
+          )}
+          {a.status !== "closed" && (
+            <Button
+              type="button"
+              size={visual.isMine ? "default" : "sm"}
+              variant="secondary"
+              className={cn(
+                "cursor-pointer font-medium",
+                visual.isMine &&
+                  "h-9.5 px-3.5 font-semibold text-sm shadow-xs border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary",
+              )}
+              onClick={() => onCloseJob(a)}
+            >
+              <CheckCircle2 className="mr-1.5 h-4 w-4 text-primary" /> ปิดใบงาน
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     if (!preview || !documentRef.current) return;
@@ -3339,6 +3598,27 @@ function DayDetailDialog({
                   </DialogDescription>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex items-center rounded-lg border bg-muted/40 p-0.5">
+                    <Button
+                      size="sm"
+                      variant={groupMode === "time" ? "default" : "ghost"}
+                      className="h-8 px-2.5 text-xs font-medium cursor-pointer"
+                      onClick={() => setGroupMode("time")}
+                      title="เรียงตามเวลาและรถบริการ"
+                    >
+                      <Clock className="mr-1 h-3.5 w-3.5" /> ตามเวลา/รถ
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={groupMode === "zone" ? "default" : "ghost"}
+                      className="h-8 px-2.5 text-xs font-medium cursor-pointer"
+                      onClick={() => setGroupMode("zone")}
+                      title="จัดกลุ่มตามพื้นที่ / โซน เพื่อดูงานใกล้เคียงกัน"
+                    >
+                      <MapPin className="mr-1 h-3.5 w-3.5 text-rose-500" />
+                      กลุ่มตามโซน ({zoneGroups.length})
+                    </Button>
+                  </div>
                   {!holiday && onAddHoliday && (
                     <Button
                       size="sm"
@@ -3363,143 +3643,53 @@ function DayDetailDialog({
                 onDelete={onDeleteHoliday ? () => onDeleteHoliday(holiday.id) : undefined}
               />
             )}
-            <div className="space-y-2">
-              {list.length === 0 && (
-                <p className="text-sm text-muted-foreground">ไม่มีนัดหมายในวันนี้</p>
-              )}
-              {list.map((a) => {
-                const visual = getJobVisualState(a);
-                return (
+
+            {list.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">ไม่มีนัดหมายในวันนี้</p>
+            ) : groupMode === "zone" ? (
+              <div className="space-y-4">
+                {zoneGroups.map((group) => (
                   <div
-                    key={a.id}
-                    className={cn(
-                      "relative grid min-w-0 grid-cols-1 gap-2 overflow-hidden rounded-xl border py-3 pl-6 pr-3 sm:grid-cols-[minmax(0,1fr)_auto] transition-all",
-                      (a.status === "unscheduled" || a.status === "draft")
-                        ? "border-rose-900/60 bg-rose-100/80 dark:bg-rose-950/60 text-rose-950 dark:text-rose-100 shadow-sm ring-1 ring-rose-900/40"
-                        : vehicleColor(a.vehicle_plate),
-                      visual.opacityClass,
-                      visual.isMine && "ring-2 ring-primary/60 shadow-md border-primary bg-card/95",
-                    )}
+                    key={group.zoneName}
+                    className="space-y-2 rounded-xl border border-rose-200/70 bg-rose-50/25 p-3 shadow-xs dark:border-rose-900/50 dark:bg-rose-950/20"
                   >
-                    <StatusRail status={a.status} />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => onPick(a)}
-                      className="h-auto min-w-0 justify-start whitespace-normal p-0 text-left hover:bg-transparent"
-                    >
-                      <span className="min-w-0 space-y-0.5">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {visual.isMine && (
-                            <span className="inline-flex items-center gap-1 rounded bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 text-xs font-bold">
-                              ⭐ งานของฉัน
-                            </span>
-                          )}
-                          {(a.status === "unscheduled" || a.status === "draft") && (
-                            <span className="inline-flex items-center gap-1 rounded bg-rose-950/20 text-rose-900 dark:text-rose-200 border border-rose-900/40 px-2 py-0.5 text-xs font-bold">
-                              🚨 แพลนสัญญา (รอยืนยัน)
-                            </span>
-                          )}
-                          <span className="block break-words font-medium">
-                            {a.visit_time?.slice(0, 5) || "-"} · {a.cust_id ? `[${a.cust_id}] ` : ""}
-                            {a.customer_name || "ไม่ระบุลูกค้า"}
-                          </span>
-                        </div>
-                      <span className="block break-words text-xs opacity-80">
-                        เครื่อง: {splitNames(a.serial_number).join(" / ") || "-"}
-                        {a.machine_label ? ` (${splitNames(a.machine_label).join(" / ")})` : ""}
-                      </span>
-                      <span className="block break-words text-xs opacity-80">
-                        ประเภทงาน: {splitNames(a.service_type).join(" / ") || "-"}
-                      </span>
-                      <span className="block break-words text-xs opacity-80">
-                        {a.sales_rep ? `เซลล์: ${a.sales_rep} · ` : ""}ช่าง:{" "}
-                        {splitNames(a.staff_name).join(", ") || "-"} · รถ:{" "}
-                        {splitNames(a.vehicle_plate).join(" / ") || "-"} ·{" "}
-                        {STATUS_LABEL[a.status] ?? a.status}
-                      </span>
-                      {a.customer_address && (
-                        <span className="block break-words text-xs opacity-80">
-                          {a.customer_address}
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-200/50 pb-2 dark:border-rose-900/40">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge className="bg-rose-600 text-white hover:bg-rose-700 font-semibold px-2.5 py-0.5">
+                          📍 {group.zoneName}
+                        </Badge>
+                        <span className="text-xs font-semibold text-foreground">
+                          {group.items.length} งาน
                         </span>
-                      )}
-                      {a.job_detail && (
-                        <span className="mt-1 block break-words text-sm">{a.job_detail}</span>
-                      )}
-                    </span>
-                  </Button>
-                  <div className="flex flex-wrap items-center gap-2 self-start">
-                    {a.serial_number && onOpenMachineHistory && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="cursor-pointer gap-1 border-primary/40 text-primary hover:bg-primary/10"
-                        onClick={() =>
-                          onOpenMachineHistory(splitNames(a.serial_number)[0], a.machine_unit_id)
-                        }
-                      >
-                        <FileText className="h-3.5 w-3.5" /> ประวัติเครื่อง
-                      </Button>
-                    )}
-                    {a.status !== "closed" && (
-                      <label
-                        className={
-                          "flex cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium " +
-                          (a.status === "scheduled"
-                            ? "border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
-                            : "bg-card text-muted-foreground hover:bg-muted/40")
-                        }
-                      >
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-amber-500 cursor-pointer"
-                          checked={a.status === "scheduled"}
-                          onChange={async (e) => {
-                            e.stopPropagation();
-                            const next = e.target.checked ? "scheduled" : "approved";
-                            const { error } = await supabase
-                              .from("appointments")
-                              .update({ status: next })
-                              .eq("id", a.id);
-                            if (error) return toast.error(error.message);
-                            if (a.work_order_id) {
-                              await supabase
-                                .from("work_orders")
-                                .update({ status: next })
-                                .eq("id", a.work_order_id);
-                            }
-                            toast.success(
-                              next === "scheduled"
-                                ? "บันทึก: นัดหมายแล้ว"
-                                : "ยกเลิกสถานะนัดหมายแล้ว",
-                            );
-                            window.dispatchEvent(new CustomEvent("planner:reload"));
-                          }}
-                        />
-                        นัดหมายแล้ว
-                      </label>
-                    )}
-                    {a.status !== "closed" && (
-                      <Button
-                        type="button"
-                        size={visual.isMine ? "default" : "sm"}
-                        variant="secondary"
-                        className={cn(
-                          "cursor-pointer font-medium",
-                          visual.isMine &&
-                            "h-9.5 px-3.5 font-semibold text-sm shadow-xs border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary",
+                        {group.vehicles.length > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-background/80 border px-2 py-0.5 text-xs text-foreground/80">
+                            <Truck className="h-3 w-3 text-primary shrink-0" />
+                            รถ: {group.vehicles.join(", ")}
+                          </span>
                         )}
-                        onClick={() => onCloseJob(a)}
-                      >
-                        <CheckCircle2 className="mr-1.5 h-4 w-4 text-primary" /> ปิดใบงาน
-                      </Button>
-                    )}
+                        {group.staff.length > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            ช่าง: {group.staff.join(", ")}
+                          </span>
+                        )}
+                      </div>
+                      <GoogleMapsPin
+                        query={`${group.zoneName} ประเทศไทย`}
+                        variant="badge"
+                        label={`เปิดดูพื้นที่ ${group.zoneName}`}
+                      />
+                    </div>
+                    <div className="space-y-2 pt-1">
+                      {group.items.map(renderJobCard)}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {list.map(renderJobCard)}
+              </div>
+            )}
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>
                 ปิด
@@ -3648,9 +3838,16 @@ const DailyQueueDocument = ({
                 <p className="daily-queue-document__time">
                   {a.visit_time?.slice(0, 5) || "ไม่ระบุเวลา"}
                 </p>
-                <h3>
-                  {a.cust_id ? `[${a.cust_id}] ` : ""}
-                  {a.customer_name || "ไม่ระบุลูกค้า"}
+                <h3 className="flex flex-wrap items-center gap-1.5">
+                  <span>
+                    {a.cust_id ? `[${a.cust_id}] ` : ""}
+                    {a.customer_name || "ไม่ระบุลูกค้า"}
+                  </span>
+                  <GoogleMapsPin
+                    customerName={a.customer_name}
+                    address={a.customer_address}
+                    title={`Google Maps นำทาง: ${a.customer_name ?? ""}`}
+                  />
                 </h3>
               </div>
               <span className="daily-queue-document__status">
@@ -3688,7 +3885,17 @@ const DailyQueueDocument = ({
               </div>
               <div className="daily-queue-document__wide">
                 <dt>ที่อยู่หน้างาน</dt>
-                <dd>{a.customer_address || "-"}</dd>
+                <dd className="flex flex-wrap items-center gap-2">
+                  <span>{a.customer_address || "-"}</span>
+                  {a.customer_address && (
+                    <GoogleMapsPin
+                      customerName={a.customer_name}
+                      address={a.customer_address}
+                      variant="badge"
+                      label="Google Maps นำทาง"
+                    />
+                  )}
+                </dd>
               </div>
               <div className="daily-queue-document__wide">
                 <dt>รายละเอียดงาน / อาการ</dt>
@@ -3737,6 +3944,7 @@ function DayList({
   reload: () => void;
 }) {
   const { getJobVisualState } = useUserRole();
+  const [groupMode, setGroupMode] = useState<"time" | "zone">("time");
 
   const setStatus = async (a: Appointment, status: string) => {
     const { error } = await supabase.from("appointments").update({ status }).eq("id", a.id);
@@ -3757,18 +3965,198 @@ function DayList({
     reload();
   };
 
+  const renderCard = (a: Appointment) => {
+    const visual = getJobVisualState({
+      sales_rep: a.sales_rep,
+      staff_name: a.staff_name,
+    });
+    const zone = extractZoneInfo(a.customer_address);
+
+    return (
+      <div
+        key={a.id}
+        className={cn(
+          "relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3 transition-all",
+          visual.opacityClass,
+          visual.isMine && "ring-2 ring-primary/60 shadow-md border-primary bg-card/95",
+        )}
+      >
+        <StatusRail status={a.status} />
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <div className="flex flex-wrap items-center gap-1.5 font-medium">
+              <span>
+                {a.visit_time?.slice(0, 5)} · {a.cust_id ? `[${a.cust_id}] ` : ""}
+                {a.customer_name}
+              </span>
+              <GoogleMapsPin
+                customerName={a.customer_name}
+                address={a.customer_address}
+                title={`Google Maps นำทาง: ${a.customer_name ?? ""}`}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {[a.serial_number, a.machine_label, a.service_type]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ:{" "}
+              <span className="font-semibold text-foreground/90">{a.vehicle_plate || "-"}</span>
+              {a.sales_rep ? ` · เซลล์: ${a.sales_rep}` : ""}
+            </p>
+            {a.customer_address && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-xs text-muted-foreground">
+                <span className="break-words">{a.customer_address}</span>
+                <GoogleMapsPin
+                  customerName={a.customer_name}
+                  address={a.customer_address}
+                  variant="badge"
+                  label="นำทาง"
+                />
+                <Badge
+                  variant="outline"
+                  className="text-[10px] py-0 px-1.5 border-rose-200 text-rose-700 bg-rose-50/50 dark:border-rose-900/60 dark:text-rose-300 dark:bg-rose-950/30 font-normal"
+                >
+                  📍 {zone.zoneName}
+                </Badge>
+              </div>
+            )}
+            {a.job_detail && <p className="mt-1 text-sm">{a.job_detail}</p>}
+            {a.status === "closed" && a.close_note && (
+              <p className="mt-1 text-xs text-muted-foreground">สรุป: {a.close_note}</p>
+            )}
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <JobStatusBadge status={a.status} />
+            {visual.isMine && (
+              <span className="inline-flex items-center gap-1 rounded bg-primary/15 border border-primary/30 px-2 py-0.5 text-xs font-bold text-primary">
+                ⭐ งานของฉัน
+              </span>
+            )}
+          </div>
+        </div>
+        {a.status !== "closed" && (
+          <label
+            className={
+              "flex w-fit cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-xs font-medium " +
+              (a.status === "scheduled"
+                ? "border-amber-400 bg-amber-50 text-amber-700"
+                : "text-muted-foreground")
+            }
+          >
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-amber-500 cursor-pointer"
+              checked={a.status === "scheduled"}
+              onChange={(e) => setStatus(a, e.target.checked ? "scheduled" : "approved")}
+            />
+            นัดหมายแล้ว
+          </label>
+        )}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <GoogleMapsPin
+            customerName={a.customer_name}
+            address={a.customer_address}
+            variant="button"
+            label="นำทาง"
+          />
+          {a.serial_number && onOpenMachineHistory && (
+            <Button
+              size={visual.isMine ? "default" : "sm"}
+              variant="outline"
+              className={cn(
+                "cursor-pointer gap-1 border-primary/40 text-primary hover:bg-primary/10",
+                visual.isMine && "h-9.5 px-3 text-sm font-semibold",
+              )}
+              onClick={() =>
+                onOpenMachineHistory(splitNames(a.serial_number)[0], a.machine_unit_id)
+              }
+            >
+              <FileText className="h-3.5 w-3.5" /> ประวัติเครื่อง
+            </Button>
+          )}
+          <Button
+            size={visual.isMine ? "default" : "sm"}
+            variant="outline"
+            className={cn("cursor-pointer", visual.isMine && "h-9.5 px-3.5 text-sm")}
+            onClick={() => onEdit(a)}
+          >
+            แก้ไข
+          </Button>
+          {a.status !== "in_progress" && a.status !== "closed" && (
+            <Button
+              size={visual.isMine ? "default" : "sm"}
+              className={cn("cursor-pointer", visual.isMine && "h-9.5 px-3.5 text-sm font-semibold")}
+              onClick={() => setStatus(a, "in_progress")}
+            >
+              เริ่มดำเนินการ
+            </Button>
+          )}
+
+          <Button
+            size={visual.isMine ? "default" : "sm"}
+            variant="secondary"
+            className={cn(
+              "cursor-pointer font-medium",
+              visual.isMine &&
+                "h-9.5 px-4 font-semibold text-sm shadow-xs border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary",
+            )}
+            onClick={() => onClose(a)}
+          >
+            {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดใบงาน"}
+          </Button>
+          {isAdmin && (
+            <ConfirmButton onConfirm={() => remove(a)} description="ลบนัดหมายนี้?">
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </ConfirmButton>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+        <span className="text-xs font-medium text-muted-foreground">
+          รูปแบบการจัดเรียงในมุมมองวัน
+        </span>
+        <div className="flex items-center rounded-lg border bg-muted/40 p-0.5">
+          <Button
+            size="sm"
+            variant={groupMode === "time" ? "default" : "ghost"}
+            className="h-7 px-2 text-xs font-medium cursor-pointer"
+            onClick={() => setGroupMode("time")}
+          >
+            <Clock className="mr-1 h-3 w-3" /> เรียงตามเวลา
+          </Button>
+          <Button
+            size="sm"
+            variant={groupMode === "zone" ? "default" : "ghost"}
+            className="h-7 px-2 text-xs font-medium cursor-pointer"
+            onClick={() => setGroupMode("zone")}
+          >
+            <MapPin className="mr-1 h-3 w-3 text-rose-500" /> จัดกลุ่มตามโซน
+          </Button>
+        </div>
+      </div>
+
       {days.map((d) => {
         const list = sortApptList(
           appts.filter((a) => a.visit_date === d),
           sortBy,
         );
         const holiday = holidaysMap?.[d];
+        const zoneGroups = groupAppointmentsByZone(list);
+
         return (
           <div key={d} className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-semibold">{formatDate(d)}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold">{formatDate(d)}</p>
+                <span className="text-xs text-muted-foreground">({list.length} งาน)</span>
+              </div>
               {!holiday && onAddHoliday && (
                 <Button
                   size="sm"
@@ -3788,125 +4176,44 @@ function DayList({
               />
             )}
             {list.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีนัดหมาย</p>}
-            {list.map((a) => {
-              const visual = getJobVisualState({
-                sales_rep: a.sales_rep,
-                staff_name: a.staff_name,
-              });
-
-              return (
-                <div
-                  key={a.id}
-                  className={cn(
-                    "relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3 transition-all",
-                    visual.opacityClass,
-                    visual.isMine && "ring-2 ring-primary/60 shadow-md border-primary bg-card/95",
-                  )}
-                >
-                  <StatusRail status={a.status} />
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium">
-                        {a.visit_time?.slice(0, 5)} · {a.cust_id ? `[${a.cust_id}] ` : ""}
-                        {a.customer_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {[a.serial_number, a.machine_label, a.service_type]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        ช่าง: {splitNames(a.staff_name).join(", ") || "-"} · รถ:{" "}
-                        {a.vehicle_plate || "-"}
-                        {a.sales_rep ? ` · เซลล์: ${a.sales_rep}` : ""}
-                      </p>
-                      {a.job_detail && <p className="mt-1 text-sm">{a.job_detail}</p>}
-                      {a.status === "closed" && a.close_note && (
-                        <p className="mt-1 text-xs text-muted-foreground">สรุป: {a.close_note}</p>
-                      )}
+            {list.length > 0 &&
+              (groupMode === "zone" ? (
+                <div className="space-y-3">
+                  {zoneGroups.map((group) => (
+                    <div
+                      key={group.zoneName}
+                      className="space-y-2 rounded-lg border border-rose-200/60 bg-rose-50/20 p-2.5 dark:border-rose-900/40 dark:bg-rose-950/20"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-200/40 pb-1.5 dark:border-rose-900/30">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge className="bg-rose-600 text-white font-medium text-xs">
+                            📍 {group.zoneName}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {group.items.length} งาน
+                          </span>
+                          {group.vehicles.length > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground border">
+                              <Truck className="h-3 w-3 text-primary shrink-0" />
+                              {group.vehicles.join(", ")}
+                            </span>
+                          )}
+                        </div>
+                        <GoogleMapsPin
+                          query={`${group.zoneName} ประเทศไทย`}
+                          variant="badge"
+                          label={`แผนที่ ${group.zoneName}`}
+                        />
+                      </div>
+                      <div className="space-y-2 pt-0.5">
+                        {group.items.map(renderCard)}
+                      </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <JobStatusBadge status={a.status} />
-                      {visual.isMine && (
-                        <span className="inline-flex items-center gap-1 rounded bg-primary/15 border border-primary/30 px-2 py-0.5 text-xs font-bold text-primary">
-                          ⭐ งานของฉัน
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {a.status !== "closed" && (
-                    <label
-                      className={
-                        "flex w-fit cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-xs font-medium " +
-                        (a.status === "scheduled"
-                          ? "border-amber-400 bg-amber-50 text-amber-700"
-                          : "text-muted-foreground")
-                      }
-                    >
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 accent-amber-500 cursor-pointer"
-                        checked={a.status === "scheduled"}
-                        onChange={(e) => setStatus(a, e.target.checked ? "scheduled" : "approved")}
-                      />
-                      นัดหมายแล้ว
-                    </label>
-                  )}
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    {a.serial_number && onOpenMachineHistory && (
-                      <Button
-                        size={visual.isMine ? "default" : "sm"}
-                        variant="outline"
-                        className={cn(
-                          "cursor-pointer gap-1 border-primary/40 text-primary hover:bg-primary/10",
-                          visual.isMine && "h-9.5 px-3 text-sm font-semibold",
-                        )}
-                        onClick={() =>
-                          onOpenMachineHistory(splitNames(a.serial_number)[0], a.machine_unit_id)
-                        }
-                      >
-                        <FileText className="h-3.5 w-3.5" /> ประวัติเครื่อง
-                      </Button>
-                    )}
-                    <Button
-                      size={visual.isMine ? "default" : "sm"}
-                      variant="outline"
-                      className={cn("cursor-pointer", visual.isMine && "h-9.5 px-3.5 text-sm")}
-                      onClick={() => onEdit(a)}
-                    >
-                      แก้ไข
-                    </Button>
-                    {a.status !== "in_progress" && a.status !== "closed" && (
-                      <Button
-                        size={visual.isMine ? "default" : "sm"}
-                        className={cn("cursor-pointer", visual.isMine && "h-9.5 px-3.5 text-sm font-semibold")}
-                        onClick={() => setStatus(a, "in_progress")}
-                      >
-                        เริ่มดำเนินการ
-                      </Button>
-                    )}
-
-                    <Button
-                      size={visual.isMine ? "default" : "sm"}
-                      variant="secondary"
-                      className={cn(
-                        "cursor-pointer font-medium",
-                        visual.isMine &&
-                          "h-9.5 px-4 font-semibold text-sm shadow-xs border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary",
-                      )}
-                      onClick={() => onClose(a)}
-                    >
-                      {a.status === "closed" ? "แก้ไขผลปิดงาน" : "ปิดใบงาน"}
-                    </Button>
-                    {isAdmin && (
-                      <ConfirmButton onConfirm={() => remove(a)} description="ลบนัดหมายนี้?">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </ConfirmButton>
-                    )}
-                  </div>
+                  ))}
                 </div>
-              );
-            })}
+              ) : (
+                list.map(renderCard)
+              ))}
           </div>
         );
       })}
@@ -4428,7 +4735,21 @@ function AppointmentDialog({
               searchPlaceholder="ค้นหารหัสลูกค้า..."
             />
           </F>
-          <F label="ชื่อลูกค้า *">
+          <F
+            label={
+              <div className="flex items-center justify-between gap-1 w-full">
+                <span>ชื่อลูกค้า *</span>
+                {form.customer_name && (
+                  <GoogleMapsPin
+                    customerName={form.customer_name}
+                    address={form.customer_address}
+                    variant="badge"
+                    label="ค้นหาแผนที่"
+                  />
+                )}
+              </div>
+            }
+          >
             <Combobox
               disabled={locked}
               value={form.customer_name ?? ""}
@@ -4465,7 +4786,21 @@ function AppointmentDialog({
               searchPlaceholder="ค้นหา S/N..."
             />
           </F>
-          <F label="ที่อยู่">
+          <F
+            label={
+              <div className="flex items-center justify-between gap-1 w-full">
+                <span>ที่อยู่</span>
+                {(form.customer_address || form.customer_name) && (
+                  <GoogleMapsPin
+                    customerName={form.customer_name}
+                    address={form.customer_address}
+                    variant="badge"
+                    label="เปิด Google Maps นำทาง"
+                  />
+                )}
+              </div>
+            }
+          >
             <ComboCell
               disabled={locked}
               value={form.customer_address ?? ""}

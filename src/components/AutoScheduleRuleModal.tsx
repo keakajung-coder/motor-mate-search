@@ -26,8 +26,9 @@ import {
   type GeneratedVisitPreview,
   type SchedulePattern,
 } from "@/lib/contract-schedule";
-import { Sparkles, CalendarClock, CalendarDays, Check, RefreshCw, AlertCircle } from "lucide-react";
+import { Sparkles, CalendarClock, CalendarDays, Check, RefreshCw, AlertCircle, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDirectory } from "@/lib/directory";
 
 const DOW_OPTIONS: Array<{ value: number; label: string }> = [
   { value: 1, label: "วันจันทร์" },
@@ -82,6 +83,9 @@ export function AutoScheduleRuleModal({
   const [weekOfMonth, setWeekOfMonth] = useState<number>(2); // สัปดาห์ที่ 2
   const [dayOfWeek, setDayOfWeek] = useState<number>(3); // วันพุธ
 
+  const dir = useDirectory();
+  const [defaultVehiclePlate, setDefaultVehiclePlate] = useState<string>("");
+
   // Default time
   const [defaultTime, setDefaultTime] = useState<string>("09:00");
 
@@ -116,8 +120,9 @@ export function AutoScheduleRuleModal({
       visitsPerYear,
       pattern: patternConfig,
       defaultTime,
+      vehiclePlate: defaultVehiclePlate || null,
     });
-  }, [startDate, visitsPerYear, patternConfig, defaultTime]);
+  }, [startDate, visitsPerYear, patternConfig, defaultTime, defaultVehiclePlate]);
 
   const handleApply = () => {
     onApply(previewVisits);
@@ -304,15 +309,39 @@ export function AutoScheduleRuleModal({
               </div>
             )}
 
-            {/* Default Time */}
-            <div className="flex items-center gap-3 pt-1">
-              <Label className="text-xs text-muted-foreground whitespace-nowrap">เวลาเข้าบริการเริ่มต้น (ไม่บังคับ):</Label>
-              <Input
-                type="time"
-                className="h-8 w-32 bg-background font-mono text-xs"
-                value={defaultTime}
-                onChange={(e) => setDefaultTime(e.target.value)}
-              />
+            {/* Default Time & Vehicle */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground whitespace-nowrap">เวลาเริ่มต้น:</Label>
+                <Input
+                  type="time"
+                  className="h-8 w-28 bg-background font-mono text-xs"
+                  value={defaultTime}
+                  onChange={(e) => setDefaultTime(e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
+                  <Truck className="h-3 w-3 text-primary" /> ทะเบียนรถเริ่มต้น:
+                </Label>
+                <Select
+                  value={defaultVehiclePlate || "__none__"}
+                  onValueChange={(val) => setDefaultVehiclePlate(val === "__none__" ? "" : val)}
+                >
+                  <SelectTrigger className="h-8 flex-1 bg-background text-xs">
+                    <SelectValue placeholder="-- ไม่ระบุรถ --" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">-- ไม่ระบุรถ --</SelectItem>
+                    {dir.vehicles.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 

@@ -33,6 +33,7 @@ import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
 import { DateInput } from "@/components/ui/date-input";
 import { notifyAdmins, notifyUsers } from "@/lib/notify";
 import { ContactShare } from "@/components/ContactShare";
+import { GoogleMapsPin } from "@/components/GoogleMapsPin";
 import { autoShareEnabled, shareContacts } from "@/lib/contact";
 import { checkScheduleConflicts } from "@/lib/schedule-check";
 import { ScheduleConflictDialog } from "@/components/ScheduleConflictDialog";
@@ -659,7 +660,21 @@ export function WorkOrderDialog({
                 searchPlaceholder="ค้นหารหัสลูกค้า..."
               />
             </Field>
-            <Field label="ชื่อลูกค้า *">
+            <Field
+              label={
+                <div className="flex items-center justify-between gap-1 w-full">
+                  <span>ชื่อลูกค้า *</span>
+                  {form.customer_name && (
+                    <GoogleMapsPin
+                      customerName={form.customer_name}
+                      address={form.customer_address}
+                      variant="badge"
+                      label="ค้นหาแผนที่"
+                    />
+                  )}
+                </div>
+              }
+            >
               <Combobox
                 value={form.customer_name}
                 onChange={pickCustomer}
@@ -710,7 +725,21 @@ export function WorkOrderDialog({
               />
             </Field>
 
-            <Field label="ที่อยู่ลูกค้า">
+            <Field
+              label={
+                <div className="flex items-center justify-between gap-1 w-full">
+                  <span>ที่อยู่ลูกค้า</span>
+                  {(form.customer_address || form.customer_name) && (
+                    <GoogleMapsPin
+                      customerName={form.customer_name}
+                      address={form.customer_address}
+                      variant="badge"
+                      label="เปิด Google Maps นำทาง"
+                    />
+                  )}
+                </div>
+              }
+            >
               <Combobox
                 value={form.customer_address}
                 onChange={(v) => set("customer_address", v)}
@@ -912,7 +941,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="min-w-0 space-y-1">
       <Label className="text-xs">{label}</Label>

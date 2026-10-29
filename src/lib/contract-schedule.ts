@@ -45,6 +45,7 @@ export type AutoScheduleRuleConfig = {
   defaultTime?: string | null;
   jobDetailPrefix?: string | null;
   partsNote?: string | null;
+  vehiclePlate?: string | null;
 };
 
 export type GeneratedVisitPreview = {
@@ -56,6 +57,7 @@ export type GeneratedVisitPreview = {
   cycleLabelTh: string; // เช่น "รอบเดือนที่ 1 (ม.ค. 2569)"
   job_detail?: string;
   parts_note?: string;
+  vehicle_plate?: string;
   status: "unscheduled";
 };
 
@@ -110,7 +112,7 @@ export function calculateRelativeDate(
  * คำนวณรันวันที่และซอยรอบเดือนอัตโนมัติทั้งสัญญาในคลิกเดียว (Auto-Schedule Rules)
  */
 export function generateContractSchedule(config: AutoScheduleRuleConfig): GeneratedVisitPreview[] {
-  const { startDate, visitsPerYear, pattern, defaultTime, jobDetailPrefix, partsNote } = config;
+  const { startDate, visitsPerYear, pattern, defaultTime, jobDetailPrefix, partsNote, vehiclePlate } = config;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || visitsPerYear < 1) return [];
 
   const n = Math.min(Math.floor(visitsPerYear), 52);
@@ -153,6 +155,7 @@ export function generateContractSchedule(config: AutoScheduleRuleConfig): Genera
       cycleLabelTh: `งวดที่ ${i + 1} (${monthName} ${thYear})`,
       job_detail: jobDetailPrefix ? `${jobDetailPrefix} ครั้งที่ ${i + 1}` : `บริการตามสัญญารายปี ครั้งที่ ${i + 1}`,
       parts_note: partsNote || "",
+      vehicle_plate: vehiclePlate || "",
       status: "unscheduled",
     });
   }

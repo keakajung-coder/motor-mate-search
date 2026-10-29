@@ -62,6 +62,7 @@ import {
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { DateInput } from "@/components/ui/date-input";
+import { GoogleMapsPin } from "@/components/GoogleMapsPin";
 
 function formatDate(d: string | null | undefined): string {
   if (!d) return "-";
@@ -766,10 +767,13 @@ function ProductModal({
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ label, value, action }: { label: string; value: string; action?: React.ReactNode }) {
   return (
     <div className="rounded-md border bg-card/50 p-2.5">
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-muted-foreground">
+        <span>{label}</span>
+        {action}
+      </div>
       <div className="mt-0.5 font-medium">{value}</div>
     </div>
   );
@@ -1235,6 +1239,13 @@ function MachineCard({
       >
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <span className="truncate text-sm font-semibold">{unit.customers?.cust_id ? `[${unit.customers.cust_id}] ` : ""}{unit.customers?.name ?? "-"}</span>
+          <GoogleMapsPin
+            customerName={unit.customers?.name}
+            address={(unit as any).address_line}
+            district={(unit as any).district}
+            province={(unit as any).province}
+            siteName={(unit as any).site_name}
+          />
           <Badge variant="outline" className="shrink-0 font-mono text-xs">
             {unit.serial_number}
           </Badge>
@@ -1322,7 +1333,22 @@ function MachineCard({
             <Info label="S/N ลูกค้า" value={unit.customer_sn || "-"} />
             <Info label="สถานะเครื่อง" value={(unit as any).status ?? "-"} />
             <Info label="รุ่นเครื่อง" value={model} />
-            <Info label="ลูกค้า" value={unit.customers?.name ?? "-"} />
+            <Info
+              label="ลูกค้า"
+              value={unit.customers?.name ?? "-"}
+              action={
+                unit.customers?.name ? (
+                  <GoogleMapsPin
+                    variant="badge"
+                    label="นำทาง"
+                    customerName={unit.customers.name}
+                    address={(unit as any).address_line}
+                    district={(unit as any).district}
+                    province={(unit as any).province}
+                  />
+                ) : undefined
+              }
+            />
             <Info label="รหัสลูกค้า" value={(unit.customers as any)?.cust_id ?? "-"} />
             <Info label="เบอร์โทร" value={unit.customers?.phone ?? "-"} />
             <Info
@@ -1330,11 +1356,38 @@ function MachineCard({
               value={unit.daily_hours != null ? `${unit.daily_hours} ชม.` : "-"}
             />
             {unit.install_date && <Info label="วันที่ติดตั้ง" value={formatDate(unit.install_date)} />}
-            {(unit as any).site_name && <Info label="สถานที่ติดตั้ง" value={(unit as any).site_name} />}
+            {(unit as any).site_name && (
+              <Info
+                label="สถานที่ติดตั้ง"
+                value={(unit as any).site_name}
+                action={
+                  <GoogleMapsPin
+                    variant="badge"
+                    label="นำทาง"
+                    siteName={(unit as any).site_name}
+                    customerName={unit.customers?.name}
+                    address={(unit as any).address_line}
+                    district={(unit as any).district}
+                    province={(unit as any).province}
+                  />
+                }
+              />
+            )}
             {((unit as any).address_line || (unit as any).district || (unit as any).province) && (
               <Info
                 label="ที่อยู่"
                 value={[(unit as any).address_line, (unit as any).district, (unit as any).province].filter(Boolean).join(" • ")}
+                action={
+                  <GoogleMapsPin
+                    variant="badge"
+                    label="Google Maps นำทาง"
+                    customerName={unit.customers?.name}
+                    address={(unit as any).address_line}
+                    district={(unit as any).district}
+                    province={(unit as any).province}
+                    siteName={(unit as any).site_name}
+                  />
+                }
               />
             )}
             {(unit as any).seller && <Info label="ผู้ขาย" value={(unit as any).seller} />}

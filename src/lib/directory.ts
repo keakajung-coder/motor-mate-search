@@ -13,6 +13,8 @@ export type DirMachine = {
   customer: string;
   cust_id: string;
   address: string;
+  district?: string;
+  province?: string;
   phone: string;
   seller: string;
 };
@@ -95,6 +97,8 @@ async function fetchAll() {
         address:
           [r.address_line, r.district, r.province].filter(Boolean).join(" ") ||
           (r.customers?.address ?? ""),
+        district: r.district ?? "",
+        province: r.province ?? "",
         phone: r.customers?.phone ?? "",
         seller: r.seller ?? "",
       }))

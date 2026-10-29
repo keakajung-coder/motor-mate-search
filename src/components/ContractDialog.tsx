@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, Loader2, Plus, Sparkles, Trash2, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { CalendarClock, Loader2, Plus, Sparkles, Trash2, CheckCircle2, Clock, AlertTriangle, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,10 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { DateInput } from "@/components/ui/date-input";
+import { Combobox } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
 import { spreadVisits, type GeneratedVisitPreview } from "@/lib/contract-schedule";
-import { listContracts, saveContract, deactivateContract, type ContractVisitInput } from "@/lib/contracts.functions";
+import { listContracts, saveContract, deactivateContract, updateContractVisitVehicle, type ContractVisitInput } from "@/lib/contracts.functions";
 import { useAccess } from "@/lib/access";
+import { useDirectory } from "@/lib/directory";
 import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
 import { AutoScheduleRuleModal } from "@/components/AutoScheduleRuleModal";
 
@@ -49,6 +51,7 @@ export function ContractDialog({
   onSaved?: () => void;
 }) {
   const { isAdmin } = useAccess();
+  const dir = useDirectory();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -76,12 +79,15 @@ export function ContractDialog({
             ((c.service_contract_visits as any[]) ?? [])
               .sort((a, b) => a.visit_no - b.visit_no)
               .map((v) => ({
+                id: v.id,
+                appointment_id: v.appointment_id,
                 visit_no: v.visit_no,
                 visit_date: v.visit_date,
                 visit_time: v.visit_time ?? "",
                 job_detail: v.job_detail ?? "",
                 parts_note: v.parts_note ?? "",
                 status: v.status || "unscheduled",
+                vehicle_plate: v.vehicle_plate ?? "",
               })),
           );
         } else {
@@ -116,6 +122,7 @@ export function ContractDialog({
           job_detail: old?.job_detail || g.job_detail || "",
           parts_note: old?.parts_note || g.parts_note || "",
           status: old?.status || "unscheduled",
+          vehicle_plate: old?.vehicle_plate || g.vehicle_plate || "",
         };
       }),
     );
@@ -138,6 +145,7 @@ export function ContractDialog({
         job_detail: "",
         parts_note: "",
         status: "unscheduled",
+        vehicle_plate: "",
       },
     ]);
 
@@ -158,12 +166,15 @@ export function ContractDialog({
           note: note || null,
           active,
           visits: visits.map((v) => ({
+            id: v.id,
+            appointment_id: v.appointment_id,
             visit_no: v.visit_no,
             visit_date: v.visit_date,
             visit_time: v.visit_time || null,
             job_detail: v.job_detail || null,
             parts_note: v.parts_note || null,
             status: v.status || "unscheduled",
+            vehicle_plate: v.vehicle_plate || null,
           })),
         },
       });
@@ -391,14 +402,62 @@ export function ContractDialog({
                       />
                     </div>
 
-                    <div>
-                      <Label className="text-xs">อะไหล่ที่ต้องเตรียม</Label>
-                      <Input
-                        value={v.parts_note ?? ""}
-                        disabled={!isAdmin || isDone}
-                        onChange={(e) => setVisit(v.visit_no, { parts_note: e.target.value })}
-                        placeholder="เช่น ไส้กรองอากาศ, ไส้กรองน้ำมัน, น้ำมันหล่อลื่น"
-                      />
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div>
+                        <div className="flex items-center justify-between pb-0.5">
+                          <Label className="text-xs flex items-center gap-1 font-medium">
+                            <Truck className="h-3.5 w-3.5 text-primary" /> ทะเบียนรถที่รับผิดชอบ
+                          </Label>
+                          {isAdmin && !isDone && v.vehicle_plate && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const plate = v.vehicle_plate;
+                                setVisits((prev) =>
+                                  prev.map((item) =>
+                                    !item.status || item.status !== "done"
+                                      ? { ...item, vehicle_plate: plate }
+                                      : item,
+                                  ),
+                                );
+                                toast.success(`คัดลอกทะเบียน ${plate} ไปยังทุกงวดที่เหลือแล้ว`);
+                              }}
+                              className="text-[11px] text-primary hover:underline cursor-pointer"
+                            >
+                              คัดลอกไปทุกงวด
+                            </button>
+                          )}
+                        </div>
+                        <Combobox
+                          disabled={!isAdmin || isDone}
+                          value={v.vehicle_plate ?? ""}
+                          onChange={(plate) => {
+                            setVisit(v.visit_no, { vehicle_plate: plate });
+                            if (v.appointment_id || v.id) {
+                              void updateContractVisitVehicle({
+                                data: {
+                                  visitId: v.id ?? null,
+                                  appointmentId: v.appointment_id ?? null,
+                                  vehiclePlate: plate || null,
+                                },
+                              }).catch(() => {});
+                            }
+                          }}
+                          options={dir.vehicles.map((p) => ({ value: p }))}
+                          placeholder="เลือก / พิมพ์ทะเบียนรถ"
+                          searchPlaceholder="ค้นหาทะเบียนรถ..."
+                          allowCustom
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">อะไหล่ที่ต้องเตรียม</Label>
+                        <Input
+                          value={v.parts_note ?? ""}
+                          disabled={!isAdmin || isDone}
+                          onChange={(e) => setVisit(v.visit_no, { parts_note: e.target.value })}
+                          placeholder="เช่น ไส้กรองอากาศ, ไส้กรองน้ำมัน, น้ำมันหล่อลื่น"
+                        />
+                      </div>
                     </div>
                   </div>
                 );
