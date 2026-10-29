@@ -6,6 +6,7 @@ import { Check, ChevronDown, ChevronUp, Search, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { isValueRemoved } from "@/lib/data-sync";
+import { swipeTouchStyle, swipeUnlockHandlers } from "@/lib/touch-swipe";
 
 /** สกัดข้อความค้นหาจาก React Node (รวมถึงค่า value, label, children) */
 function extractSearchableText(node: React.ReactNode): string {
@@ -131,6 +132,9 @@ const SelectContent = React.forwardRef<
       position = "popper",
       searchable = true,
       searchPlaceholder = "พิมพ์ค้นหา...",
+      style,
+      onTouchMoveCapture,
+      onTouchStartCapture,
       ...props
     },
     ref,
@@ -162,6 +166,8 @@ const SelectContent = React.forwardRef<
           )}
           position={position}
           collisionPadding={8}
+          style={{ ...swipeTouchStyle, ...style }}
+          {...swipeUnlockHandlers({ onTouchMoveCapture, onTouchStartCapture })}
           {...props}
         >
           {searchable && (
@@ -212,7 +218,7 @@ const SelectContent = React.forwardRef<
               position === "popper" &&
                 "w-full min-w-[var(--radix-select-trigger-width)]",
             )}
-            style={{ maxHeight: "200px", overflowY: "scroll", scrollbarGutter: "stable" }}
+            style={{ maxHeight: "200px", overflowY: "auto", scrollbarGutter: "stable", ...swipeTouchStyle }}
           >
             {matchCount === 0 && query.trim() ? (
               <div className="py-4 text-center text-xs text-muted-foreground select-none">

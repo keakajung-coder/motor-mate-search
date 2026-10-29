@@ -446,9 +446,98 @@
   background-color: color-mix(in oklch, var(--report-pending) 24%, var(--card));
 }
 
+/* แถบเลื่อนบาง: แสดงบนมือถือ/iPad ขณะปัด แทนการซ่อนสนิท */
+.scrollbar-none {
+  scrollbar-width: thin !important;
+  -webkit-overflow-scrolling: touch;
+}
 .scrollbar-none::-webkit-scrollbar {
+  display: block !important;
+  width: 4px !important;
+  height: 4px !important;
+}
+
+/* เงาบอกว่ายังเลื่อนต่อได้ (ทำงานบน iOS/Android): เงาจางหายเมื่อเลื่อนถึงขอบ */
+.force-scrollbar,
+.dropdown-scroll {
+  background-image:
+    linear-gradient(var(--popover) 30%, transparent),
+    linear-gradient(transparent, var(--popover) 70%),
+    radial-gradient(farthest-side at 50% 0, color-mix(in oklch, var(--foreground) 22%, transparent), transparent),
+    radial-gradient(farthest-side at 50% 100%, color-mix(in oklch, var(--foreground) 22%, transparent), transparent);
+  background-position: center top, center bottom, center top, center bottom;
+  background-repeat: no-repeat;
+  background-size: 100% 28px, 100% 28px, 100% 10px, 100% 10px;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* แถบเลื่อนแบบวาดเอง (OverlayScrollbarLayer):
+   ซ่อนแถบเลื่อนเดิมของระบบในกล่องรายการ แล้วใช้แถบที่วาดเองแทน
+   เพราะ iOS/iPadOS ไม่อนุญาตให้ CSS บังคับแสดงแถบเลื่อนเดิมบนหน้าจอสัมผัส */
+.force-scrollbar,
+.dropdown-scroll {
+  scrollbar-width: none;
+}
+.force-scrollbar::-webkit-scrollbar,
+.dropdown-scroll::-webkit-scrollbar {
   display: none;
 }
+
+/* เปิดการปัดนิ้วเลื่อนขึ้น-ลง (Touch Swipe / Pan) บนมือถือและไอแพด
+   สำหรับกล่องรายการทุกตัวที่เลื่อนได้ โดยแถบเลื่อนที่วาดเองยังทำงานเหมือนเดิม */
+.force-scrollbar,
+.dropdown-scroll,
+.overflow-y-auto,
+.overflow-auto,
+.overflow-y-scroll,
+[cmdk-list],
+[cmdk-list-sizer],
+[data-radix-scroll-area-viewport],
+[role="listbox"] {
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.osb-thumb.osb-page {
+  width: 6px;
+}
+.osb-thumb {
+  position: fixed;
+  width: 4px;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--foreground) 32%, transparent);
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  z-index: 1000000;
+  will-change: top, height;
+}
+/* พื้นที่รับนิ้วแบบล่องหน กว้างกว่าแท่งจริง ให้แตะติดง่าย */
+.osb-thumb::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  left: -14px;
+  right: -8px;
+}
+.osb-thumb.osb-dragging {
+  cursor: grabbing;
+  background: color-mix(in oklch, var(--foreground) 55%, transparent);
+}
+/* แถบ Track จาง ๆ ด้านหลัง thumb ช่วยให้เห็นทันทีว่ากล่องนี้มีรายการเลื่อนได้ */
+.osb-track {
+  position: fixed;
+  width: 4px;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--foreground) 10%, transparent);
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+  z-index: 999999;
+  will-change: top, height;
+}
+
 
 
 
@@ -891,7 +980,6 @@
 .dropdown-scroll,
 [data-radix-select-viewport],
 [cmdk-list],
-[cmdk-list-sizer],
 .custom-visible-scrollbar,
 [data-radix-dropdown-menu-content],
 [data-radix-context-menu-content] {
@@ -1021,3 +1109,42 @@
 
 
 
+
+/* ปัดนิ้วได้ทั่วทั้งรายการใน Dropdown/Select/Popover/Dialog (แถบเลื่อนวาดเองยังลากได้) */
+.osb-swipe,
+.force-scrollbar,
+.dropdown-scroll,
+[data-radix-select-viewport],
+[data-radix-popper-content-wrapper] [cmdk-list],
+[role="listbox"],
+[role="menu"],
+[role="dialog"] .overflow-y-auto,
+[role="dialog"].overflow-y-auto {
+  overflow-y: auto !important;
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+  pointer-events: auto !important;
+}
+[data-radix-popper-content-wrapper] > *,
+[role="dialog"] {
+  touch-action: pan-y !important;
+}
+.osb-thumb,
+.osb-track {
+  touch-action: none !important;
+  pointer-events: auto !important;
+}
+
+/* cmdk: [cmdk-list] เป็นตัวเลื่อนเพียงจุดเดียว ส่วน sizer สูงตามเนื้อหาจริง
+   เพื่อให้ Safari/iOS รับรู้ความสูงทั้งหมดและปัดนิ้วเลื่อนได้ */
+[cmdk-list] {
+  max-height: 200px !important;
+  overflow-y: auto !important;
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+[cmdk-list-sizer] {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}

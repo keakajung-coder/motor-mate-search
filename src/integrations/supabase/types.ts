@@ -354,36 +354,60 @@ export type Database = {
           address: string | null
           created_at: string | null
           cust_id: string | null
+          district: string | null
           id: string
+          latitude: number | null
           line_contact: string | null
           line_id: string | null
+          longitude: number | null
+          maps_url: string | null
           name: string
           note: string | null
           phone: string | null
+          place_id: string | null
+          postal_code: string | null
+          province: string | null
+          subdistrict: string | null
           updated_at: string | null
         }
         Insert: {
           address?: string | null
           created_at?: string | null
           cust_id?: string | null
+          district?: string | null
           id?: string
+          latitude?: number | null
           line_contact?: string | null
           line_id?: string | null
+          longitude?: number | null
+          maps_url?: string | null
           name: string
           note?: string | null
           phone?: string | null
+          place_id?: string | null
+          postal_code?: string | null
+          province?: string | null
+          subdistrict?: string | null
           updated_at?: string | null
         }
         Update: {
           address?: string | null
           created_at?: string | null
           cust_id?: string | null
+          district?: string | null
           id?: string
+          latitude?: number | null
           line_contact?: string | null
           line_id?: string | null
+          longitude?: number | null
+          maps_url?: string | null
           name?: string
           note?: string | null
           phone?: string | null
+          place_id?: string | null
+          postal_code?: string | null
+          province?: string | null
+          subdistrict?: string | null
           updated_at?: string | null
         }
         Relationships: []
