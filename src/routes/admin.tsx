@@ -1,3 +1,4 @@
+import { PlacePicker } from "@/components/PlacePicker";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/data-client";
@@ -350,7 +351,11 @@ function CustomersTab() {
   const { isAdmin } = useAccess();
   const [items, setItems] = useState<any[]>([]);
   const [machinesByCust, setMachinesByCust] = useState<Record<string, any[]>>({});
-  const emptyForm = { id: "", cust_id: "", name: "", phone: "", line_contact: "", address: "", note: "" };
+  const emptyForm = {
+    id: "", cust_id: "", name: "", phone: "", line_contact: "", address: "", note: "",
+    subdistrict: "", district: "", province: "", postal_code: "",
+    latitude: null as number | null, longitude: null as number | null, maps_url: "", place_id: "",
+  };
   const [form, setForm] = useState(emptyForm);
   const [q, setQ] = useState("");
 
@@ -396,6 +401,14 @@ function CustomersTab() {
       line_contact: form.line_contact.trim() || null,
       address: form.address.trim() || null,
       note: form.note.trim() || null,
+      subdistrict: form.subdistrict.trim() || null,
+      district: form.district.trim() || null,
+      province: form.province.trim() || null,
+      postal_code: form.postal_code.trim() || null,
+      latitude: form.latitude,
+      longitude: form.longitude,
+      maps_url: form.maps_url || null,
+      place_id: form.place_id || null,
     };
     const { error } = form.id
       ? await supabase.from("customers").update(payload).eq("id", form.id)
@@ -418,6 +431,8 @@ function CustomersTab() {
     setForm({
       id: c.id, cust_id: c.cust_id ?? "", name: c.name ?? "", phone: c.phone ?? "", line_contact: c.line_contact ?? "",
       address: c.address ?? "", note: c.note ?? "",
+      subdistrict: c.subdistrict ?? "", district: c.district ?? "", province: c.province ?? "", postal_code: c.postal_code ?? "",
+      latitude: c.latitude ?? null, longitude: c.longitude ?? null, maps_url: c.maps_url ?? "", place_id: c.place_id ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -461,9 +476,51 @@ function CustomersTab() {
               onChange={(e) => setForm({ ...form, line_contact: e.target.value })}
             />
           </div>
+          <div className="sm:col-span-2">
+            <Label>ค้นหาหมุด Google Maps</Label>
+            <PlacePicker
+              onPick={(p) =>
+                setForm((f) => ({
+                  ...f,
+                  address: p.street || f.address,
+                  subdistrict: p.subdistrict,
+                  district: p.district,
+                  province: p.province,
+                  postal_code: p.postalCode,
+                  latitude: p.latitude,
+                  longitude: p.longitude,
+                  maps_url: p.mapsUrl,
+                  place_id: p.placeId,
+                }))
+              }
+            />
+            {form.latitude != null && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                พิกัด {form.latitude.toFixed(6)}, {form.longitude?.toFixed(6)}{" "}
+                {form.maps_url && <a href={form.maps_url} target="_blank" rel="noreferrer" className="text-primary underline">เปิดใน Google Maps</a>}{" "}
+                <button type="button" className="underline" onClick={() => setForm((f) => ({ ...f, latitude: null, longitude: null, maps_url: "", place_id: "" }))}>ล้างหมุด</button>
+              </p>
+            )}
+          </div>
           <div>
             <Label>ที่อยู่</Label>
             <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          </div>
+          <div>
+            <Label>ตำบล/แขวง</Label>
+            <Input value={form.subdistrict} onChange={(e) => setForm({ ...form, subdistrict: e.target.value })} />
+          </div>
+          <div>
+            <Label>อำเภอ/เขต</Label>
+            <Input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} />
+          </div>
+          <div>
+            <Label>จังหวัด</Label>
+            <Input value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })} />
+          </div>
+          <div>
+            <Label>รหัสไปรษณีย์</Label>
+            <Input value={form.postal_code} inputMode="numeric" onChange={(e) => setForm({ ...form, postal_code: e.target.value })} />
           </div>
           <div>
             <Label>หมายเหตุ</Label>
