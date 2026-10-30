@@ -27,6 +27,7 @@ import { useTheme } from "@/lib/theme";
 import { UserRoleProvider } from "@/lib/user-role";
 import { UserRoleSwitcherButton } from "@/components/UserRoleSwitcherButton";
 import { RoleSelectionDialog } from "@/components/RoleSelectionModal";
+import { VehicleZoneDialog } from "@/components/VehicleZoneDialog";
 
 function NotFoundComponent() {
   return (
@@ -275,6 +276,7 @@ function RootComponent() {
                 <Outlet />
               </main>
               <RoleSelectionDialog />
+              <VehicleZoneDialog />
             </div>
           </AccessGate>
         </UserRoleProvider>

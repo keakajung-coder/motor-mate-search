@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { clearOfflineCache } from "@/lib/offline";
+import { approvedZoneSignatures, requestZoneDecision } from "./vehicle-zone-client";
+import type { ZoneReview } from "./vehicle-zone";
 
 const RETRIES = 3;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -39,6 +41,23 @@ export const supabase = createClient<Database>(`${typeof window === "undefined" 
     if (!/^\/(rest|storage)\/v1\//.test(path)) throw new Error("Unsupported business request");
     const headers = new Headers(init?.headers);
     headers.delete("authorization"); headers.delete("apikey");
-    return fetchWithRetry(`/api/data${path}${url.search}`, { ...init, headers, credentials: "same-origin" });
+    let body = init?.body;
+    for (;;) {
+      const response = await fetchWithRetry(`/api/data${path}${url.search}`, { ...init, body, headers, credentials: "same-origin" });
+      if (response.status !== 409 || typeof body !== "string") return response;
+      const result = await response.clone().json().catch(() => null) as { code?: string; review?: ZoneReview } | null;
+      if (result?.code !== "VEHICLE_ZONE_APPROVAL_REQUIRED" || !result.review) return response;
+      const review = result.review;
+      const cached = approvedZoneSignatures.delete(review.signature);
+      const decision = cached ? { approve: true as const } : await requestZoneDecision(review);
+      if (!decision) return response;
+      const payload = JSON.parse(body);
+      const rows = Array.isArray(payload) ? payload : [payload];
+      for (const row of rows) {
+        if ("approve" in decision) row.__zone_signature = review.signature;
+        else { row.vehicle_plate = decision.vehicle; delete row.__zone_signature; }
+      }
+      body = JSON.stringify(payload);
+    }
   } },
 });

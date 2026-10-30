@@ -113,6 +113,8 @@ import { LeaveCell, StaffLeaveDialog, useStaffLeave } from "@/components/StaffLe
 import type { StaffLeave } from "@/lib/staff-leave";
 import { checkScheduleConflicts } from "@/lib/schedule-check";
 import { ScheduleConflictDialog } from "@/components/ScheduleConflictDialog";
+import { chooseVehicleForJob } from "@/lib/vehicle-zone-client";
+import { VehicleZoneBadge } from "@/components/VehicleZoneBadge";
 import { logAudit } from "@/lib/audit";
 import { ChecklistForm } from "@/components/ChecklistForm";
 import { ChecklistView } from "@/components/ChecklistView";
@@ -159,6 +161,7 @@ export const Route = createFileRoute("/planner")({
 });
 
 type Appointment = {
+  cross_zone_approval?: unknown;
   id: string;
   work_order_id?: string | null;
   cust_id?: string | null;
@@ -1515,8 +1518,18 @@ function PendingOrders({
     loadAutoJobAlert().then(setAutoAlert);
   }, []);
 
-  const patch = (id: string, k: keyof WorkOrder, v: string) =>
+  const patch = async (id: string, k: keyof WorkOrder, v: string) => {
+    if (k === "vehicle_plate") {
+      const order = orders.find(o => o.id === id);
+      if (!order) return;
+      try {
+        const plate = await chooseVehicleForJob({ ...order, ...edit[id], work_order_id: id, vehicle_plate: v });
+        if (plate === null) return;
+        v = plate;
+      } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
+    }
     setEdit((e) => ({ ...e, [id]: { ...e[id], [k]: v } }));
+  };
 
   /** ค่าปัจจุบันของช่อง (ค่าที่แอดมินแก้ไว้ ถ้ายังไม่แก้ใช้ค่าเดิม) */
   const val = (o: WorkOrder, k: keyof WorkOrder) =>
@@ -3359,6 +3372,7 @@ function DayDetailDialog({
         >
           <span className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-1.5">
+              <VehicleZoneBadge approval={a.cross_zone_approval} />
               {visual.isMine && (
                 <span className="inline-flex items-center gap-1 rounded bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 text-xs font-bold">
                   ⭐ งานของฉัน
@@ -4895,7 +4909,12 @@ function AppointmentDialog({
             <MultiCombobox
               disabled={locked}
               values={splitNames(form.vehicle_plate)}
-              onChange={(list) => set("vehicle_plate", joinNames(list))}
+              onChange={async (list) => {
+                try {
+                  const plate = await chooseVehicleForJob({ ...form, vehicle_plate: joinNames(list) });
+                  if (plate !== null) set("vehicle_plate", plate);
+                } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); }
+              }}
               onDelete={delDir("vehicle")}
               options={dir.vehicles}
               placeholder="ติ๊กเลือกทะเบียนรถ"

@@ -42,6 +42,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-zone-warning: var(--zone-warning);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -63,6 +64,7 @@
 }
 
 :root {
+  --zone-warning: oklch(0.55 0.18 40);
   --leave-full: oklch(0.50 0.15 15);
   --leave-am: oklch(0.48 0.12 225);
   --leave-pm: oklch(0.46 0.12 160);
@@ -112,6 +114,7 @@
 }
 
 .dark {
+  --zone-warning: oklch(0.80 0.15 55);
   --leave-full: oklch(0.80 0.10 15);
   --leave-am: oklch(0.80 0.10 225);
   --leave-pm: oklch(0.80 0.10 160);
