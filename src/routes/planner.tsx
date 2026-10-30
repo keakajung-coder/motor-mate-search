@@ -2110,13 +2110,19 @@ function ApprovedOrders({
     if (!isAdmin && chosen.date !== currentApprovedDate) {
       return toast.error("เฉพาะแอดมินเท่านั้นที่มีสิทธิ์แก้ไขวันที่นัดหมายหลังจากใบงานอนุมัติแล้ว");
     }
+    let assignedPlate = a.vehicle_plate ?? "";
+    try {
+      const plate = await chooseVehicleForJob({ ...a, visit_date: chosen.date });
+      if (plate === null) return;
+      assignedPlate = plate;
+    } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
     if (!override) {
       const conflicts = await checkScheduleConflicts({
         id: a.id,
         visit_date: chosen.date,
         visit_time: chosen.time || null,
         staff_name: a.staff_name,
-        vehicle_plate: a.vehicle_plate,
+        vehicle_plate: assignedPlate,
       });
       if (conflicts.length) {
         if (!isAdmin) {
@@ -2139,27 +2145,28 @@ function ApprovedOrders({
         : auditTag
       : a.job_detail;
 
-    const [apptResult, orderResult] = await Promise.all([
-      supabase
+    const apptResult = await supabase
         .from("appointments")
         .update({
+          vehicle_plate: assignedPlate,
           visit_date: chosen.date,
           visit_time: chosen.time || null,
           status: "scheduled",
           job_detail: finalJobDetail,
         })
-        .eq("id", a.id),
-      supabase
+        .eq("id", a.id);
+    if (apptResult.error) { setBusy(""); return toast.error(apptResult.error.message); }
+    const orderResult = await supabase
         .from("work_orders")
         .update({
+          vehicle_plate: assignedPlate,
           visit_date: chosen.date,
           visit_time: chosen.time || null,
           status: "scheduled",
           job_detail: finalJobDetail,
           admin_note: auditTag || o.admin_note || null,
         })
-        .eq("id", o.id),
-    ]);
+        .eq("id", o.id);
     setBusy("");
     const error = apptResult.error ?? orderResult.error;
     if (error) return toast.error("ยืนยันนัดหมายไม่สำเร็จ: " + error.message);

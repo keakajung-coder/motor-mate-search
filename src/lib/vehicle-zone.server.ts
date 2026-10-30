@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { findVehicleZoneConflicts, zoneSignature, type ZoneJob, type ZoneReview } from "./vehicle-zone";
+import { findVehicleZoneConflicts, jobProvince, zoneSignature, type ZoneJob, type ZoneReview } from "./vehicle-zone";
 
 export async function reviewVehicleZone(db: SupabaseClient<Database>, job: ZoneJob): Promise<ZoneReview> {
   if (!job.visit_date || !job.vehicle_plate?.trim()) return { conflicts: [], signature: "", vehicles: [] };
@@ -12,7 +12,7 @@ export async function reviewVehicleZone(db: SupabaseClient<Database>, job: ZoneJ
     db.from("vehicles").select("plate").eq("active", true),
   ]);
   for (const result of [a, w, c, m, v]) if (result.error) throw new Error("ตรวจจังหวัดของงานไม่สำเร็จ กรุณาลองใหม่");
-  const enrich = (j: ZoneJob): ZoneJob => ({ ...j, province: m.data?.find(r => r.serial_number === j.serial_number)?.province || c.data?.find(r => j.cust_id ? r.cust_id === j.cust_id : r.name === j.customer_name)?.province || j.province });
+  const enrich = (j: ZoneJob): ZoneJob => ({ ...j, province: jobProvince(j) || m.data?.find(r => r.serial_number === j.serial_number)?.province || c.data?.find(r => j.cust_id ? r.cust_id === j.cust_id : r.name === j.customer_name)?.province || j.province });
   const target = enrich(job);
   const appointments = a.data ?? [];
   const others = [...appointments, ...(w.data ?? []).filter(r => !appointments.some(x => x.work_order_id === r.id))].map(enrich);
