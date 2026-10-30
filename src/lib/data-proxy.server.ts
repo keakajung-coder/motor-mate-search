@@ -46,6 +46,7 @@ export async function proxyBusinessRequest(request: Request) {
             const scheduleChanged = method === "POST" || ["vehicle_plate", "visit_date", "customer_address", "customer_name", "cust_id", "serial_number"].some(k => k in row);
             if (!scheduleChanged) continue;
             const targets = method === "POST" ? [row] : existing.map(current => ({ ...current, ...row }));
+            if (targets.length > 1) return Response.json({ message: "กรุณาจัดงานและอนุมัติข้ามโซนทีละใบงาน" }, { status: 400 });
             for (const target of targets) {
               const job = { ...target, work_order_id: table === "work_orders" ? target.id : target.work_order_id } as ZoneJob;
               const review = await reviewVehicleZone(supabaseAdmin, job);
