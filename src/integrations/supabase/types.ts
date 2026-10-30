@@ -880,7 +880,6 @@ export type Database = {
           visit_no: number
           visit_time: string | null
           work_order_id: string | null
-          vehicle_plate: string | null
         }
         Insert: {
           appointment_id?: string | null
@@ -895,7 +894,6 @@ export type Database = {
           visit_no: number
           visit_time?: string | null
           work_order_id?: string | null
-          vehicle_plate?: string | null
         }
         Update: {
           appointment_id?: string | null
@@ -910,7 +908,6 @@ export type Database = {
           visit_no?: number
           visit_time?: string | null
           work_order_id?: string | null
-          vehicle_plate?: string | null
         }
         Relationships: [
           {
