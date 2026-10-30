@@ -48,7 +48,7 @@ export const supabase = createClient<Database>(`${typeof window === "undefined" 
       const result = await response.clone().json().catch(() => null) as { code?: string; review?: ZoneReview } | null;
       if (result?.code !== "VEHICLE_ZONE_APPROVAL_REQUIRED" || !result.review) return response;
       const review = result.review;
-      const cached = approvedZoneSignatures.delete(review.signature);
+      const cached = approvedZoneSignatures.has(review.signature);
       const decision = cached ? { approve: true as const } : await requestZoneDecision(review);
       if (!decision) return response;
       const payload = JSON.parse(body);

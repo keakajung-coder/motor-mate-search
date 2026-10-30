@@ -1541,6 +1541,11 @@ function PendingOrders({
   const saveEdits = async (o: WorkOrder) => {
     const p = edit[o.id];
     if (!p || Object.keys(p).length === 0) return toast.message("ยังไม่มีการแก้ไข");
+    try {
+      const plate = await chooseVehicleForJob({ ...o, ...p, work_order_id: o.id });
+      if (plate === null) return;
+      p.vehicle_plate = plate;
+    } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
     setBusy(o.id);
     const { error } = await supabase
       .from("work_orders")
@@ -1560,6 +1565,12 @@ function PendingOrders({
   ) => {
     const p = edit[o.id] ?? {};
     const m = { ...o, ...p } as WorkOrder & Record<string, any>;
+    try {
+      const plate = await chooseVehicleForJob({ ...m, work_order_id: o.id });
+      if (plate === null) return;
+      m.vehicle_plate = plate;
+      p.vehicle_plate = plate;
+    } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
     if (m.visit_date && !override) {
       const conflicts = await checkScheduleConflicts({
         visit_date: m.visit_date,
@@ -3043,6 +3054,7 @@ function MonthGrid({
                         title={apptSummary(a)}
                       >
                         <StatusRail status={a.status} />
+                        <VehicleZoneBadge approval={a.cross_zone_approval} />
                         <span className="block truncate">
                           {visual.isMine && <span className="mr-0.5 text-primary font-bold">★</span>}
                           {a.cust_id ? `[${a.cust_id}] ` : ""}
@@ -3185,6 +3197,7 @@ function TimeGrid({
                   title={apptSummary(a)}
                 >
                   <StatusRail status={a.status} />
+                  <VehicleZoneBadge approval={a.cross_zone_approval} />
                   <span className="flex items-baseline gap-1 text-[10px]">
                     {visual.isMine && <span className="text-primary font-bold">★ งานฉัน</span>}
                     <span className="font-semibold">{a.visit_time?.slice(0, 5) || "--:--"}</span>
@@ -3866,6 +3879,7 @@ const DailyQueueDocument = ({
               </div>
               <span className="daily-queue-document__status">
                 {STATUS_LABEL[a.status] ?? a.status}
+                <VehicleZoneBadge approval={a.cross_zone_approval} />
               </span>
             </div>
             <dl className="daily-queue-document__grid">
@@ -4043,6 +4057,7 @@ function DayList({
           </div>
           <div className="flex flex-col items-end gap-1">
             <JobStatusBadge status={a.status} />
+            <VehicleZoneBadge approval={a.cross_zone_approval} />
             {visual.isMine && (
               <span className="inline-flex items-center gap-1 rounded bg-primary/15 border border-primary/30 px-2 py-0.5 text-xs font-bold text-primary">
                 ⭐ งานของฉัน
@@ -4423,6 +4438,12 @@ function AppointmentDialog({
     if (!form.customer_name?.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     setSaving(true);
     const finalVisitDate = isApproved && !isAdmin ? value.visit_date : form.visit_date;
+    try {
+      const plate = await chooseVehicleForJob({ ...form, visit_date: finalVisitDate });
+      if (plate === null) { setSaving(false); return; }
+      form.vehicle_plate = plate;
+      setForm(f => ({ ...f, vehicle_plate: plate }));
+    } catch (error) { setSaving(false); toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
     if (!override) {
       const conflicts = await checkScheduleConflicts({
         id: form.id,

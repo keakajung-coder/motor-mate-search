@@ -417,6 +417,12 @@ export function WorkOrderDialog({
     if (!form.customer_name.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     if (!form.job_detail.trim()) return toast.error("กรุณากรอกรายละเอียดงาน");
     setSaving(true);
+    try {
+      const plate = await chooseVehicleForJob(form);
+      if (plate === null) { setSaving(false); return; }
+      form.vehicle_plate = plate;
+      setForm(f => ({ ...f, vehicle_plate: plate }));
+    } catch (error) { setSaving(false); toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
 
     if (form.visit_date && form.staff_name.trim() && !override) {
       const conflicts = await checkScheduleConflicts({
