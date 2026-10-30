@@ -16,6 +16,8 @@ import { useAccess } from "@/lib/access";
 import { useDirectory } from "@/lib/directory";
 import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
 import { AutoScheduleRuleModal } from "@/components/AutoScheduleRuleModal";
+import { chooseVehicleForJob, approvedZoneSignatures } from "@/lib/vehicle-zone-client";
+import { reviewVehicleAssignment } from "@/lib/vehicle-zone.functions";
 
 type VisitRow = ContractVisitInput & { status?: string };
 
@@ -153,6 +155,14 @@ export function ContractDialog({
     if (visits.length === 0) return toast.error("กรุณากำหนดงวดเข้าบริการอย่างน้อย 1 ครั้ง");
     setSaving(true);
     try {
+      const checkedVisits: ContractVisitInput[] = [];
+      for (const v of visits) {
+        const job = { id: v.appointment_id, visit_date: v.visit_date, vehicle_plate: v.vehicle_plate, customer_name: customerName, serial_number: serialNumber };
+        const plate = await chooseVehicleForJob(job);
+        if (plate === null) return;
+        const review = await reviewVehicleAssignment({ data: { ...job, vehicle_plate: plate } });
+        checkedVisits.push({ ...v, vehicle_plate: plate, zone_signature: approvedZoneSignatures.has(review.signature) ? review.signature : undefined });
+      }
       await saveContract({
         data: {
           id: contractId,
@@ -165,7 +175,8 @@ export function ContractDialog({
           start_date: startDate,
           note: note || null,
           active,
-          visits: visits.map((v) => ({
+          visits: checkedVisits.map((v) => ({
+            zone_signature: v.zone_signature,
             id: v.id,
             appointment_id: v.appointment_id,
             visit_no: v.visit_no,
@@ -431,17 +442,23 @@ export function ContractDialog({
                         <Combobox
                           disabled={!isAdmin || isDone}
                           value={v.vehicle_plate ?? ""}
-                          onChange={(plate) => {
-                            setVisit(v.visit_no, { vehicle_plate: plate });
-                            if (v.appointment_id || v.id) {
-                              void updateContractVisitVehicle({
+                          onChange={async (plate) => {
+                            try {
+                              const job = { id: v.appointment_id, visit_date: v.visit_date, vehicle_plate: plate, customer_name: customerName, serial_number: serialNumber };
+                              const selected = await chooseVehicleForJob(job);
+                              if (selected === null) return;
+                              const review = await reviewVehicleAssignment({ data: { ...job, vehicle_plate: selected } });
+                              if (v.appointment_id || v.id) await updateContractVisitVehicle({
                                 data: {
                                   visitId: v.id ?? null,
                                   appointmentId: v.appointment_id ?? null,
-                                  vehiclePlate: plate || null,
+                                  vehiclePlate: selected || null,
+                                  zoneSignature: approvedZoneSignatures.has(review.signature) ? review.signature : undefined,
                                 },
-                              }).catch(() => {});
-                            }
+                              });
+                              setVisit(v.visit_no, { vehicle_plate: selected });
+                              window.dispatchEvent(new Event("planner:reload"));
+                            } catch (error) { toast.error(error instanceof Error ? error.message : "เปลี่ยนรถไม่สำเร็จ"); }
                           }}
                           options={dir.vehicles.map((p) => ({ value: p }))}
                           placeholder="เลือก / พิมพ์ทะเบียนรถ"

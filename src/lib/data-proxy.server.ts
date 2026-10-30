@@ -1,5 +1,7 @@
 import { requireAccess } from "./access-session.server";
 import { canAccessTable } from "./security-policy";
+import { reviewVehicleZone } from "./vehicle-zone.server";
+import type { ZoneJob } from "./vehicle-zone";
 
 const BUCKETS = new Set(["product-images", "job-attachments"]);
 export async function proxyBusinessRequest(request: Request) {
@@ -21,6 +23,41 @@ export async function proxyBusinessRequest(request: Request) {
         const rows = Array.isArray(payload) ? payload : [payload];
         if (rows.length > 2000 || rows.some((r) => !r || typeof r !== "object" || Array.isArray(r))) return Response.json({ message: "Invalid records" }, { status: 400 });
         if (table === "audit_log") for (const row of rows) row.actor = role;
+        if (table === "appointments" || table === "work_orders") {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          let existing: Record<string, unknown>[] = [];
+          if (method === "PATCH") {
+            const base = process.env["SUPABASE_URL"];
+            const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+            if (!base || !key) throw new Error("Unavailable");
+            const filters = new URLSearchParams(url.search);
+            for (const k of ["select", "order", "limit", "offset", "on_conflict"]) filters.delete(k);
+            const h = new Headers({ apikey: key });
+            if (!key.startsWith("sb_")) h.set("authorization", `Bearer ${key}`);
+            const response = await fetch(`${base}/rest/v1/${table}?${filters}&select=*`, { headers: h });
+            if (!response.ok) throw new Error("อ่านงานก่อนตรวจจังหวัดไม่สำเร็จ");
+            existing = await response.json();
+          }
+          for (const row of rows) {
+            const signature = row.__zone_signature;
+            delete row.__zone_signature;
+            // Approval is always derived server-side, never trusted from form data.
+            delete row.cross_zone_approval;
+            const scheduleChanged = method === "POST" || ["vehicle_plate", "visit_date", "customer_address", "customer_name", "cust_id", "serial_number"].some(k => k in row);
+            if (!scheduleChanged) continue;
+            const targets = method === "POST" ? [row] : existing.map(current => ({ ...current, ...row }));
+            if (targets.length > 1) return Response.json({ message: "กรุณาจัดงานและอนุมัติข้ามโซนทีละใบงาน" }, { status: 400 });
+            for (const target of targets) {
+              const job = { ...target, work_order_id: table === "work_orders" ? target.id : target.work_order_id } as ZoneJob;
+              const review = await reviewVehicleZone(supabaseAdmin, job);
+              const previous = existing.find(r => r.id === target.id)?.cross_zone_approval as { signature?: string } | null;
+              if (review.conflicts.length && previous?.signature !== review.signature && !(role === "admin" && signature === review.signature)) {
+                return Response.json({ code: "VEHICLE_ZONE_APPROVAL_REQUIRED", message: "รถมีงานข้ามโซน", review }, { status: 409, headers: { "cache-control": "no-store" } });
+              }
+              row.cross_zone_approval = review.conflicts.length ? { ...review, approved_at: new Date().toISOString(), approved_by: "admin" } : null;
+            }
+          }
+        }
         if (role === "viewer") {
           if (rows.some((r) => "line_id" in r)) return Response.json({ message: "Only admins can configure notification recipients" }, { status: 403 });
           if (table === "troubleshooting_issues" && rows.some((r) => r.status !== "pending" || r.ai_check_draft || r.ai_fix_draft || r.answered_at)) return Response.json({ message: "Publishing answers requires admin" }, { status: 403 });

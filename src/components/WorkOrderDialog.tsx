@@ -38,6 +38,7 @@ import { autoShareEnabled, shareContacts } from "@/lib/contact";
 import { checkScheduleConflicts } from "@/lib/schedule-check";
 import { ScheduleConflictDialog } from "@/components/ScheduleConflictDialog";
 import { logAudit } from "@/lib/audit";
+import { chooseVehicleForJob } from "@/lib/vehicle-zone-client";
 
 export const SERVICE_TYPES = [
   "เช็กระยะ (PM)",
@@ -416,6 +417,12 @@ export function WorkOrderDialog({
     if (!form.customer_name.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     if (!form.job_detail.trim()) return toast.error("กรุณากรอกรายละเอียดงาน");
     setSaving(true);
+    try {
+      const plate = await chooseVehicleForJob(form);
+      if (plate === null) { setSaving(false); return; }
+      form.vehicle_plate = plate;
+      setForm(f => ({ ...f, vehicle_plate: plate }));
+    } catch (error) { setSaving(false); toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
 
     if (form.visit_date && form.staff_name.trim() && !override) {
       const conflicts = await checkScheduleConflicts({
@@ -603,7 +610,12 @@ export function WorkOrderDialog({
             <Field label="ทะเบียนรถที่ใช้เดินทาง (เลือกได้หลายคัน)">
               <MultiCombobox
                 values={splitNames(form.vehicle_plate)}
-                onChange={(list) => set("vehicle_plate", joinNames(list))}
+                onChange={async (list) => {
+                  try {
+                    const plate = await chooseVehicleForJob({ ...form, vehicle_plate: joinNames(list) });
+                    if (plate !== null) set("vehicle_plate", plate);
+                  } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); }
+                }}
                 onDelete={delDir("vehicle")}
                 options={dir.vehicles}
                 placeholder="ติ๊กเลือกทะเบียนรถ"
