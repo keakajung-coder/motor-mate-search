@@ -43,7 +43,7 @@ export async function proxyBusinessRequest(request: Request) {
             delete row.__zone_signature;
             // Approval is always derived server-side, never trusted from form data.
             delete row.cross_zone_approval;
-            const scheduleChanged = method === "POST" || ["vehicle_plate", "visit_date", "customer_address", "customer_name", "cust_id", "serial_number"].some(k => k in row);
+            const scheduleChanged = method === "POST" || ["vehicle_plate", "visit_date", "customer_address", "customer_location", "customer_name", "cust_id", "serial_number"].some(k => k in row);
             if (!scheduleChanged) continue;
             const targets = method === "POST" ? [row] : existing.map(current => ({ ...current, ...row }));
             if (targets.length > 1) return Response.json({ message: "กรุณาจัดงานและอนุมัติข้ามโซนทีละใบงาน" }, { status: 400 });

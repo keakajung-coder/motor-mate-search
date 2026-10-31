@@ -69,6 +69,8 @@ import {
   Clock,
 } from "lucide-react";
 import { GoogleMapsPin } from "@/components/GoogleMapsPin";
+import { CustomerLocationFields } from "@/components/CustomerLocationFields";
+import { customerLocationPatch, type CustomerLocation } from "@/lib/customer-location";
 import {
   extractZoneInfo,
   groupAppointmentsByZone,
@@ -161,6 +163,7 @@ export const Route = createFileRoute("/planner")({
 });
 
 type Appointment = {
+  customer_location?: CustomerLocation | null;
   cross_zone_approval?: unknown;
   id: string;
   work_order_id?: string | null;
@@ -1460,7 +1463,7 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
 // ---------- Pending work orders ----------
 /** แปลงใบงานเดิมเป็นค่าเริ่มต้นของฟอร์มใบสั่งงาน (ใช้ตอนคัดลอกใบงาน) — แก้ไขได้ทุกช่องก่อนบันทึก */
 function workOrderToDraft(o: WorkOrder): Partial<WorkOrderDraft> {
-  const keys: (keyof WorkOrderDraft)[] = [
+  const keys: Exclude<keyof WorkOrderDraft, "customer_location">[] = [
     "cust_id",
     "customer_name",
     "customer_address",
@@ -1489,6 +1492,7 @@ function workOrderToDraft(o: WorkOrder): Partial<WorkOrderDraft> {
   ];
   const draft: Partial<WorkOrderDraft> = {};
   for (const k of keys) draft[k] = (o as unknown as Record<string, string | null>)[k] ?? "";
+  draft.customer_location = o.customer_location ?? null;
   return draft;
 }
 
@@ -1503,6 +1507,7 @@ function PendingOrders({
 }) {
   const [edit, setEdit] = useState<Record<string, Partial<WorkOrder>>>({});
   const { staff, vehicles } = useServiceOptions();
+  const dir = useDirectory();
   const [busy, setBusy] = useState<string | null>(null);
   const [dup, setDup] = useState<WorkOrder | null>(null);
   const [openEdit, setOpenEdit] = useState<Record<string, boolean>>({});
@@ -1528,7 +1533,8 @@ function PendingOrders({
         v = plate;
       } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
     }
-    setEdit((e) => ({ ...e, [id]: { ...e[id], [k]: v } }));
+    const customer = k === "customer_name" ? dir.customers.find(c => c.name === v) : k === "cust_id" ? dir.customers.find(c => c.cust_id === v) : undefined;
+    setEdit((e) => ({ ...e, [id]: { ...e[id], [k]: v, ...(customer ? { ...customerLocationPatch(customer), customer_name: customer.name, cust_id: customer.cust_id, contact_phone: customer.phone } : k === "customer_name" ? customerLocationPatch(null) : {}) } }));
   };
 
   /** ค่าปัจจุบันของช่อง (ค่าที่แอดมินแก้ไว้ ถ้ายังไม่แก้ใช้ค่าเดิม) */
@@ -1612,6 +1618,7 @@ function PendingOrders({
         cust_id: m.cust_id ?? null,
         customer_name: m.customer_name,
         customer_address: m.customer_address,
+        customer_location: m.customer_location ?? null,
         contact_name: m.contact_name,
         contact_phone: m.contact_phone,
         machine_label: m.machine_label,
@@ -1759,6 +1766,7 @@ function PendingOrders({
                       </span>
                       <GoogleMapsPin
                         customerName={val(o, "customer_name")}
+                        location={edit[o.id]?.customer_location ?? o.customer_location}
                         address={val(o, "customer_address")}
                         title={`Google Maps นำทาง: ${val(o, "customer_name") ?? ""}`}
                       />
@@ -1778,6 +1786,7 @@ function PendingOrders({
                   {val(o, "customer_address") && (
                     <GoogleMapsPin
                       customerName={val(o, "customer_name")}
+                        location={edit[o.id]?.customer_location ?? o.customer_location}
                       address={val(o, "customer_address")}
                       variant="badge"
                       label="นำทาง"
@@ -1859,9 +1868,11 @@ function PendingOrders({
                   />
                 </EditField>
                 <EditField label="ชื่อลูกค้า">
-                  <Input
+                  <Combobox
                     value={val(o, "customer_name")}
-                    onChange={(e) => patch(o.id, "customer_name", e.target.value)}
+                    onChange={v => patch(o.id, "customer_name", v)}
+                    options={dir.customers.map(c => ({ value: c.name, hint: c.cust_id }))}
+                    allowCustom
                   />
                 </EditField>
                 <EditField label="ที่อยู่ลูกค้า">
@@ -1870,6 +1881,7 @@ function PendingOrders({
                     onChange={(e) => patch(o.id, "customer_address", e.target.value)}
                   />
                 </EditField>
+                <CustomerLocationFields value={edit[o.id]?.customer_location ?? o.customer_location} onChange={location => setEdit(e => ({ ...e, [o.id]: { ...e[o.id], customer_location: location } }))} />
                 <EditField label="ชื่อผู้ติดต่อ">
                   <Input
                     value={val(o, "contact_name")}
@@ -2588,6 +2600,7 @@ function ApprovedOrders({
               </span>
               <GoogleMapsPin
                 customerName={o.customer_name}
+                  location={o.customer_location}
                 address={o.customer_address}
                 title={`Google Maps นำทาง: ${o.customer_name ?? ""}`}
               />
@@ -2597,6 +2610,7 @@ function ApprovedOrders({
               {o.customer_address && (
                 <GoogleMapsPin
                   customerName={o.customer_name}
+                  location={o.customer_location}
                   address={o.customer_address}
                   variant="badge"
                   label="นำทาง"
@@ -3409,6 +3423,7 @@ function DayDetailDialog({
               </span>
               <GoogleMapsPin
                 customerName={a.customer_name}
+                  location={a.customer_location}
                 address={a.customer_address}
                 title={`เปิด Google Maps นำทางไปหา ${a.customer_name ?? ""}`}
               />
@@ -3431,6 +3446,7 @@ function DayDetailDialog({
                 <span className="break-words">{a.customer_address}</span>
                 <GoogleMapsPin
                   customerName={a.customer_name}
+                  location={a.customer_location}
                   address={a.customer_address}
                   variant="badge"
                   label="Google Maps นำทาง"
@@ -3451,6 +3467,7 @@ function DayDetailDialog({
         <div className="flex flex-wrap items-center gap-2 self-start">
           <GoogleMapsPin
             customerName={a.customer_name}
+                  location={a.customer_location}
             address={a.customer_address}
             variant="button"
             label="นำทาง"
@@ -3879,6 +3896,7 @@ const DailyQueueDocument = ({
                   </span>
                   <GoogleMapsPin
                     customerName={a.customer_name}
+                  location={a.customer_location}
                     address={a.customer_address}
                     title={`Google Maps นำทาง: ${a.customer_name ?? ""}`}
                   />
@@ -3925,6 +3943,7 @@ const DailyQueueDocument = ({
                   {a.customer_address && (
                     <GoogleMapsPin
                       customerName={a.customer_name}
+                  location={a.customer_location}
                       address={a.customer_address}
                       variant="badge"
                       label="Google Maps นำทาง"
@@ -4026,6 +4045,7 @@ function DayList({
               </span>
               <GoogleMapsPin
                 customerName={a.customer_name}
+                  location={a.customer_location}
                 address={a.customer_address}
                 title={`Google Maps นำทาง: ${a.customer_name ?? ""}`}
               />
@@ -4045,6 +4065,7 @@ function DayList({
                 <span className="break-words">{a.customer_address}</span>
                 <GoogleMapsPin
                   customerName={a.customer_name}
+                  location={a.customer_location}
                   address={a.customer_address}
                   variant="badge"
                   label="นำทาง"
@@ -4093,6 +4114,7 @@ function DayList({
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <GoogleMapsPin
             customerName={a.customer_name}
+                  location={a.customer_location}
             address={a.customer_address}
             variant="button"
             label="นำทาง"
@@ -4356,6 +4378,7 @@ function AppointmentDialog({
               setForm((f) => ({
                 ...f,
                 customer_name: "",
+                customer_location: null,
                 customer_address: "",
                 contact_phone: "",
               }));
@@ -4401,7 +4424,7 @@ function AppointmentDialog({
         customer_name: name,
         cust_id: c?.cust_id || m?.cust_id || (c ? null : f.cust_id),
         serial_number: joinNames(kept),
-        customer_address: c?.address || m?.address || f.customer_address,
+        ...customerLocationPatch(c, m?.address || ""),
         contact_phone: c?.phone || m?.phone || f.contact_phone,
       };
     });
@@ -4419,7 +4442,7 @@ function AppointmentDialog({
         joinNames(Array.from(new Set(hits.map((h) => h.label).filter(Boolean)))) || f.machine_label,
       customer_name: first?.customer || f.customer_name,
       cust_id: first?.cust_id || f.cust_id,
-      customer_address: first?.address || f.customer_address,
+      ...(first ? customerLocationPatch(dir.customers.find(c => c.name === first.customer), first.address) : {}),
       contact_phone: first?.phone || f.contact_phone,
     }));
   };
@@ -4511,6 +4534,7 @@ function AppointmentDialog({
       cust_id: form.cust_id?.trim() || null,
       customer_name: form.customer_name,
       customer_address: form.customer_address,
+      customer_location: form.customer_location ?? null,
       contact_name: form.contact_name,
       contact_phone: form.contact_phone,
       machine_label: form.machine_label,
@@ -4784,6 +4808,7 @@ function AppointmentDialog({
                 {form.customer_name && (
                   <GoogleMapsPin
                     customerName={form.customer_name}
+                    location={form.customer_location}
                     address={form.customer_address}
                     variant="badge"
                     label="ค้นหาแผนที่"
@@ -4835,6 +4860,7 @@ function AppointmentDialog({
                 {(form.customer_address || form.customer_name) && (
                   <GoogleMapsPin
                     customerName={form.customer_name}
+                    location={form.customer_location}
                     address={form.customer_address}
                     variant="badge"
                     label="เปิด Google Maps นำทาง"
@@ -4851,6 +4877,7 @@ function AppointmentDialog({
               placeholder="เลือกที่อยู่"
             />
           </F>
+          <CustomerLocationFields value={form.customer_location} disabled={locked} onChange={location => setForm(f => ({ ...f, customer_location: location }))} />
           <F label="ผู้ติดต่อ">
             <Input
               disabled={locked}

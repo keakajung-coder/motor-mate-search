@@ -39,6 +39,8 @@ import { checkScheduleConflicts } from "@/lib/schedule-check";
 import { ScheduleConflictDialog } from "@/components/ScheduleConflictDialog";
 import { logAudit } from "@/lib/audit";
 import { chooseVehicleForJob } from "@/lib/vehicle-zone-client";
+import { customerLocationPatch, type CustomerLocation } from "@/lib/customer-location";
+import { CustomerLocationFields } from "@/components/CustomerLocationFields";
 
 export const SERVICE_TYPES = [
   "เช็กระยะ (PM)",
@@ -78,6 +80,7 @@ export type WorkOrderDraft = {
   logistics_note: string;
   safety_gear: string;
   attachments: string;
+  customer_location?: CustomerLocation | null;
 };
 
 export type WorkOrderPrintData = {
@@ -202,6 +205,7 @@ export const emptyDraft = (): WorkOrderDraft => ({
   cust_id: "",
   customer_name: "",
   customer_address: "",
+  customer_location: null,
   contact_name: "",
   contact_phone: "",
   machine_label: "",
@@ -292,6 +296,7 @@ export function WorkOrderDialog({
                 ...f,
                 customer_name: "",
                 customer_address: "",
+                customer_location: null,
                 contact_phone: "",
               }));
             } else if (k === "cust_id" && (form.cust_id ?? "").trim().toLowerCase() === target) {
@@ -341,7 +346,7 @@ export function WorkOrderDialog({
         cust_id: c?.cust_id || m?.cust_id || (c ? "" : f.cust_id),
         serial_number: joinNames(kept),
         // ดึงข้อมูลที่ผูกกับลูกค้ารายนี้มาเติมอัตโนมัติ (แก้ไขต่อได้ทุกช่อง)
-        customer_address: c?.address || m?.address || f.customer_address,
+        ...customerLocationPatch(c, m?.address || ""),
         contact_phone: c?.phone || m?.phone || f.contact_phone,
         machine_label: src?.label || f.machine_label,
         customer_sn: src?.customer_sn || f.customer_sn,
@@ -366,7 +371,7 @@ export function WorkOrderDialog({
         f.customer_sn,
       customer_name: first?.customer || f.customer_name,
       cust_id: first?.cust_id || f.cust_id,
-      customer_address: first?.address || f.customer_address,
+      ...(first ? customerLocationPatch(dir.customers.find(c => c.name === first.customer), first.address) : {}),
       contact_phone: first?.phone || f.contact_phone,
       sales_rep: first?.seller || f.sales_rep,
     }));
@@ -478,6 +483,7 @@ export function WorkOrderDialog({
         cust_id: form.cust_id.trim() || null,
         customer_name: form.customer_name.trim(),
         customer_address: form.customer_address.trim() || null,
+        customer_location: form.customer_location ?? null,
         contact_name: form.contact_name.trim() || null,
         contact_phone: form.contact_phone.trim() || null,
         machine_label: form.machine_label.trim() || null,
@@ -679,6 +685,7 @@ export function WorkOrderDialog({
                   {form.customer_name && (
                     <GoogleMapsPin
                       customerName={form.customer_name}
+                      location={form.customer_location}
                       address={form.customer_address}
                       variant="badge"
                       label="ค้นหาแผนที่"
@@ -744,6 +751,7 @@ export function WorkOrderDialog({
                   {(form.customer_address || form.customer_name) && (
                     <GoogleMapsPin
                       customerName={form.customer_name}
+                      location={form.customer_location}
                       address={form.customer_address}
                       variant="badge"
                       label="เปิด Google Maps นำทาง"
@@ -760,6 +768,7 @@ export function WorkOrderDialog({
                 placeholder="เลือก / พิมพ์ที่อยู่"
               />
             </Field>
+            <CustomerLocationFields value={form.customer_location} onChange={location => setForm(f => ({ ...f, customer_location: location }))} />
             <Field label="ชื่อผู้ติดต่อ">
               <Input
                 value={form.contact_name}

@@ -57,6 +57,13 @@
       "when": 1793319122936,
       "tag": "0007_vehicle_cross_zone_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793405021503,
+      "tag": "0008_work_order_customer_location",
+      "breakpoints": true
     }
   ]
 }

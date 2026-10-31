@@ -70,6 +70,7 @@ export type Database = {
           cross_zone_approval: Json | null
           cust_id: string | null
           customer_address: string | null
+          customer_location: Json | null
           customer_name: string | null
           customer_sn: string | null
           depart_time: string | null
@@ -114,6 +115,7 @@ export type Database = {
           cross_zone_approval?: Json | null
           cust_id?: string | null
           customer_address?: string | null
+          customer_location?: Json | null
           customer_name?: string | null
           customer_sn?: string | null
           depart_time?: string | null
@@ -158,6 +160,7 @@ export type Database = {
           cross_zone_approval?: Json | null
           cust_id?: string | null
           customer_address?: string | null
+          customer_location?: Json | null
           customer_name?: string | null
           customer_sn?: string | null
           depart_time?: string | null
@@ -1161,6 +1164,7 @@ export type Database = {
           cross_zone_approval: Json | null
           cust_id: string | null
           customer_address: string | null
+          customer_location: Json | null
           customer_name: string
           customer_sn: string | null
           depart_time: string | null
@@ -1196,6 +1200,7 @@ export type Database = {
           cross_zone_approval?: Json | null
           cust_id?: string | null
           customer_address?: string | null
+          customer_location?: Json | null
           customer_name: string
           customer_sn?: string | null
           depart_time?: string | null
@@ -1231,6 +1236,7 @@ export type Database = {
           cross_zone_approval?: Json | null
           cust_id?: string | null
           customer_address?: string | null
+          customer_location?: Json | null
           customer_name?: string
           customer_sn?: string | null
           depart_time?: string | null
