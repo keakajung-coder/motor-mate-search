@@ -1463,7 +1463,7 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
 // ---------- Pending work orders ----------
 /** แปลงใบงานเดิมเป็นค่าเริ่มต้นของฟอร์มใบสั่งงาน (ใช้ตอนคัดลอกใบงาน) — แก้ไขได้ทุกช่องก่อนบันทึก */
 function workOrderToDraft(o: WorkOrder): Partial<WorkOrderDraft> {
-  const keys: (keyof WorkOrderDraft)[] = [
+  const keys: Exclude<keyof WorkOrderDraft, "customer_location">[] = [
     "cust_id",
     "customer_name",
     "customer_address",
