@@ -2600,6 +2600,7 @@ function ApprovedOrders({
               </span>
               <GoogleMapsPin
                 customerName={o.customer_name}
+                  location={o.customer_location}
                 address={o.customer_address}
                 title={`Google Maps นำทาง: ${o.customer_name ?? ""}`}
               />
@@ -2609,6 +2610,7 @@ function ApprovedOrders({
               {o.customer_address && (
                 <GoogleMapsPin
                   customerName={o.customer_name}
+                  location={o.customer_location}
                   address={o.customer_address}
                   variant="badge"
                   label="นำทาง"
@@ -3421,6 +3423,7 @@ function DayDetailDialog({
               </span>
               <GoogleMapsPin
                 customerName={a.customer_name}
+                  location={a.customer_location}
                 address={a.customer_address}
                 title={`เปิด Google Maps นำทางไปหา ${a.customer_name ?? ""}`}
               />
@@ -3443,6 +3446,7 @@ function DayDetailDialog({
                 <span className="break-words">{a.customer_address}</span>
                 <GoogleMapsPin
                   customerName={a.customer_name}
+                  location={a.customer_location}
                   address={a.customer_address}
                   variant="badge"
                   label="Google Maps นำทาง"
@@ -3463,6 +3467,7 @@ function DayDetailDialog({
         <div className="flex flex-wrap items-center gap-2 self-start">
           <GoogleMapsPin
             customerName={a.customer_name}
+                  location={a.customer_location}
             address={a.customer_address}
             variant="button"
             label="นำทาง"
@@ -3891,6 +3896,7 @@ const DailyQueueDocument = ({
                   </span>
                   <GoogleMapsPin
                     customerName={a.customer_name}
+                  location={a.customer_location}
                     address={a.customer_address}
                     title={`Google Maps นำทาง: ${a.customer_name ?? ""}`}
                   />
@@ -3937,6 +3943,7 @@ const DailyQueueDocument = ({
                   {a.customer_address && (
                     <GoogleMapsPin
                       customerName={a.customer_name}
+                  location={a.customer_location}
                       address={a.customer_address}
                       variant="badge"
                       label="Google Maps นำทาง"
@@ -4038,6 +4045,7 @@ function DayList({
               </span>
               <GoogleMapsPin
                 customerName={a.customer_name}
+                  location={a.customer_location}
                 address={a.customer_address}
                 title={`Google Maps นำทาง: ${a.customer_name ?? ""}`}
               />
@@ -4057,6 +4065,7 @@ function DayList({
                 <span className="break-words">{a.customer_address}</span>
                 <GoogleMapsPin
                   customerName={a.customer_name}
+                  location={a.customer_location}
                   address={a.customer_address}
                   variant="badge"
                   label="นำทาง"
@@ -4105,6 +4114,7 @@ function DayList({
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <GoogleMapsPin
             customerName={a.customer_name}
+                  location={a.customer_location}
             address={a.customer_address}
             variant="button"
             label="นำทาง"
