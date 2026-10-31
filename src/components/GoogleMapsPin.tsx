@@ -2,8 +2,10 @@ import React from "react";
 import { MapPin, Navigation } from "lucide-react";
 import { getGoogleMapsUrl, buildLocationQuery } from "@/lib/maps";
 import { cn } from "@/lib/utils";
+import { locationNavigationUrl, type CustomerLocation } from "@/lib/customer-location";
 
 interface GoogleMapsPinProps {
+  location?: CustomerLocation | null;
   query?: string | null;
   customerName?: string | null;
   address?: string | null;
@@ -24,6 +26,7 @@ interface GoogleMapsPinProps {
  * - หยุด Event Propagation เพื่อไม่ให้ส่งผลต่อการคลิกการ์ดหลัก
  */
 export function GoogleMapsPin({
+  location,
   query,
   customerName,
   address,
@@ -47,9 +50,8 @@ export function GoogleMapsPin({
       province,
     });
 
-  if (!searchQuery) return null;
-
-  const url = getGoogleMapsUrl(searchQuery);
+  const url = location ? locationNavigationUrl(location, searchQuery) : getGoogleMapsUrl(searchQuery);
+  if (!searchQuery && !locationNavigationUrl(location)) return null;
   const defaultTitle = title || `เปิด Google Maps นำทาง: ${searchQuery}`;
 
   const handleClick = (e: React.MouseEvent) => {
