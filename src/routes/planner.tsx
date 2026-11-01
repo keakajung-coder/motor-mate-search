@@ -1881,7 +1881,7 @@ function PendingOrders({
                     onChange={(e) => patch(o.id, "customer_address", e.target.value)}
                   />
                 </EditField>
-                <CustomerLocationFields value={edit[o.id]?.customer_location ?? o.customer_location} onChange={location => setEdit(e => ({ ...e, [o.id]: { ...e[o.id], customer_location: location } }))} />
+                <CustomerLocationFields value={edit[o.id]?.customer_location ?? o.customer_location} onChange={location => setEdit(e => ({ ...e, [o.id]: { ...e[o.id], ...customerLocationPatch(location, e[o.id]?.customer_address ?? o.customer_address ?? "") } }))} />
                 <EditField label="ชื่อผู้ติดต่อ">
                   <Input
                     value={val(o, "contact_name")}
@@ -4877,7 +4877,7 @@ function AppointmentDialog({
               placeholder="เลือกที่อยู่"
             />
           </F>
-          <CustomerLocationFields value={form.customer_location} disabled={locked} onChange={location => setForm(f => ({ ...f, customer_location: location }))} />
+          <CustomerLocationFields value={form.customer_location} disabled={locked} onChange={location => setForm(f => ({ ...f, ...customerLocationPatch(location, f.customer_address ?? "") }))} />
           <F label="ผู้ติดต่อ">
             <Input
               disabled={locked}

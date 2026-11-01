@@ -11,8 +11,8 @@ export function getQueryClient(): QueryClient {
     queryClientInstance = new QueryClient({
       defaultOptions: {
         queries: {
-          retry: 3,
-          retryDelay: (n) => Math.min(1000 * 2 ** n, 8000),
+          // The session gateway already retries reads; avoid multiplying requests.
+          retry: false,
           staleTime: 1000 * 30, // 30 seconds
           refetchOnWindowFocus: true,
         },
