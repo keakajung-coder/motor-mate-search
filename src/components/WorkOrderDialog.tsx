@@ -768,7 +768,7 @@ export function WorkOrderDialog({
                 placeholder="เลือก / พิมพ์ที่อยู่"
               />
             </Field>
-            <CustomerLocationFields value={form.customer_location} onChange={location => setForm(f => ({ ...f, customer_location: location }))} />
+            <CustomerLocationFields value={form.customer_location} onChange={location => setForm(f => ({ ...f, ...customerLocationPatch(location, f.customer_address) }))} />
             <Field label="ชื่อผู้ติดต่อ">
               <Input
                 value={form.contact_name}

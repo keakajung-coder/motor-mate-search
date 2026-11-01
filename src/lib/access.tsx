@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { verifyPasscode, getAccessStatus, lockAccess } from "@/lib/passcode.functions";
+import { withRequestTimeout } from "@/lib/request-timeout";
 
 const VIEWER_KEY = "pc_viewer";
 const ADMIN_KEY = "pc_admin";
@@ -24,7 +25,7 @@ export function useAccess(): AccessValue {
 
 async function check(kind: "viewer" | "admin", code: string) {
   try {
-    const res = await verifyPasscode({ data: { kind, code } });
+    const res = await withRequestTimeout(verifyPasscode({ data: { kind, code } }));
     return !!res?.ok;
   } catch {
     return false;
@@ -39,23 +40,24 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      localStorage.removeItem(VIEWER_KEY);
-      localStorage.removeItem(ADMIN_KEY);
-      const status = await getAccessStatus().catch(() => ({ viewerOk: false, isAdmin: false }));
+      try { localStorage.removeItem(VIEWER_KEY); localStorage.removeItem(ADMIN_KEY); } catch { /* Storage can be blocked in private browsers. */ }
+      const status = await withRequestTimeout(getAccessStatus()).catch(() => ({ viewerOk: false, isAdmin: false }));
       if (cancelled) return;
       setViewerOk(status.viewerOk);
       setIsAdmin(status.isAdmin);
       setReady(true);
     })();
     const refresh = () => {
-      void getAccessStatus().then((status) => { if (!cancelled) { setViewerOk(status.viewerOk); setIsAdmin(status.isAdmin); } }).catch(() => {});
+      void withRequestTimeout(getAccessStatus()).then((status) => { if (!cancelled) { setViewerOk(status.viewerOk); setIsAdmin(status.isAdmin); } }).catch(() => {});
     };
     const timer = window.setInterval(refresh, 60_000);
     window.addEventListener("focus", refresh);
+    window.addEventListener("app:session-expired", refresh);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
       window.removeEventListener("focus", refresh);
+      window.removeEventListener("app:session-expired", refresh);
     };
   }, []);
 
@@ -79,15 +81,14 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const lockAdmin = useCallback(() => {
-    void lockAccess({ data: { adminOnly: true } });
-    localStorage.removeItem(ADMIN_KEY);
+    void withRequestTimeout(lockAccess({ data: { adminOnly: true } })).catch(() => {});
+    try { localStorage.removeItem(ADMIN_KEY); } catch { /* Optional legacy storage cleanup. */ }
     setIsAdmin(false);
   }, []);
 
   const lockAll = useCallback(() => {
-    void lockAccess({ data: { adminOnly: false } });
-    localStorage.removeItem(ADMIN_KEY);
-    localStorage.removeItem(VIEWER_KEY);
+    void withRequestTimeout(lockAccess({ data: { adminOnly: false } })).catch(() => {});
+    try { localStorage.removeItem(ADMIN_KEY); localStorage.removeItem(VIEWER_KEY); } catch { /* Optional legacy storage cleanup. */ }
     setIsAdmin(false);
     setViewerOk(false);
   }, []);

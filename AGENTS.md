@@ -28,3 +28,4 @@
 - Google Maps place search/details go through src/lib/maps.functions.ts (session-checked server functions via connector gateway) and Thai address parsing lives in pure src/lib/place-address.ts; browser never calls Places directly.
 - Review same-day vehicle province conflicts through the shared vehicle-zone modules; the session gateway revalidates appointment/work-order writes and derives stored approvals server-side, while the shared dialog handles approval or vehicle replacement.
 - Bind customer address and Maps snapshots through the shared customer-location module and persist customer_location on work orders and appointments; navigation and vehicle-zone checks use the same snapshot so historical jobs remain independent of later customer edits.
+- Bound access RPC waits with the shared request-timeout helper and keep read retries at the data gateway only, so stalled requests cannot indefinitely block access or multiply query attempts.

@@ -14,6 +14,11 @@ test("switching to a customer without a pin clears the previous location", () =>
   assert.equal(next.customer_location.maps_url, "");
   assert.equal(next.customer_address, "12 จ.ระยอง");
 });
+test("editing province updates the saved address and zone snapshot together", () => {
+  const patch = customerLocationPatch({ ...customer, province: "ระยอง" });
+  assert.equal(patch.customer_address, "99/1 ต.บางแก้ว อ.บางพลี จ.ระยอง 10540");
+  assert.equal(patch.customer_location.province, "ระยอง");
+});
 test("navigation targets stored coordinates and selected place rather than searching the name", () => {
   const url = new URL(locationNavigationUrl(customer, "other address"));
   assert.equal(url.pathname, "/maps/dir/");
