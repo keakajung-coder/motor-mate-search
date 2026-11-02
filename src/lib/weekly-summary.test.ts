@@ -1,4 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "node:test";
+import assert from "node:assert/strict";
+const expect = (actual: unknown) => ({ toEqual: (expected: unknown) => assert.deepEqual(actual, expected), toBe: (expected: unknown) => assert.equal(actual, expected) });
 import { bangkokDate, buildWeeklySummary, machineGroup, weekRange, type SummaryJob } from "./weekly-summary";
 const range = { from: "2026-11-02", to: "2026-11-08" };
 const job = (id: string, status = "pending", extra: Partial<SummaryJob> = {}): SummaryJob => ({ id, status, customer_name: "ลูกค้า", job_detail: null, staff_name: "ก, ข", visit_date: "2026-11-02", created_at: "2026-11-01T18:00:00Z", serial_number: null, ...extra });

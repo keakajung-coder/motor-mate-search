@@ -17,7 +17,7 @@ export function summarySheets(s: WeeklySummary, range: SummaryRange, p: SummaryP
   const tasks = make("รายการงานทั้งหมด", ["ลูกค้า", "รายละเอียด", "ช่าง", "วันเข้าบริการ/บันทึก", "วันที่บันทึก", "สถานะ", "S/N"], s.jobs.map(j => [j.customer_name || "-", j.job_detail || "-", j.staff_name || "ยังไม่ระบุช่าง", summaryDate(j), bangkokDate(j.created_at), stages[summaryStage(j)], j.serial_number || "-"]), [30, 55, 30, 24, 24, 28, 25]);
   const summary = make("ภาพรวม", ["ตัวชี้วัด", "จำนวนงาน"], [["งานทั้งหมด", s.counts.total], ["เสร็จเรียบร้อย", s.counts.completed], ["อยู่ระหว่างเสนอราคา", s.counts.quoted], ["ยังไม่ดำเนินการ", s.counts.pending], ["กำลังดำเนินการ", s.counts.active]], [38, 20]);
   summary.formulas = {
-    B4: { formula: `'รายการงานทั้งหมด'!A4:A${Math.max(4, s.jobs.length + 3)}`.replace(/^.*$/, s.jobs.length ? `COUNTA('รายการงานทั้งหมด'!A4:A${s.jobs.length + 3})` : "0"), value: s.counts.total },
+    B4: { formula: s.jobs.length ? `COUNTA('รายการงานทั้งหมด'!A4:A${s.jobs.length + 3})` : "0", value: s.counts.total },
   };
   ["completed", "quoted", "pending", "active"].forEach((stage, i) => {
     summary.formulas ??= {};
