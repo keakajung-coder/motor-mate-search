@@ -41,6 +41,7 @@ export function ExcelExportButton() {
   };
 
   return (
+    path === "/weekly-summary" ? null :
     <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-3 z-40 print:hidden">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
