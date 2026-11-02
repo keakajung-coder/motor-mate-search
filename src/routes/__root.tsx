@@ -13,7 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
-import { Wrench, CalendarDays, Trash2 } from "lucide-react";
+import { Wrench, CalendarDays, Trash2, BarChart3 } from "lucide-react";
 import { AccessProvider, useAccess } from "@/lib/access";
 import { AccessGate, AdminLockButton } from "@/components/AccessGate";
 import { setupPwa } from "@/lib/pwa";
@@ -190,6 +190,7 @@ function NavBar() {
                 <CalendarDays className="h-4 w-4 text-primary" />
                 ปฏิทิน / แพลนเนอร์
               </Link>
+              <Link to="/weekly-summary" className="flex items-center gap-1.5 rounded-md px-3 py-1.5 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold transition-colors"><BarChart3 className="h-4 w-4 text-primary" />สรุปรายสัปดาห์</Link>
               <Link
                 to="/admin"
                 className="rounded-md px-3 py-1.5 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold transition-colors"
@@ -233,6 +234,7 @@ function NavBar() {
             <CalendarDays className="h-3.5 w-3.5 text-primary" />
             ปฏิทิน / แพลนเนอร์
           </Link>
+          <Link to="/weekly-summary" className="shrink-0 flex items-center gap-1 rounded-md px-2.5 py-1 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold"><BarChart3 className="h-3.5 w-3.5 text-primary" />สรุปรายสัปดาห์</Link>
           <Link
             to="/admin"
             className="shrink-0 rounded-md px-2.5 py-1 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold"
