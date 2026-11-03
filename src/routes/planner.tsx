@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/data-client";
 import { generateDueWorkOrders } from "@/lib/contracts.functions";
@@ -134,12 +134,15 @@ import {
 export const Route = createFileRoute("/planner")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { sn?: string; customer?: string; job?: string; date?: string } => {
-    const out: { sn?: string; customer?: string; job?: string; date?: string } = {};
+  ): { sn?: string; customer?: string; job?: string; date?: string; record?: string; source?: "appointment" | "work_order"; report?: boolean } => {
+    const out: { sn?: string; customer?: string; job?: string; date?: string; record?: string; source?: "appointment" | "work_order"; report?: boolean } = {};
     if (typeof search.sn === "string") out.sn = search.sn;
     if (typeof search.customer === "string") out.customer = search.customer;
     if (typeof search.job === "string") out.job = search.job;
     if (typeof search.date === "string") out.date = search.date;
+    if (typeof search.record === "string") out.record = search.record;
+    if (search.source === "appointment" || search.source === "work_order") out.source = search.source;
+    if (search.report === true || search.report === "true") out.report = true;
     return out;
   },
 
@@ -445,6 +448,8 @@ function PlannerPage() {
   const leavePeople = new Set(visibleLeave.map((row) => row.staff_name)).size;
   const [sortBy, setSortBy] = useState("date-asc");
   const [editing, setEditing] = useState<Appointment | null>(null);
+  const [reportOrder, setReportOrder] = useState<WorkOrder | null>(null);
+  const [openingRecord, setOpeningRecord] = useState(false);
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [viewing, setViewing] = useState<Appointment | null>(null);
   const [handoverAppt, setHandoverAppt] = useState<Appointment | null>(null);
@@ -470,6 +475,43 @@ function PlannerPage() {
 
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+
+  // Open only the requested existing record; never construct a new appointment from a report link.
+  useEffect(() => {
+    if (!search.record || !search.source) return;
+    const recordId = search.record;
+    let cancelled = false;
+    const openRecord = async () => {
+      setOpeningRecord(true);
+      try {
+        if (search.source === "appointment") {
+          const { data, error } = await supabase.from("appointments").select("*").eq("id", recordId).maybeSingle();
+          if (error) throw new Error(error.message);
+          if (!data) throw new Error("ไม่พบงานนี้ อาจถูกลบแล้ว");
+          if (!cancelled) pickAppt(data as Appointment);
+        } else {
+          const { data: linked, error: linkedError } = await supabase.from("appointments").select("*").eq("work_order_id", recordId).limit(1).maybeSingle();
+          if (linkedError) throw new Error(linkedError.message);
+          if (linked) { if (!cancelled) pickAppt(linked as Appointment); }
+          else {
+            const { data, error } = await supabase.from("work_orders").select("*").eq("id", recordId).maybeSingle();
+            if (error) throw new Error(error.message);
+            if (!data) throw new Error("ไม่พบใบสั่งงานนี้ อาจถูกลบแล้ว");
+            if (!cancelled) setReportOrder(data as unknown as WorkOrder);
+          }
+        }
+      } catch (error) {
+        if (!cancelled) toast.error(error instanceof Error ? error.message : "เปิดงานไม่สำเร็จ");
+      } finally {
+        if (!cancelled) {
+          setOpeningRecord(false);
+          void navigate({ search: prev => ({ ...prev, record: undefined, source: undefined }), replace: true });
+        }
+      }
+    };
+    void openRecord();
+    return () => { cancelled = true; };
+  }, [search.record, search.source, navigate]);
 
   // เปิดฟอร์มนัดหมายอัตโนมัติเมื่อถูกส่งมาจากแผงแจ้งเตือนอะไหล่ (?sn=&customer=&job=)
   useEffect(() => {
@@ -735,6 +777,14 @@ function PlannerPage() {
 
   return (
     <div className="w-full min-w-0 space-y-5 p-1 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      {search.report && <Button asChild variant="outline"><Link to="/weekly-summary"><ChevronLeft /> กลับสรุปรายสัปดาห์</Link></Button>}
+      {openingRecord && <p role="status" className="flex items-center gap-2 text-muted-foreground"><Loader2 className="size-4 animate-spin" />กำลังเปิดรายละเอียดงาน</p>}
+      <Dialog open={!!reportOrder} onOpenChange={open => { if (!open) setReportOrder(null); }}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>รายละเอียดใบสั่งงาน {reportOrder?.job_no || ""}</DialogTitle><DialogDescription>{reportOrder?.customer_name}</DialogDescription></DialogHeader>
+          {reportOrder && (isAdmin ? <PendingOrders key={reportOrder.id} orders={[reportOrder]} initialExpanded={reportOrder.id} reload={() => { setReportOrder(null); void load(); }} onOpenMachineHistory={openMachineHistory} /> : <WorkOrderFormPrint order={reportOrder} />)}
+        </DialogContent>
+      </Dialog>
       <header className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">ปฏิทินนัดหมายบริการ</h1>
@@ -1497,10 +1547,12 @@ function workOrderToDraft(o: WorkOrder): Partial<WorkOrderDraft> {
 }
 
 function PendingOrders({
+  initialExpanded,
   orders,
   reload,
   onOpenMachineHistory,
 }: {
+  initialExpanded?: string;
   orders: WorkOrder[];
   reload: () => void;
   onOpenMachineHistory?: (sn?: string | null, unitId?: string | null) => void;
@@ -1510,7 +1562,7 @@ function PendingOrders({
   const dir = useDirectory();
   const [busy, setBusy] = useState<string | null>(null);
   const [dup, setDup] = useState<WorkOrder | null>(null);
-  const [openEdit, setOpenEdit] = useState<Record<string, boolean>>({});
+  const [openEdit, setOpenEdit] = useState<Record<string, boolean>>(initialExpanded ? { [initialExpanded]: true } : {});
   const [autoAlert, setAutoAlert] = useState(true);
   const [conflictTarget, setConflictTarget] = useState<{
     order: WorkOrder;
@@ -1962,7 +2014,7 @@ function PendingOrders({
                 size={visual.isMine ? "default" : "sm"}
                 className={cn("cursor-pointer font-medium", visual.isMine && "h-10 px-4 text-sm font-semibold shadow-xs")}
                 onClick={() => approve(o)}
-                disabled={busy === o.id}
+                disabled={busy === o.id || o.status !== "pending"}
               >
                 {busy === o.id ? (
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -1987,7 +2039,7 @@ function PendingOrders({
               >
                 <Copy className="mr-1.5 h-4 w-4" /> คัดลอกใบงาน
               </Button>
-              <ConfirmButton
+              {o.status === "pending" && <ConfirmButton
                 variant="outline"
                 onConfirm={() => reject(o)}
 
@@ -1996,7 +2048,7 @@ function PendingOrders({
                 confirmText="ปฏิเสธ"
               >
                 <XCircle className="mr-1.5 h-4 w-4" /> ปฏิเสธ
-              </ConfirmButton>
+              </ConfirmButton>}
             </div>
           </div>
         );
