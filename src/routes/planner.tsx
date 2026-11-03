@@ -479,21 +479,22 @@ function PlannerPage() {
   // Open only the requested existing record; never construct a new appointment from a report link.
   useEffect(() => {
     if (!search.record || !search.source) return;
+    const recordId = search.record;
     let cancelled = false;
     const openRecord = async () => {
       setOpeningRecord(true);
       try {
         if (search.source === "appointment") {
-          const { data, error } = await supabase.from("appointments").select("*").eq("id", search.record).maybeSingle();
+          const { data, error } = await supabase.from("appointments").select("*").eq("id", recordId).maybeSingle();
           if (error) throw new Error(error.message);
           if (!data) throw new Error("ไม่พบงานนี้ อาจถูกลบแล้ว");
           if (!cancelled) pickAppt(data as Appointment);
         } else {
-          const { data: linked, error: linkedError } = await supabase.from("appointments").select("*").eq("work_order_id", search.record).limit(1).maybeSingle();
+          const { data: linked, error: linkedError } = await supabase.from("appointments").select("*").eq("work_order_id", recordId).limit(1).maybeSingle();
           if (linkedError) throw new Error(linkedError.message);
           if (linked) { if (!cancelled) pickAppt(linked as Appointment); }
           else {
-            const { data, error } = await supabase.from("work_orders").select("*").eq("id", search.record).maybeSingle();
+            const { data, error } = await supabase.from("work_orders").select("*").eq("id", recordId).maybeSingle();
             if (error) throw new Error(error.message);
             if (!data) throw new Error("ไม่พบใบสั่งงานนี้ อาจถูกลบแล้ว");
             if (!cancelled) setReportOrder(data as unknown as WorkOrder);
@@ -2038,17 +2039,16 @@ function PendingOrders({
               >
                 <Copy className="mr-1.5 h-4 w-4" /> คัดลอกใบงาน
               </Button>
-              <ConfirmButton
+              {o.status === "pending" && <ConfirmButton
                 variant="outline"
                 onConfirm={() => reject(o)}
-                disabled={o.status !== "pending"}
 
                 title="ปฏิเสธใบสั่งงาน?"
                 description="รายการนี้จะไม่ถูกนำขึ้นปฏิทิน"
                 confirmText="ปฏิเสธ"
               >
                 <XCircle className="mr-1.5 h-4 w-4" /> ปฏิเสธ
-              </ConfirmButton>
+              </ConfirmButton>}
             </div>
           </div>
         );
