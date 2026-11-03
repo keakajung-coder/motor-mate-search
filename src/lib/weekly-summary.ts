@@ -7,6 +7,18 @@ export type SummaryJob = {
 export type SummaryMachine = { id: string; status: string | null };
 export type SummaryRange = { from: string; to: string };
 export type SummaryStage = "completed" | "quoted" | "pending" | "active";
+export type ReportJob = SummaryJob & { source: "work_order" | "appointment" };
+export type JobFilter = { kind: "stage"; stage: SummaryStage | "all" } | { kind: "technician"; name: string };
+export function jobTechnicians(job: SummaryJob) {
+  const names = [...new Set((job.staff_name ?? "").split(",").map(n => n.trim()).filter(Boolean))];
+  return names.length ? names : ["ยังไม่ระบุช่าง"];
+}
+export function filterSummaryJobs(jobs: ReportJob[], filter: JobFilter) {
+  return jobs.filter(job => filter.kind === "technician" ? jobTechnicians(job).includes(filter.name) : filter.stage === "all" || summaryStage(job) === filter.stage);
+}
+export function summaryJobSearch(job: ReportJob) {
+  return { record: job.id, source: job.source, report: true };
+}
 export const MACHINE_GROUPS = ["ในคอนแทรค", "ในประกัน", "ซื้ออะไหล่เปลี่ยนเอง", "เรียกเป็นครั้ง", "หลุดคอนแทรค"];
 
 export function bangkokDate(value: string) {
@@ -38,7 +50,7 @@ export function summaryDate(job: SummaryJob) { return job.visit_date || bangkokD
 export function buildWeeklySummary(orders: SummaryJob[], appointments: SummaryJob[], machines: SummaryMachine[], range: SummaryRange) {
   // Appointments carry the latest service outcome; linked work orders are the same task.
   const linked = new Set(appointments.map(a => a.work_order_id).filter(Boolean));
-  const jobs = [...orders.filter(o => !linked.has(o.id)), ...appointments]
+  const jobs: ReportJob[] = [...orders.filter(o => !linked.has(o.id)).map(o => ({ ...o, source: "work_order" as const })), ...appointments.map(a => ({ ...a, source: "appointment" as const }))]
     .filter(j => !["rejected", "cancelled", "canceled"].includes(j.status))
     .filter(j => { const date = summaryDate(j); return date >= range.from && date <= range.to; })
     .sort((a, b) => summaryDate(a).localeCompare(summaryDate(b)) || a.id.localeCompare(b.id));
@@ -46,8 +58,7 @@ export function buildWeeklySummary(orders: SummaryJob[], appointments: SummaryJo
   const tech = new Map<string, number>();
   for (const job of jobs) {
     counts[summaryStage(job)]++;
-    const names = [...new Set((job.staff_name ?? "").split(",").map(n => n.trim()).filter(Boolean))];
-    for (const name of names.length ? names : ["ยังไม่ระบุช่าง"]) tech.set(name, (tech.get(name) ?? 0) + 1);
+    for (const name of jobTechnicians(job)) tech.set(name, (tech.get(name) ?? 0) + 1);
   }
   const groups = new Map(MACHINE_GROUPS.map(name => [name, 0]));
   for (const machine of machines) { const name = machineGroup(machine.status); groups.set(name, (groups.get(name) ?? 0) + 1); }
