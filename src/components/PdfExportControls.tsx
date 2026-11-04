@@ -48,6 +48,12 @@ function PdfPages({ blob }: { blob: Blob }) {
 function PdfControls({ build, initial, finish }: { build: (s: PdfSettings) => Promise<Blob>; initial: PdfSettings; finish: (b: Blob | null) => void }) {
   const [settings, setSettings] = useState(initial);
   const [custom, setCustom] = useState(initial.pages > 2);
+  const [draftCaption, setDraftCaption] = useState(initial.captionText ?? "");
+  // Rebuild the preview only after typing pauses, not on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setSettings(s => s.captionText === draftCaption ? s : { ...s, captionText: draftCaption }), 600);
+    return () => clearTimeout(t);
+  }, [draftCaption]);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(true);
@@ -94,6 +100,19 @@ function PdfControls({ build, initial, finish }: { build: (s: PdfSettings) => Pr
           </Select>
         </div>
         {custom && <div className="min-w-0 space-y-2"><Label htmlFor="pdf-page-limit">จำนวนหน้าสูงสุด</Label><Input id="pdf-page-limit" type="number" min={1} step={1} value={settings.pages} onChange={e => setSettings(s => ({ ...s, pages: Math.max(1, Math.floor(Number(e.target.value) || 1)) }))} /></div>}
+        <div className="min-w-0 space-y-2"><Label>คำอธิบายใต้รูปภาพ</Label>
+          <Select value={settings.caption ?? "each"} onValueChange={v => setSettings(s => ({ ...s, caption: v === "none" || v === "shared" ? v : "each" }))}>
+            <SelectTrigger className="w-full" aria-label="คำอธิบายใต้รูปภาพ"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="none">ไม่ใส่คำอธิบายใต้รูป</SelectItem><SelectItem value="each">ใส่คำอธิบายแยกแต่ละรูป</SelectItem><SelectItem value="shared">ใช้ข้อความเดียวทุกรูป</SelectItem></SelectContent>
+          </Select>
+        </div>
+        {settings.caption === "shared" && <div className="min-w-0 space-y-2"><Label htmlFor="pdf-caption-text">ข้อความใต้รูป (ใช้กับทุกรูป)</Label><Input id="pdf-caption-text" value={draftCaption} placeholder="เช่น ภาพประกอบการบริการ" onChange={e => setDraftCaption(e.target.value)} /></div>}
+        <div className="min-w-0 space-y-2"><Label>ขนาดตัวอักษร</Label>
+          <Select value={settings.largeText === false ? "normal" : "large"} onValueChange={v => setSettings(s => ({ ...s, largeText: v !== "normal" }))}>
+            <SelectTrigger className="w-full" aria-label="ขนาดตัวอักษร"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="large">ใหญ่ — อ่านง่ายบนมือถือ</SelectItem><SelectItem value="normal">ปกติ</SelectItem></SelectContent>
+          </Select>
+        </div>
       </div>
       <div className="h-[50dvh] min-h-40 overflow-auto rounded border bg-muted" aria-busy={busy}>
         {busy ? <div role="status" className="flex h-full items-center justify-center gap-2"><Loader2 className="h-5 w-5 animate-spin" />กำลังจัดหน้ากระดาษ…</div> : error ? <p role="alert" className="p-4 text-destructive">{error}</p> : blob ? <PdfPages blob={blob} /> : null}

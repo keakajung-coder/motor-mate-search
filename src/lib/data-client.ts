@@ -34,6 +34,20 @@ async function fetchWithRetry(url: string, init: RequestInit | undefined): Promi
   throw lastError instanceof Error ? lastError : new Error("เชื่อมต่อไม่สำเร็จ");
 }
 
+let dataChannel: BroadcastChannel | null = null;
+/** Saved rows refresh dashboards in other tabs (e.g. a job opened from the weekly summary in a new tab). */
+function announceWrite(method: string | undefined, path: string) {
+  const m = (method ?? "GET").toUpperCase();
+  if (m === "GET" || m === "HEAD" || !path.startsWith("/rest/v1/") || typeof window === "undefined") return;
+  try { (dataChannel ??= new BroadcastChannel("app-data")).postMessage({ at: Date.now() }); } catch { /* unsupported */ }
+}
+if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+  try {
+    const listen = new BroadcastChannel("app-data");
+    listen.onmessage = () => window.dispatchEvent(new Event("app:data-changed"));
+  } catch { /* unsupported */ }
+}
+
 /** Query-builder compatibility; business requests go through the session-gated server, never the public Data API. */
 export const supabase = createClient<Database>(`${typeof window === "undefined" ? "http://localhost:8080" : window.location.origin}/api/data`, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -46,6 +60,7 @@ export const supabase = createClient<Database>(`${typeof window === "undefined" 
     let body = init?.body;
     for (;;) {
       const response = await fetchWithRetry(`/api/data${path}${url.search}`, { ...init, body, headers, credentials: "same-origin" });
+      if (response.ok) announceWrite(init?.method, path);
       if (response.status !== 409 || typeof body !== "string") return response;
       const result = await response.clone().json().catch(() => null) as { code?: string; review?: ZoneReview } | null;
       if (result?.code !== "VEHICLE_ZONE_APPROVAL_REQUIRED" || !result.review) return response;

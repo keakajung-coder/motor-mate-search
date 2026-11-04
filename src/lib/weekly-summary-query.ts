@@ -12,7 +12,7 @@ async function readAll(table: "work_orders" | "appointments" | "machine_units", 
   }
 }
 export const weeklySummaryQuery = queryOptions({
-  queryKey: ["weekly-summary"], staleTime: 60_000,
+  queryKey: ["weekly-summary"], staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: true,
   queryFn: async () => {
     const columns = "id,customer_name,job_detail,staff_name,status,visit_date,created_at,serial_number";
     const [orders, appointments, machines] = await Promise.all([
