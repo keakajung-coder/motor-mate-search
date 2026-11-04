@@ -1,5 +1,5 @@
 import { controlledPdf } from "./pdf-controls";
-import { pdfLayout, type PdfSettings } from "./pdf-layout";
+import { pdfLayout, photoCaption, type PdfSettings } from "./pdf-layout";
 
 /** Shared helpers: date format, usage calculation, PDF export (size-capped) */
 
@@ -290,6 +290,62 @@ export function findCleanBreakY(
   }
 
   return bestRow >= 0 ? minY + bestRow : targetY;
+}
+
+/** อ่านรูปเป็น Base64 Data URL — iOS Safari ลบ Blob URL และบล็อก CORS ระหว่างจับภาพ */
+async function toDataUrl(src: string): Promise<string> {
+  const res = await fetch(src, { mode: "cors", credentials: src.startsWith(location.origin) ? "same-origin" : "omit", cache: "force-cache" });
+  if (!res.ok) throw new Error(`โหลดรูปไม่สำเร็จ (${res.status})`);
+  const blob = await res.blob();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function waitImage(img: HTMLImageElement) {
+  if (img.complete && img.naturalWidth > 0) return;
+  try { await img.decode(); } catch {
+    await new Promise<void>((r) => { img.addEventListener("load", () => r(), { once: true }); img.addEventListener("error", () => r(), { once: true }); setTimeout(r, 8000); });
+  }
+}
+
+/** เตรียมเอกสารก่อนจับภาพ: ฝังรูปเป็น Base64, คำอธิบายใต้รูป, ตัวอักษรใหญ่ — คืนฟังก์ชันคืนค่าเดิม */
+export async function preparePdfElement(el: HTMLElement, settings: Partial<PdfSettings> = {}): Promise<() => void> {
+  const undo: Array<() => void> = [];
+  const images = Array.from(el.querySelectorAll<HTMLImageElement>("img"));
+  await Promise.all(images.map(async (img) => {
+    const original = img.getAttribute("src") ?? "";
+    const originalCors = img.getAttribute("crossorigin");
+    img.loading = "eager";
+    if (!original || original.startsWith("data:")) return waitImage(img);
+    try {
+      const data = await toDataUrl(img.currentSrc || original);
+      img.crossOrigin = "anonymous";
+      img.removeAttribute("srcset");
+      img.src = data;
+      undo.push(() => {
+        if (originalCors === null) img.removeAttribute("crossorigin"); else img.setAttribute("crossorigin", originalCors);
+        img.src = original;
+      });
+    } catch { /* keep original source; html-to-image will try again */ }
+    await waitImage(img);
+  }));
+  for (const node of Array.from(el.querySelectorAll<HTMLElement>("[data-pdf-caption]"))) {
+    const text = node.textContent ?? "";
+    const display = node.style.display;
+    const next = photoCaption(node.dataset.pdfCaption || text, settings);
+    if (next === null) node.style.display = "none";
+    else node.textContent = next;
+    undo.push(() => { node.textContent = text; node.style.display = display; });
+  }
+  if (settings.largeText !== false && !el.classList.contains("pdf-large-text")) {
+    el.classList.add("pdf-large-text");
+    undo.push(() => el.classList.remove("pdf-large-text"));
+  }
+  return () => { for (const fn of undo.reverse()) fn(); };
 }
 
 /**
