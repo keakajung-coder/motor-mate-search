@@ -1166,3 +1166,10 @@
   max-height: none !important;
   overflow: visible !important;
 }
+
+/* PDF export: larger readable text (applied only while capturing). */
+.pdf-large-text :is(p, span, td, th, li, label, dd, dt, div, small) { font-size: max(1em, 12px); line-height: 1.45; }
+.pdf-large-text :is(h1) { font-size: max(1em, 24px); }
+.pdf-large-text :is(h2, h3) { font-size: max(1em, 18px); }
+.pdf-large-text :is(h4, h5, h6, th) { font-size: max(1em, 14px); }
+.pdf-large-text [data-pdf-caption] { font-size: max(1em, 11px); white-space: normal; }

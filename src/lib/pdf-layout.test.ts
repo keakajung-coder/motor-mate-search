@@ -26,3 +26,18 @@ describe("PDF orientation and page limits", () => {
     assert.equal(pdfLayout(794, 200, { orientation: "portrait", pages: 2 }).slices.length, 1);
   });
 });
+describe("PDF repeated header and captions", () => {
+  test("pages after the first reserve room for the repeated header", () => {
+    const plain = pdfLayout(794, 6000, { orientation: "portrait", pages: 0 });
+    const repeated = pdfLayout(794, 6000, { orientation: "portrait", pages: 0 }, [], 200);
+    assert.equal(repeated.header, 200);
+    assert.ok(repeated.slices.length >= plain.slices.length);
+    assert.ok(Math.abs(repeated.slices.reduce((sum, s) => sum + s.height, 0) - 6000) < 0.000001);
+  });
+  test("caption modes: none hides, each keeps own, shared reuses one text", async () => {
+    const { photoCaption } = await import("./pdf-layout");
+    assert.equal(photoCaption("ก่อนทำ", { caption: "none" }), null);
+    assert.equal(photoCaption("ก่อนทำ", { caption: "each" }), "ก่อนทำ");
+    assert.equal(photoCaption("ก่อนทำ", { caption: "shared", captionText: "ภาพบริการ" }), "ภาพบริการ");
+  });
+});

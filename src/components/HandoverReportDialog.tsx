@@ -1504,6 +1504,7 @@ export function HandoverReportPrintView({
                               )}
                             </div>
                             <p
+                              data-pdf-caption=""
                               className="text-[8.5px] font-medium text-slate-700 truncate w-full text-center mt-0.5 px-0.5"
                               title={p.name || `รูปที่ ${pIdx + 1}`}
                             >
