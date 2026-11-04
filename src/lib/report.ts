@@ -363,6 +363,7 @@ export async function elementToPdfBlobPaged(
     pixelRatio?: number;
     pageBreakSelector?: string;
     interactive?: boolean;
+    pdf?: Partial<PdfSettings>;
   },
 ): Promise<Blob> {
   if (opts?.interactive !== false) {
@@ -380,7 +381,7 @@ export async function elementToPdfBlobPaged(
       try {
         await waitForPaint();
         return await elementToPdfBlobPaged(el, settings.pages, {
-          ...opts, interactive: false, orientation: settings.orientation,
+          ...opts, interactive: false, orientation: settings.orientation, pdf: settings,
           size: { width: el.scrollWidth, height: el.scrollHeight },
         });
       } finally {
@@ -390,8 +391,24 @@ export async function elementToPdfBlobPaged(
           el.classList.add(wasPortrait ? "job-report-export--portrait" : "job-report-export--landscape");
         }
       }
-    }, { orientation: opts?.orientation ?? "portrait", pages });
+    }, { orientation: opts?.orientation ?? "portrait", pages, caption: "each", captionText: "", largeText: true });
   }
+  const restore = await preparePdfElement(el, opts?.pdf ?? {});
+  try { return await renderPdf(el, pages, opts); } finally { restore(); }
+}
+
+/** ความสูง (px บนหน้าจอ) ของหัวรายงานที่ต้องพิมพ์ซ้ำทุกหน้า */
+function repeatHeaderRect(el: HTMLElement, rootTop: number) {
+  const total = Math.max(1, el.scrollHeight);
+  const node = el.querySelector<HTMLElement>("[data-pdf-header]") ?? el.querySelector<HTMLElement>("header");
+  if (!node) return null;
+  const r = node.getBoundingClientRect();
+  const top = r.top - rootTop, bottom = r.bottom - rootTop;
+  if (top < 0 || top > total * 0.15 || bottom - top <= 0 || bottom - top > total * 0.3) return null;
+  return { top, bottom };
+}
+
+async function renderPdf(el: HTMLElement, pages: number, opts?: Parameters<typeof elementToPdfBlobPaged>[2]): Promise<Blob> {
   const [{ toJpeg }, { default: jsPDF }] = await Promise.all([
     import("html-to-image"),
     import("jspdf"),
@@ -460,9 +477,19 @@ export async function elementToPdfBlobPaged(
       }
     }
     const candidates = Array.from(new Set(rawBreaks.map(x => Math.round(x)))).sort((a, b) => a - b);
+    // หัวรายงาน + หัวตาราง ที่พิมพ์ซ้ำทุกหน้าเมื่อเอกสารยาวกว่า 1 หน้า
+    const head = repeatHeaderRect(el, rootTop);
+    const headTop = head ? head.top * sourceScaleY : 0;
+    const headH = head ? (head.bottom - head.top) * sourceScaleY : 0;
+    const tables = Array.from(el.querySelectorAll<HTMLTableElement>("table")).flatMap((t) => {
+      const thead = t.tHead; if (!thead) return [];
+      const tr = t.getBoundingClientRect(), hr = thead.getBoundingClientRect();
+      return [{ top: (hr.bottom - rootTop) * sourceScaleY, bottom: (tr.bottom - rootTop) * sourceScaleY, headTop: (hr.top - rootTop) * sourceScaleY, headH: hr.height * sourceScaleY }];
+    });
+    const theadMax = tables.reduce((m, t) => Math.max(m, t.headH), 0);
     const layout = pdfLayout(img.width, img.height, {
       orientation: opts?.orientation ?? "portrait", pages,
-    }, candidates);
+    }, candidates, headH + theadMax);
 
     // ปรับแต่งเส้นแบ่งหน้าให้ตรงกับช่องว่างสีขาวบริสุทธิ์ (Whitespace row) ป้องกันไม่ให้ตัวหนังสือขาด
     const refinedSlices = layout.slices.map((s) => ({ ...s }));
@@ -478,16 +505,27 @@ export async function elementToPdfBlobPaged(
 
     refinedSlices.forEach((slice, p) => {
       if (p > 0) pdf.addPage();
+      const strips: Array<{ top: number; height: number }> = [];
+      if (p > 0) {
+        const room = layout.header;
+        let used = 0;
+        if (headH > 0 && headH <= room) { strips.push({ top: headTop, height: headH }); used += headH; }
+        const table = tables.find((t) => slice.top > t.top + 1 && slice.top < t.bottom - 1);
+        if (table && used + table.headH <= room + 0.5) strips.push({ top: table.headTop, height: table.headH });
+      }
+      const stripTotal = strips.reduce((sum, s) => sum + s.height, 0);
       const canvas = document.createElement("canvas");
       canvas.width = img.width;
-      canvas.height = Math.ceil(slice.height);
+      canvas.height = Math.ceil(stripTotal + slice.height);
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("ไม่สามารถสร้างหน้ารายงานได้");
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, slice.top, img.width, slice.height, 0, 0, img.width, slice.height);
+      let y = 0;
+      for (const s of strips) { ctx.drawImage(img, 0, s.top, img.width, s.height, 0, y, img.width, s.height); y += s.height; }
+      ctx.drawImage(img, 0, slice.top, img.width, slice.height, 0, y, img.width, slice.height);
       const pageDataUrl = canvas.toDataURL("image/jpeg", step.quality);
-      const pageImgH = slice.height * layout.imageWidth / img.width;
+      const pageImgH = canvas.height * layout.imageWidth / img.width;
       pdf.addImage(pageDataUrl, "JPEG", layout.offsetX, 8, layout.imageWidth, pageImgH, undefined, "SLOW");
     });
 
@@ -578,7 +616,7 @@ export async function elementsToA4PdfBlob(
     try {
       await waitForPaint();
       return await elementToPdfBlobPaged(stage, settings.pages, {
-        ...opts, interactive: false, orientation: settings.orientation,
+        ...opts, interactive: false, orientation: settings.orientation, pdf: settings,
         size: { width: stage.scrollWidth, height: stage.scrollHeight },
         pageBreakSelector: "tr, .pdf-document-section, .daily-queue-document__job, .job-report-checklist-card",
       });
