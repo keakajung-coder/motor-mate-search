@@ -20,6 +20,7 @@ import { setupPwa } from "@/lib/pwa";
 import { useMyIssueReplies } from "@/lib/issue-watch";
 import { NotificationBell } from "@/components/NotificationBell";
 import { OverlayScrollbarLayer } from "@/components/OverlayScrollbarLayer";
+import { VoiceInputLayer } from "@/components/VoiceInputLayer";
 import { ConnectionKeeper } from "@/components/ConnectionKeeper";
 import { ExcelExportButton } from "@/components/ExcelExportButton";
 import { ThemeQuickToggle } from "@/components/ThemePicker";
@@ -271,6 +272,7 @@ function RootComponent() {
           <AccessGate>
             <div className="min-h-dvh min-w-0 overflow-x-clip bg-background">
               <OverlayScrollbarLayer />
+              <VoiceInputLayer />
               <ConnectionKeeper />
               <ExcelExportButton />
               <NavBar />
