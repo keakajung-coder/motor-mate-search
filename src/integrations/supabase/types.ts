@@ -70,6 +70,9 @@ export type Database = {
           cust_id: string | null
           customer_address: string | null
           customer_name: string | null
+          customer_signature: string | null
+          customer_signed_at: string | null
+          customer_signer_name: string | null
           customer_sn: string | null
           depart_time: string | null
           id: string
@@ -113,6 +116,9 @@ export type Database = {
           cust_id?: string | null
           customer_address?: string | null
           customer_name?: string | null
+          customer_signature?: string | null
+          customer_signed_at?: string | null
+          customer_signer_name?: string | null
           customer_sn?: string | null
           depart_time?: string | null
           id?: string
@@ -156,6 +162,9 @@ export type Database = {
           cust_id?: string | null
           customer_address?: string | null
           customer_name?: string | null
+          customer_signature?: string | null
+          customer_signed_at?: string | null
+          customer_signer_name?: string | null
           customer_sn?: string | null
           depart_time?: string | null
           id?: string
@@ -1158,6 +1167,9 @@ export type Database = {
           cust_id: string | null
           customer_address: string | null
           customer_name: string
+          customer_signature: string | null
+          customer_signed_at: string | null
+          customer_signer_name: string | null
           customer_sn: string | null
           depart_time: string | null
           id: string
@@ -1192,6 +1204,9 @@ export type Database = {
           cust_id?: string | null
           customer_address?: string | null
           customer_name: string
+          customer_signature?: string | null
+          customer_signed_at?: string | null
+          customer_signer_name?: string | null
           customer_sn?: string | null
           depart_time?: string | null
           id?: string
@@ -1226,6 +1241,9 @@ export type Database = {
           cust_id?: string | null
           customer_address?: string | null
           customer_name?: string
+          customer_signature?: string | null
+          customer_signed_at?: string | null
+          customer_signer_name?: string | null
           customer_sn?: string | null
           depart_time?: string | null
           id?: string

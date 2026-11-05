@@ -346,6 +346,9 @@ export function HandoverReportDialog({
     quotation_items?: string | null;
     checklist?: any;
     attachments?: string | null;
+    customer_signature?: string | null;
+    customer_signer_name?: string | null;
+    customer_signed_at?: string | null;
   };
   onClose: () => void;
   initialAttachments?: JobAttachment[];
@@ -491,9 +494,9 @@ export function HandoverReportDialog({
       technicianDate: todayStr,
 
       // 4. Receiver
-      receiverName: appt.contact_name ?? "",
-      receiverSignature: null,
-      receiverDate: todayStr,
+      receiverName: appt.customer_signer_name || appt.contact_name || "",
+      receiverSignature: appt.customer_signature || null,
+      receiverDate: appt.customer_signed_at ? String(appt.customer_signed_at).slice(0, 10) : todayStr,
     };
   });
 

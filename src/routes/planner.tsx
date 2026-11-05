@@ -34,6 +34,7 @@ import { ensureSeller, useSellerNames } from "@/lib/sellers";
 import { JobAttachments, parseAttachments } from "@/components/JobAttachments";
 import { HandoverReportDialog } from "@/components/HandoverReportDialog";
 import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
+import { CustomerSignaturePad, type CustomerSignaturePadRef } from "@/components/CustomerSignaturePad";
 
 import {
   AlertTriangle,
@@ -187,6 +188,9 @@ type Appointment = {
   parts_replaced?: string | null;
   quotation_items?: string | null;
   checklist?: any;
+  customer_signature?: string | null;
+  customer_signer_name?: string | null;
+  customer_signed_at?: string | null;
 };
 
 type WorkOrder = Appointment & {
@@ -1383,7 +1387,7 @@ function newAppointment(date: string): Appointment {
 function duplicateAppointment(a: Appointment): Appointment {
   const src = a as Appointment & Record<string, unknown>;
   const copy: Record<string, unknown> = { ...src };
-  for (const k of ["id", "work_order_id", "job_no", "result", "close_note", "closed_at", "parts_replaced", "quotation_items", "checklist", "attachments", "created_at", "updated_at"]) delete copy[k];
+  for (const k of ["id", "work_order_id", "job_no", "result", "close_note", "closed_at", "parts_replaced", "quotation_items", "checklist", "attachments", "customer_signature", "customer_signer_name", "customer_signed_at", "created_at", "updated_at"]) delete copy[k];
   return { ...(copy as unknown as Appointment), id: "", status: "approved", result: null, close_note: null };
 }
 
@@ -5034,6 +5038,11 @@ function CloseJobDialog({
   );
   const [note, setNote] = useState(appt.close_note ?? "");
   const [attachments, setAttachments] = useState<string | null>(appt.attachments ?? null);
+  const sigPadRef = useRef<CustomerSignaturePadRef>(null);
+  const [customerSignature, setCustomerSignature] = useState<string | null>(appt.customer_signature ?? null);
+  const [customerSignerName, setCustomerSignerName] = useState<string>(
+    appt.customer_signer_name ?? appt.contact_name ?? appt.customer_name ?? "",
+  );
   const [wantHandoverReport, setWantHandoverReport] = useState(true);
   const [resetParts, setResetParts] = useState(!isEdit);
   const [saving, setSaving] = useState(false);
@@ -5095,23 +5104,46 @@ function CloseJobDialog({
     if (!isEdit || !appt.id) return;
     let alive = true;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("appointments")
         .select(
-          "quotation_required, parts_categories, parts_note, parts_replaced, quotation_items, attachments",
+          "quotation_required, parts_categories, parts_note, parts_replaced, quotation_items, attachments, customer_signature, customer_signer_name",
         )
         .eq("id", appt.id)
         .maybeSingle();
-      if (!alive || !data) return;
-      setQuotation(!!data.quotation_required);
-      setCats(
-        splitNames(data.parts_replaced ?? "").length
-          ? splitNames(data.parts_replaced)
-          : splitNames(data.parts_categories ?? ""),
-      );
-      setPartsNote(data.parts_note ?? "");
-      setQuoteItems(splitNames(data.quotation_items ?? ""));
-      if (data.attachments) setAttachments(data.attachments);
+      if (!alive) return;
+      if (data) {
+        setQuotation(!!data.quotation_required);
+        setCats(
+          splitNames(data.parts_replaced ?? "").length
+            ? splitNames(data.parts_replaced)
+            : splitNames(data.parts_categories ?? ""),
+        );
+        setPartsNote(data.parts_note ?? "");
+        setQuoteItems(splitNames(data.quotation_items ?? ""));
+        if (data.attachments) setAttachments(data.attachments);
+        if ((data as any).customer_signature) setCustomerSignature((data as any).customer_signature);
+        if ((data as any).customer_signer_name) setCustomerSignerName((data as any).customer_signer_name);
+      } else if (error) {
+        const fallback = await supabase
+          .from("appointments")
+          .select(
+            "quotation_required, parts_categories, parts_note, parts_replaced, quotation_items, attachments",
+          )
+          .eq("id", appt.id)
+          .maybeSingle();
+        if (fallback.data) {
+          setQuotation(!!fallback.data.quotation_required);
+          setCats(
+            splitNames(fallback.data.parts_replaced ?? "").length
+              ? splitNames(fallback.data.parts_replaced)
+              : splitNames(fallback.data.parts_categories ?? ""),
+          );
+          setPartsNote(fallback.data.parts_note ?? "");
+          setQuoteItems(splitNames(fallback.data.quotation_items ?? ""));
+          if (fallback.data.attachments) setAttachments(fallback.data.attachments);
+        }
+      }
     })();
     return () => {
       alive = false;
@@ -5283,6 +5315,18 @@ function CloseJobDialog({
 
   const submit = async () => {
     if (!result) return toast.error("กรุณาเลือกผลสรุปงาน");
+
+    const trimmedSignerName = customerSignerName.trim();
+    if (!trimmedSignerName) {
+      return toast.error("กรุณาระบุชื่อ-นามสกุล ผู้รับมอบงาน (ตัวบรรจง)");
+    }
+
+    // ตรวจสอบความถูกต้องของลายเซ็นลูกค้า (Validation: Canvas ไม่ว่างเปล่า)
+    const finalSignature = customerSignature || sigPadRef.current?.getTrimmedSignature();
+    if (!finalSignature || (sigPadRef.current && sigPadRef.current.isEmpty() && !customerSignature)) {
+      return toast.error("กรุณาให้ลูกค้าลงลายมือชื่อและยืนยันก่อนปิดใบงาน");
+    }
+
     setSaving(true);
     const doneDate = new Date().toISOString().slice(0, 10);
     const chosenParts = [...cats, ...quoteItems].filter((c) => !quoteCategoryNames.includes(c));
@@ -5299,37 +5343,63 @@ function CloseJobDialog({
       await linkToUnit([...known, ...extra]);
     }
 
-    const { error } = await supabase
+    const signedAt = appt.customer_signed_at ?? new Date().toISOString();
+    const apptUpdatePayload: Record<string, unknown> = {
+      status: "closed",
+      result,
+      close_note: note.trim() || null,
+      closed_at: appt.closed_at ?? new Date().toISOString(),
+      quotation_required: quotation,
+      parts_categories: cats.filter((c) => PART_CATEGORIES.includes(c)).join(", ") || null,
+      parts_note: partsNote.trim() || null,
+      parts_replaced: [cats.join(", "), partsNote.trim()].filter(Boolean).join(" · ") || null,
+      quotation_items: quoteItems.join(", ") || null,
+      checklist: (useChecklist && checklist ? { ...checklist, customer_signature: finalSignature, customer_signer_name: trimmedSignerName } : null) as never,
+      attachments,
+      customer_signature: finalSignature,
+      customer_signer_name: trimmedSignerName,
+      customer_signed_at: signedAt,
+    };
+
+    let { error } = await supabase
       .from("appointments")
-      .update({
-        status: "closed",
-        result,
-        close_note: note.trim() || null,
-        closed_at: appt.closed_at ?? new Date().toISOString(),
-        quotation_required: quotation,
-        parts_categories: cats.filter((c) => PART_CATEGORIES.includes(c)).join(", ") || null,
-        parts_note: partsNote.trim() || null,
-        parts_replaced: [cats.join(", "), partsNote.trim()].filter(Boolean).join(" · ") || null,
-        quotation_items: quoteItems.join(", ") || null,
-        checklist: (useChecklist && checklist ? checklist : null) as never,
-        attachments,
-      })
+      .update(apptUpdatePayload)
       .eq("id", appt.id);
+
+    if (error && (error.message?.includes("customer_signature") || error.code === "42703")) {
+      delete apptUpdatePayload.customer_signature;
+      delete apptUpdatePayload.customer_signer_name;
+      delete apptUpdatePayload.customer_signed_at;
+      const retry = await supabase.from("appointments").update(apptUpdatePayload).eq("id", appt.id);
+      error = retry.error;
+    }
     if (error) {
       setSaving(false);
       return toast.error(error.message);
     }
 
     if (appt.work_order_id) {
-      const { error: orderError } = await supabase
+      const woPayload: Record<string, unknown> = {
+        status: "closed",
+        visit_date: appt.visit_date,
+        visit_time: appt.visit_time,
+        attachments,
+        customer_signature: finalSignature,
+        customer_signer_name: trimmedSignerName,
+        customer_signed_at: signedAt,
+      };
+      let { error: orderError } = await supabase
         .from("work_orders")
-        .update({
-          status: "closed",
-          visit_date: appt.visit_date,
-          visit_time: appt.visit_time,
-          attachments,
-        })
+        .update(woPayload)
         .eq("id", appt.work_order_id);
+
+      if (orderError && (orderError.message?.includes("customer_signature") || orderError.code === "42703")) {
+        delete woPayload.customer_signature;
+        delete woPayload.customer_signer_name;
+        delete woPayload.customer_signed_at;
+        const retryWo = await supabase.from("work_orders").update(woPayload).eq("id", appt.work_order_id);
+        orderError = retryWo.error;
+      }
       if (orderError) {
         setSaving(false);
         return toast.error("ปิดใบสั่งงานไม่สำเร็จ: " + orderError.message);
@@ -5392,8 +5462,11 @@ function CloseJobDialog({
       close_note: note.trim() || null,
       parts_replaced: [cats.join(", "), partsNote.trim()].filter(Boolean).join(" · ") || null,
       quotation_items: quoteItems.join(", ") || null,
-      checklist: (useChecklist && checklist ? checklist : null) as never,
+      checklist: (useChecklist && checklist ? { ...checklist, customer_signature: finalSignature, customer_signer_name: trimmedSignerName } : null) as never,
       attachments,
+      customer_signature: finalSignature,
+      customer_signer_name: trimmedSignerName,
+      customer_signed_at: signedAt,
     };
     onSaved();
     if (wantHandoverReport && onOpenHandover) {
@@ -5440,6 +5513,18 @@ function CloseJobDialog({
               </span>
             </div>
             <JobAttachments value={attachments} onChange={setAttachments} />
+          </div>
+
+          {/* ช่องเซ็นชื่อดิจิทัลสำหรับลูกค้า (Customer Signature Pad) */}
+          <div className="min-w-0 lg:col-span-2">
+            <CustomerSignaturePad
+              ref={sigPadRef}
+              signerName={customerSignerName}
+              onSignerNameChange={setCustomerSignerName}
+              value={customerSignature}
+              onChange={setCustomerSignature}
+              required
+            />
           </div>
 
           {/* ตัวเลือกสร้างใบส่งมอบงาน (Job Handover Report) */}
@@ -5785,6 +5870,7 @@ function CloseJobDialog({
               type="button"
               variant="secondary"
               onClick={() => {
+                const finalSig = customerSignature || sigPadRef.current?.getTrimmedSignature();
                 onOpenHandover({
                   ...appt,
                   result,
@@ -5793,6 +5879,9 @@ function CloseJobDialog({
                   quotation_items: quoteItems.join(", ") || null,
                   checklist: (useChecklist && checklist ? checklist : null) as never,
                   attachments,
+                  customer_signature: finalSig,
+                  customer_signer_name: customerSignerName.trim() || null,
+                  customer_signed_at: appt.customer_signed_at ?? new Date().toISOString(),
                 });
               }}
             >
@@ -5911,6 +6000,35 @@ function ClosedJobResultDialog({
                 รูปภาพผลงาน / หน้างาน
               </p>
               <JobAttachments value={r.attachments} readOnly />
+            </div>
+          )}
+          {(r.customer_signature || r.customer_signer_name) && (
+            <div className="rounded-lg border p-3">
+              <p className="mb-2 text-sm font-semibold flex items-center gap-1.5">
+                <PenTool className="h-4 w-4 text-primary" />
+                ลายมือชื่อผู้รับมอบงาน (Customer Signature)
+              </p>
+              <div className="flex flex-wrap items-center gap-4">
+                {r.customer_signature && (
+                  <div className="flex h-20 items-center justify-center rounded-md border bg-white p-2 dark:bg-slate-900">
+                    <img
+                      src={r.customer_signature}
+                      alt="ลายเซ็นผู้รับมอบงาน"
+                      className="max-h-16 max-w-[220px] object-contain filter dark:invert"
+                    />
+                  </div>
+                )}
+                <div className="text-sm">
+                  <p className="font-semibold text-foreground">
+                    ({r.customer_signer_name || "ไม่ได้ระบุชื่อ-นามสกุล"})
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {r.customer_signed_at
+                      ? `ลงนามเมื่อ ${formatDate(String(r.customer_signed_at).slice(0, 10))}`
+                      : (r.closed_at ? `ลงนามเมื่อ ${formatDate(String(r.closed_at).slice(0, 10))}` : "ผู้รับมอบงาน")}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
           <div className="rounded-lg border p-3">
