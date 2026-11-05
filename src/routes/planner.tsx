@@ -5442,10 +5442,7 @@ function CloseJobDialog({
   const submit = async () => {
     if (!result) return toast.error("กรุณาเลือกผลสรุปงาน");
 
-    const trimmedSignerName = customerSignerName.trim();
-    if (!trimmedSignerName) {
-      return toast.error("กรุณาระบุชื่อ-นามสกุล ผู้รับมอบงาน (ตัวบรรจง)");
-    }
+    const trimmedSignerName = customerSignerName.trim() || null;
 
     // ตรวจสอบความถูกต้องของลายเซ็นลูกค้า (Validation: Canvas ไม่ว่างเปล่า)
     const finalSignature = customerSignature || sigPadRef.current?.getTrimmedSignature();
@@ -6146,7 +6143,7 @@ function ClosedJobResultDialog({
                 )}
                 <div className="text-sm">
                   <p className="font-semibold text-foreground">
-                    ({r.customer_signer_name || "ไม่ได้ระบุชื่อ-นามสกุล"})
+                    {r.customer_signer_name ? `(${r.customer_signer_name})` : "(ผู้รับมอบงาน)"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {r.customer_signed_at

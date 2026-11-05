@@ -153,11 +153,13 @@ export const CustomerSignaturePad = forwardRef<CustomerSignaturePadRef, Customer
           >
             <UserCheck className="h-3.5 w-3.5 text-primary" />
             ชื่อ-นามสกุล ผู้รับมอบงาน (ตัวบรรจง){" "}
-            {required && <span className="text-destructive">*</span>}
+            <span className="text-[11px] font-normal text-muted-foreground">
+              (ถ้ามี / ไม่บังคับ)
+            </span>
           </Label>
           <Input
             id="customer-signer-name"
-            placeholder="เช่น สมชาย มีสุข (ผู้จัดการโรงงาน / ผู้รับมอบงาน)"
+            placeholder="ระบุชื่อ-นามสกุลผู้รับมอบงาน (ถ้ามี) เช่น สมชาย มีสุข"
             value={signerName}
             onChange={(e) => onSignerNameChange(e.target.value)}
             disabled={readOnly}
@@ -184,7 +186,7 @@ export const CustomerSignaturePad = forwardRef<CustomerSignaturePadRef, Customer
                 </div>
                 <div className="text-center">
                   <p className="text-xs font-medium text-foreground">
-                    ({signerName.trim() || "ไม่ได้ระบุชื่อ-นามสกุล"})
+                    {signerName.trim() ? `(${signerName.trim()})` : "(ผู้รับมอบงาน)"}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     ผู้รับมอบงาน / ตรวจรับงานเรียบร้อย
