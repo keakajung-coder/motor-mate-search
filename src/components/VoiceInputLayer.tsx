@@ -9,11 +9,7 @@ const TEXT_TYPES = new Set(["text", "search", "", "email", "url", "tel"]);
 
 function eligible(el: EventTarget | null): el is Field {
   if (el instanceof HTMLTextAreaElement) return !el.readOnly && !el.disabled && !el.closest("[data-no-voice]");
-  if (el instanceof HTMLInputElement) {
-    return TEXT_TYPES.has(el.type) && !el.readOnly && !el.disabled && !el.closest("[data-no-voice]") && !el.closest("[cmdk-input-wrapper]") === false
-      ? true
-      : TEXT_TYPES.has(el.type) && !el.readOnly && !el.disabled && !el.closest("[data-no-voice]");
-  }
+  if (el instanceof HTMLInputElement) return TEXT_TYPES.has(el.type) && !el.readOnly && !el.disabled && !el.closest("[data-no-voice]");
   return false;
 }
 
@@ -121,7 +117,7 @@ export function VoiceInputLayer() {
   const btn = "pointer-events-auto flex items-center justify-center rounded-full border border-border bg-background text-foreground shadow-md";
 
   return createPortal(
-    <div style={{ position: "fixed", top, left: rect.right - (isArea ? 2 * size + 10 : size + 4), zIndex: 2147483000 }} className="pointer-events-none flex items-center gap-1" data-voice-layer>
+    <div style={{ position: "fixed", top, right: window.innerWidth - rect.right + 4, zIndex: 2147483000 }} className="pointer-events-none flex items-center gap-1" data-voice-layer>
       {listening && (
         <span className="pointer-events-none absolute -top-7 right-0 whitespace-nowrap rounded-full bg-destructive px-2 py-0.5 text-xs font-semibold text-destructive-foreground animate-pulse">
           ● กำลังฟัง... ({lang === "th-TH" ? "ไทย" : "EN"})
