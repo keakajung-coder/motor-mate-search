@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/data-client";
 import { isValueRemoved, markValueRemoved, invalidateData } from "@/lib/data-sync";
+import { customerLocation, type CustomerLocation } from "./customer-location";
 
 /** ข้อมูลกลางสำหรับ Dropdown ทุกหน้า (ลูกค้า / เครื่องจักร / ช่าง / รถ) */
-export type DirCustomer = { cust_id: string; name: string; phone: string; address: string };
+export type DirCustomer = CustomerLocation & { cust_id: string; name: string; phone: string };
 export type DirMachine = {
   serial: string;
   label: string;
@@ -45,7 +46,7 @@ if (typeof window !== "undefined") {
 
 async function fetchAll() {
   const [c, m, s, v, eng] = await Promise.all([
-    supabase.from("customers").select("cust_id, name, phone, address").order("name"),
+    supabase.from("customers").select("cust_id, name, phone, address, subdistrict, district, province, postal_code, latitude, longitude, maps_url, place_id").order("name"),
     supabase
       .from("machine_units")
       .select(
@@ -77,6 +78,7 @@ async function fetchAll() {
     loading: false,
     customers: (c.data ?? [])
       .map((r: any) => ({
+        ...customerLocation(r),
         cust_id: r.cust_id ?? "",
         name: r.name ?? "",
         phone: r.phone ?? "",

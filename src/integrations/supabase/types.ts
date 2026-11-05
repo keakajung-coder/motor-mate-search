@@ -67,8 +67,10 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           created_at: string
+          cross_zone_approval: Json | null
           cust_id: string | null
           customer_address: string | null
+          customer_location: Json | null
           customer_name: string | null
           customer_signature: string | null
           customer_signed_at: string | null
@@ -113,8 +115,10 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          cross_zone_approval?: Json | null
           cust_id?: string | null
           customer_address?: string | null
+          customer_location?: Json | null
           customer_name?: string | null
           customer_signature?: string | null
           customer_signed_at?: string | null
@@ -159,8 +163,10 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          cross_zone_approval?: Json | null
           cust_id?: string | null
           customer_address?: string | null
+          customer_location?: Json | null
           customer_name?: string | null
           customer_signature?: string | null
           customer_signed_at?: string | null
@@ -885,11 +891,11 @@ export type Database = {
           parts_note: string | null
           status: string
           updated_at: string
+          vehicle_plate: string | null
           visit_date: string
           visit_no: number
           visit_time: string | null
           work_order_id: string | null
-          vehicle_plate: string | null
         }
         Insert: {
           appointment_id?: string | null
@@ -900,11 +906,11 @@ export type Database = {
           parts_note?: string | null
           status?: string
           updated_at?: string
+          vehicle_plate?: string | null
           visit_date: string
           visit_no: number
           visit_time?: string | null
           work_order_id?: string | null
-          vehicle_plate?: string | null
         }
         Update: {
           appointment_id?: string | null
@@ -915,11 +921,11 @@ export type Database = {
           parts_note?: string | null
           status?: string
           updated_at?: string
+          vehicle_plate?: string | null
           visit_date?: string
           visit_no?: number
           visit_time?: string | null
           work_order_id?: string | null
-          vehicle_plate?: string | null
         }
         Relationships: [
           {
@@ -1164,8 +1170,10 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           created_at: string
+          cross_zone_approval: Json | null
           cust_id: string | null
           customer_address: string | null
+          customer_location: Json | null
           customer_name: string
           customer_signature: string | null
           customer_signed_at: string | null
@@ -1201,8 +1209,10 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          cross_zone_approval?: Json | null
           cust_id?: string | null
           customer_address?: string | null
+          customer_location?: Json | null
           customer_name: string
           customer_signature?: string | null
           customer_signed_at?: string | null
@@ -1238,8 +1248,10 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          cross_zone_approval?: Json | null
           cust_id?: string | null
           customer_address?: string | null
+          customer_location?: Json | null
           customer_name?: string
           customer_signature?: string | null
           customer_signed_at?: string | null

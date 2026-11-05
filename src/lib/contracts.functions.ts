@@ -11,6 +11,7 @@ export type ContractVisitInput = {
   parts_note?: string | null;
   status?: string | null;
   vehicle_plate?: string | null;
+  zone_signature?: string;
 };
 
 export type ContractInput = {
@@ -79,6 +80,13 @@ export const saveContract = createServerFn({ method: "POST" })
       .filter((v) => DATE_RE.test(v.visit_date ?? ""))
       .map((v, i) => ({ ...v, visit_no: i + 1 }));
     if (visits.length === 0) throw new Error("กรุณากำหนดงวดเข้าบริการอย่างน้อย 1 ครั้ง");
+    const { reviewVehicleZone } = await import("./vehicle-zone.server");
+    const approvals = new Map<number, { signature: string; conflicts: unknown; approved_at: string; approved_by: string } | null>();
+    for (const v of visits) {
+      const review = await reviewVehicleZone(supabaseAdmin, { id: v.appointment_id, customer_name: customerName, serial_number: data.serial_number, visit_date: v.visit_date, vehicle_plate: v.vehicle_plate });
+      if (review.conflicts.length && v.zone_signature !== review.signature) throw new Error("รถมีงานข้ามโซน กรุณาอนุมัติหรือย้ายรถก่อนบันทึกสัญญา");
+      approvals.set(v.visit_no, review.conflicts.length ? { signature: review.signature, conflicts: review.conflicts, approved_at: new Date().toISOString(), approved_by: "admin" } : null);
+    }
 
     const payload = {
       customer_id: data.customer_id ?? null,
@@ -142,6 +150,7 @@ export const saveContract = createServerFn({ method: "POST" })
         visit_time: v.visit_time ?? null,
         status: targetStatus,
         vehicle_plate: v.vehicle_plate ?? null,
+        cross_zone_approval: approvals.get(v.visit_no) as never,
       };
 
       let appointmentId = oldVisit?.appointment_id ?? null;
@@ -183,13 +192,19 @@ export const saveContract = createServerFn({ method: "POST" })
 
 /** อัปเดต เปลี่ยนแปลง หรือสลับทะเบียนรถของงวดสัญญาได้ตลอดเวลา (Fully Editable) */
 export const updateContractVisitVehicle = createServerFn({ method: "POST" })
-  .inputValidator((d: { visitId?: string | null; appointmentId?: string | null; vehiclePlate: string | null }) => d)
+  .inputValidator((d: { visitId?: string | null; appointmentId?: string | null; vehiclePlate: string | null; zoneSignature?: string }) => d)
   .handler(async ({ data }) => {
     const supabaseAdmin = await adminCtx();
     const plate = data.vehiclePlate?.trim() || null;
 
     if (data.appointmentId) {
-      await supabaseAdmin.from("appointments").update({ vehicle_plate: plate }).eq("id", data.appointmentId);
+      const { data: job, error: readError } = await supabaseAdmin.from("appointments").select("*").eq("id", data.appointmentId).single();
+      if (readError || !job) throw new Error("ไม่พบงานที่ต้องการเปลี่ยนรถ");
+      const { reviewVehicleZone } = await import("./vehicle-zone.server");
+      const review = await reviewVehicleZone(supabaseAdmin, { ...job, vehicle_plate: plate });
+      if (review.conflicts.length && data.zoneSignature !== review.signature) throw new Error("รถมีงานข้ามโซน กรุณาอนุมัติหรือย้ายรถก่อน");
+      const { error } = await supabaseAdmin.from("appointments").update({ vehicle_plate: plate, cross_zone_approval: review.conflicts.length ? { ...review, approved_at: new Date().toISOString(), approved_by: "admin" } : null }).eq("id", data.appointmentId);
+      if (error) throw new Error("เปลี่ยนรถไม่สำเร็จ");
     }
 
     if (data.visitId) {

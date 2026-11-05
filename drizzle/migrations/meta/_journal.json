@@ -54,8 +54,22 @@
     {
       "idx": 7,
       "version": "7",
+      "when": 1793319122936,
+      "tag": "0007_vehicle_cross_zone_approval",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793405021503,
+      "tag": "0008_work_order_customer_location",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
       "when": 1793836000000,
-      "tag": "0007_add_customer_signature",
+      "tag": "0009_add_customer_signature",
       "breakpoints": true
     }
   ]

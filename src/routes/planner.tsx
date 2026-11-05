@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/data-client";
 import { generateDueWorkOrders } from "@/lib/contracts.functions";
@@ -70,6 +70,8 @@ import {
   Clock,
 } from "lucide-react";
 import { GoogleMapsPin } from "@/components/GoogleMapsPin";
+import { CustomerLocationFields } from "@/components/CustomerLocationFields";
+import { customerLocationPatch, type CustomerLocation } from "@/lib/customer-location";
 import {
   extractZoneInfo,
   groupAppointmentsByZone,
@@ -114,6 +116,8 @@ import { LeaveCell, StaffLeaveDialog, useStaffLeave } from "@/components/StaffLe
 import type { StaffLeave } from "@/lib/staff-leave";
 import { checkScheduleConflicts } from "@/lib/schedule-check";
 import { ScheduleConflictDialog } from "@/components/ScheduleConflictDialog";
+import { chooseVehicleForJob } from "@/lib/vehicle-zone-client";
+import { VehicleZoneBadge } from "@/components/VehicleZoneBadge";
 import { logAudit } from "@/lib/audit";
 import { ChecklistForm } from "@/components/ChecklistForm";
 import { ChecklistView } from "@/components/ChecklistView";
@@ -131,12 +135,15 @@ import {
 export const Route = createFileRoute("/planner")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { sn?: string; customer?: string; job?: string; date?: string } => {
-    const out: { sn?: string; customer?: string; job?: string; date?: string } = {};
+  ): { sn?: string; customer?: string; job?: string; date?: string; record?: string; source?: "appointment" | "work_order"; report?: boolean } => {
+    const out: { sn?: string; customer?: string; job?: string; date?: string; record?: string; source?: "appointment" | "work_order"; report?: boolean } = {};
     if (typeof search.sn === "string") out.sn = search.sn;
     if (typeof search.customer === "string") out.customer = search.customer;
     if (typeof search.job === "string") out.job = search.job;
     if (typeof search.date === "string") out.date = search.date;
+    if (typeof search.record === "string") out.record = search.record;
+    if (search.source === "appointment" || search.source === "work_order") out.source = search.source;
+    if (search.report === true || search.report === "true") out.report = true;
     return out;
   },
 
@@ -160,6 +167,8 @@ export const Route = createFileRoute("/planner")({
 });
 
 type Appointment = {
+  customer_location?: CustomerLocation | null;
+  cross_zone_approval?: unknown;
   id: string;
   work_order_id?: string | null;
   cust_id?: string | null;
@@ -443,6 +452,8 @@ function PlannerPage() {
   const leavePeople = new Set(visibleLeave.map((row) => row.staff_name)).size;
   const [sortBy, setSortBy] = useState("date-asc");
   const [editing, setEditing] = useState<Appointment | null>(null);
+  const [reportOrder, setReportOrder] = useState<WorkOrder | null>(null);
+  const [openingRecord, setOpeningRecord] = useState(false);
   const [closing, setClosing] = useState<Appointment | null>(null);
   const [viewing, setViewing] = useState<Appointment | null>(null);
   const [handoverAppt, setHandoverAppt] = useState<Appointment | null>(null);
@@ -468,6 +479,43 @@ function PlannerPage() {
 
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+
+  // Open only the requested existing record; never construct a new appointment from a report link.
+  useEffect(() => {
+    if (!search.record || !search.source) return;
+    const recordId = search.record;
+    let cancelled = false;
+    const openRecord = async () => {
+      setOpeningRecord(true);
+      try {
+        if (search.source === "appointment") {
+          const { data, error } = await supabase.from("appointments").select("*").eq("id", recordId).maybeSingle();
+          if (error) throw new Error(error.message);
+          if (!data) throw new Error("ไม่พบงานนี้ อาจถูกลบแล้ว");
+          if (!cancelled) pickAppt(data as Appointment);
+        } else {
+          const { data: linked, error: linkedError } = await supabase.from("appointments").select("*").eq("work_order_id", recordId).limit(1).maybeSingle();
+          if (linkedError) throw new Error(linkedError.message);
+          if (linked) { if (!cancelled) pickAppt(linked as Appointment); }
+          else {
+            const { data, error } = await supabase.from("work_orders").select("*").eq("id", recordId).maybeSingle();
+            if (error) throw new Error(error.message);
+            if (!data) throw new Error("ไม่พบใบสั่งงานนี้ อาจถูกลบแล้ว");
+            if (!cancelled) setReportOrder(data as unknown as WorkOrder);
+          }
+        }
+      } catch (error) {
+        if (!cancelled) toast.error(error instanceof Error ? error.message : "เปิดงานไม่สำเร็จ");
+      } finally {
+        if (!cancelled) {
+          setOpeningRecord(false);
+          void navigate({ search: prev => ({ ...prev, record: undefined, source: undefined }), replace: true });
+        }
+      }
+    };
+    void openRecord();
+    return () => { cancelled = true; };
+  }, [search.record, search.source, navigate]);
 
   // เปิดฟอร์มนัดหมายอัตโนมัติเมื่อถูกส่งมาจากแผงแจ้งเตือนอะไหล่ (?sn=&customer=&job=)
   useEffect(() => {
@@ -733,6 +781,14 @@ function PlannerPage() {
 
   return (
     <div className="w-full min-w-0 space-y-5 p-1 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      {search.report && <Button asChild variant="outline"><Link to="/weekly-summary"><ChevronLeft /> กลับสรุปรายสัปดาห์</Link></Button>}
+      {openingRecord && <p role="status" className="flex items-center gap-2 text-muted-foreground"><Loader2 className="size-4 animate-spin" />กำลังเปิดรายละเอียดงาน</p>}
+      <Dialog open={!!reportOrder} onOpenChange={open => { if (!open) setReportOrder(null); }}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>รายละเอียดใบสั่งงาน {reportOrder?.job_no || ""}</DialogTitle><DialogDescription>{reportOrder?.customer_name}</DialogDescription></DialogHeader>
+          {reportOrder && (isAdmin ? <PendingOrders key={reportOrder.id} orders={[reportOrder]} initialExpanded={reportOrder.id} reload={() => { setReportOrder(null); void load(); }} onOpenMachineHistory={openMachineHistory} /> : <WorkOrderFormPrint order={reportOrder} />)}
+        </DialogContent>
+      </Dialog>
       <header className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">ปฏิทินนัดหมายบริการ</h1>
@@ -1461,7 +1517,7 @@ function StatsPanel({ appts, pending }: { appts: Appointment[]; pending: number 
 // ---------- Pending work orders ----------
 /** แปลงใบงานเดิมเป็นค่าเริ่มต้นของฟอร์มใบสั่งงาน (ใช้ตอนคัดลอกใบงาน) — แก้ไขได้ทุกช่องก่อนบันทึก */
 function workOrderToDraft(o: WorkOrder): Partial<WorkOrderDraft> {
-  const keys: (keyof WorkOrderDraft)[] = [
+  const keys: Exclude<keyof WorkOrderDraft, "customer_location">[] = [
     "cust_id",
     "customer_name",
     "customer_address",
@@ -1490,23 +1546,27 @@ function workOrderToDraft(o: WorkOrder): Partial<WorkOrderDraft> {
   ];
   const draft: Partial<WorkOrderDraft> = {};
   for (const k of keys) draft[k] = (o as unknown as Record<string, string | null>)[k] ?? "";
+  draft.customer_location = o.customer_location ?? null;
   return draft;
 }
 
 function PendingOrders({
+  initialExpanded,
   orders,
   reload,
   onOpenMachineHistory,
 }: {
+  initialExpanded?: string;
   orders: WorkOrder[];
   reload: () => void;
   onOpenMachineHistory?: (sn?: string | null, unitId?: string | null) => void;
 }) {
   const [edit, setEdit] = useState<Record<string, Partial<WorkOrder>>>({});
   const { staff, vehicles } = useServiceOptions();
+  const dir = useDirectory();
   const [busy, setBusy] = useState<string | null>(null);
   const [dup, setDup] = useState<WorkOrder | null>(null);
-  const [openEdit, setOpenEdit] = useState<Record<string, boolean>>({});
+  const [openEdit, setOpenEdit] = useState<Record<string, boolean>>(initialExpanded ? { [initialExpanded]: true } : {});
   const [autoAlert, setAutoAlert] = useState(true);
   const [conflictTarget, setConflictTarget] = useState<{
     order: WorkOrder;
@@ -1519,8 +1579,19 @@ function PendingOrders({
     loadAutoJobAlert().then(setAutoAlert);
   }, []);
 
-  const patch = (id: string, k: keyof WorkOrder, v: string) =>
-    setEdit((e) => ({ ...e, [id]: { ...e[id], [k]: v } }));
+  const patch = async (id: string, k: keyof WorkOrder, v: string) => {
+    if (k === "vehicle_plate") {
+      const order = orders.find(o => o.id === id);
+      if (!order) return;
+      try {
+        const plate = await chooseVehicleForJob({ ...order, ...edit[id], work_order_id: id, vehicle_plate: v });
+        if (plate === null) return;
+        v = plate;
+      } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
+    }
+    const customer = k === "customer_name" ? dir.customers.find(c => c.name === v) : k === "cust_id" ? dir.customers.find(c => c.cust_id === v) : undefined;
+    setEdit((e) => ({ ...e, [id]: { ...e[id], [k]: v, ...(customer ? { ...customerLocationPatch(customer), customer_name: customer.name, cust_id: customer.cust_id, contact_phone: customer.phone } : k === "customer_name" ? customerLocationPatch(null) : {}) } }));
+  };
 
   /** ค่าปัจจุบันของช่อง (ค่าที่แอดมินแก้ไว้ ถ้ายังไม่แก้ใช้ค่าเดิม) */
   const val = (o: WorkOrder, k: keyof WorkOrder) =>
@@ -1532,6 +1603,11 @@ function PendingOrders({
   const saveEdits = async (o: WorkOrder) => {
     const p = edit[o.id];
     if (!p || Object.keys(p).length === 0) return toast.message("ยังไม่มีการแก้ไข");
+    try {
+      const plate = await chooseVehicleForJob({ ...o, ...p, work_order_id: o.id });
+      if (plate === null) return;
+      p.vehicle_plate = plate;
+    } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
     setBusy(o.id);
     const { error } = await supabase
       .from("work_orders")
@@ -1551,6 +1627,12 @@ function PendingOrders({
   ) => {
     const p = edit[o.id] ?? {};
     const m = { ...o, ...p } as WorkOrder & Record<string, any>;
+    try {
+      const plate = await chooseVehicleForJob({ ...m, work_order_id: o.id });
+      if (plate === null) return;
+      m.vehicle_plate = plate;
+      p.vehicle_plate = plate;
+    } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
     if (m.visit_date && !override) {
       const conflicts = await checkScheduleConflicts({
         visit_date: m.visit_date,
@@ -1592,6 +1674,7 @@ function PendingOrders({
         cust_id: m.cust_id ?? null,
         customer_name: m.customer_name,
         customer_address: m.customer_address,
+        customer_location: m.customer_location ?? null,
         contact_name: m.contact_name,
         contact_phone: m.contact_phone,
         machine_label: m.machine_label,
@@ -1739,6 +1822,7 @@ function PendingOrders({
                       </span>
                       <GoogleMapsPin
                         customerName={val(o, "customer_name")}
+                        location={edit[o.id]?.customer_location ?? o.customer_location}
                         address={val(o, "customer_address")}
                         title={`Google Maps นำทาง: ${val(o, "customer_name") ?? ""}`}
                       />
@@ -1758,6 +1842,7 @@ function PendingOrders({
                   {val(o, "customer_address") && (
                     <GoogleMapsPin
                       customerName={val(o, "customer_name")}
+                        location={edit[o.id]?.customer_location ?? o.customer_location}
                       address={val(o, "customer_address")}
                       variant="badge"
                       label="นำทาง"
@@ -1839,9 +1924,11 @@ function PendingOrders({
                   />
                 </EditField>
                 <EditField label="ชื่อลูกค้า">
-                  <Input
+                  <Combobox
                     value={val(o, "customer_name")}
-                    onChange={(e) => patch(o.id, "customer_name", e.target.value)}
+                    onChange={v => patch(o.id, "customer_name", v)}
+                    options={dir.customers.map(c => ({ value: c.name, hint: c.cust_id }))}
+                    allowCustom
                   />
                 </EditField>
                 <EditField label="ที่อยู่ลูกค้า">
@@ -1850,6 +1937,7 @@ function PendingOrders({
                     onChange={(e) => patch(o.id, "customer_address", e.target.value)}
                   />
                 </EditField>
+                <CustomerLocationFields value={edit[o.id]?.customer_location ?? o.customer_location} onChange={location => setEdit(e => ({ ...e, [o.id]: { ...e[o.id], ...customerLocationPatch(location, e[o.id]?.customer_address ?? o.customer_address ?? "") } }))} />
                 <EditField label="ชื่อผู้ติดต่อ">
                   <Input
                     value={val(o, "contact_name")}
@@ -1930,7 +2018,7 @@ function PendingOrders({
                 size={visual.isMine ? "default" : "sm"}
                 className={cn("cursor-pointer font-medium", visual.isMine && "h-10 px-4 text-sm font-semibold shadow-xs")}
                 onClick={() => approve(o)}
-                disabled={busy === o.id}
+                disabled={busy === o.id || o.status !== "pending"}
               >
                 {busy === o.id ? (
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -1955,7 +2043,7 @@ function PendingOrders({
               >
                 <Copy className="mr-1.5 h-4 w-4" /> คัดลอกใบงาน
               </Button>
-              <ConfirmButton
+              {o.status === "pending" && <ConfirmButton
                 variant="outline"
                 onConfirm={() => reject(o)}
 
@@ -1964,7 +2052,7 @@ function PendingOrders({
                 confirmText="ปฏิเสธ"
               >
                 <XCircle className="mr-1.5 h-4 w-4" /> ปฏิเสธ
-              </ConfirmButton>
+              </ConfirmButton>}
             </div>
           </div>
         );
@@ -2090,13 +2178,19 @@ function ApprovedOrders({
     if (!isAdmin && chosen.date !== currentApprovedDate) {
       return toast.error("เฉพาะแอดมินเท่านั้นที่มีสิทธิ์แก้ไขวันที่นัดหมายหลังจากใบงานอนุมัติแล้ว");
     }
+    let assignedPlate = a.vehicle_plate ?? "";
+    try {
+      const plate = await chooseVehicleForJob({ ...a, visit_date: chosen.date });
+      if (plate === null) return;
+      assignedPlate = plate;
+    } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
     if (!override) {
       const conflicts = await checkScheduleConflicts({
         id: a.id,
         visit_date: chosen.date,
         visit_time: chosen.time || null,
         staff_name: a.staff_name,
-        vehicle_plate: a.vehicle_plate,
+        vehicle_plate: assignedPlate,
       });
       if (conflicts.length) {
         if (!isAdmin) {
@@ -2119,27 +2213,28 @@ function ApprovedOrders({
         : auditTag
       : a.job_detail;
 
-    const [apptResult, orderResult] = await Promise.all([
-      supabase
+    const apptResult = await supabase
         .from("appointments")
         .update({
+          vehicle_plate: assignedPlate,
           visit_date: chosen.date,
           visit_time: chosen.time || null,
           status: "scheduled",
           job_detail: finalJobDetail,
         })
-        .eq("id", a.id),
-      supabase
+        .eq("id", a.id);
+    if (apptResult.error) { setBusy(""); return toast.error(apptResult.error.message); }
+    const orderResult = await supabase
         .from("work_orders")
         .update({
+          vehicle_plate: assignedPlate,
           visit_date: chosen.date,
           visit_time: chosen.time || null,
           status: "scheduled",
           job_detail: finalJobDetail,
           admin_note: auditTag || o.admin_note || null,
         })
-        .eq("id", o.id),
-    ]);
+        .eq("id", o.id);
     setBusy("");
     const error = apptResult.error ?? orderResult.error;
     if (error) return toast.error("ยืนยันนัดหมายไม่สำเร็จ: " + error.message);
@@ -2561,6 +2656,7 @@ function ApprovedOrders({
               </span>
               <GoogleMapsPin
                 customerName={o.customer_name}
+                  location={o.customer_location}
                 address={o.customer_address}
                 title={`Google Maps นำทาง: ${o.customer_name ?? ""}`}
               />
@@ -2570,6 +2666,7 @@ function ApprovedOrders({
               {o.customer_address && (
                 <GoogleMapsPin
                   customerName={o.customer_name}
+                  location={o.customer_location}
                   address={o.customer_address}
                   variant="badge"
                   label="นำทาง"
@@ -3034,6 +3131,7 @@ function MonthGrid({
                         title={apptSummary(a)}
                       >
                         <StatusRail status={a.status} />
+                        <VehicleZoneBadge approval={a.cross_zone_approval} />
                         <span className="block truncate">
                           {visual.isMine && <span className="mr-0.5 text-primary font-bold">★</span>}
                           {a.cust_id ? `[${a.cust_id}] ` : ""}
@@ -3176,6 +3274,7 @@ function TimeGrid({
                   title={apptSummary(a)}
                 >
                   <StatusRail status={a.status} />
+                  <VehicleZoneBadge approval={a.cross_zone_approval} />
                   <span className="flex items-baseline gap-1 text-[10px]">
                     {visual.isMine && <span className="text-primary font-bold">★ งานฉัน</span>}
                     <span className="font-semibold">{a.visit_time?.slice(0, 5) || "--:--"}</span>
@@ -3363,6 +3462,7 @@ function DayDetailDialog({
         >
           <span className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-1.5">
+              <VehicleZoneBadge approval={a.cross_zone_approval} />
               {visual.isMine && (
                 <span className="inline-flex items-center gap-1 rounded bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 text-xs font-bold">
                   ⭐ งานของฉัน
@@ -3379,6 +3479,7 @@ function DayDetailDialog({
               </span>
               <GoogleMapsPin
                 customerName={a.customer_name}
+                  location={a.customer_location}
                 address={a.customer_address}
                 title={`เปิด Google Maps นำทางไปหา ${a.customer_name ?? ""}`}
               />
@@ -3401,6 +3502,7 @@ function DayDetailDialog({
                 <span className="break-words">{a.customer_address}</span>
                 <GoogleMapsPin
                   customerName={a.customer_name}
+                  location={a.customer_location}
                   address={a.customer_address}
                   variant="badge"
                   label="Google Maps นำทาง"
@@ -3421,6 +3523,7 @@ function DayDetailDialog({
         <div className="flex flex-wrap items-center gap-2 self-start">
           <GoogleMapsPin
             customerName={a.customer_name}
+                  location={a.customer_location}
             address={a.customer_address}
             variant="button"
             label="นำทาง"
@@ -3849,6 +3952,7 @@ const DailyQueueDocument = ({
                   </span>
                   <GoogleMapsPin
                     customerName={a.customer_name}
+                  location={a.customer_location}
                     address={a.customer_address}
                     title={`Google Maps นำทาง: ${a.customer_name ?? ""}`}
                   />
@@ -3856,6 +3960,7 @@ const DailyQueueDocument = ({
               </div>
               <span className="daily-queue-document__status">
                 {STATUS_LABEL[a.status] ?? a.status}
+                <VehicleZoneBadge approval={a.cross_zone_approval} />
               </span>
             </div>
             <dl className="daily-queue-document__grid">
@@ -3894,6 +3999,7 @@ const DailyQueueDocument = ({
                   {a.customer_address && (
                     <GoogleMapsPin
                       customerName={a.customer_name}
+                  location={a.customer_location}
                       address={a.customer_address}
                       variant="badge"
                       label="Google Maps นำทาง"
@@ -3995,6 +4101,7 @@ function DayList({
               </span>
               <GoogleMapsPin
                 customerName={a.customer_name}
+                  location={a.customer_location}
                 address={a.customer_address}
                 title={`Google Maps นำทาง: ${a.customer_name ?? ""}`}
               />
@@ -4014,6 +4121,7 @@ function DayList({
                 <span className="break-words">{a.customer_address}</span>
                 <GoogleMapsPin
                   customerName={a.customer_name}
+                  location={a.customer_location}
                   address={a.customer_address}
                   variant="badge"
                   label="นำทาง"
@@ -4033,6 +4141,7 @@ function DayList({
           </div>
           <div className="flex flex-col items-end gap-1">
             <JobStatusBadge status={a.status} />
+            <VehicleZoneBadge approval={a.cross_zone_approval} />
             {visual.isMine && (
               <span className="inline-flex items-center gap-1 rounded bg-primary/15 border border-primary/30 px-2 py-0.5 text-xs font-bold text-primary">
                 ⭐ งานของฉัน
@@ -4061,6 +4170,7 @@ function DayList({
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <GoogleMapsPin
             customerName={a.customer_name}
+                  location={a.customer_location}
             address={a.customer_address}
             variant="button"
             label="นำทาง"
@@ -4324,6 +4434,7 @@ function AppointmentDialog({
               setForm((f) => ({
                 ...f,
                 customer_name: "",
+                customer_location: null,
                 customer_address: "",
                 contact_phone: "",
               }));
@@ -4369,7 +4480,7 @@ function AppointmentDialog({
         customer_name: name,
         cust_id: c?.cust_id || m?.cust_id || (c ? null : f.cust_id),
         serial_number: joinNames(kept),
-        customer_address: c?.address || m?.address || f.customer_address,
+        ...customerLocationPatch(c, m?.address || ""),
         contact_phone: c?.phone || m?.phone || f.contact_phone,
       };
     });
@@ -4387,7 +4498,7 @@ function AppointmentDialog({
         joinNames(Array.from(new Set(hits.map((h) => h.label).filter(Boolean)))) || f.machine_label,
       customer_name: first?.customer || f.customer_name,
       cust_id: first?.cust_id || f.cust_id,
-      customer_address: first?.address || f.customer_address,
+      ...(first ? customerLocationPatch(dir.customers.find(c => c.name === first.customer), first.address) : {}),
       contact_phone: first?.phone || f.contact_phone,
     }));
   };
@@ -4413,6 +4524,12 @@ function AppointmentDialog({
     if (!form.customer_name?.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     setSaving(true);
     const finalVisitDate = isApproved && !isAdmin ? value.visit_date : form.visit_date;
+    try {
+      const plate = await chooseVehicleForJob({ ...form, visit_date: finalVisitDate });
+      if (plate === null) { setSaving(false); return; }
+      form.vehicle_plate = plate;
+      setForm(f => ({ ...f, vehicle_plate: plate }));
+    } catch (error) { setSaving(false); toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
     if (!override) {
       const conflicts = await checkScheduleConflicts({
         id: form.id,
@@ -4473,6 +4590,7 @@ function AppointmentDialog({
       cust_id: form.cust_id?.trim() || null,
       customer_name: form.customer_name,
       customer_address: form.customer_address,
+      customer_location: form.customer_location ?? null,
       contact_name: form.contact_name,
       contact_phone: form.contact_phone,
       machine_label: form.machine_label,
@@ -4746,6 +4864,7 @@ function AppointmentDialog({
                 {form.customer_name && (
                   <GoogleMapsPin
                     customerName={form.customer_name}
+                    location={form.customer_location}
                     address={form.customer_address}
                     variant="badge"
                     label="ค้นหาแผนที่"
@@ -4797,6 +4916,7 @@ function AppointmentDialog({
                 {(form.customer_address || form.customer_name) && (
                   <GoogleMapsPin
                     customerName={form.customer_name}
+                    location={form.customer_location}
                     address={form.customer_address}
                     variant="badge"
                     label="เปิด Google Maps นำทาง"
@@ -4813,6 +4933,7 @@ function AppointmentDialog({
               placeholder="เลือกที่อยู่"
             />
           </F>
+          <CustomerLocationFields value={form.customer_location} disabled={locked} onChange={location => setForm(f => ({ ...f, ...customerLocationPatch(location, f.customer_address ?? "") }))} />
           <F label="ผู้ติดต่อ">
             <Input
               disabled={locked}
@@ -4899,7 +5020,12 @@ function AppointmentDialog({
             <MultiCombobox
               disabled={locked}
               values={splitNames(form.vehicle_plate)}
-              onChange={(list) => set("vehicle_plate", joinNames(list))}
+              onChange={async (list) => {
+                try {
+                  const plate = await chooseVehicleForJob({ ...form, vehicle_plate: joinNames(list) });
+                  if (plate !== null) set("vehicle_plate", plate);
+                } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); }
+              }}
               onDelete={delDir("vehicle")}
               options={dir.vehicles}
               placeholder="ติ๊กเลือกทะเบียนรถ"

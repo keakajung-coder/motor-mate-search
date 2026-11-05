@@ -35,6 +35,8 @@ export type GridSheet = {
   styles?: Record<string, CellStyle>;
   defaultStyle?: CellStyle;
   autoFilter?: string;
+  /** Trusted formulas authored by report modules, never user-entered text. */
+  formulas?: Record<string, { formula: string; value: number }>;
 };
 
 export async function buildGridWorkbook(sheets: GridSheet[]) {
@@ -44,6 +46,9 @@ export async function buildGridWorkbook(sheets: GridSheet[]) {
   const used = new Set<string>();
   for (const s of sheets) {
     const ws = XLSX.utils.aoa_to_sheet((s.rows.length ? s.rows : [[""]]).map((row) => row.map((v) => safeSpreadsheetValue(v))));
+    for (const [address, { formula, value }] of Object.entries(s.formulas ?? {})) {
+      ws[address] = { t: "n", f: formula, v: value };
+    }
     if (s.merges?.length) ws["!merges"] = s.merges;
     if (s.cols) ws["!cols"] = s.cols.map((wch) => ({ wch }));
     if (s.rowHeights) ws["!rows"] = s.rowHeights.map((hpt) => ({ hpt }));

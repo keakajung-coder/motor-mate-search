@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { clearOfflineCache } from "@/lib/offline";
+import { approvedZoneSignatures, requestZoneDecision } from "./vehicle-zone-client";
+import type { ZoneReview } from "./vehicle-zone";
 
 const RETRIES = 3;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -14,7 +16,9 @@ async function fetchWithRetry(url: string, init: RequestInit | undefined): Promi
     if (attempt > 0) await wait(500 * 2 ** (attempt - 1));
     if (init?.signal?.aborted) break;
     try {
-      const res = await fetch(url, init);
+      const timeout = AbortSignal.timeout(30_000);
+      const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+      const res = await fetch(url, { ...init, signal });
       if (res.status === 401 && typeof window !== "undefined") {
         window.dispatchEvent(new Event("app:session-expired"));
       }
@@ -30,6 +34,20 @@ async function fetchWithRetry(url: string, init: RequestInit | undefined): Promi
   throw lastError instanceof Error ? lastError : new Error("เชื่อมต่อไม่สำเร็จ");
 }
 
+let dataChannel: BroadcastChannel | null = null;
+/** Saved rows refresh dashboards in other tabs (e.g. a job opened from the weekly summary in a new tab). */
+function announceWrite(method: string | undefined, path: string) {
+  const m = (method ?? "GET").toUpperCase();
+  if (m === "GET" || m === "HEAD" || !path.startsWith("/rest/v1/") || typeof window === "undefined") return;
+  try { (dataChannel ??= new BroadcastChannel("app-data")).postMessage({ at: Date.now() }); } catch { /* unsupported */ }
+}
+if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+  try {
+    const listen = new BroadcastChannel("app-data");
+    listen.onmessage = () => window.dispatchEvent(new Event("app:data-changed"));
+  } catch { /* unsupported */ }
+}
+
 /** Query-builder compatibility; business requests go through the session-gated server, never the public Data API. */
 export const supabase = createClient<Database>(`${typeof window === "undefined" ? "http://localhost:8080" : window.location.origin}/api/data`, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -39,6 +57,24 @@ export const supabase = createClient<Database>(`${typeof window === "undefined" 
     if (!/^\/(rest|storage)\/v1\//.test(path)) throw new Error("Unsupported business request");
     const headers = new Headers(init?.headers);
     headers.delete("authorization"); headers.delete("apikey");
-    return fetchWithRetry(`/api/data${path}${url.search}`, { ...init, headers, credentials: "same-origin" });
+    let body = init?.body;
+    for (;;) {
+      const response = await fetchWithRetry(`/api/data${path}${url.search}`, { ...init, body, headers, credentials: "same-origin" });
+      if (response.ok) announceWrite(init?.method, path);
+      if (response.status !== 409 || typeof body !== "string") return response;
+      const result = await response.clone().json().catch(() => null) as { code?: string; review?: ZoneReview } | null;
+      if (result?.code !== "VEHICLE_ZONE_APPROVAL_REQUIRED" || !result.review) return response;
+      const review = result.review;
+      const cached = approvedZoneSignatures.has(review.signature);
+      const decision = cached ? { approve: true as const } : await requestZoneDecision(review);
+      if (!decision) return response;
+      const payload = JSON.parse(body);
+      const rows = Array.isArray(payload) ? payload : [payload];
+      for (const row of rows) {
+        if ("approve" in decision) row.__zone_signature = review.signature;
+        else { row.vehicle_plate = decision.vehicle; delete row.__zone_signature; }
+      }
+      body = JSON.stringify(payload);
+    }
   } },
 });
