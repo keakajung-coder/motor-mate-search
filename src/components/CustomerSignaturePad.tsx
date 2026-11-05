@@ -34,7 +34,7 @@ export interface CustomerSignaturePadProps {
 
 export const CustomerSignaturePad = forwardRef<CustomerSignaturePadRef, CustomerSignaturePadProps>(
   function CustomerSignaturePad(
-    { signerName, onSignerNameChange, value, onChange, readOnly = false, required = true },
+    { signerName, onSignerNameChange, value, onChange, readOnly = false, required = false },
     ref,
   ) {
     const padRef = useRef<SignatureCanvas | null>(null);
@@ -124,10 +124,10 @@ export const CustomerSignaturePad = forwardRef<CustomerSignaturePadRef, Customer
             <div>
               <p className="text-sm font-semibold leading-tight text-foreground flex items-center gap-1.5">
                 ลายมือชื่อลูกค้า / ผู้รับมอบงาน (Customer Signature)
-                {required && <span className="text-destructive">*</span>}
+                <span className="text-[11px] font-normal text-muted-foreground">(ไม่บังคับ)</span>
               </p>
               <p className="text-xs text-muted-foreground">
-                ลงลายมือชื่อดิจิทัลด้วยนิ้วมือหรือปากกา Stylus บนหน้าจอเพื่อรับมอบงาน
+                ลงลายมือชื่อดิจิทัลด้วยนิ้วมือหรือปากกา Stylus บนหน้าจอเพื่อรับมอบงาน (หากต้องการ)
               </p>
             </div>
           </div>
@@ -139,8 +139,8 @@ export const CustomerSignaturePad = forwardRef<CustomerSignaturePadRef, Customer
               <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> ลงนามเรียบร้อย
             </Badge>
           ) : (
-            <Badge variant="secondary" className="text-xs">
-              รอลูกค้าลงนาม
+            <Badge variant="outline" className="text-xs text-muted-foreground">
+              ยังไม่ลงนาม (ไม่บังคับ)
             </Badge>
           )}
         </div>

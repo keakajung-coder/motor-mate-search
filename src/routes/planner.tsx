@@ -5442,13 +5442,9 @@ function CloseJobDialog({
   const submit = async () => {
     if (!result) return toast.error("กรุณาเลือกผลสรุปงาน");
 
+    // ปลดเงื่อนไขบังคับ: อนุญาตให้ชื่อผู้รับมอบงานและลายเซ็นเป็นค่าว่าง/null ได้
     const trimmedSignerName = customerSignerName.trim() || null;
-
-    // ตรวจสอบความถูกต้องของลายเซ็นลูกค้า (Validation: Canvas ไม่ว่างเปล่า)
-    const finalSignature = customerSignature || sigPadRef.current?.getTrimmedSignature();
-    if (!finalSignature || (sigPadRef.current && sigPadRef.current.isEmpty() && !customerSignature)) {
-      return toast.error("กรุณาให้ลูกค้าลงลายมือชื่อและยืนยันก่อนปิดใบงาน");
-    }
+    const finalSignature = customerSignature || sigPadRef.current?.getTrimmedSignature() || null;
 
     setSaving(true);
     const doneDate = new Date().toISOString().slice(0, 10);
@@ -5466,7 +5462,7 @@ function CloseJobDialog({
       await linkToUnit([...known, ...extra]);
     }
 
-    const signedAt = appt.customer_signed_at ?? new Date().toISOString();
+    const signedAt = finalSignature ? (appt.customer_signed_at ?? new Date().toISOString()) : null;
     const apptUpdatePayload: Record<string, unknown> = {
       status: "closed",
       result,
@@ -5646,7 +5642,7 @@ function CloseJobDialog({
               onSignerNameChange={setCustomerSignerName}
               value={customerSignature}
               onChange={setCustomerSignature}
-              required
+              required={false}
             />
           </div>
 
