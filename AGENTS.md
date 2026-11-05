@@ -32,3 +32,4 @@
 - Weekly summaries share a pure aggregation module and prebuilt client Excel with trusted formulas; use appointment outcomes to deduplicate linked work orders, Bangkok record dates for undated jobs, and current inventory status for machine totals. Browser-only suspense queries use the existing session gateway after AccessGate, never SSR business reads.
 - Weekly report drill-down carries an explicit record source and ID to the planner; reuse its existing appointment and work-order editors rather than the create/copy dialog, so navigation cannot duplicate jobs or bypass existing save checks.
 - PDF capture goes through preparePdfElement (Base64-inline images, data-pdf-caption modes, large text) and repeats the first header/table thead per page; iOS Safari drops blob URLs and taints cross-origin images during capture.
+- Voice-to-text on text fields + AI polish on textareas (VoiceInputLayer)
