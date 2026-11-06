@@ -81,8 +81,11 @@ export function normalizeVoiceTranscript(text: string): string {
     let j = i;
     while (j < tokens.length && isCodeToken(tokens[j])) j++;
     const run = tokens.slice(i, j);
+    const hasThaiCode = run.some((t) => t in THAI_DIGIT_WORDS || t in THAI_LETTER_NAMES || hasThaiNumeral(t));
     const anchored = run.some((t) => isLatinOrDigit(t) || hasThaiNumeral(t));
-    if (run.length >= 2 && anchored) {
+    // Join only when a spoken Thai code token is present; pure Latin runs
+    // like "SN ABC-1234" are already correct and must stay separate words.
+    if (run.length >= 2 && anchored && hasThaiCode) {
       out.push(run.map(convertToken).join(""));
     } else if (run.length >= 3 && run.every((t) => t in THAI_DIGIT_WORDS || t in THAI_LETTER_NAMES || hasThaiNumeral(t))) {
       // Pure spoken code like "เอ บี หนึ่ง สอง สาม" (3+ tokens) — very likely a serial.
