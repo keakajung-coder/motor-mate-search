@@ -62,8 +62,9 @@ export async function proxyBusinessRequest(request: Request) {
           if (rows.some((r) => "line_id" in r)) return Response.json({ message: "Only admins can configure notification recipients" }, { status: 403 });
           if (table === "troubleshooting_issues" && rows.some((r) => r.status !== "pending" || r.ai_check_draft || r.ai_fix_draft || r.answered_at)) return Response.json({ message: "Publishing answers requires admin" }, { status: 403 });
           if ((request.headers.get("prefer") ?? "").includes("resolution=merge-duplicates")) return Response.json({ message: "An explicit authorized edit is required" }, { status: 403 });
-          if (method === "POST" && table === "work_orders" && rows.some((r) => r.status !== "pending" || r.approved_hidden === true)) return Response.json({ message: "Approval requires admin" }, { status: 403 });
-          if (method === "PATCH" && table === "work_orders" && rows.some((r) => "status" in r && r.status !== "pending")) return Response.json({ message: "Approval requires admin" }, { status: 403 });
+          // ใบสั่งงานของผู้ใช้ทั่วไปเข้าสู่สถานะรอตรวจสอบเสมอ (staging) — บังคับฝั่งเซิร์ฟเวอร์ ไม่เชื่อค่าจากฟอร์ม
+          if (method === "POST" && table === "work_orders") for (const row of rows) { row.status = "pending"; row.approved_hidden = false; }
+          if (method === "PATCH" && table === "work_orders") for (const row of rows) { if ("status" in row && row.status !== "pending") delete row.status; if ("approved_hidden" in row) delete row.approved_hidden; }
           if (method === "PATCH" && table === "notifications" && rows.some((r) => Object.keys(r).some((k) => k !== "read"))) return Response.json({ message: "Forbidden" }, { status: 403 });
         }
         body = JSON.stringify(payload);
