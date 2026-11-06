@@ -462,26 +462,29 @@ export function WorkOrderDialog({
       }
     }
 
-    const serials = splitNames(form.serial_number);
-    const plates = splitNames(form.vehicle_plate);
-    await ensureDirectoryEntries({
-      customer_name: form.customer_name,
-      cust_id: form.cust_id,
-      machine_label: form.machine_label,
-      customer_address: form.customer_address,
-      contact_phone: form.contact_phone,
-      serial_number: serials[0] ?? "",
-      staff_name: form.staff_name,
-      vehicle_plate: plates[0] ?? "",
-    });
-    for (const s of serials.slice(1))
+    // ส่วนบันทึกลงฐานข้อมูล — ดักข้อผิดพลาดทั้งหมด แจ้งสาเหตุจริง และสำรองฟอร์มกันข้อมูลหาย
+    let insertedOrder: { id: string } | null = null;
+    try {
+      const serials = splitNames(form.serial_number);
+      const plates = splitNames(form.vehicle_plate);
       await ensureDirectoryEntries({
         customer_name: form.customer_name,
-        serial_number: s,
+        cust_id: form.cust_id,
         machine_label: form.machine_label,
+        customer_address: form.customer_address,
+        contact_phone: form.contact_phone,
+        serial_number: serials[0] ?? "",
+        staff_name: form.staff_name,
+        vehicle_plate: plates[0] ?? "",
       });
-    for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
-    await ensureSeller(form.sales_rep);
+      for (const s of serials.slice(1))
+        await ensureDirectoryEntries({
+          customer_name: form.customer_name,
+          serial_number: s,
+          machine_label: form.machine_label,
+        });
+      for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
+      await ensureSeller(form.sales_rep);
 
     const auditTag = override
       ? `[Admin Override: ลงงานซ้อน - ${overrideConflicts.join(" · ")}]`
