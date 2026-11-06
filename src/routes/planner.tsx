@@ -5627,9 +5627,31 @@ function CloseJobDialog({
       customer_signer_name: trimmedSignerName,
       customer_signed_at: signedAt,
     };
-    onSaved();
-    if (wantHandoverReport && onOpenHandover) {
-      onOpenHandover(updatedAppt);
+      onSaved();
+      clearFormBackup(backupKey);
+      if (wantHandoverReport && onOpenHandover) {
+        onOpenHandover(updatedAppt);
+      }
+    } catch (e) {
+      // ส่งไม่สำเร็จ/เน็ตหลุด — สำรองข้อมูลฟอร์มไว้ในเครื่องและแจ้งสาเหตุที่แท้จริง
+      saveFormBackup(backupKey, {
+        result,
+        note,
+        cats,
+        quoteItems,
+        partsNote,
+        quotation,
+        customerSignature,
+        customerSignerName,
+      });
+      toast.error(
+        "บันทึกปิดงานไม่สำเร็จ: " +
+          describeSubmitError(e) +
+          " — ข้อมูลที่กรอกถูกสำรองไว้ในเครื่องแล้ว กดบันทึกใหม่ได้ทันที",
+        { duration: 10000 },
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
