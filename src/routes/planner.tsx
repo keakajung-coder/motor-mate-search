@@ -1618,7 +1618,7 @@ function PendingOrders({
       .update(p as never)
       .eq("id", o.id);
     setBusy(null);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("บันทึกไม่สำเร็จ: " + describeSubmitError(error), { duration: 8000 });
     toast.success("บันทึกการแก้ไขใบสั่งงานแล้ว");
     setEdit((e) => ({ ...e, [o.id]: {} }));
     reload();
@@ -1721,7 +1721,7 @@ function PendingOrders({
         .eq("id", o.id);
 
     setBusy(null);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("บันทึกไม่สำเร็จ: " + describeSubmitError(error), { duration: 8000 });
 
     if (override) {
       void logAudit({
@@ -4615,7 +4615,14 @@ function AppointmentDialog({
       ? await supabase.from("appointments").update(payload).eq("id", form.id).select("id").maybeSingle()
       : await supabase.from("appointments").insert(payload).select("id").maybeSingle();
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      saveFormBackup(`appt-draft-${form.id ?? "new"}`, form);
+      return toast.error(
+        "บันทึกนัดหมายไม่สำเร็จ: " + describeSubmitError(error) + " — ข้อมูลฟอร์มถูกสำรองไว้ในเครื่องแล้ว",
+        { duration: 10000 },
+      );
+    }
+    clearFormBackup(`appt-draft-${form.id ?? "new"}`);
 
     if (override) {
       void logAudit({
