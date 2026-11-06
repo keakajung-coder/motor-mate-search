@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/data-client";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 import { generateDueWorkOrders } from "@/lib/contracts.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ import {
   MapPin,
   Navigation,
   Clock,
+  PenTool,
 } from "lucide-react";
 import { GoogleMapsPin } from "@/components/GoogleMapsPin";
 import { CustomerLocationFields } from "@/components/CustomerLocationFields";
@@ -5233,7 +5235,7 @@ function CloseJobDialog({
       const { data, error } = await supabase
         .from("appointments")
         .select(
-          "quotation_required, parts_categories, parts_note, parts_replaced, quotation_items, attachments, customer_signature, customer_signer_name",
+          "quotation_required, parts_categories, parts_note, parts_replaced, quotation_items, attachments",
         )
         .eq("id", appt.id)
         .maybeSingle();
@@ -5248,9 +5250,19 @@ function CloseJobDialog({
         setPartsNote(data.parts_note ?? "");
         setQuoteItems(splitNames(data.quotation_items ?? ""));
         if (data.attachments) setAttachments(data.attachments);
-        if ((data as any).customer_signature) setCustomerSignature((data as any).customer_signature);
-        if ((data as any).customer_signer_name) setCustomerSignerName((data as any).customer_signer_name);
-      } else if (error) {
+      }
+      // คอลัมน์ลายเซ็นอาจไม่มีในชนิดข้อมูลที่สร้างอัตโนมัติ — ดึงแยกแบบทนต่อข้อผิดพลาด
+      const sigRes = (await supabase
+        .from("appointments")
+        .select("customer_signature, customer_signer_name")
+        .eq("id", appt.id)
+        .maybeSingle()) as unknown as {
+        data: { customer_signature?: string | null; customer_signer_name?: string | null } | null;
+      };
+      if (!alive) return;
+      if (sigRes.data?.customer_signature) setCustomerSignature(sigRes.data.customer_signature);
+      if (sigRes.data?.customer_signer_name) setCustomerSignerName(sigRes.data.customer_signer_name);
+      if (!data && error) {
         const fallback = await supabase
           .from("appointments")
           .select(
@@ -5482,14 +5494,14 @@ function CloseJobDialog({
 
     let { error } = await supabase
       .from("appointments")
-      .update(apptUpdatePayload)
+      .update(apptUpdatePayload as TablesUpdate<"appointments">)
       .eq("id", appt.id);
 
     if (error && (error.message?.includes("customer_signature") || error.code === "42703")) {
       delete apptUpdatePayload.customer_signature;
       delete apptUpdatePayload.customer_signer_name;
       delete apptUpdatePayload.customer_signed_at;
-      const retry = await supabase.from("appointments").update(apptUpdatePayload).eq("id", appt.id);
+      const retry = await supabase.from("appointments").update(apptUpdatePayload as TablesUpdate<"appointments">).eq("id", appt.id);
       error = retry.error;
     }
     if (error) {
@@ -5498,6 +5510,7 @@ function CloseJobDialog({
     }
 
     if (appt.work_order_id) {
+      // Signature columns may be absent in generated types; the 42703 retry below strips them.
       const woPayload: Record<string, unknown> = {
         status: "closed",
         visit_date: appt.visit_date,
@@ -5509,14 +5522,14 @@ function CloseJobDialog({
       };
       let { error: orderError } = await supabase
         .from("work_orders")
-        .update(woPayload)
+        .update(woPayload as TablesUpdate<"work_orders">)
         .eq("id", appt.work_order_id);
 
       if (orderError && (orderError.message?.includes("customer_signature") || orderError.code === "42703")) {
         delete woPayload.customer_signature;
         delete woPayload.customer_signer_name;
         delete woPayload.customer_signed_at;
-        const retryWo = await supabase.from("work_orders").update(woPayload).eq("id", appt.work_order_id);
+        const retryWo = await supabase.from("work_orders").update(woPayload as TablesUpdate<"work_orders">).eq("id", appt.work_order_id);
         orderError = retryWo.error;
       }
       if (orderError) {
