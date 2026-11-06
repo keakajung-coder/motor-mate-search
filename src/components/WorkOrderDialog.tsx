@@ -528,7 +528,8 @@ export function WorkOrderDialog({
         safety_gear: form.safety_gear || null,
         attachments: form.attachments || null,
 
-          status: booked ? "scheduled" : "pending",
+          // ผู้ใช้ทั่วไปบันทึกเป็น "รอตรวจสอบ" เสมอ แอดมินเท่านั้นที่นัดหมายได้ทันที
+          status: isAdmin && booked ? "scheduled" : "pending",
         })
         .select("id")
         .maybeSingle();
@@ -603,7 +604,7 @@ export function WorkOrderDialog({
     toast.success(
       override
         ? "ส่งใบสั่งงานแล้ว (Admin Override: บังคับลงงานซ้อน)"
-        : booked
+        : isAdmin && booked
           ? "ส่งใบสั่งงานแล้ว (นัดหมายแล้ว)"
           : "ส่งใบสั่งงานแล้ว รอแอดมินอนุมัติ",
     );
