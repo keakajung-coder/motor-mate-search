@@ -528,13 +528,25 @@ export function WorkOrderDialog({
         safety_gear: form.safety_gear || null,
         attachments: form.attachments || null,
 
-        status: booked ? "scheduled" : "pending",
-      })
-      .select("id")
-      .maybeSingle();
+          status: booked ? "scheduled" : "pending",
+        })
+        .select("id")
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      insertedOrder = inserted;
+    } catch (e) {
+      setSaving(false);
+      saveFormBackup(DRAFT_BACKUP_KEY, form);
+      return toast.error(
+        "ส่งใบสั่งงานไม่สำเร็จ: " +
+          describeSubmitError(e) +
+          " — ข้อมูลฟอร์มถูกสำรองไว้ในเครื่องแล้ว กดส่งใหม่ได้ทันที",
+        { duration: 10000 },
+      );
+    }
 
     setSaving(false);
-    if (error) return toast.error(error.message);
+    clearFormBackup(DRAFT_BACKUP_KEY);
 
     if (override) {
       void logAudit({
