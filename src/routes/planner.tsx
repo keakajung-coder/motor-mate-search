@@ -36,6 +36,8 @@ import { JobAttachments, parseAttachments } from "@/components/JobAttachments";
 import { HandoverReportDialog } from "@/components/HandoverReportDialog";
 import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
 import { CustomerSignaturePad, type CustomerSignaturePadRef } from "@/components/CustomerSignaturePad";
+import { describeSubmitError } from "@/lib/submit-error";
+import { clearFormBackup, loadFormBackup, saveFormBackup } from "@/lib/form-backup";
 
 import {
   AlertTriangle,
@@ -5187,6 +5189,36 @@ function CloseJobDialog({
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [checklist, setChecklist] = useState<ChecklistResult | null>(null);
   const [pumpType, setPumpType] = useState<string | null>(null);
+
+  // กู้คืนข้อมูลปิดงานที่เคยส่งไม่สำเร็จ (สำรองไว้ในเครื่อง 24 ชม.)
+  const backupKey = `close-job-${appt.id}`;
+  useEffect(() => {
+    const backup = loadFormBackup<{
+      result: "ok" | "not_ok" | null;
+      note: string;
+      cats: string[];
+      quoteItems: string[];
+      partsNote: string;
+      quotation: boolean;
+      customerSignature: string | null;
+      customerSignerName: string;
+    }>(backupKey);
+    if (!backup) return;
+    const d = backup.data;
+    if (d.result) setResult(d.result);
+    if (d.note) setNote(d.note);
+    if (d.cats?.length) setCats(d.cats);
+    if (d.quoteItems?.length) setQuoteItems(d.quoteItems);
+    if (d.partsNote) setPartsNote(d.partsNote);
+    if (d.quotation) setQuotation(true);
+    if (d.customerSignature) setCustomerSignature(d.customerSignature);
+    if (d.customerSignerName) setCustomerSignerName(d.customerSignerName);
+    toast.info(
+      `กู้คืนข้อมูลปิดงานที่ส่งไม่สำเร็จเมื่อ ${backup.savedAt.toLocaleString("th-TH")} — ตรวจสอบแล้วกดบันทึกอีกครั้ง`,
+      { duration: 9000 },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backupKey]);
 
   // โหลดเทมเพลต + ผลเช็คลิสต์เดิม แล้วเลือกชุดตามประเภทเครื่องอัตโนมัติ
   useEffect(() => {
