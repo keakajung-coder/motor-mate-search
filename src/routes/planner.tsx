@@ -68,6 +68,7 @@ import {
   MapPin,
   Navigation,
   Clock,
+  PenTool,
 } from "lucide-react";
 import { GoogleMapsPin } from "@/components/GoogleMapsPin";
 import { CustomerLocationFields } from "@/components/CustomerLocationFields";
@@ -5498,7 +5499,7 @@ function CloseJobDialog({
     }
 
     if (appt.work_order_id) {
-      const woPayload: Record<string, unknown> = {
+      const woPayload: TablesUpdate<"work_orders"> = {
         status: "closed",
         visit_date: appt.visit_date,
         visit_time: appt.visit_time,
