@@ -38,6 +38,10 @@ import { autoShareEnabled, shareContacts } from "@/lib/contact";
 import { checkScheduleConflicts } from "@/lib/schedule-check";
 import { ScheduleConflictDialog } from "@/components/ScheduleConflictDialog";
 import { logAudit } from "@/lib/audit";
+import { describeSubmitError } from "@/lib/submit-error";
+import { clearFormBackup, loadFormBackup, saveFormBackup } from "@/lib/form-backup";
+
+const DRAFT_BACKUP_KEY = "work-order-draft";
 import { chooseVehicleForJob } from "@/lib/vehicle-zone-client";
 import { customerLocationPatch, type CustomerLocation } from "@/lib/customer-location";
 import { CustomerLocationFields } from "@/components/CustomerLocationFields";
@@ -267,13 +271,24 @@ export function WorkOrderDialog({
   const [form, setForm] = useState<WorkOrderDraft>(emptyDraft());
 
   // เมื่อเปิดฟอร์มพร้อมค่าเริ่มต้น (คัดลอกใบงาน) — เติมข้อมูลเดิมทั้งหมด แต่สร้างเลขที่ใบสั่งงานใหม่
+  // ถ้าเปิดฟอร์มใหม่และเคยส่งไม่สำเร็จ ให้กู้คืนข้อมูลที่สำรองไว้ในเครื่อง
   useEffect(() => {
-    if (isOpen && initial) {
+    if (!isOpen) return;
+    if (initial) {
       const filled = Object.fromEntries(
         Object.entries(initial).map(([k, v]) => [k, v ?? ""]),
       ) as Partial<WorkOrderDraft>;
       setForm({ ...emptyDraft(), ...filled, job_no: autoJobNo() });
       setBooked(false);
+      return;
+    }
+    const backup = loadFormBackup<WorkOrderDraft>(DRAFT_BACKUP_KEY);
+    if (backup) {
+      setForm({ ...emptyDraft(), ...backup.data, job_no: autoJobNo() });
+      toast.info(
+        `กู้คืนข้อมูลใบสั่งงานที่ส่งไม่สำเร็จเมื่อ ${backup.savedAt.toLocaleString("th-TH")} — ตรวจสอบแล้วกดส่งอีกครั้ง`,
+        { duration: 9000 },
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
