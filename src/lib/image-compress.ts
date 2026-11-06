@@ -48,6 +48,26 @@ export async function compressImage(file: File, opts: CompressOptions = {}): Pro
   return new File([blob], name, { type, lastModified: Date.now() });
 }
 
+/** ย่อผ้าใบ (เช่น ลายเซ็น) แล้วส่งออกเป็น Data URL ขนาดเล็ก กัน payload เกินตอนบันทึกบนมือถือ */
+export function canvasToCompressedDataUrl(
+  canvas: HTMLCanvasElement,
+  maxSize = 800,
+  quality = 0.85,
+): string {
+  const { width, height } = fitWithin(canvas.width || 1, canvas.height || 1, maxSize);
+  if (width === canvas.width && height === canvas.height)
+    return canvas.toDataURL("image/jpeg", quality);
+  const out = document.createElement("canvas");
+  out.width = width;
+  out.height = height;
+  const ctx = out.getContext("2d");
+  if (!ctx) return canvas.toDataURL("image/jpeg", quality);
+  ctx.fillStyle = "#ffffff"; // พื้นขาวสำหรับลายเซ็นโปร่งใส → JPEG
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(canvas, 0, 0, width, height);
+  return out.toDataURL("image/jpeg", quality);
+}
+
 export function fileToDataUrl(file: Blob): Promise<string> {
   return new Promise((res, rej) => {
     const r = new FileReader();
