@@ -495,9 +495,9 @@ export function WorkOrderDialog({
         : auditTag
       : form.job_detail.trim();
 
-    const { data: insertedOrder, error } = await supabase
-      .from("work_orders")
-      .insert({
+      const { data: inserted, error } = await supabase
+        .from("work_orders")
+        .insert({
         cust_id: form.cust_id.trim() || null,
         customer_name: form.customer_name.trim(),
         customer_address: form.customer_address.trim() || null,
