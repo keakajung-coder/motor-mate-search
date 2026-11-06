@@ -3,6 +3,12 @@ import { createPortal } from "react-dom";
 import { Mic, Sparkles, Loader2, Square } from "lucide-react";
 import { toast } from "sonner";
 import { polishText } from "@/lib/ai-polish.functions";
+import { normalizeVoiceTranscript } from "@/lib/voice-transcript";
+
+type VoiceLang = "auto" | "th-TH" | "en-US";
+const LANG_LABEL: Record<VoiceLang, string> = { auto: "อัตโนมัติ", "th-TH": "ไทย", "en-US": "EN" };
+const LANG_BADGE: Record<VoiceLang, string> = { auto: "AUTO", "th-TH": "TH", "en-US": "EN" };
+const nextLang = (l: VoiceLang): VoiceLang => (l === "auto" ? "th-TH" : l === "th-TH" ? "en-US" : "auto");
 
 type Field = HTMLInputElement | HTMLTextAreaElement;
 const TEXT_TYPES = new Set(["text", "search", "", "email", "url", "tel"]);
@@ -37,7 +43,7 @@ export function VoiceInputLayer() {
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [listening, setListening] = useState(false);
   const [polishing, setPolishing] = useState(false);
-  const [lang, setLang] = useState<"th-TH" | "en-US">("th-TH");
+  const [lang, setLang] = useState<VoiceLang>("auto");
   const recRef = useRef<Recognition | null>(null);
   const busyRef = useRef(false);
 
@@ -75,7 +81,10 @@ export function VoiceInputLayer() {
     const base = target.value;
     const sep = base && !/\s$/.test(base) ? " " : "";
     const rec = new Ctor();
-    rec.lang = lang; rec.interimResults = true; rec.continuous = !/iPad|iPhone|iPod/.test(navigator.userAgent);
+    // Auto mode listens in Thai: the Thai engine still emits Latin letters/digits
+    // for clear English, and normalizeVoiceTranscript repairs spoken serial codes.
+    rec.lang = lang === "auto" ? "th-TH" : lang;
+    rec.interimResults = true; rec.continuous = !/iPad|iPhone|iPod/.test(navigator.userAgent);
     let finalText = "";
     rec.onresult = (e) => {
       let interim = "";
@@ -83,7 +92,8 @@ export function VoiceInputLayer() {
         const r = e.results[i];
         if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript;
       }
-      setFieldValue(target, base + sep + (finalText + interim).trim());
+      const spoken = lang === "auto" ? normalizeVoiceTranscript(finalText + interim) : (finalText + interim).trim();
+      setFieldValue(target, base + sep + spoken);
     };
     rec.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") toast.error("กรุณาอนุญาตการใช้ไมโครโฟน");
@@ -120,7 +130,7 @@ export function VoiceInputLayer() {
     <div style={{ position: "fixed", top, right: window.innerWidth - rect.right + 4, zIndex: 2147483000 }} className="pointer-events-none flex items-center gap-1" data-voice-layer>
       {listening && (
         <span className="pointer-events-none absolute -top-7 right-0 whitespace-nowrap rounded-full bg-destructive px-2 py-0.5 text-xs font-semibold text-destructive-foreground animate-pulse">
-          ● กำลังฟัง... ({lang === "th-TH" ? "ไทย" : "EN"})
+          ● กำลังฟัง... ({LANG_LABEL[lang]})
         </span>
       )}
       {isArea && (
@@ -129,18 +139,18 @@ export function VoiceInputLayer() {
           {polishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
         </button>
       )}
-      <button type="button" title={listening ? "หยุดฟัง" : "พูดเพื่อพิมพ์ (กดค้างเพื่อสลับไทย/อังกฤษ)"} aria-label={listening ? "หยุดฟัง" : "พูดเพื่อพิมพ์"}
+      <button type="button" title={listening ? "หยุดฟัง" : "พูดเพื่อพิมพ์ (กดค้างเพื่อสลับภาษา: อัตโนมัติ/ไทย/อังกฤษ)"} aria-label={listening ? "หยุดฟัง" : "พูดเพื่อพิมพ์"}
         onPointerDown={keep} onMouseDown={keep}
-        onContextMenu={(e) => { e.preventDefault(); if (!listening) setLang((l) => (l === "th-TH" ? "en-US" : "th-TH")); }}
+        onContextMenu={(e) => { e.preventDefault(); if (!listening) setLang(nextLang); }}
         onClick={listening ? stop : start}
         style={{ width: size, height: size }}
         className={`${btn} ${listening ? "bg-destructive text-destructive-foreground animate-pulse" : ""}`}>
         {listening ? <Square className="h-3.5 w-3.5" /> : <Mic className="h-4 w-4" />}
       </button>
       {!listening && (
-        <button type="button" onPointerDown={keep} onMouseDown={keep} onClick={() => setLang((l) => (l === "th-TH" ? "en-US" : "th-TH"))}
+        <button type="button" onPointerDown={keep} onMouseDown={keep} onClick={() => setLang(nextLang)}
           className={`${btn} h-5 px-1.5 text-[10px] font-bold`} aria-label="สลับภาษาเสียง">
-          {lang === "th-TH" ? "TH" : "EN"}
+          {LANG_BADGE[lang]}
         </button>
       )}
     </div>,
