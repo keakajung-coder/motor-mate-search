@@ -5491,8 +5491,9 @@ function CloseJobDialog({
     const finalSignature = customerSignature || sigPadRef.current?.getTrimmedSignature() || null;
 
     setSaving(true);
-    const doneDate = new Date().toISOString().slice(0, 10);
-    const chosenParts = [...cats, ...quoteItems].filter((c) => !quoteCategoryNames.includes(c));
+    try {
+      const doneDate = new Date().toISOString().slice(0, 10);
+      const chosenParts = [...cats, ...quoteItems].filter((c) => !quoteCategoryNames.includes(c));
     await ensureParts(chosenParts.filter((c) => !products.some((p) => p.label === c)));
     // ผูกอะไหล่ที่เลือกทั้งหมดเข้ากับ S/N อัตโนมัติ
     if (unitInfo) {
@@ -5536,12 +5537,9 @@ function CloseJobDialog({
       const retry = await supabase.from("appointments").update(apptUpdatePayload as TablesUpdate<"appointments">).eq("id", appt.id);
       error = retry.error;
     }
-    if (error) {
-      setSaving(false);
-      return toast.error(error.message);
-    }
+      if (error) throw new Error(error.message);
 
-    if (appt.work_order_id) {
+      if (appt.work_order_id) {
       // Signature columns may be absent in generated types; the 42703 retry below strips them.
       const woPayload: Record<string, unknown> = {
         status: "closed",
@@ -5564,11 +5562,8 @@ function CloseJobDialog({
         const retryWo = await supabase.from("work_orders").update(woPayload as TablesUpdate<"work_orders">).eq("id", appt.work_order_id);
         orderError = retryWo.error;
       }
-      if (orderError) {
-        setSaving(false);
-        return toast.error("ปิดใบสั่งงานไม่สำเร็จ: " + orderError.message);
+        if (orderError) throw new Error("ปิดใบสั่งงานไม่สำเร็จ: " + orderError.message);
       }
-    }
 
     let unitId: string | null = null;
     if (appt.serial_number) {
