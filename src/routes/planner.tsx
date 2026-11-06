@@ -5500,7 +5500,8 @@ function CloseJobDialog({
     }
 
     if (appt.work_order_id) {
-      const woPayload: TablesUpdate<"work_orders"> = {
+      // Signature columns may be absent in generated types; the 42703 retry below strips them.
+      const woPayload: Record<string, unknown> = {
         status: "closed",
         visit_date: appt.visit_date,
         visit_time: appt.visit_time,
@@ -5511,14 +5512,14 @@ function CloseJobDialog({
       };
       let { error: orderError } = await supabase
         .from("work_orders")
-        .update(woPayload)
+        .update(woPayload as TablesUpdate<"work_orders">)
         .eq("id", appt.work_order_id);
 
       if (orderError && (orderError.message?.includes("customer_signature") || orderError.code === "42703")) {
         delete woPayload.customer_signature;
         delete woPayload.customer_signer_name;
         delete woPayload.customer_signed_at;
-        const retryWo = await supabase.from("work_orders").update(woPayload).eq("id", appt.work_order_id);
+        const retryWo = await supabase.from("work_orders").update(woPayload as TablesUpdate<"work_orders">).eq("id", appt.work_order_id);
         orderError = retryWo.error;
       }
       if (orderError) {
