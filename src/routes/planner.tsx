@@ -36,6 +36,8 @@ import { JobAttachments, parseAttachments } from "@/components/JobAttachments";
 import { HandoverReportDialog } from "@/components/HandoverReportDialog";
 import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
 import { CustomerSignaturePad, type CustomerSignaturePadRef } from "@/components/CustomerSignaturePad";
+import { describeSubmitError } from "@/lib/submit-error";
+import { clearFormBackup, loadFormBackup, saveFormBackup } from "@/lib/form-backup";
 
 import {
   AlertTriangle,
@@ -1616,7 +1618,7 @@ function PendingOrders({
       .update(p as never)
       .eq("id", o.id);
     setBusy(null);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("บันทึกไม่สำเร็จ: " + describeSubmitError(error), { duration: 8000 });
     toast.success("บันทึกการแก้ไขใบสั่งงานแล้ว");
     setEdit((e) => ({ ...e, [o.id]: {} }));
     reload();
@@ -1719,7 +1721,7 @@ function PendingOrders({
         .eq("id", o.id);
 
     setBusy(null);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("บันทึกไม่สำเร็จ: " + describeSubmitError(error), { duration: 8000 });
 
     if (override) {
       void logAudit({
@@ -4613,7 +4615,14 @@ function AppointmentDialog({
       ? await supabase.from("appointments").update(payload).eq("id", form.id).select("id").maybeSingle()
       : await supabase.from("appointments").insert(payload).select("id").maybeSingle();
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      saveFormBackup(`appt-draft-${form.id ?? "new"}`, form);
+      return toast.error(
+        "บันทึกนัดหมายไม่สำเร็จ: " + describeSubmitError(error) + " — ข้อมูลฟอร์มถูกสำรองไว้ในเครื่องแล้ว",
+        { duration: 10000 },
+      );
+    }
+    clearFormBackup(`appt-draft-${form.id ?? "new"}`);
 
     if (override) {
       void logAudit({
@@ -5188,6 +5197,36 @@ function CloseJobDialog({
   const [checklist, setChecklist] = useState<ChecklistResult | null>(null);
   const [pumpType, setPumpType] = useState<string | null>(null);
 
+  // กู้คืนข้อมูลปิดงานที่เคยส่งไม่สำเร็จ (สำรองไว้ในเครื่อง 24 ชม.)
+  const backupKey = `close-job-${appt.id}`;
+  useEffect(() => {
+    const backup = loadFormBackup<{
+      result: "ok" | "not_ok" | null;
+      note: string;
+      cats: string[];
+      quoteItems: string[];
+      partsNote: string;
+      quotation: boolean;
+      customerSignature: string | null;
+      customerSignerName: string;
+    }>(backupKey);
+    if (!backup) return;
+    const d = backup.data;
+    if (d.result) setResult(d.result);
+    if (d.note) setNote(d.note);
+    if (d.cats?.length) setCats(d.cats);
+    if (d.quoteItems?.length) setQuoteItems(d.quoteItems);
+    if (d.partsNote) setPartsNote(d.partsNote);
+    if (d.quotation) setQuotation(true);
+    if (d.customerSignature) setCustomerSignature(d.customerSignature);
+    if (d.customerSignerName) setCustomerSignerName(d.customerSignerName);
+    toast.info(
+      `กู้คืนข้อมูลปิดงานที่ส่งไม่สำเร็จเมื่อ ${backup.savedAt.toLocaleString("th-TH")} — ตรวจสอบแล้วกดบันทึกอีกครั้ง`,
+      { duration: 9000 },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backupKey]);
+
   // โหลดเทมเพลต + ผลเช็คลิสต์เดิม แล้วเลือกชุดตามประเภทเครื่องอัตโนมัติ
   useEffect(() => {
     let alive = true;
@@ -5459,8 +5498,9 @@ function CloseJobDialog({
     const finalSignature = customerSignature || sigPadRef.current?.getTrimmedSignature() || null;
 
     setSaving(true);
-    const doneDate = new Date().toISOString().slice(0, 10);
-    const chosenParts = [...cats, ...quoteItems].filter((c) => !quoteCategoryNames.includes(c));
+    try {
+      const doneDate = new Date().toISOString().slice(0, 10);
+      const chosenParts = [...cats, ...quoteItems].filter((c) => !quoteCategoryNames.includes(c));
     await ensureParts(chosenParts.filter((c) => !products.some((p) => p.label === c)));
     // ผูกอะไหล่ที่เลือกทั้งหมดเข้ากับ S/N อัตโนมัติ
     if (unitInfo) {
@@ -5504,12 +5544,9 @@ function CloseJobDialog({
       const retry = await supabase.from("appointments").update(apptUpdatePayload as TablesUpdate<"appointments">).eq("id", appt.id);
       error = retry.error;
     }
-    if (error) {
-      setSaving(false);
-      return toast.error(error.message);
-    }
+      if (error) throw new Error(error.message);
 
-    if (appt.work_order_id) {
+      if (appt.work_order_id) {
       // Signature columns may be absent in generated types; the 42703 retry below strips them.
       const woPayload: Record<string, unknown> = {
         status: "closed",
@@ -5532,11 +5569,8 @@ function CloseJobDialog({
         const retryWo = await supabase.from("work_orders").update(woPayload as TablesUpdate<"work_orders">).eq("id", appt.work_order_id);
         orderError = retryWo.error;
       }
-      if (orderError) {
-        setSaving(false);
-        return toast.error("ปิดใบสั่งงานไม่สำเร็จ: " + orderError.message);
+        if (orderError) throw new Error("ปิดใบสั่งงานไม่สำเร็จ: " + orderError.message);
       }
-    }
 
     let unitId: string | null = null;
     if (appt.serial_number) {
@@ -5600,9 +5634,31 @@ function CloseJobDialog({
       customer_signer_name: trimmedSignerName,
       customer_signed_at: signedAt,
     };
-    onSaved();
-    if (wantHandoverReport && onOpenHandover) {
-      onOpenHandover(updatedAppt);
+      onSaved();
+      clearFormBackup(backupKey);
+      if (wantHandoverReport && onOpenHandover) {
+        onOpenHandover(updatedAppt);
+      }
+    } catch (e) {
+      // ส่งไม่สำเร็จ/เน็ตหลุด — สำรองข้อมูลฟอร์มไว้ในเครื่องและแจ้งสาเหตุที่แท้จริง
+      saveFormBackup(backupKey, {
+        result,
+        note,
+        cats,
+        quoteItems,
+        partsNote,
+        quotation,
+        customerSignature,
+        customerSignerName,
+      });
+      toast.error(
+        "บันทึกปิดงานไม่สำเร็จ: " +
+          describeSubmitError(e) +
+          " — ข้อมูลที่กรอกถูกสำรองไว้ในเครื่องแล้ว กดบันทึกใหม่ได้ทันที",
+        { duration: 10000 },
+      );
+    } finally {
+      setSaving(false);
     }
   };
 

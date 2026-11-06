@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Check, CheckCircle2, Eraser, PenTool, RotateCcw, UserCheck } from "lucide-react";
 import { toast } from "sonner";
+import { canvasToCompressedDataUrl } from "@/lib/image-compress";
 
 export interface CustomerSignaturePadRef {
   /** ล้างผ้าใบเซ็นชื่อ */
@@ -82,13 +83,13 @@ export const CustomerSignaturePad = forwardRef<CustomerSignaturePadRef, Customer
       }
       try {
         const trimmed = padRef.current.getTrimmedCanvas();
-        const dataUrl = trimmed.toDataURL("image/png");
+        const dataUrl = canvasToCompressedDataUrl(trimmed);
         onChange(dataUrl);
         toast.success("บันทึกลายเซ็นเรียบร้อย");
         return dataUrl;
       } catch (err) {
         console.error("Signature trim error:", err);
-        const dataUrl = padRef.current.toDataURL("image/png");
+        const dataUrl = canvasToCompressedDataUrl(padRef.current.getCanvas());
         onChange(dataUrl);
         return dataUrl;
       }
@@ -105,9 +106,9 @@ export const CustomerSignaturePad = forwardRef<CustomerSignaturePadRef, Customer
         if (value) return value;
         if (!padRef.current || padRef.current.isEmpty()) return null;
         try {
-          return padRef.current.getTrimmedCanvas().toDataURL("image/png");
+          return canvasToCompressedDataUrl(padRef.current.getTrimmedCanvas());
         } catch {
-          return padRef.current.toDataURL("image/png");
+          return canvasToCompressedDataUrl(padRef.current.getCanvas());
         }
       },
       confirmSignature: handleConfirm,

@@ -38,6 +38,10 @@ import { autoShareEnabled, shareContacts } from "@/lib/contact";
 import { checkScheduleConflicts } from "@/lib/schedule-check";
 import { ScheduleConflictDialog } from "@/components/ScheduleConflictDialog";
 import { logAudit } from "@/lib/audit";
+import { describeSubmitError } from "@/lib/submit-error";
+import { clearFormBackup, loadFormBackup, saveFormBackup } from "@/lib/form-backup";
+
+const DRAFT_BACKUP_KEY = "work-order-draft";
 import { chooseVehicleForJob } from "@/lib/vehicle-zone-client";
 import { customerLocationPatch, type CustomerLocation } from "@/lib/customer-location";
 import { CustomerLocationFields } from "@/components/CustomerLocationFields";
@@ -267,13 +271,24 @@ export function WorkOrderDialog({
   const [form, setForm] = useState<WorkOrderDraft>(emptyDraft());
 
   // เมื่อเปิดฟอร์มพร้อมค่าเริ่มต้น (คัดลอกใบงาน) — เติมข้อมูลเดิมทั้งหมด แต่สร้างเลขที่ใบสั่งงานใหม่
+  // ถ้าเปิดฟอร์มใหม่และเคยส่งไม่สำเร็จ ให้กู้คืนข้อมูลที่สำรองไว้ในเครื่อง
   useEffect(() => {
-    if (isOpen && initial) {
+    if (!isOpen) return;
+    if (initial) {
       const filled = Object.fromEntries(
         Object.entries(initial).map(([k, v]) => [k, v ?? ""]),
       ) as Partial<WorkOrderDraft>;
       setForm({ ...emptyDraft(), ...filled, job_no: autoJobNo() });
       setBooked(false);
+      return;
+    }
+    const backup = loadFormBackup<WorkOrderDraft>(DRAFT_BACKUP_KEY);
+    if (backup) {
+      setForm({ ...emptyDraft(), ...backup.data, job_no: autoJobNo() });
+      toast.info(
+        `กู้คืนข้อมูลใบสั่งงานที่ส่งไม่สำเร็จเมื่อ ${backup.savedAt.toLocaleString("th-TH")} — ตรวจสอบแล้วกดส่งอีกครั้ง`,
+        { duration: 9000 },
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -447,27 +462,6 @@ export function WorkOrderDialog({
       }
     }
 
-    const serials = splitNames(form.serial_number);
-    const plates = splitNames(form.vehicle_plate);
-    await ensureDirectoryEntries({
-      customer_name: form.customer_name,
-      cust_id: form.cust_id,
-      machine_label: form.machine_label,
-      customer_address: form.customer_address,
-      contact_phone: form.contact_phone,
-      serial_number: serials[0] ?? "",
-      staff_name: form.staff_name,
-      vehicle_plate: plates[0] ?? "",
-    });
-    for (const s of serials.slice(1))
-      await ensureDirectoryEntries({
-        customer_name: form.customer_name,
-        serial_number: s,
-        machine_label: form.machine_label,
-      });
-    for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
-    await ensureSeller(form.sales_rep);
-
     const auditTag = override
       ? `[Admin Override: ลงงานซ้อน - ${overrideConflicts.join(" · ")}]`
       : "";
@@ -477,9 +471,33 @@ export function WorkOrderDialog({
         : auditTag
       : form.job_detail.trim();
 
-    const { data: insertedOrder, error } = await supabase
-      .from("work_orders")
-      .insert({
+    // ส่วนบันทึกลงฐานข้อมูล — ดักข้อผิดพลาดทั้งหมด แจ้งสาเหตุจริง และสำรองฟอร์มกันข้อมูลหาย
+    let insertedOrder: { id: string } | null = null;
+    try {
+      const serials = splitNames(form.serial_number);
+      const plates = splitNames(form.vehicle_plate);
+      await ensureDirectoryEntries({
+        customer_name: form.customer_name,
+        cust_id: form.cust_id,
+        machine_label: form.machine_label,
+        customer_address: form.customer_address,
+        contact_phone: form.contact_phone,
+        serial_number: serials[0] ?? "",
+        staff_name: form.staff_name,
+        vehicle_plate: plates[0] ?? "",
+      });
+      for (const s of serials.slice(1))
+        await ensureDirectoryEntries({
+          customer_name: form.customer_name,
+          serial_number: s,
+          machine_label: form.machine_label,
+        });
+      for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
+      await ensureSeller(form.sales_rep);
+
+      const { data: inserted, error } = await supabase
+        .from("work_orders")
+        .insert({
         cust_id: form.cust_id.trim() || null,
         customer_name: form.customer_name.trim(),
         customer_address: form.customer_address.trim() || null,
@@ -510,13 +528,25 @@ export function WorkOrderDialog({
         safety_gear: form.safety_gear || null,
         attachments: form.attachments || null,
 
-        status: booked ? "scheduled" : "pending",
-      })
-      .select("id")
-      .maybeSingle();
+          status: booked ? "scheduled" : "pending",
+        })
+        .select("id")
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      insertedOrder = inserted;
+    } catch (e) {
+      setSaving(false);
+      saveFormBackup(DRAFT_BACKUP_KEY, form);
+      return toast.error(
+        "ส่งใบสั่งงานไม่สำเร็จ: " +
+          describeSubmitError(e) +
+          " — ข้อมูลฟอร์มถูกสำรองไว้ในเครื่องแล้ว กดส่งใหม่ได้ทันที",
+        { duration: 10000 },
+      );
+    }
 
     setSaving(false);
-    if (error) return toast.error(error.message);
+    clearFormBackup(DRAFT_BACKUP_KEY);
 
     if (override) {
       void logAudit({
