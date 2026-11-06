@@ -462,6 +462,15 @@ export function WorkOrderDialog({
       }
     }
 
+    const auditTag = override
+      ? `[Admin Override: ลงงานซ้อน - ${overrideConflicts.join(" · ")}]`
+      : "";
+    const finalJobDetail = override
+      ? form.job_detail.trim()
+        ? `${form.job_detail.trim()}\n${auditTag}`
+        : auditTag
+      : form.job_detail.trim();
+
     // ส่วนบันทึกลงฐานข้อมูล — ดักข้อผิดพลาดทั้งหมด แจ้งสาเหตุจริง และสำรองฟอร์มกันข้อมูลหาย
     let insertedOrder: { id: string } | null = null;
     try {
@@ -485,15 +494,6 @@ export function WorkOrderDialog({
         });
       for (const p of plates.slice(1)) await ensureDirectoryEntries({ vehicle_plate: p });
       await ensureSeller(form.sales_rep);
-
-    const auditTag = override
-      ? `[Admin Override: ลงงานซ้อน - ${overrideConflicts.join(" · ")}]`
-      : "";
-    const finalJobDetail = override
-      ? form.job_detail.trim()
-        ? `${form.job_detail.trim()}\n${auditTag}`
-        : auditTag
-      : form.job_detail.trim();
 
       const { data: inserted, error } = await supabase
         .from("work_orders")
