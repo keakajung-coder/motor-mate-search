@@ -5484,14 +5484,14 @@ function CloseJobDialog({
 
     let { error } = await supabase
       .from("appointments")
-      .update(apptUpdatePayload)
+      .update(apptUpdatePayload as TablesUpdate<"appointments">)
       .eq("id", appt.id);
 
     if (error && (error.message?.includes("customer_signature") || error.code === "42703")) {
       delete apptUpdatePayload.customer_signature;
       delete apptUpdatePayload.customer_signer_name;
       delete apptUpdatePayload.customer_signed_at;
-      const retry = await supabase.from("appointments").update(apptUpdatePayload).eq("id", appt.id);
+      const retry = await supabase.from("appointments").update(apptUpdatePayload as TablesUpdate<"appointments">).eq("id", appt.id);
       error = retry.error;
     }
     if (error) {
