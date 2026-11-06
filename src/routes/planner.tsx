@@ -5235,7 +5235,7 @@ function CloseJobDialog({
       const { data, error } = await supabase
         .from("appointments")
         .select(
-          "quotation_required, parts_categories, parts_note, parts_replaced, quotation_items, attachments, customer_signature, customer_signer_name",
+          "quotation_required, parts_categories, parts_note, parts_replaced, quotation_items, attachments",
         )
         .eq("id", appt.id)
         .maybeSingle();
@@ -5250,9 +5250,19 @@ function CloseJobDialog({
         setPartsNote(data.parts_note ?? "");
         setQuoteItems(splitNames(data.quotation_items ?? ""));
         if (data.attachments) setAttachments(data.attachments);
-        if ((data as any).customer_signature) setCustomerSignature((data as any).customer_signature);
-        if ((data as any).customer_signer_name) setCustomerSignerName((data as any).customer_signer_name);
-      } else if (error) {
+      }
+      // คอลัมน์ลายเซ็นอาจไม่มีในชนิดข้อมูลที่สร้างอัตโนมัติ — ดึงแยกแบบทนต่อข้อผิดพลาด
+      const sigRes = (await supabase
+        .from("appointments")
+        .select("customer_signature, customer_signer_name")
+        .eq("id", appt.id)
+        .maybeSingle()) as unknown as {
+        data: { customer_signature?: string | null; customer_signer_name?: string | null } | null;
+      };
+      if (!alive) return;
+      if (sigRes.data?.customer_signature) setCustomerSignature(sigRes.data.customer_signature);
+      if (sigRes.data?.customer_signer_name) setCustomerSignerName(sigRes.data.customer_signer_name);
+      if (!data && error) {
         const fallback = await supabase
           .from("appointments")
           .select(
