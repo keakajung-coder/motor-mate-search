@@ -1,16 +1,20 @@
-import { Suspense, useMemo, useState } from "react";
-import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSuspenseQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useUserRole } from "@/lib/user-role";
 import { supabase } from "@/lib/data-client";
 import { loadSellerNames } from "@/lib/sellers";
-import { isValueRemoved } from "@/lib/data-sync";
+import { isValueRemoved, invalidateData } from "@/lib/data-sync";
+import { useAccess } from "@/lib/access";
+import { deleteEmployee } from "@/lib/employee-delete";
+import { toast } from "sonner";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { LogoutButton } from "@/components/LogoutButton";
-import { BriefcaseBusiness, Wrench, FolderKanban, Users, Search, ChevronRight, ArrowLeft, LayoutGrid, List, Phone, Loader2, RefreshCw, Check, X } from "lucide-react";
+import { BriefcaseBusiness, Wrench, FolderKanban, Users, Search, ChevronRight, ArrowLeft, LayoutGrid, List, Phone, Loader2, RefreshCw, Check, X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { employeeRole, filterEmployees, type Employee, type Department } from "@/lib/employee-selection";
 
@@ -45,7 +49,7 @@ async function loadEmployees(): Promise<Employee[]> {
   }
   return result.filter(e => e.name.trim() && !isValueRemoved(e.name)).sort((a, b) => a.name.localeCompare(b.name, "th"));
 }
-const employeeQuery = { queryKey: ["employee-selection", "service_staff", "sales_contacts", "engineers"], queryFn: loadEmployees, staleTime: 30_000, refetchOnMount: "always" as const };
+const employeeQuery = { queryKey: ["employee-selection", "service_staff", "sales_contacts", "engineers"], queryFn: loadEmployees, staleTime: 30_000, refetchOnMount: "always" as const, refetchInterval: 15_000 };
 
 function ProfilePicture({ employee, large }: { employee: Employee; large: boolean }) {
   const department = departments.find(d => d.id === employee.department);
@@ -83,10 +87,41 @@ export function RoleSelectionView({ onDone, isModal = false }: { onDone?: () => 
 function EmployeeSelection({ department, onDone }: { department: Department; onDone?: () => void }) {
   const { data: employees } = useSuspenseQuery(employeeQuery);
   const { setRoleAndUser, userName } = useUserRole();
+  const { isAdmin } = useAccess();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"list" | "grid">("list");
-  const filtered = useMemo(() => filterEmployees(employees, department, search), [employees, department, search]);
+  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+  const deletion = useMutation({
+    mutationFn: async (employee: Employee) => {
+      if (!isAdmin) throw new Error("เฉพาะแอดมินเท่านั้นที่ลบพนักงานได้");
+      await deleteEmployee(employee);
+    },
+    onMutate: async (employee) => {
+      await queryClient.cancelQueries({ queryKey: employeeQuery.queryKey });
+      const previous = queryClient.getQueryData<Employee[]>(employeeQuery.queryKey);
+      queryClient.setQueryData<Employee[]>(employeeQuery.queryKey, current => (current ?? []).filter(row => row.id !== employee.id));
+      return { previous };
+    },
+    onError: (error, _employee, context) => {
+      if (context?.previous) queryClient.setQueryData(employeeQuery.queryKey, context.previous);
+      toast.error(`ลบพนักงานไม่สำเร็จ: ${error.message}`);
+    },
+    onSuccess: (_result, employee) => {
+      setDeleteTarget(null);
+      if (userName === employee.name) setRoleAndUser("general", "");
+      invalidateData(["service_staff", "sales_contacts", "sellers", "engineers", "directory"]);
+      toast.success(`ลบ ${employee.name} ออกจากรายชื่อแล้ว`);
+    },
+    onSettled: () => { void queryClient.invalidateQueries({ queryKey: employeeQuery.queryKey }); },
+  });
+  useEffect(() => {
+    const refresh = () => { void queryClient.invalidateQueries({ queryKey: employeeQuery.queryKey }); };
+    const events = ["app:data-changed", "app:connection-restored", "service-staff-changed", "sales-contacts-changed", "engineers-changed"];
+    events.forEach(event => window.addEventListener(event, refresh));
+    return () => events.forEach(event => window.removeEventListener(event, refresh));
+  }, [queryClient]);
+  const filtered = useMemo(() => filterEmployees(employees, department, search).filter(row => !deletion.isPending || row.id !== deletion.variables?.id), [employees, department, search, deletion.isPending, deletion.variables]);
   const info = departments.find(d => d.id === department);
   const select = (employee: Employee) => { setRoleAndUser(employeeRole(employee.department), employee.name); onDone?.(); };
   return <div className="space-y-6 min-w-0">
@@ -113,9 +148,18 @@ function EmployeeSelection({ department, onDone }: { department: Department; onD
           <Badge variant="secondary" className={cn("rounded-md px-2 py-1 text-xs font-normal", departments.find(d => d.id === employee.department)?.color)}>{employee.position}</Badge>
           <div className={cn("flex items-center gap-1.5 text-sm text-muted-foreground", view === "grid" && "justify-center")}><Phone className="h-3.5 w-3.5 shrink-0" />{employee.phone ? <a href={`tel:${employee.phone.replace(/[^+\d]/g, "")}`} className="hover:text-primary">{employee.phone}</a> : <span>ยังไม่ระบุเบอร์โทร</span>}</div>
         </div>
-        <Button variant="outline" className={cn("gap-2 rounded-md text-primary", view === "grid" ? "mt-auto w-full" : "ml-auto")} onClick={() => select(employee)} aria-label={`เลือกคนนี้ ${employee.name}`}>เลือกคนนี้<ChevronRight className="h-4 w-4" /></Button>
+        <div className={cn("flex items-center gap-2", view === "grid" ? "mt-auto w-full" : "ml-auto")}>
+          <Button variant="outline" disabled={deletion.isPending} className={cn("gap-2 rounded-md text-primary", view === "grid" && "flex-1")} onClick={() => select(employee)} aria-label={`เลือกคนนี้ ${employee.name}`}>เลือกคนนี้<ChevronRight className="h-4 w-4" /></Button>
+          {isAdmin && <Button variant="ghost" size="icon" disabled={deletion.isPending} title={`ลบ ${employee.name}`} aria-label={`ลบพนักงาน ${employee.name}`} className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setDeleteTarget(employee)}><Trash2 className="h-4 w-4" /></Button>}
+        </div>
       </article>)}
     </div>}
+    <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open && !deletion.isPending) setDeleteTarget(null); }}>
+      <AlertDialogContent className="z-[100001]" data-no-voice="true">
+        <AlertDialogHeader><AlertDialogTitle>ยืนยันลบพนักงาน?</AlertDialogTitle><AlertDialogDescription>ลบ {deleteTarget?.name} ออกจากรายชื่อที่เลือกใช้งาน โดยยังเก็บประวัติงานเดิมไว้</AlertDialogDescription></AlertDialogHeader>
+        <AlertDialogFooter><Button variant="outline" disabled={deletion.isPending} onClick={() => setDeleteTarget(null)}>ยกเลิก</Button><Button variant="destructive" disabled={deletion.isPending || !isAdmin} onClick={() => { if (deleteTarget && !deletion.isPending) deletion.mutate(deleteTarget); }}>{deletion.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />กำลังลบ…</> : "ยืนยันลบ"}</Button></AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>;
 }
 
