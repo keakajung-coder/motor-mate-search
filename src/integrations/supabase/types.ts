@@ -72,6 +72,9 @@ export type Database = {
           customer_address: string | null
           customer_location: Json | null
           customer_name: string | null
+          customer_signature: string | null
+          customer_signed_at: string | null
+          customer_signer_name: string | null
           customer_sn: string | null
           depart_time: string | null
           id: string
@@ -117,6 +120,9 @@ export type Database = {
           customer_address?: string | null
           customer_location?: Json | null
           customer_name?: string | null
+          customer_signature?: string | null
+          customer_signed_at?: string | null
+          customer_signer_name?: string | null
           customer_sn?: string | null
           depart_time?: string | null
           id?: string
@@ -162,6 +168,9 @@ export type Database = {
           customer_address?: string | null
           customer_location?: Json | null
           customer_name?: string | null
+          customer_signature?: string | null
+          customer_signed_at?: string | null
+          customer_signer_name?: string | null
           customer_sn?: string | null
           depart_time?: string | null
           id?: string
@@ -809,6 +818,7 @@ export type Database = {
       sales_contacts: {
         Row: {
           active: boolean
+          avatar_url: string | null
           company: string | null
           created_at: string
           id: string
@@ -818,10 +828,12 @@ export type Database = {
           name: string
           note: string | null
           phone: string | null
+          position: string | null
           updated_at: string
         }
         Insert: {
           active?: boolean
+          avatar_url?: string | null
           company?: string | null
           created_at?: string
           id?: string
@@ -831,10 +843,12 @@ export type Database = {
           name: string
           note?: string | null
           phone?: string | null
+          position?: string | null
           updated_at?: string
         }
         Update: {
           active?: boolean
+          avatar_url?: string | null
           company?: string | null
           created_at?: string
           id?: string
@@ -844,6 +858,7 @@ export type Database = {
           name?: string
           note?: string | null
           phone?: string | null
+          position?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1005,32 +1020,38 @@ export type Database = {
       service_staff: {
         Row: {
           active: boolean
+          avatar_url: string | null
           created_at: string
           id: string
           line_contact: string | null
           line_id: string | null
           name: string
           phone: string | null
+          position: string | null
           updated_at: string
         }
         Insert: {
           active?: boolean
+          avatar_url?: string | null
           created_at?: string
           id?: string
           line_contact?: string | null
           line_id?: string | null
           name: string
           phone?: string | null
+          position?: string | null
           updated_at?: string
         }
         Update: {
           active?: boolean
+          avatar_url?: string | null
           created_at?: string
           id?: string
           line_contact?: string | null
           line_id?: string | null
           name?: string
           phone?: string | null
+          position?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1166,6 +1187,9 @@ export type Database = {
           customer_address: string | null
           customer_location: Json | null
           customer_name: string
+          customer_signature: string | null
+          customer_signed_at: string | null
+          customer_signer_name: string | null
           customer_sn: string | null
           depart_time: string | null
           id: string
@@ -1202,6 +1226,9 @@ export type Database = {
           customer_address?: string | null
           customer_location?: Json | null
           customer_name: string
+          customer_signature?: string | null
+          customer_signed_at?: string | null
+          customer_signer_name?: string | null
           customer_sn?: string | null
           depart_time?: string | null
           id?: string
@@ -1238,6 +1265,9 @@ export type Database = {
           customer_address?: string | null
           customer_location?: Json | null
           customer_name?: string
+          customer_signature?: string | null
+          customer_signed_at?: string | null
+          customer_signer_name?: string | null
           customer_sn?: string | null
           depart_time?: string | null
           id?: string
