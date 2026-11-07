@@ -29,6 +29,7 @@ import { UserRoleProvider } from "@/lib/user-role";
 import { UserRoleSwitcherButton } from "@/components/UserRoleSwitcherButton";
 import { RoleSelectionDialog } from "@/components/RoleSelectionModal";
 import { VehicleZoneDialog } from "@/components/VehicleZoneDialog";
+import { LogoutButton } from "@/components/LogoutButton";
 
 function NotFoundComponent() {
   return (
@@ -216,6 +217,7 @@ function NavBar() {
             <NotificationBell />
             <ThemeQuickToggle />
             <AdminLockButton />
+            <LogoutButton />
           </div>
         </div>
 
