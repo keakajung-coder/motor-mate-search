@@ -57,7 +57,7 @@ function ProfilePicture({ employee, large }: { employee: Employee; large: boolea
 
 export function RoleSelectionView({ onDone, isModal = false }: { onDone?: () => void; isModal?: boolean }) {
   const [department, setDepartment] = useState<Department | null>(null);
-  return <div className="w-full min-w-0" data-voice-disabled="true">
+  return <div className="w-full min-w-0" data-no-voice="true">
     <div className="mb-8 flex items-center gap-2 text-xs text-muted-foreground">
       <span className={cn("flex items-center gap-2", !department && "font-medium text-primary")}><span className="flex h-6 w-6 items-center justify-center rounded-full border border-current">1</span>เลือกฝ่าย</span>
       <ChevronRight className="h-3 w-3" />
@@ -122,7 +122,7 @@ function EmployeeSelection({ department, onDone }: { department: Department; onD
 export function RoleSelectionDialog() {
   const { isSwitching, closeRoleSwitcher } = useUserRole();
   return <Dialog open={isSwitching} onOpenChange={open => !open && closeRoleSwitcher()}>
-    <DialogContent data-voice-disabled="true" className="z-[99999] w-[calc(100vw-1.5rem)] max-w-none max-h-[90dvh] overflow-y-auto rounded-lg bg-background p-5 sm:p-8">
+    <DialogContent data-no-voice="true" className="z-[99999] w-[calc(100vw-1.5rem)] max-w-none max-h-[90dvh] overflow-y-auto rounded-lg bg-background p-5 sm:p-8">
       <DialogTitle className="sr-only">เลือกฝ่ายและพนักงาน</DialogTitle><DialogDescription className="sr-only">Smart Work Planner</DialogDescription>
       <div className="mb-6 flex justify-end pr-7"><LogoutButton /></div>
       <RoleSelectionView onDone={closeRoleSwitcher} isModal />
@@ -131,7 +131,7 @@ export function RoleSelectionDialog() {
 }
 
 export function RoleSelectionGateScreen() {
-  return <div className="min-h-dvh min-w-0 bg-background" data-voice-disabled="true">
+  return <div className="min-h-dvh min-w-0 bg-background" data-no-voice="true">
     <header className="border-b bg-card"><div className="flex min-w-0 items-center justify-between gap-3 px-4 py-5 sm:px-8"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><FolderKanban className="h-5 w-5" /></span><span className="text-sm font-semibold sm:text-base">Smart Work Planner</span></div><LogoutButton /></div></header>
     <main className="w-full min-w-0 px-4 py-8 sm:px-8 sm:py-12"><RoleSelectionView /></main>
   </div>;
