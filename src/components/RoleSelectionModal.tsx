@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { LogoutButton } from "@/components/LogoutButton";
+import { AddEmployeeButton, EmployeeAdminAuth } from "@/components/EmployeeManagement";
 import { BriefcaseBusiness, Wrench, FolderKanban, Users, Search, ChevronRight, ArrowLeft, LayoutGrid, List, Phone, Loader2, RefreshCw, Check, X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { employeeRole, filterEmployees, type Employee, type Department } from "@/lib/employee-selection";
@@ -27,18 +28,18 @@ const departments = [
 
 async function loadEmployees(): Promise<Employee[]> {
   const [sales, staff, engineers, sellerNames] = await Promise.all([
-    supabase.from("sales_contacts").select("id, name, phone, active").neq("active", false).order("name"),
-    supabase.from("service_staff").select("id, name, phone, active").neq("active", false).order("name"),
+    supabase.from("sales_contacts").select("id, name, phone, active, avatar_url, position").eq("active", true).order("name"),
+    supabase.from("service_staff").select("id, name, phone, active, avatar_url, position").eq("active", true).order("name"),
     supabase.from("app_settings").select("value").eq("key", "engineers").maybeSingle(),
     loadSellerNames(),
   ]);
   for (const result of [sales, staff, engineers]) if (result.error) throw new Error(result.error.message);
   const result: Employee[] = [];
-  for (const row of sales.data ?? []) result.push({ id: `sales:${row.id}`, name: row.name, phone: row.phone ?? "", position: "ฝ่ายขาย / เซลล์", department: "sales", avatar: "" });
+  for (const row of sales.data ?? []) result.push({ id: `sales:${row.id}`, name: row.name, phone: row.phone ?? "", position: row.position || "ฝ่ายขาย / เซลล์", department: "sales", avatar: row.avatar_url ?? "" });
   for (const name of sellerNames) {
     if (!result.some(e => e.name.toLocaleLowerCase() === name.toLocaleLowerCase())) result.push({ id: `sales:${name}`, name, phone: "", position: "ฝ่ายขาย / เซลล์", department: "sales", avatar: "" });
   }
-  for (const row of staff.data ?? []) result.push({ id: `service:${row.id}`, name: row.name, phone: row.phone ?? "", position: "ช่างบริการ", department: "service", avatar: "" });
+  for (const row of staff.data ?? []) result.push({ id: `service:${row.id}`, name: row.name, phone: row.phone ?? "", position: row.position || "ช่างบริการ", department: "service", avatar: row.avatar_url ?? "" });
   if (engineers.data?.value) {
     const stored: unknown = JSON.parse(engineers.data.value);
     if (Array.isArray(stored)) for (const item of stored) {
@@ -125,6 +126,14 @@ function EmployeeSelection({ department, onDone }: { department: Department; onD
   const info = departments.find(d => d.id === department);
   const select = (employee: Employee) => { setRoleAndUser(employeeRole(employee.department), employee.name); onDone?.(); };
   return <div className="space-y-6 min-w-0">
+    <div className="flex flex-wrap justify-end gap-2">
+      <EmployeeAdminAuth />
+      {isAdmin && <AddEmployeeButton department={department === "all" ? "service" : department} onCreated={employee => {
+        setSearch("");
+        queryClient.setQueryData<Employee[]>(employeeQuery.queryKey, current => [...(current ?? []).filter(row => row.id !== employee.id), employee].sort((a, b) => a.name.localeCompare(b.name, "th")));
+        invalidateData(["service_staff", "sales_contacts", "sellers", "engineers", "directory"]);
+      }} />}
+    </div>
     <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
       <div><p className={cn("mb-1 text-xs font-medium", info?.color)}>{info?.label} / {info?.title}</p><h1 className="text-2xl font-semibold sm:text-3xl">เลือกพนักงาน</h1></div>
       <div className="relative w-full md:w-80"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="ค้นหาพนักงาน" placeholder="ค้นหาชื่อ เบอร์โทร หรือตำแหน่ง" value={search} onChange={e => setSearch(e.target.value)} className="h-11 rounded-md bg-card pl-10 pr-10" />{search && <Button variant="ghost" size="icon" aria-label="ล้างการค้นหา" className="absolute right-1 top-1 h-9 w-9" onClick={() => setSearch("")}><X className="h-4 w-4" /></Button>}</div>
