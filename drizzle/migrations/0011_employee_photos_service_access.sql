@@ -1,0 +1,1 @@
+CREATE POLICY "Employee photos managed by session gateway" ON storage.objects FOR ALL TO service_role USING (bucket_id = 'employee-photos') WITH CHECK (bucket_id = 'employee-photos');

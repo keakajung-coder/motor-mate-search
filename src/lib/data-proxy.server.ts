@@ -1,5 +1,5 @@
 import { requireAccess } from "./access-session.server";
-import { canAccessTable } from "./security-policy";
+import { canAccessTable, canAccessEmployeePhotos } from "./security-policy";
 import { reviewVehicleZone } from "./vehicle-zone.server";
 import type { ZoneJob } from "./vehicle-zone";
 
@@ -90,6 +90,7 @@ export async function proxyBusinessRequest(request: Request) {
       }
 
       if (!bucket || !BUCKETS.has(bucket)) return Response.json({ message: "Forbidden" }, { status: 403 });
+      if (bucket === "employee-photos" && !canAccessEmployeePhotos(role, method)) return Response.json({ message: "Forbidden" }, { status: 403 });
 
       if (isSign && method === "POST") {
         // Return an authenticated URL instead of a bearer link lasting years.

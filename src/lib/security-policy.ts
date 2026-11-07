@@ -1,4 +1,7 @@
 export type AccessRole = "viewer" | "admin";
+export function canAccessEmployeePhotos(role: AccessRole, method: string) {
+  return method === "GET" || method === "HEAD" || (role === "admin" && (method === "POST" || method === "DELETE"));
+}
 export const BUSINESS_TABLES = new Set([
   "app_settings", "appointments", "audit_log", "brands", "categories", "checklist_templates",
   "compressor_models", "customers", "machine_parts", "machine_units", "maintenance_logs",

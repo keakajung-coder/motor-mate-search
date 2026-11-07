@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canAccessTable, safeSpreadsheetValue } from "./security-policy";
+import { canAccessTable, canAccessEmployeePhotos, safeSpreadsheetValue } from "./security-policy";
 test("viewer cannot edit stock but can create work orders", () => {
   assert.equal(canAccessTable("viewer", "products", "PATCH"), false);
   assert.equal(canAccessTable("viewer", "work_orders", "POST"), true);
@@ -24,4 +24,18 @@ test("employee soft deletes and roster settings require server admin permissions
     assert.equal(canAccessTable("viewer", table, "PATCH"), false);
     assert.equal(canAccessTable("admin", table, "PATCH"), true);
   }
+});
+test("only verified admins can add employees in any department", () => {
+  for (const table of ["service_staff", "sales_contacts", "app_settings"]) {
+    assert.equal(canAccessTable("viewer", table, "POST"), false);
+    assert.equal(canAccessTable("admin", table, "POST"), true);
+  }
+});
+test("employee profile uploads and deletes require admin; viewers can read photos", () => {
+  assert.equal(canAccessEmployeePhotos("viewer", "POST"), false);
+  assert.equal(canAccessEmployeePhotos("viewer", "DELETE"), false);
+  assert.equal(canAccessEmployeePhotos("admin", "POST"), true);
+  assert.equal(canAccessEmployeePhotos("admin", "DELETE"), true);
+  assert.equal(canAccessEmployeePhotos("viewer", "GET"), true);
+  assert.equal(canAccessEmployeePhotos("admin", "PATCH"), false);
 });

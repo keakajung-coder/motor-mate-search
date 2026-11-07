@@ -8,6 +8,8 @@ export type Engineer = {
   phone?: string | null;
   line_contact?: string | null;
   active: boolean;
+  avatar_url?: string | null;
+  position?: string | null;
   created_at?: string;
 };
 
@@ -42,6 +44,8 @@ export async function loadEngineers(includeInactive = false): Promise<Engineer[]
           name: String(item.name ?? "").trim(),
           phone: item.phone ? String(item.phone).trim() : null,
           line_contact: item.line_contact ? String(item.line_contact).trim() : null,
+          avatar_url: typeof item.avatar_url === "string" ? item.avatar_url : null,
+          position: typeof item.position === "string" ? item.position : null,
           active: item.active !== false,
           created_at: item.created_at || new Date().toISOString(),
         };

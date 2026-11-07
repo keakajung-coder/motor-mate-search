@@ -17,14 +17,9 @@ export async function deleteEmployee(employee: Employee) {
       const { error: updateError } = await supabase.from("sales_contacts").update({ active: false }).in("id", matches.map(row => row.id));
       if (updateError) throw new Error(updateError.message);
     } else {
-      const { data: settings, error: readError } = await supabase.from("app_settings").select("id, value").eq("key", "sellers").maybeSingle();
-      if (readError) throw new Error(readError.message);
-      if (!settings) throw new Error("ไม่พบรายชื่อผู้ขายที่ต้องการลบ");
-      const list: unknown = JSON.parse(settings.value ?? "[]");
-      if (!Array.isArray(list)) throw new Error("รูปแบบรายชื่อผู้ขายไม่ถูกต้อง");
-      const next = list.filter(name => typeof name !== "string" || name.trim().toLocaleLowerCase() !== employee.name.trim().toLocaleLowerCase());
-      const { error: updateError } = await supabase.from("app_settings").update({ value: JSON.stringify(next) }).eq("id", settings.id);
-      if (updateError) throw new Error(updateError.message);
+      // Durable inactive marker also suppresses stale legacy options after reload.
+      const { error: insertError } = await supabase.from("sales_contacts").insert({ kind: "vendor", name: employee.name, active: false });
+      if (insertError) throw new Error(insertError.message);
     }
   } else {
     const { data, error } = await supabase.from("app_settings").select("id, value").eq("key", "engineers").maybeSingle();
