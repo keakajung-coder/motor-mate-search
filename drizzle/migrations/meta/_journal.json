@@ -71,6 +71,20 @@
       "when": 1793836000000,
       "tag": "0009_add_customer_signature",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794011581783,
+      "tag": "0010_employee_profile_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794011738080,
+      "tag": "0011_employee_photos_service_access",
+      "breakpoints": true
     }
   ]
 }

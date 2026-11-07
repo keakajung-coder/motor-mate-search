@@ -1,9 +1,9 @@
 import { requireAccess } from "./access-session.server";
-import { canAccessTable } from "./security-policy";
+import { canAccessTable, canAccessEmployeePhotos } from "./security-policy";
 import { reviewVehicleZone } from "./vehicle-zone.server";
 import type { ZoneJob } from "./vehicle-zone";
 
-const BUCKETS = new Set(["product-images", "job-attachments"]);
+const BUCKETS = new Set(["product-images", "job-attachments", "employee-photos"]);
 export async function proxyBusinessRequest(request: Request) {
   try {
     const { role } = await requireAccess();
@@ -90,6 +90,7 @@ export async function proxyBusinessRequest(request: Request) {
       }
 
       if (!bucket || !BUCKETS.has(bucket)) return Response.json({ message: "Forbidden" }, { status: 403 });
+      if (bucket === "employee-photos" && !canAccessEmployeePhotos(role, method)) return Response.json({ message: "Forbidden" }, { status: 403 });
 
       if (isSign && method === "POST") {
         // Return an authenticated URL instead of a bearer link lasting years.
@@ -97,7 +98,7 @@ export async function proxyBusinessRequest(request: Request) {
         return Response.json({ signedURL: `/object/authenticated/${bucket}/${objectPath}` }, { headers: { "cache-control": "no-store" } });
       }
 
-      if (!["GET", "HEAD", "POST", "DELETE"].includes(method) || (bucket === "product-images" && method !== "GET" && method !== "HEAD" && role !== "admin")) {
+      if (!["GET", "HEAD", "POST", "DELETE"].includes(method) || ((bucket === "product-images" || bucket === "employee-photos") && method !== "GET" && method !== "HEAD" && role !== "admin")) {
         return Response.json({ message: "Forbidden" }, { status: 403 });
       }
       if (method === "DELETE" && role !== "admin") return Response.json({ message: "Forbidden" }, { status: 403 });
@@ -110,6 +111,9 @@ export async function proxyBusinessRequest(request: Request) {
         const isVideo = /video\/(mp4|webm|quicktime|x-matroska|3gpp)/.test(type) || /^(mp4|webm|mov|quicktime)$/.test(ext);
         const isMultipart = type.startsWith("multipart/form-data");
 
+        if (bucket === "employee-photos" && (!/^(jpe?g|png|webp)$/.test(ext) || (!isMultipart && !/^image\/(jpeg|png|webp)(;|$)/.test(type)))) {
+          return Response.json({ message: "รูปโปรไฟล์ต้องเป็น JPG, PNG หรือ WebP" }, { status: 400 });
+        }
         if (bucket === "product-images" && !isImage && (!isMultipart || !/^(jpe?g|png|webp|gif)$/.test(ext))) {
           return Response.json({ message: "Images only (jpg, png, webp, gif)" }, { status: 400 });
         }
@@ -119,7 +123,7 @@ export async function proxyBusinessRequest(request: Request) {
         }
 
         body = await request.arrayBuffer();
-        const maxBytes = (bucket === "product-images" ? 10 : 50) * 1024 * 1024;
+        const maxBytes = (bucket === "employee-photos" ? 2 : bucket === "product-images" ? 10 : 50) * 1024 * 1024;
         if (body.byteLength > maxBytes) return Response.json({ message: "Too large" }, { status: 413 });
       } else if (method === "DELETE") {
         body = await request.text();

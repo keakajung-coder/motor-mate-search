@@ -26,6 +26,10 @@ export async function ensureSeller(name?: string | null) {
   const value = (name ?? "").trim();
   if (!value || isValueRemoved(value)) return false;
   try {
+    const { data: contacts, error } = await supabase.from("sales_contacts").select("name, active");
+    if (error) throw new Error(error.message);
+    // Automatic autofill must not reactivate a deleted employee from job history.
+    if ((contacts ?? []).some(row => row.active === false && row.name.trim().toLocaleLowerCase() === value.toLocaleLowerCase())) return false;
     const existing = await loadSellerNames();
     if (existing.some((n) => n.toLowerCase() === value.toLowerCase())) return false;
     await supabase.from("sales_contacts").insert({ kind: "vendor", name: value });
