@@ -19,3 +19,9 @@ test("spreadsheet commands become text", () => {
   assert.equal(safeSpreadsheetValue("\t+SUM(1,2)"), "'\t+SUM(1,2)");
   assert.equal(safeSpreadsheetValue(12), 12);
 });
+test("employee soft deletes and roster settings require server admin permissions", () => {
+  for (const table of ["service_staff", "sales_contacts", "app_settings"]) {
+    assert.equal(canAccessTable("viewer", table, "PATCH"), false);
+    assert.equal(canAccessTable("admin", table, "PATCH"), true);
+  }
+});
