@@ -29,6 +29,7 @@ import { UserRoleProvider } from "@/lib/user-role";
 import { UserRoleSwitcherButton } from "@/components/UserRoleSwitcherButton";
 import { RoleSelectionDialog } from "@/components/RoleSelectionModal";
 import { VehicleZoneDialog } from "@/components/VehicleZoneDialog";
+import { LogoutButton } from "@/components/LogoutButton";
 
 function NotFoundComponent() {
   return (
@@ -160,7 +161,7 @@ function NavBar() {
   return (
     <header className="sticky top-0 z-40 min-w-0 border-b bg-card/95 backdrop-blur-md shadow-2xs">
       <div className="w-full min-w-0 px-3 py-2 sm:px-5">
-        <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-4">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:gap-4">
           {/* Left: Brand & Desktop Nav Links */}
           <div className="flex min-w-0 items-center gap-3 sm:gap-5">
             <Link
@@ -211,11 +212,12 @@ function NavBar() {
           </div>
 
           {/* Right: Persistent Role Switcher & Controls (Always Top Right) */}
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto">
+          <div className="flex max-w-full flex-wrap items-center justify-end gap-1 sm:gap-1.5 ml-auto">
             <UserRoleSwitcherButton />
             <NotificationBell />
             <ThemeQuickToggle />
             <AdminLockButton />
+            <LogoutButton />
           </div>
         </div>
 

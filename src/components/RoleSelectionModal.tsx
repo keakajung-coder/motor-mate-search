@@ -1,533 +1,138 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useUserRole, type AppUserRole } from "@/lib/user-role";
-import { useAccess } from "@/lib/access";
-import { useSellerNames } from "@/lib/sellers";
-import { useDirectory } from "@/lib/directory";
+import { Suspense, useMemo, useState } from "react";
+import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserRole } from "@/lib/user-role";
+import { supabase } from "@/lib/data-client";
+import { loadSellerNames } from "@/lib/sellers";
+import { isValueRemoved } from "@/lib/data-sync";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Briefcase,
-  Wrench,
-  Users,
-  ShieldCheck,
-  Search,
-  Check,
-  ChevronRight,
-  Loader2,
-  Lock,
-  ArrowRight,
-  UserCheck,
-  X,
-  Sparkles,
-} from "lucide-react";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { LogoutButton } from "@/components/LogoutButton";
+import { BriefcaseBusiness, Wrench, FolderKanban, Users, Search, ChevronRight, ArrowLeft, LayoutGrid, List, Phone, Loader2, RefreshCw, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { employeeRole, filterEmployees, type Employee, type Department } from "@/lib/employee-selection";
 
-const PASSCODE_INPUT = {
-  type: "password",
-  inputMode: "text",
-  autoCapitalize: "none",
-  autoCorrect: "off",
-  spellCheck: false,
-} as const;
+const departments = [
+  { id: "sales", label: "Sales", title: "ฝ่ายขาย", icon: BriefcaseBusiness, color: "text-summary-info", background: "bg-summary-info/10" },
+  { id: "service", label: "Service", title: "ฝ่ายบริการ / ช่าง", icon: Wrench, color: "text-summary-success", background: "bg-summary-success/10" },
+  { id: "project", label: "Project", title: "การจัดการโปรเจกต์", icon: FolderKanban, color: "text-summary-attention", background: "bg-summary-attention/10" },
+  { id: "all", label: "All Overview", title: "ดูได้ทั้งหมด", icon: Users, color: "text-primary", background: "bg-primary/10" },
+] as const;
 
-export function RoleSelectionView({
-  onDone,
-  isModal = false,
-}: {
-  onDone?: () => void;
-  isModal?: boolean;
-}) {
-  const {
-    role: currentRole,
-    userName: currentUserName,
-    lastSellerName,
-    lastTechName,
-    setRoleAndUser,
-  } = useUserRole();
-  const { isAdmin, unlockAdmin } = useAccess();
-
-  const sellerList = useSellerNames();
-  const dir = useDirectory();
-  const techList = dir.staff;
-
-  // Selected tab/role inside selector
-  const [selectedRole, setSelectedRole] = useState<AppUserRole>(currentRole || "general");
-  const [selectedUser, setSelectedUser] = useState<string>(currentUserName || "");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-
-  // Admin passcode prompt
-  const [adminCode, setAdminCode] = useState<string>("");
-  const [unlockingAdmin, setUnlockingAdmin] = useState<boolean>(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // Sync with current user when opening
-  useEffect(() => {
-    if (currentRole) setSelectedRole(currentRole);
-    if (currentUserName) setSelectedUser(currentUserName);
-  }, [currentRole, currentUserName]);
-
-  // When changing role, reset search & auto-select matching default
-  const handleSelectRoleType = (newRole: AppUserRole) => {
-    setSelectedRole(newRole);
-    setSearchQuery("");
-    if (newRole === "seller") {
-      if (currentRole === "seller" && currentUserName) {
-        setSelectedUser(currentUserName);
-      } else if (lastSellerName && sellerList.includes(lastSellerName)) {
-        setSelectedUser(lastSellerName);
-      } else if (sellerList.length > 0) {
-        setSelectedUser(sellerList[0]);
-      } else {
-        setSelectedUser("");
-      }
-    } else if (newRole === "tech") {
-      if (currentRole === "tech" && currentUserName) {
-        setSelectedUser(currentUserName);
-      } else if (lastTechName && techList.includes(lastTechName)) {
-        setSelectedUser(lastTechName);
-      } else if (techList.length > 0) {
-        setSelectedUser(techList[0]);
-      } else {
-        setSelectedUser("");
-      }
-    } else {
-      setSelectedUser("");
+async function loadEmployees(): Promise<Employee[]> {
+  const [sales, staff, engineers, sellerNames] = await Promise.all([
+    supabase.from("sales_contacts").select("id, name, phone, active").neq("active", false).order("name"),
+    supabase.from("service_staff").select("id, name, phone, active").neq("active", false).order("name"),
+    supabase.from("app_settings").select("value").eq("key", "engineers").maybeSingle(),
+    loadSellerNames(),
+  ]);
+  for (const result of [sales, staff, engineers]) if (result.error) throw new Error(result.error.message);
+  const result: Employee[] = [];
+  for (const row of sales.data ?? []) result.push({ id: `sales:${row.id}`, name: row.name, phone: row.phone ?? "", position: "ฝ่ายขาย / เซลล์", department: "sales", avatar: "" });
+  for (const name of sellerNames) {
+    if (!result.some(e => e.name.toLocaleLowerCase() === name.toLocaleLowerCase())) result.push({ id: `sales:${name}`, name, phone: "", position: "ฝ่ายขาย / เซลล์", department: "sales", avatar: "" });
+  }
+  for (const row of staff.data ?? []) result.push({ id: `service:${row.id}`, name: row.name, phone: row.phone ?? "", position: "ช่างบริการ", department: "service", avatar: "" });
+  if (engineers.data?.value) {
+    const stored: unknown = JSON.parse(engineers.data.value);
+    if (Array.isArray(stored)) for (const item of stored) {
+      const row = typeof item === "string" ? { name: item } : item;
+      if (!row || typeof row !== "object" || row.active === false || typeof row.name !== "string" || !row.name.trim()) continue;
+      result.push({ id: `project:${row.id ?? row.name}`, name: row.name, phone: typeof row.phone === "string" ? row.phone : "", position: typeof row.position === "string" ? row.position : "วิศวกร / โปรเจกต์", department: "project", avatar: typeof row.avatar_url === "string" ? row.avatar_url : "" });
     }
-  };
+  }
+  return result.filter(e => e.name.trim() && !isValueRemoved(e.name)).sort((a, b) => a.name.localeCompare(b.name, "th"));
+}
+const employeeQuery = { queryKey: ["employee-selection", "service_staff", "sales_contacts", "engineers"], queryFn: loadEmployees, staleTime: 30_000, refetchOnMount: "always" as const };
 
-  // Filtered names for seller/tech
-  const filteredNames = useMemo(() => {
-    const list = selectedRole === "seller" ? sellerList : selectedRole === "tech" ? techList : [];
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter((n) => n.toLowerCase().includes(q));
-  }, [selectedRole, sellerList, techList, searchQuery]);
-
-  const handleConfirm = async (skipPasscodeUnlock = false) => {
-    if (selectedRole === "seller") {
-      if (!selectedUser.trim()) {
-        toast.error("กรุณาเลือกรายชื่อผู้ขายของท่าน");
-        return;
-      }
-      setRoleAndUser("seller", selectedUser.trim());
-      toast.success(`เข้าใช้งานในฐานะผู้ขาย: ${selectedUser.trim()}`);
-      onDone?.();
-      return;
-    }
-
-    if (selectedRole === "tech") {
-      if (!selectedUser.trim()) {
-        toast.error("กรุณาเลือกรายชื่อช่างของท่าน");
-        return;
-      }
-      setRoleAndUser("tech", selectedUser.trim());
-      toast.success(`เข้าใช้งานในฐานะช่าง: ${selectedUser.trim()}`);
-      onDone?.();
-      return;
-    }
-
-    if (selectedRole === "admin") {
-      if (isAdmin || skipPasscodeUnlock) {
-        setRoleAndUser("admin", "ผู้ดูแลระบบ");
-        toast.success(
-          isAdmin
-            ? "เข้าใช้งานในฐานะผู้ดูแลระบบ (สิทธิ์เต็ม)"
-            : "เข้าใช้งานในฐานะผู้ดูแลระบบ (เห็นงานทั้งหมด)",
-        );
-        onDone?.();
-        return;
-      }
-
-      // If user typed admin passcode, unlock server session
-      if (adminCode.trim()) {
-        setUnlockingAdmin(true);
-        const ok = await unlockAdmin(adminCode.trim());
-        setUnlockingAdmin(false);
-        if (ok) {
-          setRoleAndUser("admin", "ผู้ดูแลระบบ");
-          toast.success("ปลดล็อกโหมดแอดมินสำเร็จ");
-          onDone?.();
-        } else {
-          toast.error("รหัสผ่านแอดมินไม่ถูกต้อง");
-          setAdminCode("");
-        }
-        return;
-      }
-
-      // If no passcode entered, still allow viewing all jobs as admin
-      setRoleAndUser("admin", "ผู้ดูแลระบบ");
-      toast.success("เข้าใช้งานในฐานะผู้ดูแลระบบ (เห็นงานทั้งหมด)");
-      onDone?.();
-      return;
-    }
-
-    // General user
-    setRoleAndUser("general", "");
-    toast.success("เข้าใช้งานในฐานะผู้ใช้ทั่วไป");
-    onDone?.();
-  };
-
-  return (
-    <div className="w-full space-y-4">
-      {/* Role Selection Buttons Grid */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {/* Role 1: ผู้ขาย */}
-        <button
-          type="button"
-          onClick={() => handleSelectRoleType("seller")}
-          className={cn(
-            "group relative flex items-start gap-3.5 rounded-xl border-2 p-4 text-left transition-all duration-200 cursor-pointer min-h-[88px]",
-            selectedRole === "seller"
-              ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary/30"
-              : "border-border/80 bg-card hover:border-primary/50 hover:bg-accent/40",
-          )}
-        >
-          <div
-            className={cn(
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors",
-              selectedRole === "seller"
-                ? "bg-primary text-primary-foreground"
-                : "bg-primary/10 text-primary group-hover:bg-primary/20",
-            )}
-          >
-            <Briefcase className="h-6 w-6" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-1">
-              <span className="font-bold text-base text-foreground">ผู้ขาย / เซลล์</span>
-              {selectedRole === "seller" && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Check className="h-3 w-3 stroke-[3]" />
-                </span>
-              )}
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-              ดูงานลูกค้าของตนเอง คิวงานเซลล์ และภาระงานรวม
-            </p>
-          </div>
-        </button>
-
-        {/* Role 2: ช่าง */}
-        <button
-          type="button"
-          onClick={() => handleSelectRoleType("tech")}
-          className={cn(
-            "group relative flex items-start gap-3.5 rounded-xl border-2 p-4 text-left transition-all duration-200 cursor-pointer min-h-[88px]",
-            selectedRole === "tech"
-              ? "border-blue-500 bg-blue-500/10 shadow-md ring-2 ring-blue-500/30 dark:border-blue-400"
-              : "border-border/80 bg-card hover:border-blue-500/50 hover:bg-accent/40",
-          )}
-        >
-          <div
-            className={cn(
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors",
-              selectedRole === "tech"
-                ? "bg-blue-600 text-white dark:bg-blue-500"
-                : "bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:bg-blue-500/20",
-            )}
-          >
-            <Wrench className="h-6 w-6" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-1">
-              <span className="font-bold text-base text-foreground">ช่างเทคนิค</span>
-              {selectedRole === "tech" && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white">
-                  <Check className="h-3 w-3 stroke-[3]" />
-                </span>
-              )}
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-              ดูงานที่ได้รับมอบหมาย คิวนัดหมาย และลงบันทึกการทำงาน
-            </p>
-          </div>
-        </button>
-
-        {/* Role 3: ผู้ใช้ทั่วไป */}
-        <button
-          type="button"
-          onClick={() => handleSelectRoleType("general")}
-          className={cn(
-            "group relative flex items-start gap-3.5 rounded-xl border-2 p-4 text-left transition-all duration-200 cursor-pointer min-h-[88px]",
-            selectedRole === "general"
-              ? "border-amber-500 bg-amber-500/10 shadow-md ring-2 ring-amber-500/30 dark:border-amber-400"
-              : "border-border/80 bg-card hover:border-amber-500/50 hover:bg-accent/40",
-          )}
-        >
-          <div
-            className={cn(
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors",
-              selectedRole === "general"
-                ? "bg-amber-600 text-white dark:bg-amber-500"
-                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500/20",
-            )}
-          >
-            <Users className="h-6 w-6" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-1">
-              <span className="font-bold text-base text-foreground">ผู้ใช้ทั่วไป</span>
-              {selectedRole === "general" && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-600 text-white">
-                  <Check className="h-3 w-3 stroke-[3]" />
-                </span>
-              )}
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-              เข้าใช้งานแบบปกติ ดูภาพรวมรายการงานทั้งหมดในระบบ
-            </p>
-          </div>
-        </button>
-
-        {/* Role 4: แอดมิน */}
-        <button
-          type="button"
-          onClick={() => handleSelectRoleType("admin")}
-          className={cn(
-            "group relative flex items-start gap-3.5 rounded-xl border-2 p-4 text-left transition-all duration-200 cursor-pointer min-h-[88px]",
-            selectedRole === "admin"
-              ? "border-emerald-500 bg-emerald-500/10 shadow-md ring-2 ring-emerald-500/30 dark:border-emerald-400"
-              : "border-border/80 bg-card hover:border-emerald-500/50 hover:bg-accent/40",
-          )}
-        >
-          <div
-            className={cn(
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors",
-              selectedRole === "admin"
-                ? "bg-emerald-600 text-white dark:bg-emerald-500"
-                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500/20",
-            )}
-          >
-            <ShieldCheck className="h-6 w-6" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-1">
-              <span className="font-bold text-base text-foreground">ผู้ดูแลระบบ (Admin)</span>
-              {selectedRole === "admin" && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white">
-                  <Check className="h-3 w-3 stroke-[3]" />
-                </span>
-              )}
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-              จัดการงานทั้งหมด สิทธิ์การอนุมัติ และตั้งค่าระบบ
-            </p>
-          </div>
-        </button>
-      </div>
-
-      {/* Detail Section: If Seller or Tech is selected, show Searchable Dropdown with visible scrollbar */}
-      {(selectedRole === "seller" || selectedRole === "tech") && (
-        <div className="rounded-xl border border-primary/20 bg-muted/30 p-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
-              <UserCheck className="h-4 w-4 text-primary" />
-              เลือกรายชื่อ{selectedRole === "seller" ? "ผู้ขาย / เซลล์" : "ช่างเทคนิค"}ของท่าน:
-            </label>
-            {selectedUser && (
-              <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                เลือกแล้ว: {selectedUser}
-              </span>
-            )}
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`พิมพ์ค้นหาชื่อ${selectedRole === "seller" ? "ผู้ขาย" : "ช่าง"}...`}
-              className="pl-9 pr-9 h-11 text-sm bg-background shadow-xs"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          <div className="relative rounded-lg border border-border/80 bg-background shadow-xs">
-            <div
-              className="dropdown-scroll force-scrollbar !max-h-[200px] !overflow-y-scroll p-1.5 divide-y divide-border/40"
-              style={{ maxHeight: "200px", overflowY: "scroll", scrollbarGutter: "stable" }}
-            >
-              {filteredNames.length === 0 ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  ไม่พบรายชื่อที่ตรงกับ &ldquo;{searchQuery}&rdquo;
-                </div>
-              ) : (
-                filteredNames.map((name) => {
-                  const isSelected = selectedUser.toLowerCase() === name.toLowerCase();
-                  return (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => setSelectedUser(name)}
-                      className={cn(
-                        "w-full flex items-center justify-between px-3.5 py-2.5 text-left rounded-md transition-colors cursor-pointer text-sm font-medium",
-                        isSelected
-                          ? "bg-primary text-primary-foreground font-semibold"
-                          : "text-foreground hover:bg-accent hover:text-accent-foreground",
-                      )}
-                    >
-                      <span className="truncate">{name}</span>
-                      {isSelected && <Check className="h-4 w-4 shrink-0 stroke-[2.5]" />}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-            <div className="border-t border-border/50 bg-muted/40 px-3 py-1.5 text-[11px] text-muted-foreground flex items-center justify-between">
-              <span>แสดงผล {filteredNames.length} รายชื่อ</span>
-              <span className="text-[10px]">เลื่อนดูรายชื่อเพิ่มเติมได้</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Admin Passcode Verification if admin is chosen but not yet unlocked */}
-      {selectedRole === "admin" && !isAdmin && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-50/50 p-4 dark:bg-emerald-950/20 space-y-3">
-          <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-semibold text-sm">
-            <Lock className="h-4 w-4" /> ปลดล็อกสิทธิ์ผู้ดูแลระบบ (Admin Passcode)
-          </div>
-          <p className="text-xs text-muted-foreground">
-            กรอกรหัสเพื่อปลดล็อกสิทธิ์แก้ไข/ลบข้อมูล หรือกดเข้าใช้งานเพื่อดูภาพรวมงานทั้งหมดได้ทันที
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Input
-              {...PASSCODE_INPUT}
-              value={adminCode}
-              onChange={(e) => setAdminCode(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleConfirm(false)}
-              placeholder="รหัสผ่านแอดมิน (ถ้ามี)"
-              className="h-11 text-center text-lg tracking-widest bg-background flex-1"
-              autoFocus
-            />
-            {adminCode.trim() && (
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 px-4 border-emerald-500 text-emerald-700 hover:bg-emerald-100 dark:text-emerald-300"
-                onClick={() => handleConfirm(false)}
-                disabled={unlockingAdmin}
-              >
-                {unlockingAdmin ? <Loader2 className="h-4 w-4 animate-spin" /> : "ปลดล็อกสิทธิ์"}
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Confirmation Submit Button */}
-      <Button
-        type="button"
-        size="lg"
-        onClick={() => handleConfirm(selectedRole === "admin" && !adminCode.trim())}
-        disabled={
-          unlockingAdmin ||
-          ((selectedRole === "seller" || selectedRole === "tech") && !selectedUser.trim())
-        }
-        className={cn(
-          "w-full h-12 text-base font-semibold shadow-md transition-all cursor-pointer",
-          selectedRole === "seller" && "bg-primary hover:bg-primary/90 text-primary-foreground",
-          selectedRole === "tech" && "bg-blue-600 hover:bg-blue-700 text-white",
-          selectedRole === "general" && "bg-amber-600 hover:bg-amber-700 text-white",
-          selectedRole === "admin" && "bg-emerald-600 hover:bg-emerald-700 text-white",
-        )}
-      >
-        {unlockingAdmin ? (
-          <>
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            กำลังตรวจสอบรหัส...
-          </>
-        ) : (
-          <>
-            <span>
-              {selectedRole === "seller" && `ยืนยันเข้าใช้งาน: ${selectedUser || "(กรุณาเลือกชื่อ)"}`}
-              {selectedRole === "tech" && `ยืนยันเข้าใช้งาน: ${selectedUser || "(กรุณาเลือกชื่อ)"}`}
-              {selectedRole === "general" && "ยืนยันเข้าใช้งาน (ผู้ใช้ทั่วไป)"}
-              {selectedRole === "admin" &&
-                (isAdmin || adminCode.trim()
-                  ? "ยืนยันเข้าใช้งานโหมดแอดมิน"
-                  : "เข้าใช้งานโหมดแอดมิน (เห็นงานทั้งหมด)")}
-            </span>
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </>
-        )}
-      </Button>
-
-      {/* Info note */}
-      <p className="text-center text-xs text-muted-foreground">
-        ระบบจะบันทึกบทบาทและชื่อล่าสุดไว้ในเครื่องนี้ (Local Storage) ท่านสามารถสลับบทบาทได้ทุกเมื่อที่ปุ่มมุมขวาบน
-      </p>
-    </div>
-  );
+function ProfilePicture({ employee, large }: { employee: Employee; large: boolean }) {
+  const department = departments.find(d => d.id === employee.department);
+  return <Avatar className={cn("rounded-md", large ? "h-24 w-24" : "h-14 w-14")}>
+    {employee.avatar && <AvatarImage src={employee.avatar} alt={employee.name} className="object-cover" />}
+    <AvatarFallback className={cn("rounded-md font-medium", department?.background, department?.color, large ? "text-3xl" : "text-lg")}>{employee.name.trim().slice(0, 2)}</AvatarFallback>
+  </Avatar>;
 }
 
-/**
- * Role Selection Dialog (for switching roles anytime via header button)
- */
+export function RoleSelectionView({ onDone, isModal = false }: { onDone?: () => void; isModal?: boolean }) {
+  const [department, setDepartment] = useState<Department | null>(null);
+  return <div className="w-full min-w-0" data-no-voice="true">
+    <div className="mb-8 flex items-center gap-2 text-xs text-muted-foreground">
+      <span className={cn("flex items-center gap-2", !department && "font-medium text-primary")}><span className="flex h-6 w-6 items-center justify-center rounded-full border border-current">1</span>เลือกฝ่าย</span>
+      <ChevronRight className="h-3 w-3" />
+      <span className={cn("flex items-center gap-2", department && "font-medium text-primary")}><span className="flex h-6 w-6 items-center justify-center rounded-full border border-current">2</span>เลือกพนักงาน</span>
+    </div>
+    {!department ? <>
+      <div className="mb-7"><p className="mb-2 text-xs font-medium uppercase text-primary">Smart Work Planner</p><h1 className="text-2xl font-semibold sm:text-3xl">เลือกฝ่ายของคุณ</h1><p className="mt-2 text-sm text-muted-foreground">ฝ่ายขาย · ฝ่ายบริการ · โปรเจกต์ · ภาพรวมทั้งหมด</p></div>
+      <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-2", !isModal && "xl:grid-cols-4")}>
+        {departments.map(d => <Button key={d.id} variant="outline" onClick={() => setDepartment(d.id)} aria-label={`${d.label} ${d.title}`} className="group h-auto min-h-52 w-full flex-col items-start justify-between gap-7 whitespace-normal rounded-lg border bg-card p-6 text-left shadow-none transition-colors hover:border-primary/40 hover:bg-card">
+          <div className="flex w-full items-center justify-between"><span className={cn("flex h-12 w-12 items-center justify-center rounded-lg", d.background, d.color)}><d.icon className="h-6 w-6" /></span><ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 motion-reduce:transform-none" /></div>
+          <div><h2 className="text-xl font-semibold text-foreground">{d.label}</h2><p className="mt-1 text-sm font-normal text-muted-foreground">{d.title}</p></div>
+        </Button>)}
+      </div>
+    </> : <>
+      <Button variant="ghost" size="sm" className="mb-4 gap-2 px-0 text-muted-foreground" onClick={() => setDepartment(null)}><ArrowLeft className="h-4 w-4" />กลับไปเลือกฝ่าย</Button>
+      <Suspense fallback={<div className="flex min-h-60 items-center justify-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" />กำลังโหลดรายชื่อพนักงาน…</div>}>
+        <EmployeeSelection department={department} onDone={onDone} />
+      </Suspense>
+    </>}
+  </div>;
+}
+
+function EmployeeSelection({ department, onDone }: { department: Department; onDone?: () => void }) {
+  const { data: employees } = useSuspenseQuery(employeeQuery);
+  const { setRoleAndUser, userName } = useUserRole();
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [view, setView] = useState<"list" | "grid">("list");
+  const filtered = useMemo(() => filterEmployees(employees, department, search), [employees, department, search]);
+  const info = departments.find(d => d.id === department);
+  const select = (employee: Employee) => { setRoleAndUser(employeeRole(employee.department), employee.name); onDone?.(); };
+  return <div className="space-y-6 min-w-0">
+    <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
+      <div><p className={cn("mb-1 text-xs font-medium", info?.color)}>{info?.label} / {info?.title}</p><h1 className="text-2xl font-semibold sm:text-3xl">เลือกพนักงาน</h1></div>
+      <div className="relative w-full md:w-80"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="ค้นหาพนักงาน" placeholder="ค้นหาชื่อ เบอร์โทร หรือตำแหน่ง" value={search} onChange={e => setSearch(e.target.value)} className="h-11 rounded-md bg-card pl-10 pr-10" />{search && <Button variant="ghost" size="icon" aria-label="ล้างการค้นหา" className="absolute right-1 top-1 h-9 w-9" onClick={() => setSearch("")}><X className="h-4 w-4" /></Button>}</div>
+    </div>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+      <p className="text-sm text-muted-foreground" aria-live="polite">พนักงาน <span className="font-semibold text-foreground">{filtered.length}</span> คน</p>
+      <div className="flex items-center gap-3">
+        {department === "all" && <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => { setRoleAndUser("general", ""); onDone?.(); }}>ดูภาพรวมทั้งหมด<ChevronRight className="h-4 w-4" /></Button>}
+        <Button variant="ghost" size="icon" title="รีเฟรชรายชื่อ" aria-label="รีเฟรชรายชื่อ" onClick={() => void queryClient.invalidateQueries({ queryKey: employeeQuery.queryKey })}><RefreshCw className="h-4 w-4" /></Button>
+        <div className="flex gap-1 rounded-md border bg-card p-1" role="group" aria-label="รูปแบบรายการ">
+          <Button variant={view === "list" ? "secondary" : "ghost"} size="icon" className="h-8 w-9 rounded-sm" aria-label="มุมมอง List" title="มุมมอง List" aria-pressed={view === "list"} onClick={() => setView("list")}><List className="h-4 w-4" /></Button>
+          <Button variant={view === "grid" ? "secondary" : "ghost"} size="icon" className="h-8 w-9 rounded-sm" aria-label="มุมมอง Grid" title="มุมมอง Grid" aria-pressed={view === "grid"} onClick={() => setView("grid")}><LayoutGrid className="h-4 w-4" /></Button>
+        </div>
+      </div>
+    </div>
+    {filtered.length === 0 ? <div className="py-16 text-center"><Users className="mx-auto mb-4 h-9 w-9 text-muted-foreground" /><h2 className="font-medium">{search ? "ไม่พบพนักงานที่ตรงกับการค้นหา" : "ยังไม่มีรายชื่อในฝ่ายนี้"}</h2>{search && <Button variant="ghost" className="mt-2 text-primary" onClick={() => setSearch("")}>ล้างการค้นหา</Button>}</div> : <div className={cn(view === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" : "divide-y border-y")}>
+      {filtered.map(employee => <article key={employee.id} className={cn("min-w-0", view === "grid" ? "flex flex-col items-center gap-4 rounded-lg border bg-card p-6 text-center" : "flex flex-wrap items-center gap-4 py-5")}>
+        <ProfilePicture employee={employee} large={view === "grid"} />
+        <div className={cn("min-w-0", view === "grid" ? "w-full space-y-2" : "flex-1 space-y-1")}>
+          <h2 className="break-words text-base font-semibold">{employee.name}{userName === employee.name && <Check className="ml-2 inline h-4 w-4 text-summary-success" />}</h2>
+          <Badge variant="secondary" className={cn("rounded-md px-2 py-1 text-xs font-normal", departments.find(d => d.id === employee.department)?.color)}>{employee.position}</Badge>
+          <div className={cn("flex items-center gap-1.5 text-sm text-muted-foreground", view === "grid" && "justify-center")}><Phone className="h-3.5 w-3.5 shrink-0" />{employee.phone ? <a href={`tel:${employee.phone.replace(/[^+\d]/g, "")}`} className="hover:text-primary">{employee.phone}</a> : <span>ยังไม่ระบุเบอร์โทร</span>}</div>
+        </div>
+        <Button variant="outline" className={cn("gap-2 rounded-md text-primary", view === "grid" ? "mt-auto w-full" : "ml-auto")} onClick={() => select(employee)} aria-label={`เลือกคนนี้ ${employee.name}`}>เลือกคนนี้<ChevronRight className="h-4 w-4" /></Button>
+      </article>)}
+    </div>}
+  </div>;
+}
+
 export function RoleSelectionDialog() {
   const { isSwitching, closeRoleSwitcher } = useUserRole();
-
-  return (
-    <Dialog open={isSwitching} onOpenChange={(open) => !open && closeRoleSwitcher()}>
-      <DialogContent className="z-[99999] w-[min(calc(100vw-1.5rem),640px)] max-w-[640px] p-5 sm:p-6 rounded-2xl bg-background border shadow-2xl">
-        <DialogHeader className="space-y-1">
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-            <Sparkles className="h-5 w-5 text-primary" />
-            เปลี่ยนบทบาท / สลับผู้ใช้งาน
-          </DialogTitle>
-          <DialogDescription>
-            เลือกบทบาทและรายชื่อเพื่อปรับการแสดงผลรายการงานและสิทธิ์ให้ตรงกับหน้าที่ของท่าน
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="pt-2">
-          <RoleSelectionView onDone={closeRoleSwitcher} isModal={true} />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+  return <Dialog open={isSwitching} onOpenChange={open => !open && closeRoleSwitcher()}>
+    <DialogContent data-no-voice="true" className="z-[99999] w-[calc(100vw-1.5rem)] max-w-none max-h-[90dvh] overflow-y-auto rounded-lg bg-background p-5 sm:p-8">
+      <DialogTitle className="sr-only">เลือกฝ่ายและพนักงาน</DialogTitle><DialogDescription className="sr-only">Smart Work Planner</DialogDescription>
+      <div className="mb-6 flex justify-end pr-7"><LogoutButton /></div>
+      <RoleSelectionView onDone={closeRoleSwitcher} isModal />
+    </DialogContent>
+  </Dialog>;
 }
 
-/**
- * Gate Screen: Shown right after Passcode Screen if no role/user is selected yet
- */
 export function RoleSelectionGateScreen() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
-      <Card className="w-full max-w-2xl border-2 shadow-xl rounded-2xl">
-        <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Users className="h-7 w-7" />
-          </div>
-          <CardTitle className="text-2xl font-bold">เลือกบทบาทและชื่อผู้ใช้งาน</CardTitle>
-          <CardDescription className="text-sm">
-            ยินดีต้อนรับสู่ระบบบริหารงานและค้นหาอะไหล่ปั๊มลม กรุณาเลือกบทบาทของท่านเพื่อเริ่มใช้งาน
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-2">
-          <RoleSelectionView />
-        </CardContent>
-      </Card>
-    </div>
-  );
+  return <div className="min-h-dvh min-w-0 bg-background" data-no-voice="true">
+    <header className="border-b bg-card"><div className="flex min-w-0 items-center justify-between gap-3 px-4 py-5 sm:px-8"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><FolderKanban className="h-5 w-5" /></span><span className="text-sm font-semibold sm:text-base">Smart Work Planner</span></div><LogoutButton /></div></header>
+    <main className="w-full min-w-0 px-4 py-8 sm:px-8 sm:py-12"><RoleSelectionView /></main>
+  </div>;
 }

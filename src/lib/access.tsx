@@ -12,7 +12,7 @@ type AccessValue = {
   unlockViewer: (code: string) => Promise<boolean>;
   unlockAdmin: (code: string) => Promise<boolean>;
   lockAdmin: () => void;
-  lockAll: () => void;
+  lockAll: () => Promise<void>;
 };
 
 const AccessContext = createContext<AccessValue | null>(null);
@@ -86,8 +86,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     setIsAdmin(false);
   }, []);
 
-  const lockAll = useCallback(() => {
-    void withRequestTimeout(lockAccess({ data: { adminOnly: false } })).catch(() => {});
+  const lockAll = useCallback(async () => {
+    await withRequestTimeout(lockAccess({ data: { adminOnly: false } }));
     try { localStorage.removeItem(ADMIN_KEY); localStorage.removeItem(VIEWER_KEY); } catch { /* Optional legacy storage cleanup. */ }
     setIsAdmin(false);
     setViewerOk(false);
