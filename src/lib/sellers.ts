@@ -4,14 +4,16 @@ import { supabase } from "@/lib/data-client";
 import { loadOptionList, saveOptionList } from "@/lib/option-lists";
 import { isValueRemoved, invalidateData } from "@/lib/data-sync";
 import { QUERY_KEYS, getQueryClient } from "@/lib/query-client";
+import { activeSellerNames } from "./employee-records";
 
 /** รวมรายชื่อเซลล์/ผู้ขายจากทุกแหล่ง เพื่อใช้เป็นตัวเลือกใน Dropdown */
 export async function loadSellerNames(): Promise<string[]> {
   const [contacts, list] = await Promise.all([
-    supabase.from("sales_contacts").select("name").order("name"),
+    supabase.from("sales_contacts").select("name, active").order("name"),
     loadOptionList("sellers"),
   ]);
-  const names = [...(contacts.data ?? []).map((r: any) => r.name as string), ...list]
+  if (contacts.error) throw new Error(contacts.error.message);
+  const names = activeSellerNames(contacts.data ?? [], list)
     .map((n) => (n ?? "").trim())
     .filter((n) => Boolean(n) && !isValueRemoved(n));
   const seen = new Map<string, string>();
