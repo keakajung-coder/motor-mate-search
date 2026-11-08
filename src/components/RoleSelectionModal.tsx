@@ -159,6 +159,11 @@ function EmployeeSelection({ department, onDone }: { department: Department; onD
         </div>
         <div className={cn("flex items-center gap-2", view === "grid" ? "mt-auto w-full" : "ml-auto")}>
           <Button variant="outline" disabled={deletion.isPending} className={cn("gap-2 rounded-md text-primary", view === "grid" && "flex-1")} onClick={() => select(employee)} aria-label={`เลือกคนนี้ ${employee.name}`}>เลือกคนนี้<ChevronRight className="h-4 w-4" /></Button>
+          {isAdmin && <AddEmployeeButton department={employee.department} employee={employee} onCreated={saved => {
+            queryClient.setQueryData<Employee[]>(employeeQuery.queryKey, current => [...(current ?? []).filter(row => row.id !== employee.id && row.id !== saved.id), saved].sort((a, b) => a.name.localeCompare(b.name, "th")));
+            if (userName === employee.name) setRoleAndUser(employeeRole(saved.department), saved.name);
+            invalidateData(["service_staff", "sales_contacts", "sellers", "engineers", "directory"]);
+          }} />}
           {isAdmin && <Button variant="ghost" size="icon" disabled={deletion.isPending} title={`ลบ ${employee.name}`} aria-label={`ลบพนักงาน ${employee.name}`} className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setDeleteTarget(employee)}><Trash2 className="h-4 w-4" /></Button>}
         </div>
       </article>)}
