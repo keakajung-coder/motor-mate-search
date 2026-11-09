@@ -24,7 +24,6 @@ const inShopRow = (o: RepairOrder) => [
 export function repairReportSheets(report: RepairReport, from: string, to: string, p: SummaryPalette): GridSheet[] {
   const overview = makeSheet(p, "ภาพรวม", ["สถานะเครื่อง", "จำนวนเครื่อง"], report.byStatus.map((s) => [s.label, s.count]), [30, 20]);
   overview.rows.push(["รวมเครื่องค้างช็อป", report.inShopTotal]);
-  overview.formulas = { [`B${overview.rows.length}`]: { formula: `SUM(B4:B7)-B8+${report.inShopTotal - (report.byStatus[4]?.count ?? 0)}`, value: report.inShopTotal } };
   // สูตรรวมค้างช็อป = ผลรวมทุกสถานะยกเว้นส่งออกแล้ว
   overview.formulas = { [`B${overview.rows.length}`]: { formula: `SUM(B4:B7)`, value: report.inShopTotal } };
 
