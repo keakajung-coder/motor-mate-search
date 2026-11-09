@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as PlannerRouteImport } from './routes/planner'
+import { Route as RepairTrackingRouteImport } from './routes/repair-tracking'
 import { Route as TrashRouteImport } from './routes/trash'
 import { Route as WeeklySummaryRouteImport } from './routes/weekly-summary'
 import { Route as ApiDataSplatRouteImport } from './routes/api/data/$'
@@ -29,6 +30,11 @@ const AdminRoute = AdminRouteImport.update({
 const PlannerRoute = PlannerRouteImport.update({
   id: '/planner',
   path: '/planner',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepairTrackingRoute = RepairTrackingRouteImport.update({
+  id: '/repair-tracking',
+  path: '/repair-tracking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TrashRoute = TrashRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/planner': typeof PlannerRoute
+  '/repair-tracking': typeof RepairTrackingRoute
   '/trash': typeof TrashRoute
   '/weekly-summary': typeof WeeklySummaryRoute
   '/api/data/$': typeof ApiDataSplatRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/planner': typeof PlannerRoute
+  '/repair-tracking': typeof RepairTrackingRoute
   '/trash': typeof TrashRoute
   '/weekly-summary': typeof WeeklySummaryRoute
   '/api/data/$': typeof ApiDataSplatRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/planner': typeof PlannerRoute
+  '/repair-tracking': typeof RepairTrackingRoute
   '/trash': typeof TrashRoute
   '/weekly-summary': typeof WeeklySummaryRoute
   '/api/data/$': typeof ApiDataSplatRoute
@@ -75,14 +84,28 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/admin' | '/planner' | '/trash' | '/weekly-summary' | '/api/data/$'
+    | '/'
+    | '/admin'
+    | '/planner'
+    | '/repair-tracking'
+    | '/trash'
+    | '/weekly-summary'
+    | '/api/data/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/planner' | '/trash' | '/weekly-summary' | '/api/data/$'
+  to:
+    | '/'
+    | '/admin'
+    | '/planner'
+    | '/repair-tracking'
+    | '/trash'
+    | '/weekly-summary'
+    | '/api/data/$'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/planner'
+    | '/repair-tracking'
     | '/trash'
     | '/weekly-summary'
     | '/api/data/$'
@@ -92,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   PlannerRoute: typeof PlannerRoute
+  RepairTrackingRoute: typeof RepairTrackingRoute
   TrashRoute: typeof TrashRoute
   WeeklySummaryRoute: typeof WeeklySummaryRoute
   ApiDataSplatRoute: typeof ApiDataSplatRoute
@@ -118,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/planner'
       fullPath: '/planner'
       preLoaderRoute: typeof PlannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/repair-tracking': {
+      id: '/repair-tracking'
+      path: '/repair-tracking'
+      fullPath: '/repair-tracking'
+      preLoaderRoute: typeof RepairTrackingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trash': {
@@ -148,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   PlannerRoute: PlannerRoute,
+  RepairTrackingRoute: RepairTrackingRoute,
   TrashRoute: TrashRoute,
   WeeklySummaryRoute: WeeklySummaryRoute,
   ApiDataSplatRoute: ApiDataSplatRoute,
