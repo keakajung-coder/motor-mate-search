@@ -815,6 +815,63 @@ export type Database = {
           },
         ]
       }
+      repair_orders: {
+        Row: {
+          actual_delivery_date: string | null
+          assigned_tech: string | null
+          check_in_date: string
+          company_name: string
+          contact_person: string | null
+          contact_phone: string | null
+          created_at: string
+          equipment_model: string | null
+          id: string
+          issue_description: string | null
+          next_action: string | null
+          sales_person: string | null
+          serial_number: string | null
+          status: string
+          target_delivery_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_delivery_date?: string | null
+          assigned_tech?: string | null
+          check_in_date?: string
+          company_name: string
+          contact_person?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          equipment_model?: string | null
+          id?: string
+          issue_description?: string | null
+          next_action?: string | null
+          sales_person?: string | null
+          serial_number?: string | null
+          status?: string
+          target_delivery_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_delivery_date?: string | null
+          assigned_tech?: string | null
+          check_in_date?: string
+          company_name?: string
+          contact_person?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          equipment_model?: string | null
+          id?: string
+          issue_description?: string | null
+          next_action?: string | null
+          sales_person?: string | null
+          serial_number?: string | null
+          status?: string
+          target_delivery_date?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sales_contacts: {
         Row: {
           active: boolean

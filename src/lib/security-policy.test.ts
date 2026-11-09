@@ -31,6 +31,13 @@ test("only verified admins can add employees in any department", () => {
     assert.equal(canAccessTable("admin", table, "POST"), true);
   }
 });
+test("every signed-in user can add and update repair orders; deletes stay blocked", () => {
+  assert.equal(canAccessTable("viewer", "repair_orders", "GET"), true);
+  assert.equal(canAccessTable("viewer", "repair_orders", "POST"), true);
+  assert.equal(canAccessTable("viewer", "repair_orders", "PATCH"), true);
+  assert.equal(canAccessTable("viewer", "repair_orders", "DELETE"), false);
+  assert.equal(canAccessTable("admin", "repair_orders", "DELETE"), false);
+});
 test("employee profile uploads and deletes require admin; viewers can read photos", () => {
   assert.equal(canAccessEmployeePhotos("viewer", "POST"), false);
   assert.equal(canAccessEmployeePhotos("viewer", "DELETE"), false);
