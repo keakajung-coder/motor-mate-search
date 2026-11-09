@@ -193,6 +193,7 @@ function NavBar() {
                 ปฏิทิน / แพลนเนอร์
               </Link>
               <Link to="/weekly-summary" className="flex items-center gap-1.5 rounded-md px-3 py-1.5 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold transition-colors"><BarChart3 className="h-4 w-4 text-primary" />สรุปรายสัปดาห์</Link>
+              <Link to="/repair-tracking" className="flex items-center gap-1.5 rounded-md px-3 py-1.5 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold transition-colors"><Wrench className="h-4 w-4 text-primary" />เครื่องค้างช็อป</Link>
               <Link
                 to="/admin"
                 className="rounded-md px-3 py-1.5 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold transition-colors"
@@ -238,6 +239,7 @@ function NavBar() {
             ปฏิทิน / แพลนเนอร์
           </Link>
           <Link to="/weekly-summary" className="shrink-0 flex items-center gap-1 rounded-md px-2.5 py-1 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold"><BarChart3 className="h-3.5 w-3.5 text-primary" />สรุปรายสัปดาห์</Link>
+          <Link to="/repair-tracking" className="shrink-0 flex items-center gap-1 rounded-md px-2.5 py-1 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold"><Wrench className="h-3.5 w-3.5 text-primary" />เครื่องค้างช็อป</Link>
           <Link
             to="/admin"
             className="shrink-0 rounded-md px-2.5 py-1 hover:bg-accent [&.active]:bg-accent [&.active]:font-semibold"
