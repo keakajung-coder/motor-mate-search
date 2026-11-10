@@ -38,6 +38,10 @@ import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
 import { MachineQrScannerDialog } from "@/components/MachineQrScannerDialog";
 import { isMachineComplete } from "@/lib/report";
 import { exportFilename } from "@/lib/export-filename";
+import { partMatchesKeyword } from "@/lib/parts-search";
+import { TagInput } from "@/components/TagInput";
+import { aiPartLookup, type AiPartDraft } from "@/lib/ai-part-lookup.functions";
+import { Textarea } from "@/components/ui/textarea";
 import {
   CalendarDays,
   Search,
@@ -622,7 +626,156 @@ function CatalogView() {
         lineUrl={lineUrl}
         contact={contact}
       />
+      <AiPartDraftDialog
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        query={q}
+        categories={categories}
+        onSaved={(p) => setProducts((rows) => [...rows, p])}
+      />
     </div>
+  );
+}
+
+/** ฟอร์มร่างจาก AI — ช่างตรวจสอบแล้วกดยืนยันเพื่อบันทึกเข้าคลังพร้อมสถานะตรวจสอบแล้ว */
+function AiPartDraftDialog({
+  open,
+  onOpenChange,
+  query,
+  categories,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  query: string;
+  categories: Category[];
+  onSaved: (p: Product) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<AiPartDraft | null>(null);
+  const [categoryId, setCategoryId] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setDraft(null);
+    setCategoryId("");
+    setLoading(true);
+    aiPartLookup({ data: { query: query.trim(), categories: categories.map((c) => c.name) } })
+      .then((res) => {
+        setDraft(res.draft);
+        const match = categories.find(
+          (c) => c.name.trim().toLowerCase() === res.draft.category_name.trim().toLowerCase(),
+        );
+        if (match) setCategoryId(match.id);
+      })
+      .catch((e) => {
+        toast.error(e instanceof Error ? e.message : "ค้นหาด้วย AI ไม่สำเร็จ");
+        onOpenChange(false);
+      })
+      .finally(() => setLoading(false));
+  }, [open]);
+
+  const save = async () => {
+    if (!draft) return;
+    if (!draft.name.trim() || !draft.part_number.trim())
+      return toast.error("กรอกชื่อและ Part Number ก่อนบันทึก");
+    setSaving(true);
+    const { data, error } = await supabase
+      .from("products")
+      .insert({
+        name: draft.name.trim(),
+        part_number: draft.part_number.trim(),
+        description: draft.description.trim() || null,
+        category_id: categoryId || null,
+        cross_reference_parts: draft.cross_reference_parts,
+        reference_url: draft.reference_url || null,
+        is_verified: true,
+        stock_quantity: 0,
+      })
+      .select(
+        `id, name, part_number, price, image_url, description, stock_quantity,
+         storage_location, service_interval_hours, category_id,
+         cross_reference_parts, supported_serials, is_verified, reference_url,
+         categories ( id, name ),
+         compressor_models ( id, name, brands ( name ) )`,
+      )
+      .single();
+    setSaving(false);
+    if (error) return toast.error("บันทึกไม่สำเร็จ: " + error.message);
+    onSaved(data as unknown as Product);
+    toast.success("✅ ยืนยันและบันทึกเข้าคลังอะไหล่แล้ว");
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-none overflow-y-auto sm:w-[calc(100vw-2rem)]">
+        <DialogHeader>
+          <DialogTitle>🔍 ผลค้นหาด้วย AI — ตรวจสอบก่อนบันทึก</DialogTitle>
+          <DialogDescription>
+            AI ร่างข้อมูลจากเว็บให้แล้ว กรุณาตรวจสอบความถูกต้องก่อนกดยืนยันบันทึก
+          </DialogDescription>
+        </DialogHeader>
+        {loading || !draft ? (
+          <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" /> AI กำลังค้นหาข้อมูล “{query.trim()}” …
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">ชื่ออะไหล่</label>
+                <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Part Number</label>
+                <Input value={draft.part_number} onChange={(e) => setDraft({ ...draft, part_number: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">หมวดอะไหล่</label>
+                <Select value={categoryId} onValueChange={setCategoryId}>
+                  <SelectTrigger><SelectValue placeholder="เลือกหมวด" /></SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">แหล่งอ้างอิง (URL)</label>
+                <Input value={draft.reference_url} onChange={(e) => setDraft({ ...draft, reference_url: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">พาร์ทเทียบ (พิมพ์แล้วกด Enter)</label>
+              <TagInput
+                value={draft.cross_reference_parts}
+                onChange={(tags) => setDraft({ ...draft, cross_reference_parts: tags })}
+                placeholder="เช่น CF-500, P181001"
+                aria-label="พาร์ทเทียบ"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">รายละเอียด</label>
+              <Textarea
+                value={draft.description}
+                onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                rows={3}
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:justify-start">
+              <Button onClick={save} disabled={saving}>
+                {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                ✅ ยืนยันข้อมูลถูกต้องและบันทึก
+              </Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
