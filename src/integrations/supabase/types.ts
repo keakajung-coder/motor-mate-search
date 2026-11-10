@@ -747,48 +747,60 @@ export type Database = {
           brand_id: string | null
           category_id: string | null
           created_at: string | null
+          cross_reference_parts: string[] | null
           description: string | null
           id: string
           image_url: string | null
+          is_verified: boolean
           model_id: string | null
           name: string
           part_number: string
           price: number | null
+          reference_url: string | null
           service_interval_hours: number | null
           stock_quantity: number | null
           storage_location: string | null
+          supported_serials: string[] | null
           updated_at: string | null
         }
         Insert: {
           brand_id?: string | null
           category_id?: string | null
           created_at?: string | null
+          cross_reference_parts?: string[] | null
           description?: string | null
           id?: string
           image_url?: string | null
+          is_verified?: boolean
           model_id?: string | null
           name: string
           part_number: string
           price?: number | null
+          reference_url?: string | null
           service_interval_hours?: number | null
           stock_quantity?: number | null
           storage_location?: string | null
+          supported_serials?: string[] | null
           updated_at?: string | null
         }
         Update: {
           brand_id?: string | null
           category_id?: string | null
           created_at?: string | null
+          cross_reference_parts?: string[] | null
           description?: string | null
           id?: string
           image_url?: string | null
+          is_verified?: boolean
           model_id?: string | null
           name?: string
           part_number?: string
           price?: number | null
+          reference_url?: string | null
           service_interval_hours?: number | null
           stock_quantity?: number | null
           storage_location?: string | null
+          supported_serials?: string[] | null
           updated_at?: string | null
         }
         Relationships: [
