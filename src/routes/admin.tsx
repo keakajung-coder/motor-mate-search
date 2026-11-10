@@ -856,7 +856,7 @@ function ProductsTab() {
             .filter((p) => {
               const kw = q.trim().toLowerCase();
               if (!kw) return true;
-              return `${p.part_number ?? ""} ${p.name ?? ""} ${p.categories?.name ?? ""} ${p.brands?.name ?? ""} ${p.storage_location ?? ""}`
+              return `${p.part_number ?? ""} ${p.name ?? ""} ${p.categories?.name ?? ""} ${p.brands?.name ?? ""} ${p.storage_location ?? ""} ${(p.cross_reference_parts ?? []).join(" ")} ${(p.supported_serials ?? []).join(" ")}`
                 .toLowerCase().includes(kw);
             })
             .map((p) => {
