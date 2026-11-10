@@ -36,6 +36,7 @@ import { ChecklistTemplatesTab } from "@/components/admin/ChecklistTemplatesTab"
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { lineHref, telHref, visibleLineId } from "@/lib/contact";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { TagInput } from "@/components/TagInput";
 import { GoogleMapsPin } from "@/components/GoogleMapsPin";
 import { ContractDialog } from "@/components/ContractDialog";
 import { useUndoable } from "@/hooks/use-undoable";
@@ -642,7 +643,7 @@ function ProductsTab() {
   const [cats, setCats] = useState<any[]>([]);
   const [machinesByProduct, setMachinesByProduct] = useState<Record<string, any[]>>({});
   const [uploading, setUploading] = useState(false);
-  const empty = { id: "", name: "", part_number: "", price: "", stock_quantity: "0", brand_id: "", category_id: "", image_url: "", storage_location: "", service_interval_hours: "" };
+  const empty = { id: "", name: "", part_number: "", price: "", stock_quantity: "0", brand_id: "", category_id: "", image_url: "", storage_location: "", service_interval_hours: "", cross_reference_parts: [] as string[], supported_serials: [] as string[] };
   const [form, setForm] = useState(empty);
   const [q, setQ] = useState("");
 
@@ -715,6 +716,8 @@ function ProductsTab() {
       image_url: form.image_url || null,
       storage_location: form.storage_location.trim() || null,
       service_interval_hours: form.service_interval_hours ? Number(form.service_interval_hours) : null,
+      cross_reference_parts: form.cross_reference_parts.length ? form.cross_reference_parts : null,
+      supported_serials: form.supported_serials.length ? form.supported_serials : null,
     };
     const { error } = form.id
       ? await supabase.from("products").update(payload).eq("id", form.id)
@@ -732,6 +735,8 @@ function ProductsTab() {
       brand_id: p.brand_id ?? "", category_id: p.category_id ?? "",
       image_url: p.image_url ?? "", storage_location: p.storage_location ?? "",
       service_interval_hours: p.service_interval_hours != null ? String(p.service_interval_hours) : "",
+      cross_reference_parts: Array.isArray(p.cross_reference_parts) ? p.cross_reference_parts : [],
+      supported_serials: Array.isArray(p.supported_serials) ? p.supported_serials : [],
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -788,6 +793,24 @@ function ProductsTab() {
           <div>
             <Label>รอบเปลี่ยน (ชม.)</Label>
             <Input type="number" value={form.service_interval_hours} onChange={(e) => setForm({ ...form, service_interval_hours: e.target.value })} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label>พาร์ทเทียบ (พิมพ์แล้วกด Enter เพื่อเพิ่ม)</Label>
+            <TagInput
+              value={form.cross_reference_parts}
+              onChange={(tags) => setForm({ ...form, cross_reference_parts: tags })}
+              placeholder="เช่น CF-500, P181001"
+              aria-label="พาร์ทเทียบ"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Label>หมายเลขเครื่อง (S/N) ที่รองรับ (พิมพ์แล้วกด Enter)</Label>
+            <TagInput
+              value={form.supported_serials}
+              onChange={(tags) => setForm({ ...form, supported_serials: tags })}
+              placeholder="เช่น SN-9001"
+              aria-label="S/N ที่รองรับ"
+            />
           </div>
           <div className="sm:col-span-2">
             <Label>รูปสินค้า</Label>
@@ -848,10 +871,23 @@ function ProductsTab() {
                       <div className="h-10 w-10 rounded bg-muted" />
                     )}
                     <div className="min-w-0">
-                      <div className="break-words font-medium">{p.name}</div>
+                      <div className="flex flex-wrap items-center gap-1.5 break-words font-medium">
+                        {p.name}
+                        {p.is_verified && (
+                          <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700">✓ ตรวจสอบแล้ว</Badge>
+                        )}
+                      </div>
                       <div className="break-words text-xs text-muted-foreground">
                         {p.part_number} {p.categories?.name && `• ${p.categories.name}`} {p.brands?.name && `• ${p.brands.name}`}
                       </div>
+                      {Array.isArray(p.cross_reference_parts) && p.cross_reference_parts.length > 0 && (
+                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                          <span className="text-[11px] text-muted-foreground">พาร์ทเทียบ:</span>
+                          {p.cross_reference_parts.map((c: string) => (
+                            <Badge key={c} variant="outline" className="font-mono text-[10px]">{c}</Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-1">
