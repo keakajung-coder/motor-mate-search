@@ -685,10 +685,30 @@ function ProductCard({ product, onOpen }: { product: Product; onOpen: () => void
               Part# {product.part_number}
             </p>
           </div>
-          <Badge variant={inStock ? "default" : "secondary"} className="shrink-0">
-            {inStock ? `มี ${stock}` : "หมด"}
-          </Badge>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <Badge variant={inStock ? "default" : "secondary"}>
+              {inStock ? `มี ${stock}` : "หมด"}
+            </Badge>
+            {product.is_verified && (
+              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700">
+                ✓ ตรวจสอบแล้ว
+              </Badge>
+            )}
+          </div>
         </div>
+        {(product.cross_reference_parts?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-[11px] text-muted-foreground">พาร์ทเทียบ:</span>
+            {product.cross_reference_parts!.slice(0, 3).map((c) => (
+              <Badge key={c} variant="outline" className="font-mono text-[10px]">
+                {c}
+              </Badge>
+            ))}
+            {product.cross_reference_parts!.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">+{product.cross_reference_parts!.length - 3}</span>
+            )}
+          </div>
+        )}
         {product.categories && (
           <div className="text-xs text-muted-foreground">{product.categories.name}</div>
         )}
@@ -762,7 +782,41 @@ function ProductModal({
                   product.service_interval_hours ? `${product.service_interval_hours} ชม.` : "-"
                 }
               />
+              <Info
+                label="สถานะข้อมูล"
+                value={product.is_verified ? "✓ ตรวจสอบแล้วโดยช่าง" : "ยังไม่ได้ตรวจสอบ"}
+              />
             </div>
+            {(product.cross_reference_parts?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">พาร์ทเทียบ (Cross-Ref):</span>
+                {product.cross_reference_parts!.map((c) => (
+                  <Badge key={c} variant="outline" className="font-mono text-xs">
+                    {c}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {(product.supported_serials?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">S/N ที่รองรับ:</span>
+                {product.supported_serials!.map((s) => (
+                  <Badge key={s} variant="secondary" className="font-mono text-xs">
+                    {s}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {product.reference_url && (
+              <a
+                href={product.reference_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-primary underline break-all"
+              >
+                แหล่งอ้างอิง: {product.reference_url}
+              </a>
+            )}
             {product.description && (
               <div className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
                 {product.description}
