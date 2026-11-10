@@ -38,6 +38,10 @@ import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
 import { MachineQrScannerDialog } from "@/components/MachineQrScannerDialog";
 import { isMachineComplete } from "@/lib/report";
 import { exportFilename } from "@/lib/export-filename";
+import { partMatchesKeyword } from "@/lib/parts-search";
+import { TagInput } from "@/components/TagInput";
+import { aiPartLookup, type AiPartDraft } from "@/lib/ai-part-lookup.functions";
+import { Textarea } from "@/components/ui/textarea";
 import {
   CalendarDays,
   Search,
@@ -104,6 +108,10 @@ type Product = {
   storage_location: string | null;
   service_interval_hours: number | null;
   category_id: string | null;
+  cross_reference_parts: string[] | null;
+  supported_serials: string[] | null;
+  is_verified: boolean | null;
+  reference_url: string | null;
   categories: { id: string; name: string } | null;
   compressor_models: { id: string; name: string; brands: { name: string } | null } | null;
 };
@@ -463,24 +471,34 @@ function CatalogView() {
   const [selected, setSelected] = useState<Product | null>(null);
   const [lineUrl, setLineUrl] = useState("https://line.me/");
   const [contact, setContact] = useState("");
+  const [serialsByProduct, setSerialsByProduct] = useState<Record<string, string[]>>({});
+  const [aiOpen, setAiOpen] = useState(false);
 
   useEffect(() => {
     const load = async () => {
-      const [cats, prods, settings] = await Promise.all([
+      const [cats, prods, settings, mp] = await Promise.all([
         supabase.from("categories").select("id, name, sort_order").order("sort_order"),
         supabase
           .from("products")
           .select(
             `id, name, part_number, price, image_url, description, stock_quantity,
              storage_location, service_interval_hours, category_id,
+             cross_reference_parts, supported_serials, is_verified, reference_url,
              categories ( id, name ),
              compressor_models ( id, name, brands ( name ) )`
           )
           .order("name"),
         supabase.from("app_settings").select("key, value"),
+        supabase.from("machine_parts").select("product_id, machine_units(serial_number)"),
       ]);
       if (cats.data) setCategories(cats.data as Category[]);
       if (prods.data) setProducts(prods.data as unknown as Product[]);
+      const map: Record<string, string[]> = {};
+      for (const r of (mp.data ?? []) as unknown as { product_id: string | null; machine_units: { serial_number: string } | null }[]) {
+        if (!r.product_id || !r.machine_units?.serial_number) continue;
+        (map[r.product_id] ||= []).push(r.machine_units.serial_number);
+      }
+      setSerialsByProduct(map);
       if (settings.data) {
         const m = new Map(settings.data.map((s) => [s.key, s.value]));
         setLineUrl(m.get("line_url") || "https://line.me/");
@@ -494,20 +512,23 @@ function CatalogView() {
   }, []);
 
   const filtered = useMemo(() => {
-    const kw = q.trim().toLowerCase();
     return products.filter((p) => {
       if (selectedCat && p.category_id !== selectedCat) return false;
-      if (!kw) return true;
-      const model = p.compressor_models
-        ? `${p.compressor_models.brands?.name ?? ""} ${p.compressor_models.name}`
-        : "";
-      return (
-        p.name.toLowerCase().includes(kw) ||
-        p.part_number.toLowerCase().includes(kw) ||
-        model.toLowerCase().includes(kw)
+      return partMatchesKeyword(
+        {
+          name: p.name,
+          part_number: p.part_number,
+          cross_reference_parts: p.cross_reference_parts,
+          supported_serials: p.supported_serials,
+          brandName: p.compressor_models?.brands?.name,
+          categoryName: p.categories?.name,
+          modelName: p.compressor_models?.name,
+          linkedSerials: serialsByProduct[p.id] ?? [],
+        },
+        q,
       );
     });
-  }, [products, q, selectedCat]);
+  }, [products, q, selectedCat, serialsByProduct]);
 
   const PAGE_SIZE = 50;
   const [page, setPage] = useState(1);
@@ -528,7 +549,7 @@ function CatalogView() {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="ค้นหาด้วยรหัสอะไหล่ ชื่อ หรือรุ่นปั๊มลม"
+            placeholder="ค้นหารหัสอะไหล่ / พาร์ทเทียบ / ชื่อ / ยี่ห้อ / หมวด / S/N เครื่อง"
             className="h-12 pl-10 text-base"
           />
         </div>
@@ -559,8 +580,13 @@ function CatalogView() {
         </div>
       ) : filtered.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            ไม่พบอะไหล่ที่ตรงกับเงื่อนไข
+          <CardContent className="space-y-3 py-10 text-center text-sm text-muted-foreground">
+            <p>ไม่พบอะไหล่ที่ตรงกับเงื่อนไข</p>
+            {q.trim() && (
+              <Button variant="outline" onClick={() => setAiOpen(true)}>
+                <Sparkles className="mr-1 h-4 w-4" /> 🔍 ค้นหาข้อมูลด้วย AI / Web Search
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -600,7 +626,156 @@ function CatalogView() {
         lineUrl={lineUrl}
         contact={contact}
       />
+      <AiPartDraftDialog
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        query={q}
+        categories={categories}
+        onSaved={(p) => setProducts((rows) => [...rows, p])}
+      />
     </div>
+  );
+}
+
+/** ฟอร์มร่างจาก AI — ช่างตรวจสอบแล้วกดยืนยันเพื่อบันทึกเข้าคลังพร้อมสถานะตรวจสอบแล้ว */
+function AiPartDraftDialog({
+  open,
+  onOpenChange,
+  query,
+  categories,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  query: string;
+  categories: Category[];
+  onSaved: (p: Product) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<AiPartDraft | null>(null);
+  const [categoryId, setCategoryId] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setDraft(null);
+    setCategoryId("");
+    setLoading(true);
+    aiPartLookup({ data: { query: query.trim(), categories: categories.map((c) => c.name) } })
+      .then((res) => {
+        setDraft(res.draft);
+        const match = categories.find(
+          (c) => c.name.trim().toLowerCase() === res.draft.category_name.trim().toLowerCase(),
+        );
+        if (match) setCategoryId(match.id);
+      })
+      .catch((e) => {
+        toast.error(e instanceof Error ? e.message : "ค้นหาด้วย AI ไม่สำเร็จ");
+        onOpenChange(false);
+      })
+      .finally(() => setLoading(false));
+  }, [open]);
+
+  const save = async () => {
+    if (!draft) return;
+    if (!draft.name.trim() || !draft.part_number.trim())
+      return toast.error("กรอกชื่อและ Part Number ก่อนบันทึก");
+    setSaving(true);
+    const { data, error } = await supabase
+      .from("products")
+      .insert({
+        name: draft.name.trim(),
+        part_number: draft.part_number.trim(),
+        description: draft.description.trim() || null,
+        category_id: categoryId || null,
+        cross_reference_parts: draft.cross_reference_parts,
+        reference_url: draft.reference_url || null,
+        is_verified: true,
+        stock_quantity: 0,
+      })
+      .select(
+        `id, name, part_number, price, image_url, description, stock_quantity,
+         storage_location, service_interval_hours, category_id,
+         cross_reference_parts, supported_serials, is_verified, reference_url,
+         categories ( id, name ),
+         compressor_models ( id, name, brands ( name ) )`,
+      )
+      .single();
+    setSaving(false);
+    if (error) return toast.error("บันทึกไม่สำเร็จ: " + error.message);
+    onSaved(data as unknown as Product);
+    toast.success("✅ ยืนยันและบันทึกเข้าคลังอะไหล่แล้ว");
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-none overflow-y-auto sm:w-[calc(100vw-2rem)]">
+        <DialogHeader>
+          <DialogTitle>🔍 ผลค้นหาด้วย AI — ตรวจสอบก่อนบันทึก</DialogTitle>
+          <DialogDescription>
+            AI ร่างข้อมูลจากเว็บให้แล้ว กรุณาตรวจสอบความถูกต้องก่อนกดยืนยันบันทึก
+          </DialogDescription>
+        </DialogHeader>
+        {loading || !draft ? (
+          <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" /> AI กำลังค้นหาข้อมูล “{query.trim()}” …
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">ชื่ออะไหล่</label>
+                <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Part Number</label>
+                <Input value={draft.part_number} onChange={(e) => setDraft({ ...draft, part_number: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">หมวดอะไหล่</label>
+                <Select value={categoryId} onValueChange={setCategoryId}>
+                  <SelectTrigger><SelectValue placeholder="เลือกหมวด" /></SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">แหล่งอ้างอิง (URL)</label>
+                <Input value={draft.reference_url} onChange={(e) => setDraft({ ...draft, reference_url: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">พาร์ทเทียบ (พิมพ์แล้วกด Enter)</label>
+              <TagInput
+                value={draft.cross_reference_parts}
+                onChange={(tags) => setDraft({ ...draft, cross_reference_parts: tags })}
+                placeholder="เช่น CF-500, P181001"
+                aria-label="พาร์ทเทียบ"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">รายละเอียด</label>
+              <Textarea
+                value={draft.description}
+                onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                rows={3}
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:justify-start">
+              <Button onClick={save} disabled={saving}>
+                {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                ✅ ยืนยันข้อมูลถูกต้องและบันทึก
+              </Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -663,10 +838,30 @@ function ProductCard({ product, onOpen }: { product: Product; onOpen: () => void
               Part# {product.part_number}
             </p>
           </div>
-          <Badge variant={inStock ? "default" : "secondary"} className="shrink-0">
-            {inStock ? `มี ${stock}` : "หมด"}
-          </Badge>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <Badge variant={inStock ? "default" : "secondary"}>
+              {inStock ? `มี ${stock}` : "หมด"}
+            </Badge>
+            {product.is_verified && (
+              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700">
+                ✓ ตรวจสอบแล้ว
+              </Badge>
+            )}
+          </div>
         </div>
+        {(product.cross_reference_parts?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-[11px] text-muted-foreground">พาร์ทเทียบ:</span>
+            {product.cross_reference_parts!.slice(0, 3).map((c) => (
+              <Badge key={c} variant="outline" className="font-mono text-[10px]">
+                {c}
+              </Badge>
+            ))}
+            {product.cross_reference_parts!.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">+{product.cross_reference_parts!.length - 3}</span>
+            )}
+          </div>
+        )}
         {product.categories && (
           <div className="text-xs text-muted-foreground">{product.categories.name}</div>
         )}
@@ -740,7 +935,41 @@ function ProductModal({
                   product.service_interval_hours ? `${product.service_interval_hours} ชม.` : "-"
                 }
               />
+              <Info
+                label="สถานะข้อมูล"
+                value={product.is_verified ? "✓ ตรวจสอบแล้วโดยช่าง" : "ยังไม่ได้ตรวจสอบ"}
+              />
             </div>
+            {(product.cross_reference_parts?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">พาร์ทเทียบ (Cross-Ref):</span>
+                {product.cross_reference_parts!.map((c) => (
+                  <Badge key={c} variant="outline" className="font-mono text-xs">
+                    {c}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {(product.supported_serials?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">S/N ที่รองรับ:</span>
+                {product.supported_serials!.map((s) => (
+                  <Badge key={s} variant="secondary" className="font-mono text-xs">
+                    {s}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {product.reference_url && (
+              <a
+                href={product.reference_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-primary underline break-all"
+              >
+                แหล่งอ้างอิง: {product.reference_url}
+              </a>
+            )}
             {product.description && (
               <div className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
                 {product.description}
