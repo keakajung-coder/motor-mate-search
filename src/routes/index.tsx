@@ -104,6 +104,10 @@ type Product = {
   storage_location: string | null;
   service_interval_hours: number | null;
   category_id: string | null;
+  cross_reference_parts: string[] | null;
+  supported_serials: string[] | null;
+  is_verified: boolean | null;
+  reference_url: string | null;
   categories: { id: string; name: string } | null;
   compressor_models: { id: string; name: string; brands: { name: string } | null } | null;
 };
@@ -463,24 +467,34 @@ function CatalogView() {
   const [selected, setSelected] = useState<Product | null>(null);
   const [lineUrl, setLineUrl] = useState("https://line.me/");
   const [contact, setContact] = useState("");
+  const [serialsByProduct, setSerialsByProduct] = useState<Record<string, string[]>>({});
+  const [aiOpen, setAiOpen] = useState(false);
 
   useEffect(() => {
     const load = async () => {
-      const [cats, prods, settings] = await Promise.all([
+      const [cats, prods, settings, mp] = await Promise.all([
         supabase.from("categories").select("id, name, sort_order").order("sort_order"),
         supabase
           .from("products")
           .select(
             `id, name, part_number, price, image_url, description, stock_quantity,
              storage_location, service_interval_hours, category_id,
+             cross_reference_parts, supported_serials, is_verified, reference_url,
              categories ( id, name ),
              compressor_models ( id, name, brands ( name ) )`
           )
           .order("name"),
         supabase.from("app_settings").select("key, value"),
+        supabase.from("machine_parts").select("product_id, machine_units(serial_number)"),
       ]);
       if (cats.data) setCategories(cats.data as Category[]);
       if (prods.data) setProducts(prods.data as unknown as Product[]);
+      const map: Record<string, string[]> = {};
+      for (const r of (mp.data ?? []) as unknown as { product_id: string | null; machine_units: { serial_number: string } | null }[]) {
+        if (!r.product_id || !r.machine_units?.serial_number) continue;
+        (map[r.product_id] ||= []).push(r.machine_units.serial_number);
+      }
+      setSerialsByProduct(map);
       if (settings.data) {
         const m = new Map(settings.data.map((s) => [s.key, s.value]));
         setLineUrl(m.get("line_url") || "https://line.me/");
