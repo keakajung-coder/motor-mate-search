@@ -508,20 +508,23 @@ function CatalogView() {
   }, []);
 
   const filtered = useMemo(() => {
-    const kw = q.trim().toLowerCase();
     return products.filter((p) => {
       if (selectedCat && p.category_id !== selectedCat) return false;
-      if (!kw) return true;
-      const model = p.compressor_models
-        ? `${p.compressor_models.brands?.name ?? ""} ${p.compressor_models.name}`
-        : "";
-      return (
-        p.name.toLowerCase().includes(kw) ||
-        p.part_number.toLowerCase().includes(kw) ||
-        model.toLowerCase().includes(kw)
+      return partMatchesKeyword(
+        {
+          name: p.name,
+          part_number: p.part_number,
+          cross_reference_parts: p.cross_reference_parts,
+          supported_serials: p.supported_serials,
+          brandName: p.compressor_models?.brands?.name,
+          categoryName: p.categories?.name,
+          modelName: p.compressor_models?.name,
+          linkedSerials: serialsByProduct[p.id] ?? [],
+        },
+        q,
       );
     });
-  }, [products, q, selectedCat]);
+  }, [products, q, selectedCat, serialsByProduct]);
 
   const PAGE_SIZE = 50;
   const [page, setPage] = useState(1);
@@ -542,7 +545,7 @@ function CatalogView() {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="ค้นหาด้วยรหัสอะไหล่ ชื่อ หรือรุ่นปั๊มลม"
+            placeholder="ค้นหารหัสอะไหล่ / พาร์ทเทียบ / ชื่อ / ยี่ห้อ / หมวด / S/N เครื่อง"
             className="h-12 pl-10 text-base"
           />
         </div>
@@ -573,8 +576,13 @@ function CatalogView() {
         </div>
       ) : filtered.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            ไม่พบอะไหล่ที่ตรงกับเงื่อนไข
+          <CardContent className="space-y-3 py-10 text-center text-sm text-muted-foreground">
+            <p>ไม่พบอะไหล่ที่ตรงกับเงื่อนไข</p>
+            {q.trim() && (
+              <Button variant="outline" onClick={() => setAiOpen(true)}>
+                <Sparkles className="mr-1 h-4 w-4" /> 🔍 ค้นหาข้อมูลด้วย AI / Web Search
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
