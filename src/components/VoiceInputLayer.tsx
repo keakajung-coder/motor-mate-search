@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Mic, Sparkles, Loader2, Square } from "lucide-react";
+import { Mic, Sparkles, Loader2, Square, RotateCcw, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { polishText } from "@/lib/ai-polish.functions";
 import { normalizeVoiceTranscript } from "@/lib/voice-transcript";
+import { applyTextPolish } from "@/lib/text-polish";
+import { Button } from "@/components/ui/button";
+import { useServerFn } from "@tanstack/react-start";
 
 type VoiceLang = "auto" | "th-TH" | "en-US";
 const LANG_LABEL: Record<VoiceLang, string> = { auto: "อัตโนมัติ", "th-TH": "ไทย", "en-US": "EN" };
@@ -44,8 +47,13 @@ export function VoiceInputLayer() {
   const [listening, setListening] = useState(false);
   const [polishing, setPolishing] = useState(false);
   const [lang, setLang] = useState<VoiceLang>("auto");
+  const [, refreshTools] = useState(0);
   const recRef = useRef<Recognition | null>(null);
   const busyRef = useRef(false);
+  const polishBusyRef = useRef(false);
+  const polishFn = useServerFn(polishText);
+  const historyRef = useRef(new WeakMap<Field, string>());
+  const failedRef = useRef(new WeakSet<Field>());
 
   useEffect(() => {
     const onFocus = (e: FocusEvent) => { if (eligible(e.target)) setField(e.target); };
@@ -104,18 +112,44 @@ export function VoiceInputLayer() {
     try { rec.start(); setListening(true); } catch { busyRef.current = false; toast.error("เปิดไมโครโฟนไม่สำเร็จ"); }
   };
 
-  const polish = async () => {
-    if (!field || polishing) return;
+  const polish = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!field || polishBusyRef.current || listening) return;
     const target = field;
     if (target.value.trim().length < 2) { toast.info("พิมพ์หรือพูดข้อความก่อน แล้วค่อยกดเกลา"); return; }
+    polishBusyRef.current = true;
     busyRef.current = true; setPolishing(true);
+    failedRef.current.delete(target);
     try {
-      const res = await polishText({ data: { text: target.value } });
-      setFieldValue(target, res.text);
-      toast.success("เกลาข้อความแล้ว แก้ไขต่อได้ก่อนบันทึก");
+      const original = await applyTextPolish(target, text => polishFn({ data: { text } }), setFieldValue);
+      if (original !== null) {
+        if (!historyRef.current.has(target)) historyRef.current.set(target, original);
+        toast.success("เกลาข้อความแล้ว แก้ไขต่อได้ก่อนบันทึก");
+      } else if (target.isConnected) {
+        toast.info("ข้อความมีการแก้ไขระหว่างรอ จึงเก็บข้อความล่าสุดไว้");
+      }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "เกลาข้อความไม่สำเร็จ");
-    } finally { setPolishing(false); busyRef.current = false; target.focus(); }
+      failedRef.current.add(target);
+      toast.error(e instanceof Error ? e.message : "ไม่สามารถเชื่อมต่อ AI ได้ กรุณาลองอีกครั้ง");
+    } finally {
+      polishBusyRef.current = false;
+      setPolishing(false); busyRef.current = false;
+      if (target.isConnected) target.focus({ preventScroll: true });
+    }
+  };
+
+  const undoPolish = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!field || polishBusyRef.current) return;
+    const original = historyRef.current.get(field);
+    if (original === undefined) return;
+    setFieldValue(field, original);
+    historyRef.current.delete(field);
+    failedRef.current.delete(field);
+    field.focus({ preventScroll: true });
+    refreshTools(value => value + 1);
   };
 
   useEffect(() => () => recRef.current?.stop(), []);
@@ -123,7 +157,7 @@ export function VoiceInputLayer() {
   const isArea = field instanceof HTMLTextAreaElement;
   const size = 32;
   const top = isArea ? rect.bottom - size - 4 : rect.top + (rect.height - size) / 2;
-  const keep = (e: React.PointerEvent | React.MouseEvent) => e.preventDefault();
+  const keep = (e: React.PointerEvent | React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); };
   const btn = "pointer-events-auto flex items-center justify-center rounded-full border border-border bg-background text-foreground shadow-md";
 
   return createPortal(
@@ -134,15 +168,20 @@ export function VoiceInputLayer() {
         </span>
       )}
       {isArea && (
-        <button type="button" title="AI เกลาข้อความ" aria-label="AI เกลาข้อความ" onPointerDown={keep} onMouseDown={keep} onClick={polish}
-          style={{ width: size, height: size }} className={`${btn} text-primary`} disabled={polishing || listening}>
-          {polishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-        </button>
+        <>
+          {historyRef.current.has(field) && <Button type="button" variant="outline" size="icon" title="เลิกใช้ข้อความ AI / ย้อนกลับ" aria-label="เลิกใช้ข้อความ AI / ย้อนกลับ" onPointerDown={keep} onMouseDown={keep} onClick={undoPolish} disabled={polishing || listening} className={`${btn} h-8 w-8 p-0`}><Undo2 /></Button>}
+          <Button type="button" variant="outline" size="icon" title={failedRef.current.has(field) ? "ลองอีกครั้ง" : "AI เกลาข้อความ"} aria-label={failedRef.current.has(field) ? "ลองอีกครั้ง" : "AI เกลาข้อความ"} onPointerDown={keep} onMouseDown={keep} onClick={polish}
+            className={`${btn} h-8 w-8 p-0 text-primary`} disabled={polishing || listening} aria-busy={polishing}>
+            {polishing ? <Loader2 className="h-4 w-4 animate-spin" /> : failedRef.current.has(field) ? <RotateCcw /> : <Sparkles className="h-4 w-4" />}
+          </Button>
+          {polishing && <span role="status" className="absolute -top-7 right-0 whitespace-nowrap rounded bg-background px-2 py-1 text-xs text-foreground">กำลังเกลาข้อความ...</span>}
+        </>
       )}
       <button type="button" title={listening ? "หยุดฟัง" : "พูดเพื่อพิมพ์ (กดค้างเพื่อสลับภาษา: อัตโนมัติ/ไทย/อังกฤษ)"} aria-label={listening ? "หยุดฟัง" : "พูดเพื่อพิมพ์"}
         onPointerDown={keep} onMouseDown={keep}
         onContextMenu={(e) => { e.preventDefault(); if (!listening) setLang(nextLang); }}
         onClick={listening ? stop : start}
+        disabled={polishing}
         style={{ width: size, height: size }}
         className={`${btn} ${listening ? "bg-destructive text-destructive-foreground animate-pulse" : ""}`}>
         {listening ? <Square className="h-3.5 w-3.5" /> : <Mic className="h-4 w-4" />}
