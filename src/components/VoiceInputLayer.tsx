@@ -47,6 +47,7 @@ export function VoiceInputLayer() {
   const [listening, setListening] = useState(false);
   const [polishing, setPolishing] = useState(false);
   const [lang, setLang] = useState<VoiceLang>("auto");
+  const [, refreshTools] = useState(0);
   const recRef = useRef<Recognition | null>(null);
   const busyRef = useRef(false);
   const polishBusyRef = useRef(false);
@@ -148,8 +149,7 @@ export function VoiceInputLayer() {
     historyRef.current.delete(field);
     failedRef.current.delete(field);
     field.focus({ preventScroll: true });
-    setField(null);
-    setField(field);
+    refreshTools(value => value + 1);
   };
 
   useEffect(() => () => recRef.current?.stop(), []);
@@ -181,6 +181,7 @@ export function VoiceInputLayer() {
         onPointerDown={keep} onMouseDown={keep}
         onContextMenu={(e) => { e.preventDefault(); if (!listening) setLang(nextLang); }}
         onClick={listening ? stop : start}
+        disabled={polishing}
         style={{ width: size, height: size }}
         className={`${btn} ${listening ? "bg-destructive text-destructive-foreground animate-pulse" : ""}`}>
         {listening ? <Square className="h-3.5 w-3.5" /> : <Mic className="h-4 w-4" />}
