@@ -739,7 +739,7 @@ export async function tableToPdfBlob(
     blob = doc.output("blob");
     if (blob.size <= MAX_BYTES) return blob;
     quality -= 0.08;
-    if (quality < 0.68) break;
+    if (quality < 0.4) break;
   }
   if (!blob) throw new Error("สร้าง PDF ไม่สำเร็จ");
   return blob;
