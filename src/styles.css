@@ -1173,3 +1173,13 @@
 .pdf-large-text :is(h2, h3) { font-size: max(1em, 18px); }
 .pdf-large-text :is(h4, h5, h6, th) { font-size: max(1em, 14px); }
 .pdf-large-text [data-pdf-caption] { font-size: max(1em, 11px); white-space: normal; }
+
+/* พิมพ์จากเบราว์เซอร์: หัวรายงาน/หัวตารางซ้ำทุกหน้า และไม่ตัดกลางกล่อง */
+@media print {
+  @page { size: A4; margin: 10mm; }
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  tr, img, .break-inside-avoid, .handover-break-candidate, .handover-sig-card { break-inside: avoid; page-break-inside: avoid; }
+  [data-pdf-header] { break-after: avoid; }
+}
