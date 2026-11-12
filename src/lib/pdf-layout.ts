@@ -15,7 +15,7 @@ export type PdfSettings = {
   pageTo?: number;
 };
 export type PdfMargin = "narrow" | "normal" | "wide";
-export const PDF_MARGIN_MM: Record<PdfMargin, number> = { narrow: 5, normal: 10, wide: 20 };
+export const PDF_MARGIN_MM: Record<PdfMargin, number> = { narrow: 5, normal: 8, wide: 20 };
 export const PDF_MAX_BYTES = 1024 * 1024;
 
 export function marginMm(settings: Pick<PdfSettings, "margin">) {

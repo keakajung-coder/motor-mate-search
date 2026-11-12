@@ -103,7 +103,7 @@ function PdfControls({ build, initial, finish }: { build: (s: PdfSettings) => Pr
         <div className="min-w-0 space-y-2"><Label>ระยะขอบกระดาษ</Label>
           <Select value={settings.margin ?? "normal"} onValueChange={v => setSettings(s => ({ ...s, margin: v === "narrow" || v === "wide" ? v : "normal" }))}>
             <SelectTrigger className="w-full" aria-label="ระยะขอบกระดาษ"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="narrow">ขอบแคบ (5 มม.)</SelectItem><SelectItem value="normal">ปกติ (10 มม.)</SelectItem><SelectItem value="wide">ขอบกว้าง (20 มม.)</SelectItem></SelectContent>
+            <SelectContent><SelectItem value="narrow">ขอบแคบ (5 มม.)</SelectItem><SelectItem value="normal">ปกติ (8 มม.)</SelectItem><SelectItem value="wide">ขอบกว้าง (20 มม.)</SelectItem></SelectContent>
           </Select>
         </div>
         <div className="min-w-0 space-y-2"><Label>ช่วงหน้าที่พิมพ์ (เว้นว่าง = ทุกหน้า)</Label>
