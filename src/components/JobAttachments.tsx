@@ -15,7 +15,7 @@ import { Film, ImageIcon, KeyRound, Loader2, Paperclip, Trash2 } from "lucide-re
 import { useAccess } from "@/lib/access";
 import { getAccessStatus, refreshSession } from "@/lib/passcode.functions";
 
-export type JobAttachment = { path: string; url: string; name: string; kind: "image" | "video" };
+export type JobAttachment = { path: string; url: string; name: string; kind: "image" | "video"; caption?: string };
 
 const BUCKET = "job-attachments";
 const PREVIEW_SECONDS = 600;
@@ -209,7 +209,18 @@ export function JobAttachments({
               </a>
               <div className="flex items-center gap-1 px-2 py-1 text-[11px]">
                 {item.kind === "image" ? <ImageIcon className="h-3 w-3 shrink-0" /> : <Film className="h-3 w-3 shrink-0" />}
-                <span className="truncate" title={item.name}>{item.name}</span>
+                {readOnly ? (
+                  <span className="truncate" title={item.caption || ""}>{item.caption || "ไม่มีคำอธิบาย"}</span>
+                ) : (
+                  <input
+                    type="text"
+                    value={item.caption ?? ""}
+                    placeholder="พิมพ์คำอธิบายรูป…"
+                    aria-label="คำอธิบายรูป"
+                    className="h-7 w-full min-w-0 rounded border border-input bg-background px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    onChange={(e) => onChange?.(serializeAttachments(items.map((x) => x.path === item.path ? { ...x, caption: e.target.value } : x)))}
+                  />
+                )}
               </div>
               {!readOnly && (
                 <Button

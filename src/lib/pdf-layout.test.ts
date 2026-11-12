@@ -41,3 +41,15 @@ describe("PDF repeated header and captions", () => {
     assert.equal(photoCaption("ก่อนทำ", { caption: "shared", captionText: "ภาพบริการ" }), "ภาพบริการ");
   });
 });
+
+import { pagesInRange, marginMm, PDF_MAX_BYTES } from "./pdf-layout";
+test("page range keeps requested pages only", () => {
+  assert.deepEqual(pagesInRange(5, { pageFrom: 2, pageTo: 3 }), [1, 2]);
+  assert.deepEqual(pagesInRange(3, {}), [0, 1, 2]);
+  assert.deepEqual(pagesInRange(3, { pageFrom: 2, pageTo: 99 }), [1, 2]);
+});
+test("margin presets and 1 MB cap", () => {
+  assert.equal(marginMm({ margin: "narrow" }), 5);
+  assert.equal(marginMm({ margin: "wide" }), 20);
+  assert.equal(PDF_MAX_BYTES, 1048576);
+});

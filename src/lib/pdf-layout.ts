@@ -8,7 +8,28 @@ export type PdfSettings = {
   captionText?: string;
   /** Enlarge body/heading text for reading on small screens. */
   largeText?: boolean;
+  /** Paper margin preset. */
+  margin?: PdfMargin;
+  /** Optional 1-based inclusive page range to keep; empty means all pages. */
+  pageFrom?: number;
+  pageTo?: number;
 };
+export type PdfMargin = "narrow" | "normal" | "wide";
+export const PDF_MARGIN_MM: Record<PdfMargin, number> = { narrow: 5, normal: 8, wide: 20 };
+export const PDF_MAX_BYTES = 1024 * 1024;
+
+export function marginMm(settings: Pick<PdfSettings, "margin">) {
+  return PDF_MARGIN_MM[settings.margin ?? "normal"] ?? PDF_MARGIN_MM.normal;
+}
+
+/** 0-based page indexes to keep for a requested range (clamped to the document). */
+export function pagesInRange(total: number, settings: Pick<PdfSettings, "pageFrom" | "pageTo">): number[] {
+  const from = Math.max(1, Math.floor(settings.pageFrom || 1));
+  const to = Math.min(total, Math.floor(settings.pageTo || total));
+  const out: number[] = [];
+  for (let i = from; i <= to; i++) out.push(i - 1);
+  return out.length ? out : Array.from({ length: total }, (_, i) => i);
+}
 
 /** Caption text a photo should show for the chosen mode; null means hide it. */
 export function photoCaption(own: string, settings: Pick<PdfSettings, "caption" | "captionText">): string | null {
@@ -25,8 +46,9 @@ export function photoCaption(own: string, settings: Pick<PdfSettings, "caption" 
 export function pdfLayout(width: number, height: number, settings: PdfSettings, breaks: number[] = [], repeat = 0) {
   const pageWidth = settings.orientation === "landscape" ? 297 : 210;
   const pageHeight = settings.orientation === "landscape" ? 210 : 297;
-  const usableWidth = pageWidth - 16;
-  const usableHeight = pageHeight - 16;
+  const m = marginMm(settings);
+  const usableWidth = pageWidth - m * 2;
+  const usableHeight = pageHeight - m * 2;
   const limit = Number.isFinite(settings.pages) ? Math.max(0, Math.floor(settings.pages)) : 0;
   const safeWidth = Math.max(1, width);
   const safeHeight = Math.max(1, height);
@@ -61,5 +83,5 @@ export function pdfLayout(width: number, height: number, settings: PdfSettings, 
     slices = sliceAt(imageWidth);
   }
   const header = Math.max(0, Math.min(repeat, safeWidth * usableHeight / imageWidth * 0.4));
-  return { pageWidth, pageHeight, imageWidth, offsetX: 8 + (usableWidth - imageWidth) / 2, slices, header };
+  return { pageWidth, pageHeight, imageWidth, offsetX: m + (usableWidth - imageWidth) / 2, slices, header, margin: m };
 }

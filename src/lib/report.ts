@@ -1,5 +1,5 @@
 import { controlledPdf } from "./pdf-controls";
-import { pdfLayout, photoCaption, type PdfSettings } from "./pdf-layout";
+import { pdfLayout, photoCaption, pagesInRange, marginMm, PDF_MAX_BYTES, type PdfSettings } from "./pdf-layout";
 
 /** Shared helpers: date format, usage calculation, PDF export (size-capped) */
 
@@ -144,7 +144,7 @@ export function formatBytes(n: number) {
   return `${(n / 1024 / 1024).toFixed(2)} MB`;
 }
 
-const MAX_BYTES = 8 * 1024 * 1024; // 8 MB — รักษาความคมชัดของตัวอักษรไทยในเอกสาร A4
+const MAX_BYTES = PDF_MAX_BYTES; // ไฟล์ PDF ต้องไม่เกิน 1 MB เสมอ
 const EXPORT_PIXEL_RATIO = 3;
 
 /** จำกัดความละเอียดไม่ให้เกินขนาด canvas สูงสุดของเบราว์เซอร์ (iOS/Safari ~16.7M px) — เกินแล้วภาพจะว่างหรือค้าง */
@@ -391,7 +391,7 @@ export async function elementToPdfBlobPaged(
           el.classList.add(wasPortrait ? "job-report-export--portrait" : "job-report-export--landscape");
         }
       }
-    }, { orientation: opts?.orientation ?? "portrait", pages, caption: "each", captionText: "", largeText: true });
+    }, { orientation: opts?.orientation ?? "portrait", pages, caption: "each", captionText: "", largeText: true, margin: "normal" });
   }
   const restore = await preparePdfElement(el, opts?.pdf ?? {});
   try { return await renderPdf(el, pages, opts); } finally { restore(); }
@@ -423,6 +423,10 @@ async function renderPdf(el: HTMLElement, pages: number, opts?: Parameters<typeo
     { pixelRatio: 2.5, quality: 0.93 },
     { pixelRatio: 2, quality: 0.9 },
     { pixelRatio: 1.5, quality: 0.82 },
+    { pixelRatio: 1.5, quality: 0.7 },
+    { pixelRatio: 1.25, quality: 0.62 },
+    { pixelRatio: 1, quality: 0.55 },
+    { pixelRatio: 0.85, quality: 0.45 },
   ];
 
   let last: Blob | null = null;
@@ -488,7 +492,7 @@ async function renderPdf(el: HTMLElement, pages: number, opts?: Parameters<typeo
     });
     const theadMax = tables.reduce((m, t) => Math.max(m, t.headH), 0);
     const layout = pdfLayout(img.width, img.height, {
-      orientation: opts?.orientation ?? "portrait", pages,
+      orientation: opts?.orientation ?? "portrait", pages, margin: opts?.pdf?.margin,
     }, candidates, headH + theadMax);
 
     // ปรับแต่งเส้นแบ่งหน้าให้ตรงกับช่องว่างสีขาวบริสุทธิ์ (Whitespace row) ป้องกันไม่ให้ตัวหนังสือขาด
@@ -503,8 +507,11 @@ async function renderPdf(el: HTMLElement, pages: number, opts?: Parameters<typeo
         : (refinedSlices[i + 1].top + refinedSlices[i + 1].height - cleanY);
     }
 
+    const keep = new Set(pagesInRange(refinedSlices.length, opts?.pdf ?? {}));
+    let written = 0;
     refinedSlices.forEach((slice, p) => {
-      if (p > 0) pdf.addPage();
+      if (!keep.has(p)) return;
+      if (written++ > 0) pdf.addPage();
       const strips: Array<{ top: number; height: number }> = [];
       if (p > 0) {
         const room = layout.header;
@@ -526,7 +533,7 @@ async function renderPdf(el: HTMLElement, pages: number, opts?: Parameters<typeo
       ctx.drawImage(img, 0, slice.top, img.width, slice.height, 0, y, img.width, slice.height);
       const pageDataUrl = canvas.toDataURL("image/jpeg", step.quality);
       const pageImgH = canvas.height * layout.imageWidth / img.width;
-      pdf.addImage(pageDataUrl, "JPEG", layout.offsetX, 8, layout.imageWidth, pageImgH, undefined, "SLOW");
+      pdf.addImage(pageDataUrl, "JPEG", layout.offsetX, layout.margin, layout.imageWidth, pageImgH, undefined, "SLOW");
     });
 
     last = pdf.output("blob");
@@ -642,7 +649,7 @@ export async function tableToPdfBlob(
   const probe = new jsPDF({ unit: "mm", format: "a4", orientation: settings.orientation, compress: true });
   const pageW = probe.internal.pageSize.getWidth();
   const pageH = probe.internal.pageSize.getHeight();
-  const margin = 8;
+  const margin = marginMm(settings);
   const usableW = pageW - margin * 2;
   const usableH = pageH - margin * 2;
 
@@ -732,7 +739,7 @@ export async function tableToPdfBlob(
     blob = doc.output("blob");
     if (blob.size <= MAX_BYTES) return blob;
     quality -= 0.08;
-    if (quality < 0.68) break;
+    if (quality < 0.4) break;
   }
   if (!blob) throw new Error("สร้าง PDF ไม่สำเร็จ");
   return blob;

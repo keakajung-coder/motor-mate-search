@@ -1509,9 +1509,9 @@ export function HandoverReportPrintView({
                             <p
                               data-pdf-caption=""
                               className="text-[8.5px] font-medium text-slate-700 truncate w-full text-center mt-0.5 px-0.5"
-                              title={p.name || `รูปที่ ${pIdx + 1}`}
+                              title={p.caption || `รูปที่ ${pIdx + 1}`}
                             >
-                              {p.name || `รูปที่ ${pIdx + 1}`}
+                              {p.caption?.trim() || `รูปที่ ${pIdx + 1}`}
                             </p>
                           </div>
                         );
