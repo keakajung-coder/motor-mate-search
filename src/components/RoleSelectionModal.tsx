@@ -1,3 +1,4 @@
+import { SafeBoundary } from "@/components/SafeBoundary";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSuspenseQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useUserRole } from "@/lib/user-role";
@@ -78,9 +79,9 @@ export function RoleSelectionView({ onDone, isModal = false }: { onDone?: () => 
       </div>
     </> : <>
       <Button variant="ghost" size="sm" className="mb-4 gap-2 px-0 text-muted-foreground" onClick={() => setDepartment(null)}><ArrowLeft className="h-4 w-4" />กลับไปเลือกฝ่าย</Button>
-      <Suspense fallback={<div className="flex min-h-60 items-center justify-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" />กำลังโหลดรายชื่อพนักงาน…</div>}>
+      <SafeBoundary label="โหลดรายชื่อพนักงานไม่สำเร็จ"><Suspense fallback={<div className="flex min-h-60 items-center justify-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" />กำลังโหลดรายชื่อพนักงาน…</div>}>
         <EmployeeSelection department={department} onDone={onDone} />
-      </Suspense>
+      </Suspense></SafeBoundary>
     </>}
   </div>;
 }
