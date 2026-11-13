@@ -21,6 +21,7 @@ import { useIssues } from "@/components/TroubleshootPanel";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
 import { ensureDirectoryEntries } from "@/lib/directory";
 import { toast } from "sonner";
+import { splitGenuineCrossRef, type PartPickRow } from "@/lib/parts-search";
 
 type Mode = "parts" | "planner" | "issue";
 
@@ -81,8 +82,8 @@ function distance(a: string, b: string) {
 
 /** คะแนนความใกล้เคียง: 0 = ตรงเป๊ะ ยิ่งน้อยยิ่งใกล้ */
 export function fuzzyScore(text: string, kw: string): number | null {
-  const t = text.toLowerCase();
-  const k = kw.toLowerCase();
+  const t = String(text ?? "").toLowerCase().slice(0, 400);
+  const k = String(kw ?? "").toLowerCase().slice(0, 60);
   if (!k) return 0;
   if (t.includes(k)) return 0;
   let best: number | null = null;
@@ -117,13 +118,19 @@ export function SmartSearchDialog({
   const [units, setUnits] = useState<UnitLite[]>([]);
   const [appts, setAppts] = useState<ApptLite[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [products, setProducts] = useState<PartPickRow[]>([]);
+  const [links, setLinks] = useState<{ machine_unit_id: string; product_id: string }[]>([]);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const { issues } = useIssues("published");
 
   useEffect(() => {
     if (!open || units.length > 0) return;
     setLoading(true);
+    setLoadError(null);
     (async () => {
-      const [u, a] = await Promise.all([
+      try {
+      const [u, a, pr, mp] = await Promise.all([
         supabase
           .from("machine_units")
           .select(
@@ -136,10 +143,21 @@ export function SmartSearchDialog({
             "id, customer_name, cust_id, serial_number, service_type, visit_date, visit_time, vehicle_plate, staff_name, sales_rep, status",
           )
           .order("visit_date", { ascending: false }),
+        supabase.from("products").select("id, name, part_number, cross_reference_parts, supported_serials"),
+        supabase.from("machine_parts").select("machine_unit_id, product_id"),
       ]);
-      setUnits((u.data as unknown as UnitLite[]) ?? []);
-      setAppts((a.data as unknown as ApptLite[]) ?? []);
-      setLoading(false);
+      if (u.error) throw u.error;
+      const safeUnits = ((u.data as unknown as UnitLite[]) ?? []).filter(Boolean).map((x) => ({ ...x, serial_number: String(x.serial_number ?? "") }));
+      setUnits(safeUnits);
+      setAppts(((a.data as unknown as ApptLite[]) ?? []).filter(Boolean).map((x) => ({ ...x, visit_date: String(x.visit_date ?? "") })));
+      setProducts(((pr.data as unknown as PartPickRow[]) ?? []).filter(Boolean));
+      setLinks(((mp.data as any[]) ?? []).filter((x) => x?.machine_unit_id && x?.product_id));
+      } catch (e: any) {
+        setLoadError(e?.message ? String(e.message) : "โหลดข้อมูลไม่สำเร็จ");
+        toast.error("โหลดข้อมูลค้นหาไม่สำเร็จ ลองอีกครั้ง");
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [open]);
 
@@ -159,7 +177,7 @@ export function SmartSearchDialog({
     return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
   }, [units]);
 
-  const kw = text.trim();
+  const kw = String(text ?? "").trim();
 
   const unitResults = useMemo(() => {
     const rows = units.filter((u) => {
@@ -221,15 +239,54 @@ export function SmartSearchDialog({
   const issueResults = useMemo(() => {
     if (!kw) return issues.slice(0, 6);
     return issues
-      .map((i) => ({ i, score: fuzzyScore(`${i.title} ${i.keywords ?? ""}`, kw) }))
+      .map((i) => ({ i, score: fuzzyScore(`${i?.title ?? ""} ${i?.keywords ?? ""}`, kw) }))
       .filter((r) => r.score != null)
       .sort((x, y) => (x.score as number) - (y.score as number))
       .map((r) => r.i);
   }, [issues, kw]);
 
+  const partGroups = useMemo(() => {
+    try {
+      if (!kw) return { genuine: [], crossRef: [] };
+      const serials = unitResults.map(({ u }) => u.serial_number).filter(Boolean);
+      const unitIds = new Set(unitResults.map(({ u }) => u.id));
+      const linked = links.filter((l) => unitIds.has(l.machine_unit_id)).map((l) => l.product_id);
+      return splitGenuineCrossRef(products, { keyword: kw, serials, linkedProductIds: linked });
+    } catch {
+      return { genuine: [], crossRef: [] };
+    }
+  }, [products, links, unitResults, kw]);
+
+  const togglePick = (id: string) =>
+    setPicked((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+
+  const pickedRows = useMemo(
+    () => [...partGroups.genuine.map((p) => ({ p, t: "แท้" })), ...partGroups.crossRef.map((p) => ({ p, t: "เทียบ" }))].filter((x) => picked.has(x.p.id)),
+    [partGroups, picked],
+  );
+
+  const copyPicked = async () => {
+    const lines = pickedRows.map(({ p, t }) => `${p.part_number ?? "-"} ${p.name ?? ""} (${t})`.trim());
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      toast.success(`คัดลอก ${lines.length} รายการแล้ว นำไปวางในใบงานหรือรายการเบิกได้เลย`);
+    } catch {
+      toast.error("คัดลอกไม่สำเร็จ");
+    }
+  };
+
   const confirm = () => {
-    onConfirm({ text: kw, seller, status });
-    onOpenChange(false);
+    try {
+      onConfirm({ text: kw, seller, status });
+      onOpenChange(false);
+    } catch (e) {
+      console.error(e);
+      toast.error("ค้นหาไม่สำเร็จ ลองอีกครั้ง");
+    }
   };
 
   return (
@@ -269,7 +326,12 @@ export function SmartSearchDialog({
               autoFocus
               value={text}
               onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && confirm()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  confirm();
+                }
+              }}
               placeholder={
                 mode === "issue"
                   ? "พิมพ์อาการเสีย เช่น ลมไม่ขึ้น, ร้อนจัด"
@@ -398,16 +460,56 @@ export function SmartSearchDialog({
             <div className="flex justify-center py-6">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
+          ) : loadError ? (
+            <p className="py-4 text-center text-sm text-destructive">{loadError}</p>
           ) : mode === "parts" ? (
-            unitResults.length === 0 ? (
+            unitResults.length === 0 && partGroups.genuine.length === 0 && partGroups.crossRef.length === 0 ? (
               <Empty />
             ) : (
-              unitResults.map(({ u, score }) => (
+              <>
+              {(partGroups.genuine.length > 0 || partGroups.crossRef.length > 0) && (
+                <div className="space-y-2 rounded-lg border bg-card p-2">
+                  {([
+                    ["✅ อะไหล่แท้ (Genuine Parts)", "แท้", partGroups.genuine],
+                    ["🔁 อะไหล่เทียบ / พาร์ททดแทน (Cross-Reference)", "เทียบ", partGroups.crossRef],
+                  ] as const).map(([title, tag, rows]) => (
+                    <div key={tag}>
+                      <div className="mb-1 text-xs font-semibold">{title} ({rows.length})</div>
+                      {rows.length === 0 ? (
+                        <p className="px-1 text-xs text-muted-foreground">ไม่พบข้อมูล</p>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                          {rows.map((p) => (
+                            <label key={p.id} className="flex cursor-pointer items-start gap-2 rounded-md border px-2 py-1.5 text-sm hover:bg-accent">
+                              <input type="checkbox" className="mt-1 h-4 w-4" checked={picked.has(p.id)} onChange={() => togglePick(p.id)} />
+                              <span className="min-w-0">
+                                <span className="font-mono font-semibold">{p.part_number || "-"}</span>{" "}
+                                <span>{p.name ?? ""}</span>
+                                {tag === "เทียบ" && (p.cross_reference_parts?.length ?? 0) > 0 && (
+                                  <span className="block truncate text-xs text-muted-foreground">เทียบ: {(p.cross_reference_parts ?? []).join(", ")}</span>
+                                )}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {pickedRows.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 border-t pt-2">
+                      <span className="text-xs">เลือกแล้ว {pickedRows.length} รายการ</span>
+                      <Button size="sm" type="button" onClick={copyPicked}>คัดลอกไปใส่ใบงาน/ใบเบิก</Button>
+                      <Button size="sm" type="button" variant="ghost" onClick={() => setPicked(new Set())}>ล้างที่เลือก</Button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {unitResults.map(({ u, score }) => (
                 <div key={u.id} className="flex items-center gap-1 rounded-lg bg-card px-2 hover:bg-accent">
                   <button
                     type="button"
                     onClick={() => {
-                      onConfirm({ text: u.serial_number, seller, status });
+                      onConfirm({ text: u.serial_number ?? "", seller, status });
                       onOpenChange(false);
                     }}
                     className="block min-w-0 flex-1 px-1 py-2 text-left text-sm"
@@ -437,7 +539,8 @@ export function SmartSearchDialog({
                     }}
                   />
                 </div>
-              ))
+              ))}
+              </>
             )
           ) : mode === "planner" ? (
             apptResults.length === 0 ? (

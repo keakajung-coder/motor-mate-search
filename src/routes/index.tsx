@@ -221,7 +221,7 @@ function HomePage() {
         onConfirm={({ text, seller: s, status }) => {
           setSeller(s);
           setStatusFilter(status);
-          setQ(text);
+          setQ(String(text ?? ""));
           setTab("sn");
           setFocusToken((n) => n + 1);
         }}
@@ -1204,10 +1204,10 @@ function SnView({
         )
         .join(" ");
       const loc = `${(u as any).site_name ?? ""} ${(u as any).district ?? ""} ${(u as any).province ?? ""} ${unitSeller} ${unitStatus}`;
-      return `${u.serial_number} ${u.customer_sn ?? ""} ${brand} ${model} ${cust} ${phone} ${parts} ${loc}`
+      return `${u.serial_number ?? ""} ${u.customer_sn ?? ""} ${brand} ${model} ${cust} ${phone} ${parts} ${loc}`
         .toLowerCase()
         .includes(kw);
-    }).sort((a, b) => a.serial_number.localeCompare(b.serial_number, "th"));
+    }).sort((a, b) => String(a.serial_number ?? "").localeCompare(String(b.serial_number ?? ""), "th"));
   }, [units, q, seller, sellerQ, statusFilter, zoneFilter]);
 
 
