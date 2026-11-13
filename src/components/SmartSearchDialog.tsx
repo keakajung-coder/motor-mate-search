@@ -539,7 +539,8 @@ export function SmartSearchDialog({
                     }}
                   />
                 </div>
-              ))
+              ))}
+              </>
             )
           ) : mode === "planner" ? (
             apptResults.length === 0 ? (
