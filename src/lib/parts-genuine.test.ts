@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { splitGenuineCrossRef } from "./parts-search";
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { splitGenuineCrossRef } from "./parts-search.ts";
 
 const P = [
   { id: "a", name: "Oil filter", part_number: "OF-1", cross_reference_parts: ["X-9"], supported_serials: ["SN100"] },
@@ -7,14 +8,13 @@ const P = [
   { id: "c", name: null, part_number: null } as any,
 ];
 
-describe("splitGenuineCrossRef", () => {
-  it("S/N ที่ผูกกับอะไหล่ = อะไหล่แท้ และรหัสเทียบไปอยู่กลุ่มเทียบ", () => {
-    const r = splitGenuineCrossRef(P, { serials: ["sn100"] });
-    expect(r.genuine.map((p) => p.id)).toEqual(["a"]);
-    expect(r.crossRef.map((p) => p.id)).toEqual(["b"]);
-  });
-  it("ค่า null ไม่ทำให้พัง", () => {
-    expect(() => splitGenuineCrossRef(null as any, { keyword: null })).not.toThrow();
-    expect(splitGenuineCrossRef(P, { keyword: "zzz" }).genuine).toEqual([]);
-  });
+test("S/N ที่ผูกกับอะไหล่ = อะไหล่แท้ และรหัสเทียบไปอยู่กลุ่มเทียบ", () => {
+  const r = splitGenuineCrossRef(P, { serials: ["sn100"] });
+  assert.deepEqual(r.genuine.map((p) => p.id), ["a"]);
+  assert.deepEqual(r.crossRef.map((p) => p.id), ["b"]);
+});
+
+test("ค่า null ไม่ทำให้พัง", () => {
+  assert.doesNotThrow(() => splitGenuineCrossRef(null as any, { keyword: null }));
+  assert.deepEqual(splitGenuineCrossRef(P, { keyword: "zzz" }).genuine, []);
 });
