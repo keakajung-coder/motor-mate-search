@@ -1,3 +1,4 @@
+import { AvatarUpload } from "@/components/AvatarUpload";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/data-client";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
@@ -11,7 +12,7 @@ import { Loader2, Plus, Trash2, Truck, UserCog } from "lucide-react";
 import { markValueRemoved, invalidateData } from "@/lib/data-sync";
 import { getQueryClient, QUERY_KEYS } from "@/lib/query-client";
 
-type Staff = { id: string; name: string; phone: string | null; line_contact: string | null };
+type Staff = { id: string; name: string; phone: string | null; line_contact: string | null; avatar_url: string | null };
 type Vehicle = { id: string; plate: string; note: string | null };
 
 export function StaffVehiclesTab() {
@@ -36,7 +37,7 @@ function StaffCard() {
     const [{ data: activeList }, { count: inactCount }] = await Promise.all([
       supabase
         .from("service_staff")
-        .select("id, name, phone, line_contact")
+        .select("id, name, phone, line_contact, avatar_url")
         .neq("active", false)
         .order("name"),
       supabase
@@ -143,8 +144,9 @@ function StaffCard() {
             {rows.map((r) => (
               <div
                 key={r.id}
-                className="grid min-w-0 grid-cols-1 items-center gap-2 rounded-md border p-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]"
+                className="grid min-w-0 grid-cols-1 items-center gap-2 rounded-md border p-2 lg:grid-cols-[auto_repeat(3,minmax(0,1fr))_auto]"
               >
+                <AvatarUpload table="service_staff" id={r.id} name={r.name} url={r.avatar_url} editable={isAdmin} onSaved={url => setRows(cur => cur.map(x => x.id === r.id ? { ...x, avatar_url: url } : x))} />
                 <Input
                   defaultValue={r.name}
                   onBlur={(e) =>

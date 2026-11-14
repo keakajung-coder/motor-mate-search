@@ -1,3 +1,4 @@
+import { AvatarUpload } from "@/components/AvatarUpload";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/data-client";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
@@ -19,6 +20,7 @@ type Row = {
   name: string;
   phone: string | null;
   line_contact: string | null;
+  avatar_url: string | null;
 };
 
 const emptyDraft = { name: "", phone: "", lineId: "" };
@@ -37,7 +39,7 @@ export function SalesContactsCard() {
   const load = async () => {
     const { data } = await supabase
       .from("sales_contacts")
-      .select("id, kind, name, phone, line_contact")
+      .select("id, kind, name, phone, line_contact, avatar_url")
       .order("name");
     setRows((data ?? []) as Row[]);
     setLoading(false);
@@ -210,9 +212,12 @@ export function SalesContactsCard() {
                       </div>
                     ) : (
                       <div className="grid min-w-0 grid-cols-1 gap-3 text-sm lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1fr)_auto_auto_auto] lg:items-center">
-                        <div className="min-w-0">
-                          <span className="block text-xs text-muted-foreground">ชื่อ</span>
-                          <span className="block truncate font-medium" title={row.name}>{row.name}</span>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <AvatarUpload table="sales_contacts" id={row.id} name={row.name} url={row.avatar_url} editable={isAdmin} onSaved={url => setRows(cur => cur.map(x => x.id === row.id ? { ...x, avatar_url: url } : x))} />
+                          <div className="min-w-0">
+                            <span className="block text-xs text-muted-foreground">ชื่อ</span>
+                            <span className="block truncate whitespace-nowrap font-medium" title={row.name}>{row.name}</span>
+                          </div>
                         </div>
                         <div className="min-w-0">
                           <span className="block text-xs text-muted-foreground">เบอร์โทร</span>
