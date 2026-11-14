@@ -30,6 +30,7 @@ import { UserRoleSwitcherButton } from "@/components/UserRoleSwitcherButton";
 import { RoleSelectionDialog } from "@/components/RoleSelectionModal";
 import { VehicleZoneDialog } from "@/components/VehicleZoneDialog";
 import { LogoutButton } from "@/components/LogoutButton";
+import { CurrentUserAvatar } from "@/components/CurrentUserAvatar";
 
 function NotFoundComponent() {
   return (
@@ -214,6 +215,7 @@ function NavBar() {
 
           {/* Right: Persistent Role Switcher & Controls (Always Top Right) */}
           <div className="flex max-w-full flex-wrap items-center justify-end gap-1 sm:gap-1.5 ml-auto">
+            <CurrentUserAvatar />
             <UserRoleSwitcherButton />
             <NotificationBell />
             <ThemeQuickToggle />

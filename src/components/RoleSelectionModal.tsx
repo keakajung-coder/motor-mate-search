@@ -51,7 +51,7 @@ async function loadEmployees(): Promise<Employee[]> {
   }
   return result.filter(e => e.name.trim() && !isValueRemoved(e.name)).sort((a, b) => a.name.localeCompare(b.name, "th"));
 }
-const employeeQuery = { queryKey: ["employee-selection", "service_staff", "sales_contacts", "engineers"], queryFn: loadEmployees, staleTime: 30_000, refetchOnMount: "always" as const, refetchInterval: 15_000 };
+export const employeeQuery = { queryKey: ["employee-selection", "service_staff", "sales_contacts", "engineers"], queryFn: loadEmployees, staleTime: 30_000, refetchOnMount: "always" as const, refetchInterval: 15_000 };
 
 function ProfilePicture({ employee, large }: { employee: Employee; large: boolean }) {
   const department = departments.find(d => d.id === employee.department);
