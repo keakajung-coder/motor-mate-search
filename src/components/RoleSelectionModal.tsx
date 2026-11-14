@@ -151,11 +151,11 @@ function EmployeeSelection({ department, onDone }: { department: Department; onD
       </div>
     </div>
     {filtered.length === 0 ? <div className="py-16 text-center"><Users className="mx-auto mb-4 h-9 w-9 text-muted-foreground" /><h2 className="font-medium">{search ? "ไม่พบพนักงานที่ตรงกับการค้นหา" : "ยังไม่มีรายชื่อในฝ่ายนี้"}</h2>{search && <Button variant="ghost" className="mt-2 text-primary" onClick={() => setSearch("")}>ล้างการค้นหา</Button>}</div> : <div className={cn(view === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" : "divide-y border-y")}>
-      {filtered.map(employee => <article key={employee.id} className={cn("min-w-0", view === "grid" ? "flex flex-col items-center gap-4 rounded-lg border bg-card p-6 text-center" : "flex flex-wrap items-center gap-4 py-5")}>
+      {filtered.map(employee => <article key={employee.id} className={cn("min-w-0", view === "grid" ? "flex flex-col items-center gap-4 rounded-lg border bg-card p-6 text-center" : "flex flex-wrap items-center gap-x-4 gap-y-3 py-5")}>
         <ProfilePicture employee={employee} large={view === "grid"} />
-        <div className={cn("min-w-0", view === "grid" ? "w-full space-y-2" : "flex-1 space-y-1")}>
-          <h2 className="break-words text-base font-semibold">{employee.name}{userName === employee.name && <Check className="ml-2 inline h-4 w-4 text-summary-success" />}</h2>
-          <Badge variant="secondary" className={cn("rounded-md px-2 py-1 text-xs font-normal", departments.find(d => d.id === employee.department)?.color)}>{employee.position}</Badge>
+        <div className={cn("min-w-0", view === "grid" ? "w-full space-y-2" : "min-w-[10rem] flex-1 basis-0 space-y-1")}>
+          <h2 title={employee.name} className={cn("flex min-w-0 items-center gap-1.5 whitespace-nowrap font-semibold", view === "grid" && "justify-center", employee.name.length > 22 ? "text-sm" : "text-base")}><span className="min-w-0 truncate">{employee.name}</span>{userName === employee.name && <Check className="h-4 w-4 shrink-0 text-summary-success" />}</h2>
+          <Badge variant="secondary" className={cn("max-w-full truncate whitespace-nowrap rounded-md px-2 py-1 text-xs font-normal", departments.find(d => d.id === employee.department)?.color)}>{employee.position}</Badge>
           <div className={cn("flex items-center gap-1.5 text-sm text-muted-foreground", view === "grid" && "justify-center")}><Phone className="h-3.5 w-3.5 shrink-0" />{employee.phone ? <a href={`tel:${employee.phone.replace(/[^+\d]/g, "")}`} className="hover:text-primary">{employee.phone}</a> : <span>ยังไม่ระบุเบอร์โทร</span>}</div>
         </div>
         <div className={cn("flex items-center gap-2", view === "grid" ? "mt-auto w-full" : "ml-auto")}>
