@@ -1,0 +1,2 @@
+- Self-service photo writes derive their target from the encrypted access session, never browser names or input IDs; selection binds a server-validated active record without granting business roles. Overview photos remain session-isolated. Keep the ordinary storage gateway admin-only for photo writes.
+- Broadcast profile-save invalidation across header, employee selection and management views; compress bounded image bytes in the browser and revalidate size and format on the server.

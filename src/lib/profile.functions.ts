@@ -74,13 +74,14 @@ export const saveOwnPhoto = createServerFn({ method: "POST" })
         if (result.error || !result.data?.length) throw new Error("บันทึกรูปไม่สำเร็จ");
       } else if (id.startsWith("project:")) {
         const result = await supabaseAdmin.from("app_settings").select("id,value").eq("key", "engineers").single();
-        if (result.error) throw new Error("โหลดข้อมูลวิศวกรไม่สำเร็จ");
-        const rows: unknown[] = JSON.parse(result.data.value);
+        if (result.error || result.data.value === null) throw new Error("โหลดข้อมูลวิศวกรไม่สำเร็จ");
+        const previousValue = result.data.value;
+        const rows: unknown[] = JSON.parse(previousValue);
         const value = JSON.stringify(rows.map(item => {
           const row = typeof item === "string" ? { name: item } : item as { id?: string; name?: string };
           return id === `project:${row.id ?? row.name}` ? { ...row, avatar_url: avatar } : item;
         }));
-        const saved = await supabaseAdmin.from("app_settings").update({ value }).eq("id", result.data.id).eq("value", result.data.value).select("id");
+        const saved = await supabaseAdmin.from("app_settings").update({ value }).eq("id", result.data.id).eq("value", previousValue).select("id");
         if (saved.error || !saved.data?.length) throw new Error("ข้อมูลเปลี่ยนระหว่างบันทึก กรุณาลองอีกครั้ง");
       } else {
         const result = await supabaseAdmin.from("app_settings").upsert({ key: id, value: avatar }, { onConflict: "key" });
