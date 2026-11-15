@@ -55,9 +55,9 @@ export const employeeQuery = { queryKey: ["employee-selection", "service_staff",
 
 function ProfilePicture({ employee, large }: { employee: Employee; large: boolean }) {
   const department = departments.find(d => d.id === employee.department);
-  return <Avatar className={cn("rounded-md", large ? "h-24 w-24" : "h-14 w-14")}>
+  return <Avatar className={cn("shrink-0 rounded-full border-2 border-background shadow-sm ring-1 ring-border", large ? "h-24 w-24" : "h-16 w-16")}>
     {employee.avatar && <AvatarImage src={employee.avatar} alt={employee.name} className="object-cover" />}
-    <AvatarFallback className={cn("rounded-md font-medium", department?.background, department?.color, large ? "text-3xl" : "text-lg")}>{employee.name.trim().slice(0, 2)}</AvatarFallback>
+    <AvatarFallback className={cn("rounded-full font-medium", department?.background, department?.color, large ? "text-3xl" : "text-lg")}>{employee.name.trim().slice(0, 2)}</AvatarFallback>
   </Avatar>;
 }
 
@@ -125,7 +125,14 @@ function EmployeeSelection({ department, onDone }: { department: Department; onD
   }, [queryClient]);
   const filtered = useMemo(() => filterEmployees(employees, department, search).filter(row => !deletion.isPending || row.id !== deletion.variables?.id), [employees, department, search, deletion.isPending, deletion.variables]);
   const info = departments.find(d => d.id === department);
-  const select = (employee: Employee) => { setRoleAndUser(employeeRole(employee.department), employee.name); onDone?.(); };
+  const [selecting, setSelecting] = useState(false);
+  const select = async (employee: Employee) => {
+    if (selecting) return;
+    setSelecting(true);
+    try { await setRoleAndUser(employeeRole(employee.department), employee.name, employee.id); onDone?.(); }
+    catch { /* notification is shown by the shared selection */ }
+    finally { setSelecting(false); }
+  };
   return <div className="space-y-6 min-w-0">
     <div className="flex flex-wrap justify-end gap-2">
       <EmployeeAdminAuth />
@@ -142,7 +149,7 @@ function EmployeeSelection({ department, onDone }: { department: Department; onD
     <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
       <p className="text-sm text-muted-foreground" aria-live="polite">พนักงาน <span className="font-semibold text-foreground">{filtered.length}</span> คน</p>
       <div className="flex items-center gap-3">
-        {department === "all" && <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => { setRoleAndUser("general", ""); onDone?.(); }}>ดูภาพรวมทั้งหมด<ChevronRight className="h-4 w-4" /></Button>}
+        {department === "all" && <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => { void setRoleAndUser("general", "").then(() => onDone?.()).catch(() => {}); }}>ดูภาพรวมทั้งหมด<ChevronRight className="h-4 w-4" /></Button>}
         <Button variant="ghost" size="icon" title="รีเฟรชรายชื่อ" aria-label="รีเฟรชรายชื่อ" onClick={() => void queryClient.invalidateQueries({ queryKey: employeeQuery.queryKey })}><RefreshCw className="h-4 w-4" /></Button>
         <div className="flex gap-1 rounded-md border bg-card p-1" role="group" aria-label="รูปแบบรายการ">
           <Button variant={view === "list" ? "secondary" : "ghost"} size="icon" className="h-8 w-9 rounded-sm" aria-label="มุมมอง List" title="มุมมอง List" aria-pressed={view === "list"} onClick={() => setView("list")}><List className="h-4 w-4" /></Button>
@@ -159,7 +166,7 @@ function EmployeeSelection({ department, onDone }: { department: Department; onD
           <div className={cn("flex items-center gap-1.5 text-sm text-muted-foreground", view === "grid" && "justify-center")}><Phone className="h-3.5 w-3.5 shrink-0" />{employee.phone ? <a href={`tel:${employee.phone.replace(/[^+\d]/g, "")}`} className="hover:text-primary">{employee.phone}</a> : <span>ยังไม่ระบุเบอร์โทร</span>}</div>
         </div>
         <div className={cn("flex items-center gap-2", view === "grid" ? "mt-auto w-full" : "ml-auto")}>
-          <Button variant="outline" disabled={deletion.isPending} className={cn("gap-2 rounded-md text-primary", view === "grid" && "flex-1")} onClick={() => select(employee)} aria-label={`เลือกคนนี้ ${employee.name}`}>เลือกคนนี้<ChevronRight className="h-4 w-4" /></Button>
+          <Button variant="outline" disabled={deletion.isPending || selecting} className={cn("gap-2 rounded-md text-primary", view === "grid" && "flex-1")} onClick={() => void select(employee)} aria-label={`เลือกคนนี้ ${employee.name}`}>เลือกคนนี้<ChevronRight className="h-4 w-4" /></Button>
           {isAdmin && <AddEmployeeButton department={employee.department} employee={employee} onCreated={saved => {
             queryClient.setQueryData<Employee[]>(employeeQuery.queryKey, current => [...(current ?? []).filter(row => row.id !== employee.id && row.id !== saved.id), saved].sort((a, b) => a.name.localeCompare(b.name, "th")));
             if (userName === employee.name) setRoleAndUser(employeeRole(saved.department), saved.name);

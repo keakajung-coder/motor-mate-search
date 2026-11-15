@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { AvatarUpload } from "@/components/AvatarUpload";
 import { useAccess } from "@/lib/access";
 import { refreshDirectory } from "@/lib/directory";
 import {
@@ -64,7 +65,8 @@ export function EngineersCard() {
     load();
     const onChanged = () => load();
     window.addEventListener("engineers-changed", onChanged);
-    return () => window.removeEventListener("engineers-changed", onChanged);
+    window.addEventListener("app:data-changed", onChanged);
+    return () => { window.removeEventListener("engineers-changed", onChanged); window.removeEventListener("app:data-changed", onChanged); };
   }, []);
 
   const activeList = useMemo(() => engineers.filter((e) => e.active), [engineers]);
@@ -259,9 +261,7 @@ export function EngineersCard() {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <HardHat className="h-4 w-4" />
-                  </div>
+                  <AvatarUpload table="engineers" id={eng.id} name={eng.name} url={eng.avatar_url ?? null} editable={isAdmin && eng.active} onSaved={url => setEngineers(rows => rows.map(row => row.id === eng.id ? { ...row, avatar_url: url } : row))} />
                   <Input
                     defaultValue={eng.name}
                     disabled={!eng.active}

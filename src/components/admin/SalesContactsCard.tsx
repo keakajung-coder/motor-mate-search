@@ -46,6 +46,10 @@ export function SalesContactsCard() {
   };
   useEffect(() => {
     load();
+    const refresh = () => { void load(); };
+    window.addEventListener("app:data-changed", refresh);
+    window.addEventListener("sales-contacts-changed", refresh);
+    return () => { window.removeEventListener("app:data-changed", refresh); window.removeEventListener("sales-contacts-changed", refresh); };
   }, []);
 
   const add = async () => {

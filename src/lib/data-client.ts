@@ -35,6 +35,12 @@ async function fetchWithRetry(url: string, init: RequestInit | undefined): Promi
 }
 
 let dataChannel: BroadcastChannel | null = null;
+export function announceProfileChange() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event("employee-photo-changed"));
+  window.dispatchEvent(new Event("app:data-changed"));
+  try { (dataChannel ??= new BroadcastChannel("app-data")).postMessage({ at: Date.now() }); } catch { /* unsupported */ }
+}
 /** Saved rows refresh dashboards in other tabs (e.g. a job opened from the weekly summary in a new tab). */
 function announceWrite(method: string | undefined, path: string) {
   const m = (method ?? "GET").toUpperCase();
