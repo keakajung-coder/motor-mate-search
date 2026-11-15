@@ -2,7 +2,7 @@ import { getRequest, useSession } from "@tanstack/react-start/server";
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { AccessRole } from "./security-policy";
 
-type AccessSession = { role?: AccessRole; version?: string };
+type AccessSession = { role?: AccessRole; version?: string; profileId?: string };
 export function matchesSecret(input: string, expected: string) {
   return timingSafeEqual(createHash("sha256").update(input).digest(), createHash("sha256").update(expected).digest());
 }
