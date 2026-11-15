@@ -54,7 +54,8 @@ function StaffCard() {
     load();
     const onStaffChanged = () => load();
     window.addEventListener("service-staff-changed", onStaffChanged);
-    return () => window.removeEventListener("service-staff-changed", onStaffChanged);
+    window.addEventListener("app:data-changed", onStaffChanged);
+    return () => { window.removeEventListener("service-staff-changed", onStaffChanged); window.removeEventListener("app:data-changed", onStaffChanged); };
   }, []);
 
   const add = async () => {

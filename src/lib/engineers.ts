@@ -147,7 +147,7 @@ export async function addEngineer(input: {
 /** แก้ไขข้อมูลวิศวกร */
 export async function updateEngineer(
   id: string,
-  patch: Partial<Pick<Engineer, "name" | "phone" | "line_contact">>,
+  patch: Partial<Pick<Engineer, "name" | "phone" | "line_contact" | "avatar_url">>,
 ): Promise<{ success: boolean; error?: string }> {
   const current = await loadEngineers(true);
   const target = current.find((e) => e.id === id);
@@ -159,6 +159,7 @@ export async function updateEngineer(
 
   const updated: Engineer = {
     ...target,
+    avatar_url: patch.avatar_url !== undefined ? patch.avatar_url : target.avatar_url,
     name: patch.name !== undefined ? patch.name.trim() : target.name,
     phone: patch.phone !== undefined ? (patch.phone?.trim() || null) : target.phone,
     line_contact:
