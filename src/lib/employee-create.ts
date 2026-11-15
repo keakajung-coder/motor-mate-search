@@ -28,10 +28,8 @@ export async function createEmployee(input: Omit<Employee, "id">): Promise<Emplo
 }
 
 export async function uploadEmployeePhoto(file: File): Promise<string> {
-  const { compressImage } = await import("./image-compress");
-  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error("เลือกไฟล์ JPG, PNG หรือ WebP");
-  const compressed = await compressImage(file, { maxSize: 600, quality: 0.8 });
-  if (compressed.size > 2 * 1024 * 1024) throw new Error("รูปหลังย่อต้องไม่เกิน 2 MB");
+  const { compressProfilePhoto } = await import("./profile-photo");
+  const compressed = await compressProfilePhoto(file);
   const path = `${crypto.randomUUID()}.${compressed.type === "image/png" ? "png" : compressed.type === "image/webp" ? "webp" : "jpg"}`;
   const { error } = await supabase.storage.from("employee-photos").upload(path, compressed, { contentType: compressed.type, upsert: false });
   if (error) throw new Error(error.message);

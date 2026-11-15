@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { useAccess } from "@/lib/access";
+import { selectProfile } from "@/lib/profile.functions";
+import { toast } from "sonner";
 
 export type AppUserRole = "seller" | "tech" | "general" | "admin";
 
@@ -10,7 +12,7 @@ export type UserRoleContextType = {
   isSwitching: boolean;
   lastSellerName: string;
   lastTechName: string;
-  setRoleAndUser: (role: AppUserRole, userName?: string) => void;
+  setRoleAndUser: (role: AppUserRole, userName?: string, employeeId?: string) => Promise<void>;
   clearRole: () => void;
   openRoleSwitcher: () => void;
   closeRoleSwitcher: () => void;
@@ -102,8 +104,14 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
-  const setRoleAndUser = useCallback((newRole: AppUserRole, newUserName?: string) => {
+  const setRoleAndUser = useCallback(async (newRole: AppUserRole, newUserName?: string, employeeId?: string) => {
     const trimmedName = (newUserName ?? "").trim();
+    try {
+      if (employeeId || !trimmedName) await selectProfile({ data: { id: employeeId ?? null } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "เลือกผู้ใช้งานไม่สำเร็จ");
+      throw error;
+    }
     setRoleState(newRole);
     setUserNameState(trimmedName);
     setIsSwitching(false);
