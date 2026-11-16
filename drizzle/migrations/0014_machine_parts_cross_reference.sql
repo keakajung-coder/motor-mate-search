@@ -1,0 +1,2 @@
+ALTER TABLE public.machine_parts ADD COLUMN IF NOT EXISTS cross_reference_parts text[] NOT NULL DEFAULT '{}', ADD COLUMN IF NOT EXISTS substitution_note text;
+GRANT ALL ON public.machine_parts TO service_role;
