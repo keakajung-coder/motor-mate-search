@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useUserRole } from "@/lib/user-role";
+import { useAccess } from "@/lib/access";
 import { employeeQuery } from "@/components/RoleSelectionModal";
 import { currentProfile, saveOwnPhoto, selectProfile } from "@/lib/profile.functions";
 import { profilePhotoBase64 } from "@/lib/profile-photo";
@@ -15,6 +16,7 @@ import { announceProfileChange } from "@/lib/data-client";
 /** Shows the currently selected user's profile photo in the app header. */
 export function CurrentUserAvatar() {
   const { userName, role, openRoleSwitcher } = useUserRole();
+  const { isAdmin } = useAccess();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -39,7 +41,7 @@ export function CurrentUserAvatar() {
     return () => URL.revokeObjectURL(url);
   }, [file]);
   const person = roster?.find(e => e.id === me?.id);
-  const name = person?.name || me?.name || userName || (role === "admin" ? "ผู้ดูแลระบบ" : "ผู้ใช้ทั่วไป");
+  const name = person?.name || me?.name || userName || (isAdmin ? "ผู้ดูแลระบบ" : "ผู้ใช้ทั่วไป");
   const avatar = person?.avatar || me?.avatar;
   const save = async () => {
     if (!file || busy) return;

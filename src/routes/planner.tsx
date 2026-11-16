@@ -86,6 +86,7 @@ import {
 import { useHolidays, type Holiday } from "@/lib/holidays";
 import { HolidayManagerDialog, HolidayFormDialog, HolidayBanner } from "@/components/HolidayDialog";
 import { deleteAsAdmin, useAccess } from "@/lib/access";
+import { jobPermissions } from "@/lib/job-access";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import {
   SERVICE_TYPES,
@@ -1606,6 +1607,7 @@ function PendingOrders({
 
   /** บันทึกการแก้ไขลงใบสั่งงานเดิม (ยังไม่อนุมัติ) */
   const saveEdits = async (o: WorkOrder) => {
+    if (!jobPermissions(isAdmin).canEdit) return toast.error("กรุณายืนยันสิทธิ์แอดมินก่อนแก้ไขใบงาน");
     const p = edit[o.id];
     if (!p || Object.keys(p).length === 0) return toast.message("ยังไม่มีการแก้ไข");
     try {
@@ -1630,6 +1632,8 @@ function PendingOrders({
     override = false,
     overrideConflicts: string[] = [],
   ) => {
+    if (!jobPermissions(isAdmin).canApprove) return toast.error("กรุณายืนยันสิทธิ์แอดมินก่อนอนุมัติใบงาน");
+    if (o.status !== "pending") return toast.error("ใบงานนี้อนุมัติแล้ว กรุณาจัดการจากรายละเอียดนัดหมาย");
     const p = edit[o.id] ?? {};
     const m = { ...o, ...p } as WorkOrder & Record<string, any>;
     try {
@@ -1704,7 +1708,7 @@ function PendingOrders({
         attachments: m.attachments ?? null,
 
         // อนุมัติเฉยๆ ยังเป็นสีแดง จนกว่าจะกด "นัดหมายแล้ว" หรือ "เริ่มดำเนินการ"
-        status: o.status === "scheduled" ? "scheduled" : "approved",
+        status: "approved",
       })
       .select("id")
       .maybeSingle();
@@ -1715,7 +1719,7 @@ function PendingOrders({
         .from("work_orders")
         .update({
           ...(p as Record<string, unknown>),
-          status: o.status === "scheduled" ? "scheduled" : "approved",
+          status: "approved",
           job_detail: finalJobDetail,
           admin_note: auditTag || o.admin_note || null,
         } as never)
@@ -1807,7 +1811,6 @@ function PendingOrders({
               key={o.id}
               className={cn(
                 "relative space-y-3 overflow-hidden rounded-lg border py-3 pl-6 pr-3 transition-all",
-                visual.opacityClass,
                 visual.isMine && "ring-2 ring-primary/60 shadow-md border-primary bg-card/95",
               )}
             >
@@ -2019,11 +2022,11 @@ function PendingOrders({
                   <FileText className="h-3.5 w-3.5" /> ประวัติเครื่อง
                 </Button>
               )}
-              <Button
+              {o.status === "pending" && <Button
                 size={visual.isMine ? "default" : "sm"}
                 className={cn("cursor-pointer font-medium", visual.isMine && "h-10 px-4 text-sm font-semibold shadow-xs")}
                 onClick={() => approve(o)}
-                disabled={busy === o.id || o.status !== "pending"}
+                disabled={busy === o.id}
               >
                 {busy === o.id ? (
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -2031,7 +2034,7 @@ function PendingOrders({
                   <CheckCircle2 className="mr-1.5 h-4 w-4" />
                 )}
                 อนุมัติ
-              </Button>
+              </Button>}
               <Button
                 size={visual.isMine ? "default" : "sm"}
                 variant="secondary"
@@ -2576,7 +2579,7 @@ function ApprovedOrders({
             key={o.id}
             className={cn(
               `relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3 transition-all ${STAGE_BG[statusStage(appointments[o.id]?.status ?? o.status)]}`,
-              (o as WorkOrder & { approved_hidden?: boolean }).approved_hidden && "opacity-60",
+              !isAdmin && (o as WorkOrder & { approved_hidden?: boolean }).approved_hidden && "opacity-60",
               visual.opacityClass,
               visual.isMine && "ring-2 ring-primary/60 shadow-md border-primary bg-card/95",
             )}
@@ -2958,6 +2961,7 @@ function MonthGrid({
   const days = Array.from({ length: 42 }, (_, i) => addDays(start, i));
   const today = iso(new Date());
   const { getJobVisualState } = useUserRole();
+  const { isAdmin } = useAccess();
 
   return (
     <div className="space-y-2">
@@ -3010,7 +3014,7 @@ function MonthGrid({
                     "flex min-h-32 cursor-pointer flex-col items-center rounded-full border sm:min-h-40 md:min-h-48 " +
                     (key === today ? "border-red-500 bg-red-100 " : "border-red-200 bg-red-50 ") +
                     (holiday ? "planner-holiday--head border-rose-500 ring-2 ring-rose-500 " : "") +
-                    (dim ? "opacity-40" : "")
+                    (dim && !isAdmin ? "opacity-40" : "")
                   }
                 >
                   <span className="mt-1 text-[9px] font-bold leading-none text-red-500">
@@ -4368,7 +4372,7 @@ function ComboCell({
 // ---------- Appointment editor / detail ----------
 function AppointmentDialog({
   value,
-  canEdit,
+  canEdit: requestedCanEdit,
   onClose,
   onSaved,
   onDeleted,
@@ -4415,6 +4419,7 @@ function AppointmentDialog({
   }, [form.id, form.visit_date, form.visit_time, form.staff_name, form.vehicle_plate]);
   const { isAdmin } = useAccess();
   const canDelete = isAdmin;
+  const { canEdit } = jobPermissions(isAdmin, requestedCanEdit);
   const locked = !canEdit || !editMode;
 
   // ใบงานที่อนุมัติแล้ว: มี id อยู่แล้ว และสถานะเป็น approved, scheduled, in_progress, closed หรือผูกกับ work_order_id
