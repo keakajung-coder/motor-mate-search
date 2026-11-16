@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { useAccess } from "@/lib/access";
+import { shouldDimJob } from "@/lib/job-access";
 import { selectProfile } from "@/lib/profile.functions";
 import { toast } from "sonner";
 
@@ -209,7 +210,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const getJobVisualState = useCallback(
     (job: { staff_name?: string | null; sales_rep?: string | null }) => {
       const mine = isMyJob(job);
-      const isDimmed = !mine && (role === "seller" || role === "tech");
+      const isDimmed = shouldDimJob(isAdmin, mine, role);
       return {
         isMine: mine,
         isDimmed,
@@ -218,7 +219,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
           : "opacity-100",
       };
     },
-    [isMyJob, role],
+    [isMyJob, role, isAdmin],
   );
 
   return (
