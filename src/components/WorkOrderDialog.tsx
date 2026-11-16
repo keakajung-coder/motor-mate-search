@@ -26,6 +26,7 @@ import {
 } from "@/lib/directory";
 import { useAccess } from "@/lib/access";
 import { ensureSeller, useSellerNames } from "@/lib/sellers";
+import { MachinePartPicker } from "@/components/MachinePartPicker";
 import { JobAttachments } from "@/components/JobAttachments";
 
 import { BILLING_TYPES, PRIORITIES, SAFETY_GEAR, WORK_TYPES } from "@/lib/job-fields";
@@ -904,6 +905,9 @@ export function WorkOrderDialog({
             </div>
           </Section>
 
+          <Section title="อะไหล่แท้ / อะไหล่เทียบสำหรับใบงาน">
+            <div className="md:col-span-2"><MachinePartPicker serialNumber={form.serial_number} onSelect={lines => set("job_detail", [form.job_detail, ...lines].filter(Boolean).join("\n"))} /></div>
+          </Section>
           <Section title="รูปภาพ / คลิปหน้างาน (ไฟล์แนบ)">
             <div className="md:col-span-2">
               <JobAttachments

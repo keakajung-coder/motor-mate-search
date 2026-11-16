@@ -472,6 +472,7 @@ function CatalogView() {
   const [lineUrl, setLineUrl] = useState("https://line.me/");
   const [contact, setContact] = useState("");
   const [serialsByProduct, setSerialsByProduct] = useState<Record<string, string[]>>({});
+  const [crossRefsByProduct, setCrossRefsByProduct] = useState<Record<string, string[]>>({});
   const [aiOpen, setAiOpen] = useState(false);
 
   useEffect(() => {
@@ -489,16 +490,19 @@ function CatalogView() {
           )
           .order("name"),
         supabase.from("app_settings").select("key, value"),
-        supabase.from("machine_parts").select("product_id, machine_units(serial_number)"),
+        supabase.from("machine_parts").select("product_id, cross_reference_parts, machine_units(serial_number)"),
       ]);
       if (cats.data) setCategories(cats.data as Category[]);
       if (prods.data) setProducts(prods.data as unknown as Product[]);
       const map: Record<string, string[]> = {};
-      for (const r of (mp.data ?? []) as unknown as { product_id: string | null; machine_units: { serial_number: string } | null }[]) {
+      const refs: Record<string, string[]> = {};
+      for (const r of (mp.data ?? []) as unknown as { product_id: string | null; cross_reference_parts?: string[] | null; machine_units: { serial_number: string } | null }[]) {
+        if (r.product_id) (refs[r.product_id] ??= []).push(...(r.cross_reference_parts ?? []));
         if (!r.product_id || !r.machine_units?.serial_number) continue;
         (map[r.product_id] ||= []).push(r.machine_units.serial_number);
       }
       setSerialsByProduct(map);
+      setCrossRefsByProduct(refs);
       if (settings.data) {
         const m = new Map(settings.data.map((s) => [s.key, s.value]));
         setLineUrl(m.get("line_url") || "https://line.me/");
@@ -508,7 +512,8 @@ function CatalogView() {
     };
     void load();
     window.addEventListener("app:connection-restored", load);
-    return () => window.removeEventListener("app:connection-restored", load);
+    window.addEventListener("app:data-changed", load);
+    return () => { window.removeEventListener("app:connection-restored", load); window.removeEventListener("app:data-changed", load); };
   }, []);
 
   const filtered = useMemo(() => {
@@ -518,7 +523,7 @@ function CatalogView() {
         {
           name: p.name,
           part_number: p.part_number,
-          cross_reference_parts: p.cross_reference_parts,
+          cross_reference_parts: [...(p.cross_reference_parts ?? []), ...(crossRefsByProduct[p.id] ?? [])],
           supported_serials: p.supported_serials,
           brandName: p.compressor_models?.brands?.name,
           categoryName: p.categories?.name,
@@ -528,7 +533,7 @@ function CatalogView() {
         q,
       );
     });
-  }, [products, q, selectedCat, serialsByProduct]);
+  }, [products, q, selectedCat, serialsByProduct, crossRefsByProduct]);
 
   const PAGE_SIZE = 50;
   const [page, setPage] = useState(1);
@@ -943,7 +948,7 @@ function ProductModal({
             {(product.cross_reference_parts?.length ?? 0) > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">พาร์ทเทียบ (Cross-Ref):</span>
-                {product.cross_reference_parts!.map((c) => (
+                {(product.cross_reference_parts ?? []).map((c) => (
                   <Badge key={c} variant="outline" className="font-mono text-xs">
                     {c}
                   </Badge>
@@ -953,7 +958,7 @@ function ProductModal({
             {(product.supported_serials?.length ?? 0) > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">S/N ที่รองรับ:</span>
-                {product.supported_serials!.map((s) => (
+                {(product.supported_serials ?? []).map((s) => (
                   <Badge key={s} variant="secondary" className="font-mono text-xs">
                     {s}
                   </Badge>
@@ -1013,6 +1018,8 @@ function Info({ label, value, action }: { label: string; value: string; action?:
 type MachinePart = {
   id: string;
   quantity: number;
+  cross_reference_parts?: string[] | null;
+  substitution_note?: string | null;
   note: string | null;
   hours_used: number | null;
   last_changed_at: string | null;
@@ -1082,7 +1089,7 @@ function SnView({
          customers ( id, cust_id, name, phone ),
          compressor_models ( id, name, brands ( id, name ) ),
          machine_parts (
-           id, quantity, note, hours_used, last_changed_at, service_interval_hours,
+           id, quantity, note, cross_reference_parts, substitution_note, hours_used, last_changed_at, service_interval_hours,
            products (
              id, name, part_number, price, image_url, storage_location,
              service_interval_hours, stock_quantity,
@@ -1722,8 +1729,10 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
       <div className="min-w-0 flex-1 space-y-1">
         <div className="truncate font-medium">{mp.products?.name}</div>
         <div className="truncate text-xs text-muted-foreground">
-          Part# {mp.products?.part_number}
+          อะไหล่แท้ Part# {mp.products?.part_number}
         </div>
+        <div className="flex flex-wrap gap-1"><span className="text-xs text-muted-foreground">อะไหล่เทียบ:</span>{(mp.cross_reference_parts ?? []).map(code => <Badge key={code} variant="outline">{code}</Badge>)}</div>
+        {mp.substitution_note && <p className="text-xs text-muted-foreground">{mp.substitution_note}</p>}
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="secondary">จำนวน {mp.quantity}</Badge>
           {usedHours != null && (

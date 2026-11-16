@@ -37,6 +37,8 @@ export type MachineHistoryUnit = {
   } | null;
   machine_parts?: Array<{
     id: string;
+    cross_reference_parts?: string[] | null;
+    substitution_note?: string | null;
     quantity?: number | null;
     note?: string | null;
     hours_used?: number | null;
@@ -206,7 +208,7 @@ export async function fetchMachineHistory({
        customers ( id, cust_id, name, phone, address ),
        compressor_models ( id, name, pump_type, brands ( id, name ) ),
        machine_parts (
-         id, quantity, note, hours_used, last_changed_at, service_interval_hours,
+         id, quantity, note, cross_reference_parts, substitution_note, hours_used, last_changed_at, service_interval_hours,
          products (
            id, name, part_number, price, image_url, storage_location,
            service_interval_hours, stock_quantity,

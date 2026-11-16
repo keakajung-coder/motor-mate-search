@@ -454,6 +454,7 @@ export type Database = {
       machine_parts: {
         Row: {
           created_at: string | null
+          cross_reference_parts: string[]
           hours_used: number | null
           id: string
           last_changed_at: string | null
@@ -462,10 +463,12 @@ export type Database = {
           product_id: string | null
           quantity: number
           service_interval_hours: number | null
+          substitution_note: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          cross_reference_parts?: string[]
           hours_used?: number | null
           id?: string
           last_changed_at?: string | null
@@ -474,10 +477,12 @@ export type Database = {
           product_id?: string | null
           quantity?: number
           service_interval_hours?: number | null
+          substitution_note?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          cross_reference_parts?: string[]
           hours_used?: number | null
           id?: string
           last_changed_at?: string | null
@@ -486,6 +491,7 @@ export type Database = {
           product_id?: string | null
           quantity?: number
           service_interval_hours?: number | null
+          substitution_note?: string | null
           updated_at?: string | null
         }
         Relationships: [

@@ -1730,6 +1730,8 @@ function MachinePartsEditor({
   const [partName, setPartName] = useState("");
   const [qty, setQty] = useState("1");
   const [interval, setInterval] = useState("");
+  const [crossRefs, setCrossRefs] = useState<string[]>([]);
+  const [substitutionNote, setSubstitutionNote] = useState("");
 
   async function load() {
     const [mp, p, c] = await Promise.all([
@@ -1755,7 +1757,7 @@ function MachinePartsEditor({
 
   function pickPart(text: string) {
     setPartNumber(text);
-    const match = products.find((p) => p.part_number.toLowerCase() === text.toLowerCase());
+    const match = products.find((p) => String(p.part_number ?? "").toLowerCase() === text.toLowerCase());
     if (match) {
       setPartName(match.name);
       if (!catId && match.category_id) setCatId(match.category_id);
@@ -1764,7 +1766,7 @@ function MachinePartsEditor({
 
   async function add() {
     if (!partNumber.trim()) return toast.error("กรอก Part Number");
-    let product = products.find((p) => p.part_number.toLowerCase() === partNumber.trim().toLowerCase());
+    let product = products.find((p) => String(p.part_number ?? "").toLowerCase() === partNumber.trim().toLowerCase());
     if (!product) {
       // quick-create
       if (!partName.trim()) return toast.error("กรอกชื่ออะไหล่ (Part Description) สำหรับสินค้าใหม่");
@@ -1778,14 +1780,17 @@ function MachinePartsEditor({
       product = data;
       toast.success("เพิ่มสินค้าใหม่ในคลังแล้ว");
     }
+    if (!product?.id) return toast.error("ไม่พบอะไหล่สำหรับบันทึก");
     const { error } = await supabase.from("machine_parts").insert({
       machine_unit_id: machineId,
-      product_id: product!.id,
+      product_id: product.id,
+      cross_reference_parts: crossRefs,
+      substitution_note: substitutionNote.trim() || null,
       quantity: Number(qty) || 1,
       service_interval_hours: interval ? Number(interval) : null,
     });
     if (error) return toast.error(error.message);
-    setPartNumber(""); setPartName(""); setQty("1"); setInterval("");
+    setPartNumber(""); setPartName(""); setQty("1"); setInterval(""); setCrossRefs([]); setSubstitutionNote("");
     void invalidateData(["machine_parts", "products"]);
     load();
   }
@@ -1794,7 +1799,8 @@ function MachinePartsEditor({
     load();
   }
   async function updatePart(id: string, patch: any) {
-    await supabase.from("machine_parts").update(patch).eq("id", id);
+    const { error } = await supabase.from("machine_parts").update(patch).eq("id", id);
+    if (error) return toast.error(error.message);
     void invalidateData(["machine_parts"]);
     load();
   }
@@ -1862,6 +1868,10 @@ function MachinePartsEditor({
         </div>
       </div>
 
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div><Label>อะไหล่เทียบ / พาร์ททดแทน</Label><TagInput value={crossRefs} onChange={setCrossRefs} aria-label="รหัสอะไหล่เทียบของเครื่อง" placeholder="พิมพ์รหัสแล้วกด Enter หรือคั่นด้วย ," /></div>
+        <div><Label>หมายเหตุ/คุณลักษณะการทดแทน</Label><Input value={substitutionNote} onChange={e => setSubstitutionNote(e.target.value)} /></div>
+      </div>
       <ul className="divide-y rounded border bg-card">
         {parts.map((mp) => {
           const usage = computeUsage({
@@ -1892,6 +1902,10 @@ function MachinePartsEditor({
                 </div>
               </div>
               <ConfirmButton title={`ลบอะไหล่ "${mp.products?.name ?? ""}" ออกจากเครื่องนี้?`} onConfirm={() => del(mp.id)}><Trash2 className="h-4 w-4" /></ConfirmButton>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div><Label>อะไหล่เทียบ / พาร์ททดแทน</Label><TagInput value={mp.cross_reference_parts ?? []} onChange={tags => updatePart(mp.id, { cross_reference_parts: tags })} /></div>
+              <div><Label>หมายเหตุ/คุณลักษณะการทดแทน</Label><Input key={mp.substitution_note ?? ""} defaultValue={mp.substitution_note ?? ""} onBlur={e => { if (e.target.value !== (mp.substitution_note ?? "")) void updatePart(mp.id, { substitution_note: e.target.value.trim() || null }); }} /></div>
             </div>
             <div className="grid gap-2 sm:grid-cols-4">
               <div>
