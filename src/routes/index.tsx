@@ -472,6 +472,7 @@ function CatalogView() {
   const [lineUrl, setLineUrl] = useState("https://line.me/");
   const [contact, setContact] = useState("");
   const [serialsByProduct, setSerialsByProduct] = useState<Record<string, string[]>>({});
+  const [crossRefsByProduct, setCrossRefsByProduct] = useState<Record<string, string[]>>({});
   const [aiOpen, setAiOpen] = useState(false);
 
   useEffect(() => {
@@ -489,16 +490,19 @@ function CatalogView() {
           )
           .order("name"),
         supabase.from("app_settings").select("key, value"),
-        supabase.from("machine_parts").select("product_id, machine_units(serial_number)"),
+        supabase.from("machine_parts").select("product_id, cross_reference_parts, machine_units(serial_number)"),
       ]);
       if (cats.data) setCategories(cats.data as Category[]);
       if (prods.data) setProducts(prods.data as unknown as Product[]);
       const map: Record<string, string[]> = {};
-      for (const r of (mp.data ?? []) as unknown as { product_id: string | null; machine_units: { serial_number: string } | null }[]) {
+      const refs: Record<string, string[]> = {};
+      for (const r of (mp.data ?? []) as unknown as { product_id: string | null; cross_reference_parts?: string[] | null; machine_units: { serial_number: string } | null }[]) {
+        if (r.product_id) (refs[r.product_id] ??= []).push(...(r.cross_reference_parts ?? []));
         if (!r.product_id || !r.machine_units?.serial_number) continue;
         (map[r.product_id] ||= []).push(r.machine_units.serial_number);
       }
       setSerialsByProduct(map);
+      setCrossRefsByProduct(refs);
       if (settings.data) {
         const m = new Map(settings.data.map((s) => [s.key, s.value]));
         setLineUrl(m.get("line_url") || "https://line.me/");
@@ -508,7 +512,8 @@ function CatalogView() {
     };
     void load();
     window.addEventListener("app:connection-restored", load);
-    return () => window.removeEventListener("app:connection-restored", load);
+    window.addEventListener("app:data-changed", load);
+    return () => { window.removeEventListener("app:connection-restored", load); window.removeEventListener("app:data-changed", load); };
   }, []);
 
   const filtered = useMemo(() => {
@@ -518,7 +523,7 @@ function CatalogView() {
         {
           name: p.name,
           part_number: p.part_number,
-          cross_reference_parts: p.cross_reference_parts,
+          cross_reference_parts: [...(p.cross_reference_parts ?? []), ...(crossRefsByProduct[p.id] ?? [])],
           supported_serials: p.supported_serials,
           brandName: p.compressor_models?.brands?.name,
           categoryName: p.categories?.name,
