@@ -941,11 +941,9 @@ function ProductModal({
               />
             </div>
             {(product.cross_reference_parts?.length ?? 0) > 0 && (
-              <div className="flex flex-wrap gap-1"><span className="text-xs text-muted-foreground">อะไหล่เทียบ:</span>{(mp.cross_reference_parts ?? []).map(code => <Badge key={code} variant="outline">{code}</Badge>)}</div>
-        {mp.substitution_note && <p className="text-xs text-muted-foreground">{mp.substitution_note}</p>}
-        <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">พาร์ทเทียบ (Cross-Ref):</span>
-                {product.cross_reference_parts!.map((c) => (
+                {(product.cross_reference_parts ?? []).map((c) => (
                   <Badge key={c} variant="outline" className="font-mono text-xs">
                     {c}
                   </Badge>
@@ -955,7 +953,7 @@ function ProductModal({
             {(product.supported_serials?.length ?? 0) > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">S/N ที่รองรับ:</span>
-                {product.supported_serials!.map((s) => (
+                {(product.supported_serials ?? []).map((s) => (
                   <Badge key={s} variant="secondary" className="font-mono text-xs">
                     {s}
                   </Badge>
@@ -1728,6 +1726,8 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
         <div className="truncate text-xs text-muted-foreground">
           อะไหล่แท้ Part# {mp.products?.part_number}
         </div>
+        <div className="flex flex-wrap gap-1"><span className="text-xs text-muted-foreground">อะไหล่เทียบ:</span>{(mp.cross_reference_parts ?? []).map(code => <Badge key={code} variant="outline">{code}</Badge>)}</div>
+        {mp.substitution_note && <p className="text-xs text-muted-foreground">{mp.substitution_note}</p>}
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="secondary">จำนวน {mp.quantity}</Badge>
           {usedHours != null && (

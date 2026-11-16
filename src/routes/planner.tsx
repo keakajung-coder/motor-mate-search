@@ -1,4 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { MachinePartPicker } from "@/components/MachinePartPicker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/data-client";
 import type { TablesUpdate } from "@/integrations/supabase/types";
@@ -5084,6 +5085,7 @@ function AppointmentDialog({
               />
             </F>
           </div>
+          {!locked && <div className="md:col-span-2"><F label="เลือกอะไหล่แท้ / พาร์ททดแทน"><MachinePartPicker serialNumber={form.serial_number} onSelect={lines => set("job_detail", [form.job_detail, ...lines].filter(Boolean).join("\n"))} /></F></div>}
         </div>
 
         <DialogFooter className="gap-2 [&>button]:w-full sm:[&>button]:w-auto">
@@ -5689,6 +5691,7 @@ function CloseJobDialog({
           </Button>
         </div>
         <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
+          <div className="min-w-0 space-y-2 lg:col-span-2"><p className="text-sm font-semibold">เลือกอะไหล่แท้ / พาร์ททดแทนเข้ารายการที่เปลี่ยน</p><MachinePartPicker serialNumber={appt.serial_number} onSelect={lines => setCats(current => [...new Set([...current, ...lines])])} /></div>
           {/* ช่องอัปโหลดรูปภาพผลงานปิดงาน */}
           <div className="min-w-0 space-y-2 rounded-lg border p-3 lg:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-1">
