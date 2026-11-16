@@ -1708,7 +1708,7 @@ function PendingOrders({
         attachments: m.attachments ?? null,
 
         // อนุมัติเฉยๆ ยังเป็นสีแดง จนกว่าจะกด "นัดหมายแล้ว" หรือ "เริ่มดำเนินการ"
-        status: o.status === "scheduled" ? "scheduled" : "approved",
+        status: "approved",
       })
       .select("id")
       .maybeSingle();
@@ -1719,7 +1719,7 @@ function PendingOrders({
         .from("work_orders")
         .update({
           ...(p as Record<string, unknown>),
-          status: o.status === "scheduled" ? "scheduled" : "approved",
+          status: "approved",
           job_detail: finalJobDetail,
           admin_note: auditTag || o.admin_note || null,
         } as never)
