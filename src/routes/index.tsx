@@ -941,7 +941,9 @@ function ProductModal({
               />
             </div>
             {(product.cross_reference_parts?.length ?? 0) > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex flex-wrap gap-1"><span className="text-xs text-muted-foreground">อะไหล่เทียบ:</span>{(mp.cross_reference_parts ?? []).map(code => <Badge key={code} variant="outline">{code}</Badge>)}</div>
+        {mp.substitution_note && <p className="text-xs text-muted-foreground">{mp.substitution_note}</p>}
+        <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">พาร์ทเทียบ (Cross-Ref):</span>
                 {product.cross_reference_parts!.map((c) => (
                   <Badge key={c} variant="outline" className="font-mono text-xs">
@@ -1013,6 +1015,8 @@ function Info({ label, value, action }: { label: string; value: string; action?:
 type MachinePart = {
   id: string;
   quantity: number;
+  cross_reference_parts?: string[] | null;
+  substitution_note?: string | null;
   note: string | null;
   hours_used: number | null;
   last_changed_at: string | null;
@@ -1082,7 +1086,7 @@ function SnView({
          customers ( id, cust_id, name, phone ),
          compressor_models ( id, name, brands ( id, name ) ),
          machine_parts (
-           id, quantity, note, hours_used, last_changed_at, service_interval_hours,
+           id, quantity, note, cross_reference_parts, substitution_note, hours_used, last_changed_at, service_interval_hours,
            products (
              id, name, part_number, price, image_url, storage_location,
              service_interval_hours, stock_quantity,
@@ -1722,7 +1726,7 @@ function PartRow({ mp, dailyHours }: { mp: MachinePart; dailyHours: number | nul
       <div className="min-w-0 flex-1 space-y-1">
         <div className="truncate font-medium">{mp.products?.name}</div>
         <div className="truncate text-xs text-muted-foreground">
-          Part# {mp.products?.part_number}
+          อะไหล่แท้ Part# {mp.products?.part_number}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="secondary">จำนวน {mp.quantity}</Badge>

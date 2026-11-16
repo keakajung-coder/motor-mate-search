@@ -23,6 +23,8 @@ import { ensureDirectoryEntries } from "@/lib/directory";
 import { toast } from "sonner";
 import { splitGenuineCrossRef, type PartPickRow } from "@/lib/parts-search";
 
+import { linkedPartCatalog, type MachinePartLink } from "@/lib/machine-part-links";
+
 type Mode = "parts" | "planner" | "issue";
 
 type UnitLite = {
@@ -120,12 +122,13 @@ export function SmartSearchDialog({
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [products, setProducts] = useState<PartPickRow[]>([]);
-  const [links, setLinks] = useState<{ machine_unit_id: string; product_id: string }[]>([]);
+  const [links, setLinks] = useState<MachinePartLink[]>([]);
+  const [revision, setRevision] = useState(0);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const { issues } = useIssues("published");
 
   useEffect(() => {
-    if (!open || units.length > 0) return;
+    if (!open) return;
     setLoading(true);
     setLoadError(null);
     (async () => {
@@ -144,9 +147,12 @@ export function SmartSearchDialog({
           )
           .order("visit_date", { ascending: false }),
         supabase.from("products").select("id, name, part_number, cross_reference_parts, supported_serials"),
-        supabase.from("machine_parts").select("machine_unit_id, product_id"),
+        supabase.from("machine_parts").select("machine_unit_id, product_id, cross_reference_parts, substitution_note"),
       ]);
       if (u.error) throw u.error;
+      if (a.error) throw a.error;
+      if (pr.error) throw pr.error;
+      if (mp.error) throw mp.error;
       const safeUnits = ((u.data as unknown as UnitLite[]) ?? []).filter(Boolean).map((x) => ({ ...x, serial_number: String(x.serial_number ?? "") }));
       setUnits(safeUnits);
       setAppts(((a.data as unknown as ApptLite[]) ?? []).filter(Boolean).map((x) => ({ ...x, visit_date: String(x.visit_date ?? "") })));
@@ -159,7 +165,12 @@ export function SmartSearchDialog({
         setLoading(false);
       }
     })();
-  }, [open]);
+  }, [open, revision]);
+  useEffect(() => {
+    const refresh = () => setRevision(v => v + 1);
+    window.addEventListener("app:data-changed", refresh);
+    return () => window.removeEventListener("app:data-changed", refresh);
+  }, []);
 
   const sellers = useMemo(
     () =>
@@ -250,8 +261,11 @@ export function SmartSearchDialog({
       if (!kw) return { genuine: [], crossRef: [] };
       const serials = unitResults.map(({ u }) => u.serial_number).filter(Boolean);
       const unitIds = new Set(unitResults.map(({ u }) => u.id));
-      const linked = links.filter((l) => unitIds.has(l.machine_unit_id)).map((l) => l.product_id);
-      return splitGenuineCrossRef(products, { keyword: kw, serials, linkedProductIds: linked });
+      const linked = links.filter((l) => unitIds.has(l.machine_unit_id ?? "")).map((l) => l.product_id);
+      const matchingLinks = links.filter(l => unitIds.has(l.machine_unit_id ?? ""));
+      // Code searches use all relations; S/N searches only expose that machine's replacements.
+      const catalog = linkedPartCatalog(products, matchingLinks.length ? matchingLinks : links);
+      return splitGenuineCrossRef(catalog, { keyword: kw, serials, linkedProductIds: linked.filter((id): id is string => !!id) });
     } catch {
       return { genuine: [], crossRef: [] };
     }

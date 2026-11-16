@@ -134,6 +134,13 @@ export function MachineHistoryDialog({
     }
   }, [open, serialNumber, machineUnitId]);
 
+  useEffect(() => {
+    if (!open) return;
+    const refresh = () => { void loadData(); };
+    window.addEventListener("app:data-changed", refresh);
+    return () => window.removeEventListener("app:data-changed", refresh);
+  }, [open, serialNumber, machineUnitId]);
+
   const unit = data?.unit;
   const warranty = data?.warranty;
   const contract = data?.contract;
@@ -1256,7 +1263,7 @@ export function MachineHistoryDialog({
                                     {p?.name || "ไม่ระบุชื่ออะไหล่"}
                                   </h5>
                                   <p className="font-mono text-xs text-muted-foreground">
-                                    P/N: {p?.part_number || "-"}
+                                    อะไหล่แท้ P/N: {p?.part_number || "-"}
                                   </p>
                                 </div>
                                 <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded">
@@ -1264,6 +1271,8 @@ export function MachineHistoryDialog({
                                 </span>
                               </div>
 
+                              <div className="flex flex-wrap gap-1"><span className="text-xs text-muted-foreground">อะไหล่เทียบ:</span>{(mp.cross_reference_parts ?? []).map(code => <Badge key={code} variant="outline">{code}</Badge>)}{!(mp.cross_reference_parts?.length) && <span className="text-xs text-muted-foreground">ยังไม่ระบุ</span>}</div>
+                              {mp.substitution_note && <p className="text-xs text-muted-foreground">{mp.substitution_note}</p>}
                               <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t">
                                 <div>
                                   <span className="text-muted-foreground block text-[10px]">เปลี่ยนล่าสุด:</span>
