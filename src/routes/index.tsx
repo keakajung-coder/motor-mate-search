@@ -533,7 +533,7 @@ function CatalogView() {
         q,
       );
     });
-  }, [products, q, selectedCat, serialsByProduct]);
+  }, [products, q, selectedCat, serialsByProduct, crossRefsByProduct]);
 
   const PAGE_SIZE = 50;
   const [page, setPage] = useState(1);

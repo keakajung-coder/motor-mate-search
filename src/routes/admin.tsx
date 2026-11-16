@@ -1757,7 +1757,7 @@ function MachinePartsEditor({
 
   function pickPart(text: string) {
     setPartNumber(text);
-    const match = products.find((p) => p.part_number.toLowerCase() === text.toLowerCase());
+    const match = products.find((p) => String(p.part_number ?? "").toLowerCase() === text.toLowerCase());
     if (match) {
       setPartName(match.name);
       if (!catId && match.category_id) setCatId(match.category_id);
@@ -1766,7 +1766,7 @@ function MachinePartsEditor({
 
   async function add() {
     if (!partNumber.trim()) return toast.error("กรอก Part Number");
-    let product = products.find((p) => p.part_number.toLowerCase() === partNumber.trim().toLowerCase());
+    let product = products.find((p) => String(p.part_number ?? "").toLowerCase() === partNumber.trim().toLowerCase());
     if (!product) {
       // quick-create
       if (!partName.trim()) return toast.error("กรอกชื่ออะไหล่ (Part Description) สำหรับสินค้าใหม่");
@@ -1780,9 +1780,10 @@ function MachinePartsEditor({
       product = data;
       toast.success("เพิ่มสินค้าใหม่ในคลังแล้ว");
     }
+    if (!product?.id) return toast.error("ไม่พบอะไหล่สำหรับบันทึก");
     const { error } = await supabase.from("machine_parts").insert({
       machine_unit_id: machineId,
-      product_id: product?.id,
+      product_id: product.id,
       cross_reference_parts: crossRefs,
       substitution_note: substitutionNote.trim() || null,
       quantity: Number(qty) || 1,
