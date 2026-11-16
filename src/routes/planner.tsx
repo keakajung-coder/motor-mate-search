@@ -2961,6 +2961,7 @@ function MonthGrid({
   const days = Array.from({ length: 42 }, (_, i) => addDays(start, i));
   const today = iso(new Date());
   const { getJobVisualState } = useUserRole();
+  const { isAdmin } = useAccess();
 
   return (
     <div className="space-y-2">
@@ -3013,7 +3014,7 @@ function MonthGrid({
                     "flex min-h-32 cursor-pointer flex-col items-center rounded-full border sm:min-h-40 md:min-h-48 " +
                     (key === today ? "border-red-500 bg-red-100 " : "border-red-200 bg-red-50 ") +
                     (holiday ? "planner-holiday--head border-rose-500 ring-2 ring-rose-500 " : "") +
-                    (dim ? "opacity-40" : "")
+                    (dim && !isAdmin ? "opacity-40" : "")
                   }
                 >
                   <span className="mt-1 text-[9px] font-bold leading-none text-red-500">
