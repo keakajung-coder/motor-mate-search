@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { autoContractJobNo } from "@/lib/contract-schedule";
+import { contractJobStatus } from "@/lib/contract-job-policy";
 
 export type ContractVisitInput = {
   id?: string | null;
@@ -111,10 +111,11 @@ export const saveContract = createServerFn({ method: "POST" })
     }
 
     // งวดเดิมที่ถูกตัดออก (เกินจำนวนครั้งใหม่) และยังไม่ปิดงาน → ลบพร้อมนัดหมายที่ผูกไว้
-    const { data: existing } = await supabaseAdmin
+    const { data: existing, error: existingError } = await supabaseAdmin
       .from("service_contract_visits")
       .select("id, visit_no, appointment_id, work_order_id, status")
       .eq("contract_id", contractId);
+    if (existingError) throw new Error("อ่านงวดบริการเดิมไม่สำเร็จ");
     const keepNos = new Set(visits.map((v) => v.visit_no));
     for (const old of existing ?? []) {
       if (keepNos.has(old.visit_no)) continue;
@@ -125,41 +126,19 @@ export const saveContract = createServerFn({ method: "POST" })
 
     // ซิงค์แต่ละงวด → นัดหมายในแพลนเนอร์
     for (const v of visits) {
-      const { data: oldVisit } = await supabaseAdmin
+      const { data: oldVisit, error: oldVisitError } = await supabaseAdmin
         .from("service_contract_visits")
         .select("id, appointment_id, work_order_id, status")
         .eq("contract_id", contractId)
         .eq("visit_no", v.visit_no)
         .maybeSingle();
-
-      if (oldVisit?.status === "done") continue; // งวดที่ปิดงานแล้วไม่แตะต้อง
+      if (oldVisitError) throw new Error("อ่านงวดบริการเดิมไม่สำเร็จ");
+      if (oldVisit?.status === "done" || oldVisit?.status === "closed") continue;
 
       // สถานะเริ่มต้นของงวดที่สร้างอัตโนมัติเป็น "unscheduled" (ยังไม่ได้นัดหมาย)
       const targetStatus = v.status || oldVisit?.status || "unscheduled";
 
-      const apptPayload = {
-        customer_name: customerName,
-        machine_label: data.machine_label ?? null,
-        serial_number: data.serial_number ?? null,
-        machine_unit_id: data.machine_unit_id ?? null,
-        job_detail: v.job_detail ?? null,
-        parts_note: v.parts_note ?? null,
-        service_type: "เช็กระยะตามสัญญา",
-        billing_type: "ในสัญญาบริการ",
-        visit_date: v.visit_date,
-        visit_time: v.visit_time ?? null,
-        status: targetStatus,
-        vehicle_plate: v.vehicle_plate ?? null,
-        cross_zone_approval: approvals.get(v.visit_no) as never,
-      };
-
-      let appointmentId = oldVisit?.appointment_id ?? null;
-      if (appointmentId) {
-        await supabaseAdmin.from("appointments").update(apptPayload).eq("id", appointmentId);
-      } else {
-        const { data: appt } = await supabaseAdmin.from("appointments").insert(apptPayload).select("id").single();
-        appointmentId = appt?.id ?? null;
-      }
+      const appointmentId = oldVisit?.appointment_id ?? null;
 
       const visitRow: any = {
         contract_id: contractId,
@@ -172,18 +151,26 @@ export const saveContract = createServerFn({ method: "POST" })
         status: targetStatus,
         vehicle_plate: v.vehicle_plate ?? null,
       };
-      if (oldVisit?.id) {
-        const { error: updErr } = await supabaseAdmin.from("service_contract_visits").update(visitRow).eq("id", oldVisit.id);
-        if (updErr) {
-          delete visitRow.vehicle_plate;
-          await supabaseAdmin.from("service_contract_visits").update(visitRow).eq("id", oldVisit.id);
-        }
-      } else {
-        const { error: insErr } = await supabaseAdmin.from("service_contract_visits").insert(visitRow);
-        if (insErr) {
-          delete visitRow.vehicle_plate;
-          await supabaseAdmin.from("service_contract_visits").insert(visitRow);
-        }
+      const result = oldVisit?.id
+        ? await supabaseAdmin.from("service_contract_visits").update(visitRow).eq("id", oldVisit.id)
+        : await supabaseAdmin.from("service_contract_visits").insert(visitRow);
+      if (result.error) throw new Error("บันทึกงวดบริการไม่สำเร็จ");
+    }
+
+    const { error: syncError } = await supabaseAdmin.rpc("sync_contract_jobs", { p_contract_id: contractId, p_due_only: false });
+    if (syncError) throw new Error("บันทึกสัญญาแล้ว แต่สร้างใบงานไม่สำเร็จ กรุณาลองบันทึกอีกครั้ง");
+    const { data: linkedVisits, error: linkedError } = await supabaseAdmin.from("service_contract_visits").select("visit_no, appointment_id, work_order_id, status").eq("contract_id", contractId);
+    if (linkedError) throw new Error("อ่านใบงานที่เชื่อมสัญญาไม่สำเร็จ");
+    for (const linked of linkedVisits ?? []) {
+      if (linked.status === "done" || linked.status === "closed") continue;
+      const approval = approvals.get(linked.visit_no) ?? null;
+      if (linked.appointment_id) {
+        const { error } = await supabaseAdmin.from("appointments").update({ cross_zone_approval: approval as never }).eq("id", linked.appointment_id);
+        if (error) throw new Error("บันทึกผลตรวจโซนรถไม่สำเร็จ");
+      }
+      if (linked.work_order_id) {
+        const { error } = await supabaseAdmin.from("work_orders").update({ cross_zone_approval: approval as never }).eq("id", linked.work_order_id);
+        if (error) throw new Error("บันทึกผลตรวจโซนรถในใบงานไม่สำเร็จ");
       }
     }
 
@@ -205,14 +192,17 @@ export const updateContractVisitVehicle = createServerFn({ method: "POST" })
       if (review.conflicts.length && data.zoneSignature !== review.signature) throw new Error("รถมีงานข้ามโซน กรุณาอนุมัติหรือย้ายรถก่อน");
       const { error } = await supabaseAdmin.from("appointments").update({ vehicle_plate: plate, cross_zone_approval: review.conflicts.length ? { ...review, approved_at: new Date().toISOString(), approved_by: "admin" } : null }).eq("id", data.appointmentId);
       if (error) throw new Error("เปลี่ยนรถไม่สำเร็จ");
+      if (job.work_order_id) {
+        const { error: orderError } = await supabaseAdmin.from("work_orders").update({ vehicle_plate: plate, cross_zone_approval: review.conflicts.length ? { ...review, approved_at: new Date().toISOString(), approved_by: "admin" } : null }).eq("id", job.work_order_id);
+        if (orderError) throw new Error("เปลี่ยนรถในใบงานไม่สำเร็จ");
+      }
+      const { error: visitError } = await supabaseAdmin.from("service_contract_visits").update({ vehicle_plate: plate }).eq("appointment_id", data.appointmentId);
+      if (visitError) throw new Error("เปลี่ยนรถในงวดบริการไม่สำเร็จ");
     }
 
     if (data.visitId) {
-      try {
-        await supabaseAdmin.from("service_contract_visits").update({ vehicle_plate: plate }).eq("id", data.visitId);
-      } catch {
-        /* fallback if column is not yet present */
-      }
+      const { error } = await supabaseAdmin.from("service_contract_visits").update({ vehicle_plate: plate }).eq("id", data.visitId);
+      if (error) throw new Error("เปลี่ยนรถในงวดบริการไม่สำเร็จ");
     }
 
     return { ok: true as const, vehiclePlate: plate };
@@ -224,19 +214,24 @@ export const toggleContractVisitConfirm = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const supabaseAdmin = await adminCtx();
     const nextStatus = data.confirmed ? "scheduled" : "unscheduled";
-
-    if (data.appointmentId) {
-      await supabaseAdmin.from("appointments").update({ status: nextStatus }).eq("id", data.appointmentId);
-      await supabaseAdmin.from("service_contract_visits").update({ status: nextStatus }).eq("appointment_id", data.appointmentId);
-    } else if (data.visitId) {
-      const { data: v } = await supabaseAdmin
-        .from("service_contract_visits")
-        .update({ status: nextStatus })
-        .eq("id", data.visitId)
-        .select("appointment_id")
-        .single();
-      if (v?.appointment_id) {
-        await supabaseAdmin.from("appointments").update({ status: nextStatus }).eq("id", v.appointment_id);
+    const jobStatus = contractJobStatus(nextStatus);
+    let query = supabaseAdmin.from("service_contract_visits").select("id, appointment_id, work_order_id, status");
+    if (data.appointmentId) query = query.eq("appointment_id", data.appointmentId);
+    else if (data.visitId) query = query.eq("id", data.visitId);
+    else throw new Error("กรุณาระบุงวดบริการ");
+    const { data: rows, error: readError } = await query;
+    if (readError || !rows?.length) throw new Error("ไม่พบงวดบริการ");
+    for (const row of rows) {
+      if (row.status === "done" || row.status === "closed") throw new Error("งวดนี้ปิดงานแล้ว");
+      const result = await supabaseAdmin.from("service_contract_visits").update({ status: nextStatus }).eq("id", row.id);
+      if (result.error) throw new Error("ยืนยันนัดหมายไม่สำเร็จ");
+      if (row.appointment_id) {
+        const result = await supabaseAdmin.from("appointments").update({ status: jobStatus }).eq("id", row.appointment_id);
+        if (result.error) throw new Error("อัปเดตนัดหมายไม่สำเร็จ");
+      }
+      if (row.work_order_id) {
+        const result = await supabaseAdmin.from("work_orders").update({ status: jobStatus }).eq("id", row.work_order_id);
+        if (result.error) throw new Error("อัปเดตใบงานไม่สำเร็จ");
       }
     }
 
@@ -259,40 +254,8 @@ export const deactivateContract = createServerFn({ method: "POST" })
  */
 export const generateDueWorkOrders = createServerFn({ method: "POST" }).handler(async () => {
   const supabaseAdmin = await viewerCtx();
-  const today = new Date().toISOString().slice(0, 10);
-  const { data: due, error } = await supabaseAdmin
-    .from("service_contract_visits")
-    .select("id, visit_no, visit_date, visit_time, job_detail, parts_note, status, vehicle_plate, service_contracts!inner(id, customer_id, customer_name, machine_unit_id, serial_number, machine_label, active)")
-    .is("work_order_id", null)
-    .in("status", ["scheduled", "unscheduled"])
-    .eq("service_contracts.active", true)
-    .lte("visit_date", today)
-    .limit(50);
-  if (error) return { created: 0 };
-
-  let created = 0;
-  for (const v of due ?? []) {
-    const c = (v as unknown as { service_contracts: { customer_name: string; machine_label: string | null; serial_number: string | null } }).service_contracts;
-    const { data: wo, error: insErr } = await supabaseAdmin
-      .from("work_orders")
-      .insert({
-        job_no: autoContractJobNo(),
-        customer_name: c.customer_name,
-        machine_label: c.machine_label,
-        serial_number: c.serial_number,
-        job_detail: v.job_detail ?? `บริการตามสัญญารายปี ครั้งที่ ${v.visit_no}`,
-        service_type: "เช็กระยะตามสัญญา",
-        billing_type: "ในสัญญาบริการ",
-        visit_date: v.visit_date,
-        visit_time: v.visit_time,
-        vehicle_plate: (v as any).vehicle_plate ?? null,
-        status: "pending",
-      })
-      .select("id")
-      .single();
-    if (insErr || !wo) continue;
-    await supabaseAdmin.from("service_contract_visits").update({ work_order_id: wo.id }).eq("id", v.id);
-    created++;
-  }
-  return { created };
+  const { data, error } = await supabaseAdmin.rpc("sync_contract_jobs", { p_due_only: true });
+  if (error) throw new Error("สร้างใบงานตามสัญญาไม่สำเร็จ กรุณาลองใหม่");
+  const result = data as { created?: number; linked?: number } | null;
+  return { created: result?.created ?? 0, linked: result?.linked ?? 0 };
 });

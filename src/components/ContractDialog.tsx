@@ -18,6 +18,7 @@ import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
 import { AutoScheduleRuleModal } from "@/components/AutoScheduleRuleModal";
 import { chooseVehicleForJob, approvedZoneSignatures } from "@/lib/vehicle-zone-client";
 import { reviewVehicleAssignment } from "@/lib/vehicle-zone.functions";
+import { invalidateData } from "@/lib/data-sync";
 
 type VisitRow = ContractVisitInput & { status?: string };
 
@@ -189,7 +190,9 @@ export function ContractDialog({
           })),
         },
       });
-      toast.success("บันทึกสัญญาและซิงค์นัดหมายลงแพลนเนอร์แล้ว");
+      toast.success("บันทึกสัญญาและเชื่อมใบงานจริงลงแพลนเนอร์แล้ว");
+      invalidateData(["appointments", "work_orders", "service_contracts", "service_contract_visits"]);
+      window.dispatchEvent(new Event("app:data-changed"));
       window.dispatchEvent(new Event("planner:reload"));
       onSaved?.();
       onOpenChange(false);

@@ -1380,6 +1380,10 @@ export type Database = {
         Args: { _list: string; _new: string; _old: string }
         Returns: string
       }
+      sync_contract_jobs: {
+        Args: { p_contract_id?: string; p_due_only?: boolean }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
