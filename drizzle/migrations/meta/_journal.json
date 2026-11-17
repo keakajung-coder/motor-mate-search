@@ -113,6 +113,13 @@
       "when": 1794876043849,
       "tag": "0015_atomic_contract_job_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794886827667,
+      "tag": "0016_sync_appointment_edits",
+      "breakpoints": true
     }
   ]
 }
