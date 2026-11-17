@@ -1,3 +1,4 @@
+import { toIsoDate } from "@/lib/iso-date";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { MachinePartPicker } from "@/components/MachinePartPicker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -4533,7 +4534,8 @@ function AppointmentDialog({
     }
     if (!form.customer_name?.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     setSaving(true);
-    const finalVisitDate = isApproved && !isAdmin ? value.visit_date : form.visit_date;
+    const finalVisitDate = toIsoDate(isApproved && !isAdmin ? value.visit_date : form.visit_date);
+    if (!finalVisitDate) { setSaving(false); return toast.error("วันที่นัดหมายไม่ถูกต้อง"); }
     try {
       const plate = await chooseVehicleForJob({ ...form, visit_date: finalVisitDate });
       if (plate === null) { setSaving(false); return; }
@@ -4628,7 +4630,12 @@ function AppointmentDialog({
         { duration: 10000 },
       );
     }
+    if (!savedAppt) {
+      saveFormBackup(`appt-draft-${form.id ?? "new"}`, form);
+      return toast.error("บันทึกนัดหมายไม่สำเร็จ: ไม่พบรายการนี้หรือไม่มีสิทธิ์แก้ไข — ข้อมูลฟอร์มถูกสำรองไว้แล้ว", { duration: 10000 });
+    }
     clearFormBackup(`appt-draft-${form.id ?? "new"}`);
+    window.dispatchEvent(new Event("app:data-changed"));
 
     if (override) {
       void logAudit({
