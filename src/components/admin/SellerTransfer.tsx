@@ -47,19 +47,44 @@ export function SellerTransfer({ onChanged }: { onChanged?: () => void }) {
     [custom, counts],
   );
 
+  /** ย้ายตาม id ของแถวที่ชื่อผู้ขายตรงกัน (ตัดช่องว่าง) แล้วยืนยันจำนวนแถวที่บันทึกจริง */
+  async function moveRows(table: "machine_units" | "work_orders" | "appointments", col: "seller" | "sales_rep") {
+    const { data, error } = await (supabase.from(table) as any).select(`id, ${col}`).not(col, "is", null);
+    if (error) throw new Error(error.message);
+    const ids = ((data ?? []) as any[]).filter((r) => String(r[col] ?? "").trim() === from).map((r) => r.id as string);
+    let moved = 0;
+    for (let i = 0; i < ids.length; i += 100) {
+      const chunk = ids.slice(i, i + 100);
+      const res = await (supabase.from(table) as any).update({ [col]: to }).in("id", chunk).select("id");
+      if (res.error) throw new Error(res.error.message);
+      moved += (res.data ?? []).length;
+    }
+    if (moved !== ids.length) throw new Error(`บันทึกได้ ${moved}/${ids.length} รายการ (${table})`);
+    return moved;
+  }
+
   async function transfer() {
     if (!from || !to || from === to) return toast.error("กรุณาเลือกผู้ขายต้นทางและปลายทางให้ถูกต้อง");
     setBusy(true);
-    const { error } = await supabase.from("machine_units").update({ seller: to }).eq("seller", from);
-    if (!error && !custom.includes(to)) await saveOptionList("sellers", [...custom, to]);
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success(`โอนย้าย ${counts[from] ?? 0} รายการจาก ${from} ไปยัง ${to} แล้ว`);
-    setFrom("");
-    setTo("");
-    await load();
-    await refreshDirectory();
-    onChanged?.();
+    try {
+      const units = await moveRows("machine_units", "seller");
+      const jobs = await moveRows("work_orders", "sales_rep");
+      const appts = await moveRows("appointments", "sales_rep");
+      if (!custom.includes(to)) await saveOptionList("sellers", [...custom, to]);
+      toast.success(`ย้ายข้อมูลสำเร็จ: ${units} เครื่อง, ${jobs} ใบงาน, ${appts} นัดหมาย จาก ${from} ไปยัง ${to}`);
+      setFrom("");
+      setTo("");
+      await load();
+      await refreshDirectory();
+      window.dispatchEvent(new Event("app:data-changed"));
+      window.dispatchEvent(new Event("planner:reload"));
+      onChanged?.();
+    } catch (e) {
+      toast.error(`ย้ายข้อมูลไม่สำเร็จ: ${e instanceof Error ? e.message : String(e)}`);
+      await load();
+    } finally {
+      setBusy(false);
+    }
   }
 
   const options = sellers.map((s) => ({ value: s, hint: `${counts[s] ?? 0} เครื่อง` }));
