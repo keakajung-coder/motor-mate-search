@@ -111,10 +111,11 @@ export const saveContract = createServerFn({ method: "POST" })
     }
 
     // งวดเดิมที่ถูกตัดออก (เกินจำนวนครั้งใหม่) และยังไม่ปิดงาน → ลบพร้อมนัดหมายที่ผูกไว้
-    const { data: existing } = await supabaseAdmin
+    const { data: existing, error: existingError } = await supabaseAdmin
       .from("service_contract_visits")
       .select("id, visit_no, appointment_id, work_order_id, status")
       .eq("contract_id", contractId);
+    if (existingError) throw new Error("อ่านงวดบริการเดิมไม่สำเร็จ");
     const keepNos = new Set(visits.map((v) => v.visit_no));
     for (const old of existing ?? []) {
       if (keepNos.has(old.visit_no)) continue;
@@ -125,14 +126,14 @@ export const saveContract = createServerFn({ method: "POST" })
 
     // ซิงค์แต่ละงวด → นัดหมายในแพลนเนอร์
     for (const v of visits) {
-      const { data: oldVisit } = await supabaseAdmin
+      const { data: oldVisit, error: oldVisitError } = await supabaseAdmin
         .from("service_contract_visits")
         .select("id, appointment_id, work_order_id, status")
         .eq("contract_id", contractId)
         .eq("visit_no", v.visit_no)
         .maybeSingle();
-
-      if (oldVisit?.status === "done") continue; // งวดที่ปิดงานแล้วไม่แตะต้อง
+      if (oldVisitError) throw new Error("อ่านงวดบริการเดิมไม่สำเร็จ");
+      if (oldVisit?.status === "done" || oldVisit?.status === "closed") continue;
 
       // สถานะเริ่มต้นของงวดที่สร้างอัตโนมัติเป็น "unscheduled" (ยังไม่ได้นัดหมาย)
       const targetStatus = v.status || oldVisit?.status || "unscheduled";
@@ -191,14 +192,17 @@ export const updateContractVisitVehicle = createServerFn({ method: "POST" })
       if (review.conflicts.length && data.zoneSignature !== review.signature) throw new Error("รถมีงานข้ามโซน กรุณาอนุมัติหรือย้ายรถก่อน");
       const { error } = await supabaseAdmin.from("appointments").update({ vehicle_plate: plate, cross_zone_approval: review.conflicts.length ? { ...review, approved_at: new Date().toISOString(), approved_by: "admin" } : null }).eq("id", data.appointmentId);
       if (error) throw new Error("เปลี่ยนรถไม่สำเร็จ");
+      if (job.work_order_id) {
+        const { error: orderError } = await supabaseAdmin.from("work_orders").update({ vehicle_plate: plate, cross_zone_approval: review.conflicts.length ? { ...review, approved_at: new Date().toISOString(), approved_by: "admin" } : null }).eq("id", job.work_order_id);
+        if (orderError) throw new Error("เปลี่ยนรถในใบงานไม่สำเร็จ");
+      }
+      const { error: visitError } = await supabaseAdmin.from("service_contract_visits").update({ vehicle_plate: plate }).eq("appointment_id", data.appointmentId);
+      if (visitError) throw new Error("เปลี่ยนรถในงวดบริการไม่สำเร็จ");
     }
 
     if (data.visitId) {
-      try {
-        await supabaseAdmin.from("service_contract_visits").update({ vehicle_plate: plate }).eq("id", data.visitId);
-      } catch {
-        /* fallback if column is not yet present */
-      }
+      const { error } = await supabaseAdmin.from("service_contract_visits").update({ vehicle_plate: plate }).eq("id", data.visitId);
+      if (error) throw new Error("เปลี่ยนรถในงวดบริการไม่สำเร็จ");
     }
 
     return { ok: true as const, vehiclePlate: plate };
