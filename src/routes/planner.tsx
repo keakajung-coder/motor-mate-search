@@ -1,3 +1,4 @@
+import { toIsoDate } from "@/lib/iso-date";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { MachinePartPicker } from "@/components/MachinePartPicker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -1615,13 +1616,32 @@ function PendingOrders({
       if (plate === null) return;
       p.vehicle_plate = plate;
     } catch (error) { toast.error(error instanceof Error ? error.message : "ตรวจจังหวัดไม่สำเร็จ"); return; }
+    if ("visit_date" in p && p.visit_date) {
+      const iso = toIsoDate(p.visit_date as string);
+      if (!iso) return toast.error("วันที่นัดหมายไม่ถูกต้อง");
+      p.visit_date = iso;
+    }
     setBusy(o.id);
-    const { error } = await supabase
+    const { data: savedWo, error } = await supabase
       .from("work_orders")
       .update(p as never)
-      .eq("id", o.id);
+      .eq("id", o.id)
+      .select("id");
+    if (error || !savedWo?.length) {
+      setBusy(null);
+      return toast.error("บันทึกไม่สำเร็จ: " + (error ? describeSubmitError(error) : "ไม่พบรายการนี้หรือไม่มีสิทธิ์แก้ไข"), { duration: 8000 });
+    }
+    // งานที่ผูกนัดหมายแล้ว (เช่น งานสัญญารายปี) — ส่งวัน/เวลา/ช่าง/รถ/รายละเอียดไปยังนัดหมาย (ทริกเกอร์จะเลื่อนรอบสัญญาตาม)
+    const apptPatch = Object.fromEntries(
+      (["visit_date", "visit_time", "staff_name", "vehicle_plate", "sales_rep", "job_detail"] as const)
+        .filter((k) => k in p).map((k) => [k, (p as any)[k]]),
+    );
+    if (Object.keys(apptPatch).length) {
+      const { error: apptError } = await supabase.from("appointments").update(apptPatch as never).eq("work_order_id", o.id);
+      if (apptError) toast.error("อัปเดตนัดหมายที่ผูกไว้ไม่สำเร็จ: " + describeSubmitError(apptError), { duration: 8000 });
+    }
     setBusy(null);
-    if (error) return toast.error("บันทึกไม่สำเร็จ: " + describeSubmitError(error), { duration: 8000 });
+    window.dispatchEvent(new Event("app:data-changed"));
     toast.success("บันทึกการแก้ไขใบสั่งงานแล้ว");
     setEdit((e) => ({ ...e, [o.id]: {} }));
     reload();
@@ -4533,7 +4553,8 @@ function AppointmentDialog({
     }
     if (!form.customer_name?.trim()) return toast.error("กรุณาเลือกชื่อลูกค้า");
     setSaving(true);
-    const finalVisitDate = isApproved && !isAdmin ? value.visit_date : form.visit_date;
+    const finalVisitDate = toIsoDate(isApproved && !isAdmin ? value.visit_date : form.visit_date);
+    if (!finalVisitDate) { setSaving(false); return toast.error("วันที่นัดหมายไม่ถูกต้อง"); }
     try {
       const plate = await chooseVehicleForJob({ ...form, visit_date: finalVisitDate });
       if (plate === null) { setSaving(false); return; }
@@ -4628,7 +4649,12 @@ function AppointmentDialog({
         { duration: 10000 },
       );
     }
+    if (!savedAppt) {
+      saveFormBackup(`appt-draft-${form.id ?? "new"}`, form);
+      return toast.error("บันทึกนัดหมายไม่สำเร็จ: ไม่พบรายการนี้หรือไม่มีสิทธิ์แก้ไข — ข้อมูลฟอร์มถูกสำรองไว้แล้ว", { duration: 10000 });
+    }
     clearFormBackup(`appt-draft-${form.id ?? "new"}`);
+    window.dispatchEvent(new Event("app:data-changed"));
 
     if (override) {
       void logAudit({

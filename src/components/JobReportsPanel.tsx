@@ -912,9 +912,11 @@ function EditJobDialog({ row, onClose, onSaved }: { row: Row | null; onClose: ()
       customer_sn: form.customer_sn,
       quotation_required: !!form.quotation_required,
     };
-    const { error } = await supabase.from("appointments").update(payload).eq("id", form.id);
+    const { data: saved, error } = await supabase.from("appointments").update(payload).eq("id", form.id).select("id").maybeSingle();
     setSaving(false);
     if (error) return toast.error("บันทึกไม่สำเร็จ: " + error.message);
+    if (!saved) return toast.error("บันทึกไม่สำเร็จ: ไม่พบรายการนี้หรือไม่มีสิทธิ์แก้ไข");
+    window.dispatchEvent(new Event("app:data-changed"));
     await logAudit({
       table: "appointments",
       recordId: form.id,
