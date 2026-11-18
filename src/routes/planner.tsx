@@ -2599,7 +2599,6 @@ function ApprovedOrders({
             key={o.id}
             className={cn(
               `relative space-y-2 overflow-hidden rounded-lg border py-3 pl-6 pr-3 transition-all ${STAGE_BG[statusStage(appointments[o.id]?.status ?? o.status)]}`,
-              !isAdmin && (o as WorkOrder & { approved_hidden?: boolean }).approved_hidden && "opacity-60",
               visual.opacityClass,
               visual.isMine && "ring-2 ring-primary/60 shadow-md border-primary bg-card/95",
             )}
@@ -3033,8 +3032,7 @@ function MonthGrid({
                   className={
                     "flex min-h-32 cursor-pointer flex-col items-center rounded-full border sm:min-h-40 md:min-h-48 " +
                     (key === today ? "border-red-500 bg-red-100 " : "border-red-200 bg-red-50 ") +
-                    (holiday ? "planner-holiday--head border-rose-500 ring-2 ring-rose-500 " : "") +
-                    (dim && !isAdmin ? "opacity-40" : "")
+                    (holiday ? "planner-holiday--head border-rose-500 ring-2 ring-rose-500 " : "")
                   }
                 >
                   <span className="mt-1 text-[9px] font-bold leading-none text-red-500">

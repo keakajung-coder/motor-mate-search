@@ -13,6 +13,6 @@ test("only verified admins can approve, never an employee selection", () => {
 test("admin jobs remain undimmed when selecting another seller or technician", () => {
   for (const department of ["seller", "tech"]) {
     assert.equal(shouldDimJob(true, false, department), false);
-    assert.equal(shouldDimJob(false, false, department), true);
+    assert.equal(shouldDimJob(false, false, department), false);
   }
 });

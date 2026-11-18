@@ -3,6 +3,7 @@ export function jobPermissions(isAdmin: boolean, canEdit = false) {
   return { isAdmin, canEdit: isAdmin || canEdit, canApprove: isAdmin };
 }
 
-export function shouldDimJob(isAdmin: boolean, isMine: boolean, selectedDepartment: string | null) {
-  return !isAdmin && !isMine && (selectedDepartment === "seller" || selectedDepartment === "tech");
+/** Job cards always render at full strength; ownership is shown by highlights, never opacity. */
+export function shouldDimJob(_isAdmin: boolean, _isMine: boolean, _selectedDepartment: string | null) {
+  return false;
 }
