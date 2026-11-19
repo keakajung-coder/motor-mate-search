@@ -553,8 +553,9 @@ function PlannerPage() {
     try {
       const due = await generateDueWorkOrders();
       if (due.created > 0) toast.info(`สร้างใบสั่งงานตามสัญญาอัตโนมัติ ${due.created} ใบ`);
-    } catch {
-      /* ไม่บล็อกการโหลดแพลนเนอร์ */
+    } catch (error) {
+      // ไม่บล็อกการโหลดแพลนเนอร์ แต่แจ้งให้ทราบว่าสร้างใบงานอัตโนมัติไม่สำเร็จ
+      toast.error("สร้างใบสั่งงานตามสัญญาอัตโนมัติไม่สำเร็จ: " + (error instanceof Error ? error.message : String(error)), { duration: 8000 });
     }
     const [a, w] = await Promise.all([
       supabase.from("appointments").select("*").order("visit_date"),
