@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 
+import { OverlayErrorBoundary } from "./overlay-error-boundary";
 import { cn } from "@/lib/utils";
 
 const Drawer = ({
@@ -38,13 +39,13 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
+        "fixed inset-x-0 bottom-0 z-[51] mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
         className,
       )}
       {...props}
     >
       <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
-      {children}
+      <OverlayErrorBoundary close={<DrawerPrimitive.Close className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground">ปิด</DrawerPrimitive.Close>}>{children}</OverlayErrorBoundary>
     </DrawerPrimitive.Content>
   </DrawerPortal>
 ));

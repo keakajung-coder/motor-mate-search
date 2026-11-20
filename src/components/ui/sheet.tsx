@@ -5,6 +5,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 
+import { OverlayErrorBoundary } from "./overlay-error-boundary";
 import { cn } from "@/lib/utils";
 
 const Sheet = SheetPrimitive.Root;
@@ -31,7 +32,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 min-w-0 gap-4 overflow-y-auto overscroll-contain bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out sm:p-6 sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
+  "fixed z-[51] min-w-0 gap-4 overflow-y-auto overscroll-contain bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out sm:p-6 sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
   {
     variants: {
       side: {
@@ -65,7 +66,7 @@ const SheetContent = React.forwardRef<
         <X className="h-4 w-4" />
         <span className="sr-only">ปิด</span>
       </SheetPrimitive.Close>
-      {children}
+      <OverlayErrorBoundary close={<SheetPrimitive.Close className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground">ปิด</SheetPrimitive.Close>}>{children}</OverlayErrorBoundary>
     </SheetPrimitive.Content>
   </SheetPortal>
 ));
