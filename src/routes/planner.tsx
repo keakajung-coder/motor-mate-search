@@ -40,6 +40,7 @@ import { MachineHistoryDialog } from "@/components/MachineHistoryDialog";
 import { CustomerSignaturePad, type CustomerSignaturePadRef } from "@/components/CustomerSignaturePad";
 import { describeSubmitError } from "@/lib/submit-error";
 import { clearFormBackup, loadFormBackup, saveFormBackup } from "@/lib/form-backup";
+import { APPROVED_TAB_STATUSES, isApprovedTabOrder } from "@/lib/approved-visibility";
 
 import {
   AlertTriangle,
@@ -2147,16 +2148,19 @@ function ApprovedOrders({
       supabase
         .from("work_orders")
         .select("*")
-        .in("status", ["approved", "scheduled", "in_progress", "closed"])
+        .in("status", [...APPROVED_TAB_STATUSES])
         .order("created_at", { ascending: false })
-        .limit(50),
+        .limit(200),
       supabase.from("appointments").select("*").not("work_order_id", "is", null),
     ]);
-    const nextRows = (workOrders ?? []) as unknown as WorkOrder[];
     const nextAppointments = Object.fromEntries(
       ((apptRows ?? []) as Appointment[])
         .filter((a) => a.work_order_id)
         .map((a) => [a.work_order_id as string, a]),
+    );
+    // ใบงานที่ปิดแล้วหายไปจากช่องน้ีอัตโนมัติ ข้อมูลยังอยู่ครบในฐานข้อมูลและในตารางสรุปงาน
+    const nextRows = ((workOrders ?? []) as unknown as WorkOrder[]).filter((o) =>
+      isApprovedTabOrder(o, nextAppointments[o.id] ?? null),
     );
     setRows(nextRows);
     setAppointments(nextAppointments);
