@@ -524,6 +524,17 @@
   touch-action: pan-x pan-y !important;
 }
 
+/* กล่องที่เลื่อนแนวนอนได้ต้องไม่ถูกล็อก pan-y จากกฎ dialog/list ด้านบน
+   ครอบตารางกว้างใน dialog, ตัวอย่างเอกสาร A4, แถบชิป และกรณีกล่องแนวตั้งซ้อนในกล่องแนวนอน */
+[role="dialog"] .overflow-x-auto,
+[role="dialog"].overflow-x-auto,
+[role="dialog"] .overflow-auto,
+.overflow-x-auto .overflow-y-auto,
+.overflow-x-auto .overflow-auto,
+.overflow-x-auto .overflow-y-scroll {
+  touch-action: pan-x pan-y !important;
+}
+
 .osb-thumb.osb-page {
   width: 6px;
 }
