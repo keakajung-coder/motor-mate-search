@@ -516,6 +516,14 @@
   -webkit-overflow-scrolling: touch !important;
 }
 
+/* ตารางแพลนเนอร์: ช่องงานด้านในเลื่อนแนวตั้งได้ แต่ต้องไม่ล็อกการปัดแนวนอน
+   เพื่อให้ผู้ใช้ปัดนิ้วซ้าย-ขวาเลื่อนตัวตารางจากบนช่องงานได้โดยตรง */
+.planner-grid-scroll .overflow-y-auto,
+.planner-grid-scroll .overflow-auto,
+.planner-grid-scroll .overflow-y-scroll {
+  touch-action: pan-x pan-y !important;
+}
+
 .osb-thumb.osb-page {
   width: 6px;
 }

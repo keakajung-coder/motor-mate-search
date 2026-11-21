@@ -2996,7 +2996,7 @@ function MonthGrid({
         </span>
       </div>
       <VehicleLegend appts={appts} />
-      <div className="scrollbar-none flex overflow-x-auto whitespace-nowrap pb-1">
+      <div className="planner-grid-scroll scrollbar-none flex overflow-x-auto whitespace-nowrap pb-1">
         <div
           className="grid min-w-[900px] flex-1 gap-1 text-xs"
           style={{ gridTemplateColumns: WEEK_COLS }}
@@ -3356,7 +3356,7 @@ function TimeGrid({
   return (
     <div className="space-y-2">
       <VehicleLegend appts={appts} />
-      <div className="scrollbar-none flex overflow-x-auto whitespace-nowrap">
+      <div className="planner-grid-scroll scrollbar-none flex overflow-x-auto whitespace-nowrap">
         <div className={isWeek ? "min-w-[900px] flex-1" : "min-w-[560px] flex-1"}>
           <div
             className="grid gap-px rounded-t-xl bg-border text-xs"
