@@ -118,7 +118,7 @@ export const backupDownloadUrl = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!(await verifyAdmin(data.code))) return { ok: false as const, error: "ต้องปลดล็อกแอดมินก่อน" };
     const db = await admin();
-    const { data: s, error } = await db.storage.from(BUCKET).createSignedUrl(data.name, 600, { download: true });
+    const { data: s, error } = await db.storage.from(BUCKET).createSignedUrl(data.name, 60, { download: true });
     if (error || !s) return { ok: false as const, error: error?.message ?? "ไม่พบไฟล์" };
     return { ok: true as const, url: s.signedUrl };
   });

@@ -41,7 +41,7 @@ export function assertSameOrigin() {
 }
 
 export async function accessSession() {
-  const password = process.env["SESSION_SECRET"] || "pneumax-secure-access-session-key-fallback-32chars";
+  const password = process.env["SESSION_SECRET"];
   if (!password || password.length < 32) throw new Error("Access is not configured");
 
   const req = getRequest();

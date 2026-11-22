@@ -84,7 +84,7 @@ export const sendUserAlert = createServerFn({ method: "POST" })
   .inputValidator((d: { lineIds: string[]; title: string; body?: string; link?: string }) => d)
   .handler(async ({ data }) => {
     const { requireAccess, consumeRateLimit } = await import("./access-session.server");
-    const access = await requireAccess();
+    const access = await requireAccess("admin");
     await consumeRateLimit("line", access.sessionId, 20, 60);
     const settings = await readSettings();
     // LINE Messaging API ส่งได้เฉพาะ userId (U…) / groupId (C…) / roomId (R…) เท่านั้น

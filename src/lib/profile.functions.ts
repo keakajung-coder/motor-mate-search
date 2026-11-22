@@ -53,10 +53,12 @@ export const saveOwnPhoto = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ base64: z.string().max(700000) }).strict().parse(input))
   .handler(async ({ data }) => {
     const { requireAccess, accessSession, consumeRateLimit } = await import("./access-session.server");
-    const { sessionId } = await requireAccess();
+    const { sessionId, role } = await requireAccess();
     const { requireSelectedProfile, validateProfilePhoto } = await import("./profile-policy");
     const session = await accessSession();
     const id = requireSelectedProfile(session.data.profileId);
+    // Employee/contact profiles are shared records; selecting one does not prove identity, so only admins may change their photo.
+    if (!id.startsWith("guest:") && role !== "admin") throw new Error("เฉพาะแอดมินเท่านั้นที่เปลี่ยนรูปพนักงานได้");
     await consumeRateLimit("profile-photo", sessionId, 20, 3600);
     const binary = atob(data.base64);
     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));

@@ -3,6 +3,25 @@ import { canAccessTable, canAccessEmployeePhotos } from "./security-policy";
 import { reviewVehicleZone } from "./vehicle-zone.server";
 import type { ZoneJob } from "./vehicle-zone";
 
+let columnCache: { at: number; tables: Map<string, Set<string>> } | null = null;
+async function tableColumns(table: string) {
+  if (!columnCache || Date.now() - columnCache.at > 10 * 60_000) {
+    const base = process.env["SUPABASE_URL"];
+    const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+    if (!base || !key) throw new Error("Unavailable");
+    const h = new Headers({ apikey: key, accept: "application/openapi+json" });
+    if (!key.startsWith("sb_")) h.set("authorization", `Bearer ${key}`);
+    const res = await fetch(`${base}/rest/v1/`, { headers: h });
+    if (!res.ok) throw new Error("Unavailable");
+    const spec = (await res.json()) as { definitions?: Record<string, { properties?: Record<string, unknown> }> };
+    const tables = new Map<string, Set<string>>();
+    for (const [name, def] of Object.entries(spec.definitions ?? {})) tables.set(name, new Set(Object.keys(def.properties ?? {})));
+    columnCache = { at: Date.now(), tables };
+  }
+  return columnCache.tables.get(table) ?? null;
+}
+const SYSTEM_FIELDS = ["created_at", "updated_at"];
+
 const BUCKETS = new Set(["product-images", "job-attachments", "employee-photos"]);
 export async function proxyBusinessRequest(request: Request) {
   try {
@@ -22,6 +41,15 @@ export async function proxyBusinessRequest(request: Request) {
         const payload = JSON.parse(text);
         const rows = Array.isArray(payload) ? payload : [payload];
         if (rows.length > 2000 || rows.some((r) => !r || typeof r !== "object" || Array.isArray(r))) return Response.json({ message: "Invalid records" }, { status: 400 });
+        // Write-field allowlist: only real table columns pass; system fields are server-managed.
+        const columns = await tableColumns(table);
+        if (!columns) return Response.json({ message: "Forbidden" }, { status: 403 });
+        for (const row of rows as Record<string, unknown>[]) {
+          for (const k of Object.keys(row)) {
+            if (k === "__zone_signature") continue;
+            if (!columns.has(k) || SYSTEM_FIELDS.includes(k) || (method === "PATCH" && k === "id")) delete row[k];
+          }
+        }
         if (table === "audit_log") for (const row of rows) row.actor = role;
         if (table === "appointments" || table === "work_orders") {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
