@@ -1,4 +1,4 @@
-import { PlacePicker } from "@/components/PlacePicker";
+import { fullCustomerAddress, locationNavigationUrl } from "@/lib/customer-location";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/data-client";
@@ -479,27 +479,14 @@ function CustomersTab() {
             />
           </div>
           <div className="sm:col-span-2">
-            <Label>ค้นหาหมุด Google Maps</Label>
-            <PlacePicker
-              onPick={(p) =>
-                setForm((f) => ({
-                  ...f,
-                  address: p.street || f.address,
-                  subdistrict: p.subdistrict,
-                  district: p.district,
-                  province: p.province,
-                  postal_code: p.postalCode,
-                  latitude: p.latitude,
-                  longitude: p.longitude,
-                  maps_url: p.mapsUrl,
-                  place_id: p.placeId,
-                }))
-              }
-            />
+            <Label>ลิงก์ Google Maps</Label>
+            <Input value={form.maps_url} onChange={(e) => setForm({ ...form, maps_url: e.target.value })} placeholder="https://www.google.com/maps/..." />
+            <Button asChild variant="outline" className="mt-2">
+              <a href={locationNavigationUrl(form, fullCustomerAddress(form) || form.name) || "https://www.google.com/maps"} target="_blank" rel="noopener noreferrer">เปิดที่อยู่ใน Google Maps</a>
+            </Button>
             {form.latitude != null && (
               <p className="mt-1 text-xs text-muted-foreground">
                 พิกัด {form.latitude.toFixed(6)}, {form.longitude?.toFixed(6)}{" "}
-                {form.maps_url && <a href={form.maps_url} target="_blank" rel="noreferrer" className="text-primary underline">เปิดใน Google Maps</a>}{" "}
                 <button type="button" className="underline" onClick={() => setForm((f) => ({ ...f, latitude: null, longitude: null, maps_url: "", place_id: "" }))}>ล้างหมุด</button>
               </p>
             )}

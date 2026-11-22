@@ -21,15 +21,23 @@ test("editing province updates the saved address and zone snapshot together", ()
 });
 test("navigation targets stored coordinates and selected place rather than searching the name", () => {
   const url = new URL(locationNavigationUrl(customer, "other address"));
-  assert.equal(url.pathname, "/maps/dir/");
-  assert.equal(url.searchParams.get("destination"), "13.64,100.67");
-  assert.equal(url.searchParams.get("destination_place_id"), "customer-place");
+  assert.equal(url.pathname, "/maps/search/");
+  assert.equal(url.searchParams.get("api"), "1");
+  assert.equal(url.searchParams.get("query"), "13.64,100.67");
+  assert.equal(url.searchParams.get("query_place_id"), "customer-place");
 });
 test("saved map URL works when no coordinates are available", () => {
   assert.equal(locationNavigationUrl({ maps_url: "https://maps.app.goo.gl/example" }), "https://maps.app.goo.gl/example");
 });
 test("unsafe saved URLs never become navigation links", () => {
   assert.equal(locationNavigationUrl({ maps_url: "javascript:alert(1)" }), "");
+});
+test("stored Thai address opens an external search without a Maps API key", () => {
+  const url = new URL(locationNavigationUrl({ address: "99/1", district: "ศรีราชา", province: "ชลบุรี" }));
+  assert.equal(url.origin, "https://www.google.com");
+  assert.equal(url.pathname, "/maps/search/");
+  assert.equal(url.searchParams.get("query"), "99/1 อ.ศรีราชา จ.ชลบุรี");
+  assert.equal(url.searchParams.has("key"), false);
 });
 test("customer snapshot province is used for same-vehicle zone review", () => {
   const target = { ...customerLocationPatch({ ...customer, province: "ระยอง" }), visit_date: "2026-10-31", vehicle_plate: "กข 1234" };

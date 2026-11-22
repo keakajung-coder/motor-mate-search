@@ -1,4 +1,4 @@
-import { getGoogleMapsDirUrl } from "./maps";
+import { getGoogleMapsUrl } from "./maps";
 
 export type CustomerLocation = {
   address: string;
@@ -41,8 +41,8 @@ export function locationNavigationUrl(location?: Partial<CustomerLocation> | nul
   const lat = location?.latitude;
   const lng = location?.longitude;
   if (typeof lat === "number" && Number.isFinite(lat) && lat >= -90 && lat <= 90 && typeof lng === "number" && Number.isFinite(lng) && lng >= -180 && lng <= 180) {
-    const url = new URL(getGoogleMapsDirUrl(`${lat},${lng}`));
-    if (location?.place_id) url.searchParams.set("destination_place_id", location.place_id);
+    const url = new URL(getGoogleMapsUrl(`${lat},${lng}`));
+    if (location?.place_id) url.searchParams.set("query_place_id", location.place_id);
     return url.toString();
   }
   const saved = location?.maps_url?.trim();
@@ -52,5 +52,6 @@ export function locationNavigationUrl(location?: Partial<CustomerLocation> | nul
       if (url.protocol === "https:" && ["google.com", "www.google.com", "maps.google.com", "maps.app.goo.gl", "goo.gl"].includes(url.hostname)) return url.toString();
     } catch { /* Unsafe or malformed URLs fall back to address directions. */ }
   }
-  return fallback ? getGoogleMapsDirUrl(fallback) : "";
+  const address = fullCustomerAddress(location) || fallback;
+  return address ? getGoogleMapsUrl(address) : "";
 }
