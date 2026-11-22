@@ -16,7 +16,7 @@ export function PlannerCardData({ job, fields, mine, month = false }: {
     </span>}
     {fields.serial && (job.serial_number || job.machine_label) && <span className="planner-card-serial block truncate" title={job.serial_number || job.machine_label || ""}>⚙ {job.serial_number || job.machine_label}</span>}
     <span className="flex min-w-0 items-baseline gap-1">
-      {fields.staff && <span className="planner-card-staff min-w-0 flex-1 whitespace-normal break-words line-clamp-2" title={job.staff_name ?? ""}>👤 {shortPlannerStaff(job.staff_name) || "-"}</span>}
+      {fields.staff && <span className="planner-card-staff min-w-0 flex-1 truncate" title={job.staff_name ?? ""}>👤 {shortPlannerStaff(job.staff_name) || "-"}</span>}
       {fields.seller && job.sales_rep && <span className="planner-card-seller min-w-0 flex-1 truncate" title={job.sales_rep}>💼 {shortPlannerName(job.sales_rep)}</span>}
     </span>
     {fields.job && (job.service_type || job.job_detail) && <span className="planner-card-staff block truncate" title={job.job_detail || job.service_type || ""}>{job.service_type || job.job_detail}</span>}
