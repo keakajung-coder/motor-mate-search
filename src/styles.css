@@ -4,6 +4,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.planner-card-data { display: block; font-size: 12px; line-height: 1.2; }
+.planner-card-data--month { font-size: 10px; }
+.planner-card-serial { font-size: 0.975em; }
+.planner-card-staff { font-size: 0.95em; }
+.planner-card-seller { font-size: 0.925em; }
+.planner-card-vehicle { font-size: 0.9em; }
+
 /*
  * Design system definition.
  *

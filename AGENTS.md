@@ -26,6 +26,7 @@
 - Draw scrollbars for list boxes with the global OverlayScrollbarLayer (targets .force-scrollbar/.dropdown-scroll, hides native scrollbars there) because iOS/iPadOS ignores CSS scrollbar styling on touch screens.
 - Floating list contents (Popover, Select, DropdownMenu, CommandList) spread swipeUnlockHandlers/swipeTouchStyle from src/lib/touch-swipe.ts and cmdk-list is the only scroller (sizer auto height), because Radix's react-remove-scroll document listener otherwise preventDefaults iOS touchmove in portalled lists.
 - Maps buttons use external search URLs without API calls; zone review retains stored province/address comparison so alerts do not depend on a mapping provider.
+- Keep planner card presentation separate from stored job records.
 - Review same-day vehicle province conflicts through the shared vehicle-zone modules; the session gateway revalidates appointment/work-order writes and derives stored approvals server-side, while the shared dialog handles approval or vehicle replacement.
 - Bind customer address and Maps snapshots through the shared customer-location module and persist customer_location on work orders and appointments; navigation and vehicle-zone checks use the same snapshot so historical jobs remain independent of later customer edits.
 - Bound access RPC waits with the shared request-timeout helper and keep read retries at the data gateway only, so stalled requests cannot indefinitely block access or multiply query attempts.

@@ -1,3 +1,6 @@
+import { PlannerCardData } from "@/components/PlannerCardData";
+import { DEFAULT_PLANNER_CARD_FIELDS, PLANNER_CARD_FIELDS, type PlannerCardFields } from "@/lib/planner-card-display";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { toIsoDate } from "@/lib/iso-date";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { MachinePartPicker } from "@/components/MachinePartPicker";
@@ -433,6 +436,7 @@ function PlannerPage() {
   const [orders, setOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"month" | "week" | "day">("month");
+  const [cardFields, setCardFields] = useState<PlannerCardFields>({ ...DEFAULT_PLANNER_CARD_FIELDS });
   const [cursor, setCursor] = useState(new Date());
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [staffFilter, setStaffFilter] = useState("");
@@ -931,6 +935,17 @@ function PlannerPage() {
                 </Button>
               ))}
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm"><Eye className="size-4" />ข้อมูลในกล่องงาน</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {PLANNER_CARD_FIELDS.map(([key, label]) => <DropdownMenuCheckboxItem
+                  key={key} checked={cardFields[key]} onSelect={(e) => e.preventDefault()}
+                  onCheckedChange={(checked) => setCardFields(previous => ({ ...previous, [key]: checked === true }))}
+                >{label}</DropdownMenuCheckboxItem>)}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <DateInput
               aria-label="ค้นหาวันที่"
               className="w-full 2xl:w-40"
@@ -1217,6 +1232,7 @@ function PlannerPage() {
             <div ref={monthRef} className="rounded-xl bg-card p-2">
               <p className="mb-2 text-center text-sm font-bold">ตารางนัดหมายบริการ · {title}</p>
               <MonthGrid
+                cardFields={cardFields}
                 cursor={cursor}
                 leaveRows={visibleLeave}
                 onManageLeave={isAdmin ? setLeaveDate : undefined}
@@ -1236,6 +1252,7 @@ function PlannerPage() {
             <div className="space-y-5">
               <div ref={view === "week" ? weekRef : dayRef} className="rounded-xl bg-card p-2">
                 <TimeGrid
+                  cardFields={cardFields}
                   leaveRows={visibleLeave}
                   onManageLeave={isAdmin ? setLeaveDate : undefined}
                   days={
@@ -2960,6 +2977,7 @@ function VehicleLegend({ appts }: { appts: Appointment[] }) {
 }
 
 function MonthGrid({
+  cardFields,
   cursor,
   leaveRows,
   onManageLeave,
@@ -2970,6 +2988,7 @@ function MonthGrid({
   onPickDay,
   onAddHoliday,
 }: {
+  cardFields: PlannerCardFields;
   cursor: Date;
   leaveRows: StaffLeave[];
   onManageLeave?: (date: string) => void;
@@ -3164,11 +3183,7 @@ function MonthGrid({
                       >
                         <StatusRail status={a.status} />
                         <VehicleZoneBadge approval={a.cross_zone_approval} />
-                        <span className="block truncate">
-                          {visual.isMine && <span className="mr-0.5 text-primary font-bold">★</span>}
-                          {a.cust_id ? `[${a.cust_id}] ` : ""}
-                          {a.customer_name || "ไม่ระบุลูกค้า"}
-                        </span>
+                        <PlannerCardData job={a} fields={cardFields} mine={visual.isMine} month />
                         {(a.status === "unscheduled" || a.status === "draft") && (
                           <span className="inline-flex items-center gap-0.5 rounded bg-rose-950/20 px-1 py-0.5 text-[9px] font-bold text-rose-900 dark:text-rose-200">
                             🚨 แพลนสัญญา (รอยืนยัน)
@@ -3178,22 +3193,6 @@ function MonthGrid({
                           <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-200">
                             ⚡ งานซ้อน (Override)
                           </span>
-                        )}
-                        <span className="block truncate text-xs opacity-80">
-                          👤 {splitNames(a.staff_name).join(", ") || "-"}
-                        </span>
-                        <span className="block truncate text-xs opacity-80">
-                          🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
-                        </span>
-                        {(a.serial_number || a.machine_label) && (
-                          <span className="block truncate text-[10px] opacity-80">
-                            ⚙️{" "}
-                            {splitNames(a.serial_number).join(" / ") ||
-                              splitNames(a.machine_label).join(" / ")}
-                          </span>
-                        )}
-                        {a.sales_rep && (
-                          <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>
                         )}
                       </button>
                     );
@@ -3210,6 +3209,7 @@ function MonthGrid({
 
 /** ตารางเวลาแบบ Grid สำหรับมุมมองรายสัปดาห์ / รายวัน */
 function TimeGrid({
+  cardFields,
   days,
   leaveRows,
   onManageLeave,
@@ -3218,6 +3218,7 @@ function TimeGrid({
   onPick,
   onPickSlot,
 }: {
+  cardFields: PlannerCardFields;
   days: string[];
   leaveRows: StaffLeave[];
   onManageLeave?: (date: string) => void;
@@ -3307,17 +3308,7 @@ function TimeGrid({
                 >
                   <StatusRail status={a.status} />
                   <VehicleZoneBadge approval={a.cross_zone_approval} />
-                  <span className="flex items-baseline gap-1 text-[10px]">
-                    {visual.isMine && <span className="text-primary font-bold">★ งานฉัน</span>}
-                    <span className="font-semibold">{a.visit_time?.slice(0, 5) || "--:--"}</span>
-                    <span className="truncate text-xs opacity-70">
-                      {splitNames(a.staff_name).join(", ") || "-"}
-                    </span>
-                  </span>
-                  <span className="block truncate text-xs font-bold">
-                    {a.cust_id ? `[${a.cust_id}] ` : ""}
-                    {a.customer_name || "ไม่ระบุลูกค้า"}
-                  </span>
+                  <PlannerCardData job={a} fields={cardFields} mine={visual.isMine} />
                   {(a.status === "unscheduled" || a.status === "draft") && (
                     <span className="inline-flex items-center gap-0.5 rounded bg-rose-950/20 px-1 py-0.5 text-[9px] font-bold text-rose-900 dark:text-rose-200">
                       🚨 แพลนสัญญา (รอยืนยัน)
@@ -3327,22 +3318,6 @@ function TimeGrid({
                     <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-200">
                       ⚡ งานซ้อน (Override)
                     </span>
-                  )}
-                  <span className="block truncate text-[10px] opacity-80">
-                    {splitNames(a.service_type).join(" / ") || a.job_detail || "-"}
-                  </span>
-                  <span className="block truncate text-xs opacity-80">
-                    🚚 {splitNames(a.vehicle_plate).join(" / ") || "ยังไม่ระบุรถ"}
-                  </span>
-                  {(a.serial_number || a.machine_label) && (
-                    <span className="block truncate text-[10px] opacity-80">
-                      ⚙️{" "}
-                      {splitNames(a.serial_number).join(" / ") ||
-                        splitNames(a.machine_label).join(" / ")}
-                    </span>
-                  )}
-                  {a.sales_rep && (
-                    <span className="block truncate text-xs opacity-80">💼 {a.sales_rep}</span>
                   )}
                 </button>
               );
