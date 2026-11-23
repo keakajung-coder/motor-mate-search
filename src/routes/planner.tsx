@@ -1,3 +1,5 @@
+import { PlannerZoomArea, PlannerZoomControls, PLANNER_ZOOM_KEY } from "@/components/PlannerZoom";
+import { PLANNER_ZOOM_DEFAULT, clampPlannerZoom } from "@/lib/planner-zoom";
 import { PlannerCardData } from "@/components/PlannerCardData";
 import { DEFAULT_PLANNER_CARD_FIELDS, PLANNER_CARD_FIELDS, type PlannerCardFields } from "@/lib/planner-card-display";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
@@ -487,6 +489,22 @@ function PlannerPage() {
   const monthRef = useRef<HTMLDivElement>(null);
   const weekRef = useRef<HTMLDivElement>(null);
   const dayRef = useRef<HTMLDivElement>(null);
+  const [gridZoom, setGridZoomState] = useState(PLANNER_ZOOM_DEFAULT);
+  useEffect(() => {
+    const saved = Number(window.localStorage.getItem(PLANNER_ZOOM_KEY));
+    if (saved) setGridZoomState(clampPlannerZoom(saved));
+  }, []);
+  const setGridZoom = (z: number) => {
+    const next = clampPlannerZoom(z);
+    setGridZoomState(next);
+    try { window.localStorage.setItem(PLANNER_ZOOM_KEY, String(next)); } catch { /* ignore */ }
+  };
+  const exportAtFullSize = async (kind: "image" | "pdf") => {
+    const prev = gridZoom;
+    setGridZoomState(1);
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    try { await exportView(kind, activeRef, viewLabel, fileLabel); } finally { setGridZoomState(prev); }
+  };
   const [exporting, setExporting] = useState<"" | "image" | "pdf" | "excel">("");
 
   const search = Route.useSearch();
@@ -1152,7 +1170,7 @@ function PlannerPage() {
                   size="sm"
                   variant="secondary"
                   disabled={exporting !== ""}
-                  onClick={() => exportView("image", activeRef, viewLabel, fileLabel)}
+                  onClick={() => void exportAtFullSize("image")}
                 >
                   {exporting === "image" ? (
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -1165,7 +1183,7 @@ function PlannerPage() {
                   size="sm"
                   variant="outline"
                   disabled={exporting !== ""}
-                  onClick={() => exportView("pdf", activeRef, viewLabel, fileLabel)}
+                  onClick={() => void exportAtFullSize("pdf")}
                 >
                   {exporting === "pdf" ? (
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -1224,6 +1242,10 @@ function PlannerPage() {
               </Button>
             )}
           </div>
+          <div className="flex justify-end">
+            <PlannerZoomControls zoom={gridZoom} onChange={setGridZoom} />
+          </div>
+          <PlannerZoomArea zoom={gridZoom} onChange={setGridZoom}>
           {loading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -1295,6 +1317,7 @@ function PlannerPage() {
               )}
             </div>
           )}
+          </PlannerZoomArea>
         </CardContent>
       </Card>
 
