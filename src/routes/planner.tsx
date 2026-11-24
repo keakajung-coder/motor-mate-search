@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { JobFormView, type JobFormRecord } from "@/components/JobFormView";
 import {
   Dialog,
   DialogContent,
@@ -2392,6 +2393,16 @@ function ApprovedOrders({
     await loadApproved();
   };
 
+  const hideSelected = async () => {
+    const ids = selected.map((o) => o.id);
+    if (ids.length === 0) return;
+    const { error } = await supabase.from("work_orders").update({ approved_hidden: true } as never).in("id", ids);
+    if (error) return toast.error("ซ่อนไม่สำเร็จ: " + error.message);
+    setPicked({});
+    toast.success(`เคลียร์ ${ids.length} ใบออกจากรายการแล้ว (งานในแพลนเนอร์ยังอยู่)`);
+    await loadApproved();
+  };
+
   const removeOrder = async (o: WorkOrder) => {
     const { error } = await deleteAsAdmin("work_orders", { id: o.id });
     if (error) return toast.error("ลบไม่สำเร็จ: " + error.message);
@@ -2589,6 +2600,9 @@ function ApprovedOrders({
           เลือกทั้งหมด ({selected.length}/{visible.length})
         </label>
         <div className="ml-auto flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" disabled={!!busy || selected.length === 0} onClick={hideSelected}>
+            <EyeOff className="mr-1 h-4 w-4" /> เคลียร์ที่เลือกออกจากรายการ
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -4413,6 +4427,7 @@ function AppointmentDialog({
   onDuplicate?: (a: Appointment) => void;
 }) {
   const [form, setForm] = useState<Appointment>(value);
+  const [showJobForm, setShowJobForm] = useState(false);
   const [editMode, setEditMode] = useState(!value.id);
   const [saving, setSaving] = useState(false);
   const [liveConflicts, setLiveConflicts] = useState<string[]>([]);
@@ -4711,10 +4726,19 @@ function AppointmentDialog({
   );
 
   return (
+    <>
+    {showJobForm && <JobFormView record={form as unknown as JobFormRecord} onClose={() => setShowJobForm(false)} />}
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="w-[calc(100vw-1rem)] max-w-none sm:w-[calc(100vw-2rem)]">
         <DialogHeader>
-          <DialogTitle>{form.id ? "รายละเอียดนัดหมาย" : "เพิ่มนัดหมายลงปฏิทิน"}</DialogTitle>
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            {form.id ? "รายละเอียดนัดหมาย" : "เพิ่มนัดหมายลงปฏิทิน"}
+            {form.id && (
+              <Button type="button" size="sm" variant="outline" onClick={() => setShowJobForm(true)}>
+                <FileDown className="mr-1 h-4 w-4" /> ดูแบบฟอร์มใบงาน
+              </Button>
+            )}
+          </DialogTitle>
           <DialogDescription>
             {canEdit
               ? "เลือกลูกค้า/เครื่องจากฐานข้อมูล ระบบจะเติมที่อยู่และเบอร์โทรให้อัตโนมัติ"
@@ -5188,6 +5212,7 @@ function AppointmentDialog({
         />
       </DialogContent>
     </Dialog>
+    </>
   );
 }
 
