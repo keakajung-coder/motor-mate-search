@@ -16,6 +16,7 @@ import { Route as RepairTrackingRouteImport } from './routes/repair-tracking'
 import { Route as TrashRouteImport } from './routes/trash'
 import { Route as WeeklySummaryRouteImport } from './routes/weekly-summary'
 import { Route as ApiDataSplatRouteImport } from './routes/api/data/$'
+import { Route as ApiPublicAgendaLineRouteImport } from './routes/api/public/agenda-line'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +53,11 @@ const ApiDataSplatRoute = ApiDataSplatRouteImport.update({
   path: '/api/data/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgendaLineRoute = ApiPublicAgendaLineRouteImport.update({
+  id: '/api/public/agenda-line',
+  path: '/api/public/agenda-line',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/trash': typeof TrashRoute
   '/weekly-summary': typeof WeeklySummaryRoute
   '/api/data/$': typeof ApiDataSplatRoute
+  '/api/public/agenda-line': typeof ApiPublicAgendaLineRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/trash': typeof TrashRoute
   '/weekly-summary': typeof WeeklySummaryRoute
   '/api/data/$': typeof ApiDataSplatRoute
+  '/api/public/agenda-line': typeof ApiPublicAgendaLineRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/trash': typeof TrashRoute
   '/weekly-summary': typeof WeeklySummaryRoute
   '/api/data/$': typeof ApiDataSplatRoute
+  '/api/public/agenda-line': typeof ApiPublicAgendaLineRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/trash'
     | '/weekly-summary'
     | '/api/data/$'
+    | '/api/public/agenda-line'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/trash'
     | '/weekly-summary'
     | '/api/data/$'
+    | '/api/public/agenda-line'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/trash'
     | '/weekly-summary'
     | '/api/data/$'
+    | '/api/public/agenda-line'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   TrashRoute: typeof TrashRoute
   WeeklySummaryRoute: typeof WeeklySummaryRoute
   ApiDataSplatRoute: typeof ApiDataSplatRoute
+  ApiPublicAgendaLineRoute: typeof ApiPublicAgendaLineRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDataSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agenda-line': {
+      id: '/api/public/agenda-line'
+      path: '/api/public/agenda-line'
+      fullPath: '/api/public/agenda-line'
+      preLoaderRoute: typeof ApiPublicAgendaLineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   TrashRoute: TrashRoute,
   WeeklySummaryRoute: WeeklySummaryRoute,
   ApiDataSplatRoute: ApiDataSplatRoute,
+  ApiPublicAgendaLineRoute: ApiPublicAgendaLineRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

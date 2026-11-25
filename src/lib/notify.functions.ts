@@ -1,58 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 
-const SETTING_KEYS = {
-  token: "line_channel_token",
-  targets: "line_target_ids",
-  email: "alert_email",
-} as const;
-
-async function readSettings() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("security_settings")
-    .select("key, value")
-    .in("key", [SETTING_KEYS.token, SETTING_KEYS.targets, SETTING_KEYS.email]);
-  const map = new Map((data ?? []).map((r) => [r.key, r.value ?? ""]));
-  return {
-    token: (map.get(SETTING_KEYS.token) ?? "").trim(),
-    targets: (map.get(SETTING_KEYS.targets) ?? "")
-      .split(/[\s,]+/)
-      .map((s) => s.trim())
-      .filter(Boolean),
-    email: (map.get(SETTING_KEYS.email) ?? "").trim(),
-  };
-}
+import { SETTING_KEYS, readSettings, pushLine } from "./notify.server";
 
 async function verifyAdmin(_code: string) {
   const { requireAccess } = await import("./access-session.server");
   await requireAccess("admin");
   return true;
-}
-
-async function pushLine(token: string, targets: string[], text: string) {
-  const results: { to: string; ok: boolean; error?: string }[] = [];
-  for (const to of targets) {
-    try {
-      const res = await fetch("https://api.line.me/v2/bot/message/push", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ to, messages: [{ type: "text", text: text.slice(0, 4900) }] }),
-      });
-      if (!res.ok) {
-        const body = await res.text();
-        console.error(`LINE push failed [${res.status}]: ${body}`);
-        results.push({ to, ok: false, error: `${res.status} ${body}` });
-      } else {
-        results.push({ to, ok: true });
-      }
-    } catch (e) {
-      results.push({ to, ok: false, error: e instanceof Error ? e.message : "network error" });
-    }
-  }
-  return results;
 }
 
 /** ส่งแจ้งเตือนเข้า Line (Messaging API) ให้แอดมินทุกคนที่ตั้งค่าไว้ */

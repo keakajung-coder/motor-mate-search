@@ -90,11 +90,11 @@ export function DailyAgendaDialog({ jobs, isAdmin, onRefresh }: { jobs: AgendaJo
     setSending(true);
     try {
       const r = await sendAdminAlert({ data: { title: `สรุปงาน ${thaiDateLabel(date)}`, body: lineText.split("\n").slice(1).join("\n") } });
-      if (r.line === "sent") toast.success("ส่งสรุปเข้า LINE แอดมินแล้ว");
-      else if (r.line === "skipped") toast.warning("ยังไม่ได้ตั้งค่า LINE แอดมิน (ตั้งได้ในหน้าแอดมิน)");
-      else toast.error("ส่ง LINE ไม่สำเร็จ: " + (("errors" in r && r.errors?.[0]) || "ลองใหม่อีกครั้ง"));
+      if (r.line === "sent") toast.success("ส่งสรุปเข้า LINE (fox) สำเร็จแล้ว");
+      else if (r.line === "skipped") toast.warning("ยังไม่ได้ตั้งค่า LINE (fox) (ตั้งได้ในหน้าแอดมิน)");
+      else toast.error("ส่ง LINE (fox) ไม่สำเร็จ: " + (("errors" in r && r.errors?.[0]) || "ลองใหม่อีกครั้ง"));
     } catch (e) {
-      toast.error("ส่ง LINE ไม่สำเร็จ: " + (e instanceof Error ? e.message : String(e)));
+      toast.error("ส่ง LINE (fox) ไม่สำเร็จ: " + (e instanceof Error ? e.message : String(e)));
     } finally { setSending(false); }
   };
 
@@ -157,7 +157,7 @@ export function DailyAgendaDialog({ jobs, isAdmin, onRefresh }: { jobs: AgendaJo
           <div className="flex flex-wrap gap-2 border-t pt-3">
             <Button variant="outline" className="h-11 gap-1.5" onClick={copy}><ClipboardCopy className="h-4 w-4" /> คัดลอกสรุปส่ง LINE</Button>
             <Button variant="outline" className="h-11 gap-1.5" onClick={share}><User className="h-4 w-4" /> แชร์ต่อ</Button>
-            <Button className="h-11 gap-1.5" onClick={sendLine} disabled={sending}><Send className="h-4 w-4" /> {sending ? "กำลังส่ง…" : "ส่งเข้า LINE แอดมิน"}</Button>
+            <Button className="h-11 gap-1.5" onClick={sendLine} disabled={sending}><Send className="h-4 w-4" /> {sending ? "กำลังส่ง…" : "ส่งเข้า LINE (fox)"}</Button>
           </div>
         </DialogContent>
       </Dialog>
