@@ -31,3 +31,13 @@ test("Bangkok date rolls over at 17:00 UTC", () => {
   assert.equal(bangkokToday(new Date("2026-11-24T17:30:00Z")), "2026-11-25");
   assert.equal(shiftIsoDate("2026-11-30", 1), "2026-12-01");
 });
+
+test("15:30 shows tomorrow, 08:00 shows today", async () => {
+  const { dueAgendaSlot, refreshAgendaSlot } = await import("./daily-agenda");
+  assert.equal(dueAgendaSlot(7 * 60 + 59), null);
+  assert.equal(dueAgendaSlot(8 * 60)?.dayOffset, 0);
+  assert.equal(dueAgendaSlot(15 * 60 + 29)?.dayOffset, 0);
+  assert.equal(dueAgendaSlot(15 * 60 + 30)?.dayOffset, 1);
+  assert.equal(refreshAgendaSlot(15 * 60 + 25)?.key, "afternoon");
+  assert.equal(refreshAgendaSlot(15 * 60 + 24), null);
+});

@@ -18,7 +18,26 @@ export type AgendaJob = ZoneJob & {
 export type AgendaViewer = { isAdmin: boolean; role: string | null; userName: string };
 
 export const AGENDA_ALERT_HOUR = 8; // 08:00 Asia/Bangkok
-export const AGENDA_REFRESH_MINUTE_BEFORE = 5; // silent refresh at 07:55
+export const AGENDA_REFRESH_MINUTE_BEFORE = 5; // silent refresh 5 min before each slot
+
+/** Reminder slots (Bangkok minutes): 08:00 shows today, 15:30 shows tomorrow. */
+export const AGENDA_SLOTS = [
+  { key: "morning", at: 8 * 60, dayOffset: 0, title: "สรุปงานวันนี้", body: "เปิดดูงานวันนี้ไปไหนในแพลนเนอร์" },
+  { key: "afternoon", at: 15 * 60 + 30, dayOffset: 1, title: "สรุปงานพรุ่งนี้", body: "เปิดดูงานพรุ่งนี้ไปไหนในแพลนเนอร์" },
+] as const;
+export type AgendaSlot = (typeof AGENDA_SLOTS)[number];
+
+/** Latest slot whose time has passed today (or null before 08:00). */
+export function dueAgendaSlot(mins: number): AgendaSlot | null {
+  let hit: AgendaSlot | null = null;
+  for (const s of AGENDA_SLOTS) if (mins >= s.at) hit = s;
+  return hit;
+}
+
+/** Slot whose silent-refresh window (5 min before) is active. */
+export function refreshAgendaSlot(mins: number): AgendaSlot | null {
+  return AGENDA_SLOTS.find((s) => mins >= s.at - AGENDA_REFRESH_MINUTE_BEFORE && mins < s.at + 60) ?? null;
+}
 
 const names = (v?: string | null) => (v ?? "").split(/[,/]+/).map((s) => s.trim()).filter(Boolean);
 const norm = (s: string) => s.trim().toLowerCase();

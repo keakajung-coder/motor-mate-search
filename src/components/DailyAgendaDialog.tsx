@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useUserRole } from "@/lib/user-role";
 import { sendAdminAlert } from "@/lib/notify.functions";
 import {
-  AGENDA_ALERT_HOUR, AGENDA_REFRESH_MINUTE_BEFORE, agendaForDate, agendaTechnicians, agendaZoneWarning,
+  agendaForDate, dueAgendaSlot, refreshAgendaSlot, agendaTechnicians, agendaZoneWarning,
   bangkokMinutes, bangkokToday, formatAgendaLine, shiftIsoDate, thaiDateLabel, type AgendaJob,
 } from "@/lib/daily-agenda";
 
@@ -44,33 +44,37 @@ export function DailyAgendaDialog({ jobs, isAdmin, onRefresh }: { jobs: AgendaJo
   const openToday = useCallback(() => {
     setDate(bangkokToday());
     setOpen(true);
-    try { localStorage.setItem(SEEN_KEY, bangkokToday()); } catch { /* ignore */ }
   }, []);
 
-  // Auto-open once per day (after 08:00 Bangkok) and silent refresh at 07:55, never touching the session.
+  // Auto-open at 08:00 (today) and 15:30 (tomorrow) Bangkok, silent refresh 5 min before; never touches the session.
   useEffect(() => {
-    let refreshedFor = "";
+    const refreshed = new Set<string>();
     const tick = () => {
       const today = bangkokToday();
       const mins = bangkokMinutes();
-      const alertAt = AGENDA_ALERT_HOUR * 60;
-      if (mins >= alertAt - AGENDA_REFRESH_MINUTE_BEFORE && refreshedFor !== today && !userIsBusy()) {
-        refreshedFor = today;
+      const r = refreshAgendaSlot(mins);
+      if (r && !refreshed.has(today + r.key) && !userIsBusy()) {
+        refreshed.add(today + r.key);
         void silentRefresh();
       }
+      const slot = dueAgendaSlot(mins);
+      if (!slot) return;
+      const seenKey = `${today}:${slot.key}`;
       let seen = "";
       try { seen = localStorage.getItem(SEEN_KEY) ?? ""; } catch { /* ignore */ }
-      if (mins >= alertAt && seen !== today && !userIsBusy()) {
-        openToday();
+      if (seen !== seenKey && !userIsBusy()) {
+        try { localStorage.setItem(SEEN_KEY, seenKey); } catch { /* ignore */ }
+        setDate(shiftIsoDate(today, slot.dayOffset));
+        setOpen(true);
         if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          try { new Notification("สรุปงานวันนี้", { body: "เปิดดูงานวันนี้ไปไหนในแพลนเนอร์" }); } catch { /* ignore */ }
+          try { new Notification(slot.title, { body: slot.body }); } catch { /* ignore */ }
         }
       }
     };
     const first = window.setTimeout(tick, 1500);
     const id = window.setInterval(tick, 60_000);
     return () => { window.clearTimeout(first); window.clearInterval(id); };
-  }, [openToday, silentRefresh]);
+  }, [silentRefresh]);
 
   useEffect(() => { if (open) void silentRefresh(); }, [open, silentRefresh]);
 
@@ -103,13 +107,14 @@ export function DailyAgendaDialog({ jobs, isAdmin, onRefresh }: { jobs: AgendaJo
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-primary" /> {isToday ? "วันนี้ไปไหน" : "งานวันที่เลือก"} · {thaiDateLabel(date)}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-primary" /> {isToday ? "วันนี้ไปไหน" : date === shiftIsoDate(bangkokToday(), 1) ? "พรุ่งนี้ไปไหน" : "งานวันที่เลือก"} · {thaiDateLabel(date)}</DialogTitle>
             <DialogDescription>{isAdmin ? "งานทั้งหมดทุกทีมทุกช่างของวันที่เลือก" : `เฉพาะงานที่มีชื่อ ${userName || "คุณ"}`} · {list.length} งาน</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setDate((d) => shiftIsoDate(d, -1))} aria-label="วันก่อนหน้า"><ChevronLeft className="h-4 w-4" /></Button>
             <Button variant={isToday ? "default" : "outline"} className="h-10" onClick={() => setDate(bangkokToday())}>วันนี้</Button>
+            <Button variant={date === shiftIsoDate(bangkokToday(), 1) ? "default" : "outline"} className="h-10" onClick={() => setDate(shiftIsoDate(bangkokToday(), 1))}>พรุ่งนี้</Button>
             <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setDate((d) => shiftIsoDate(d, 1))} aria-label="วันถัดไป"><ChevronRight className="h-4 w-4" /></Button>
             <div className="w-40"><DateInput value={date} onChange={(v) => v && setDate(v)} /></div>
             {isAdmin && (
@@ -127,7 +132,7 @@ export function DailyAgendaDialog({ jobs, isAdmin, onRefresh }: { jobs: AgendaJo
           </div>
 
           <div className="space-y-2">
-            {list.length === 0 && <p className="rounded-md border border-dashed p-6 text-center text-muted-foreground">ไม่มีงานนัดหมายในวันนี้</p>}
+            {list.length === 0 && <p className="rounded-md border border-dashed p-6 text-center text-muted-foreground">ไม่มีงานนัดหมายในวันที่เลือก</p>}
             {list.map((j) => {
               const zone = agendaZoneWarning(j, jobs);
               return (
