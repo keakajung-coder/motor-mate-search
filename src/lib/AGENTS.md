@@ -3,3 +3,5 @@
 - Planner card display helpers shorten names only for rendering; field toggles never alter job records or full-detail editors.
 - Store machine-specific replacement codes and notes on machine_parts; resolve them through the shared catalog linker and job picker without mutating inventory or creating stock for unlisted codes.
 - Synchronize contract visits through the service-only transactional RPC with per-equipment/date locks; automatic jobs bypass approval while customer confirmation stays separate, preventing concurrent duplicate jobs and preserving closed history.- Appointment edits propagate to linked work orders and open contract visits via a database trigger, so every job type stays consistent regardless of which screen saved it; form dates are normalized to ISO through the shared iso-date helper.
+
+- Daily agenda uses the pure daily-agenda module on planner-loaded appointments; refresh reuses planner load without touching sessions; the 08:00 reminder is in-browser (no server cron).
