@@ -1,3 +1,4 @@
+import { DailyAgendaDialog } from "@/components/DailyAgendaDialog";
 import { PlannerZoomArea, PlannerZoomControls, PLANNER_ZOOM_KEY } from "@/components/PlannerZoom";
 import { PLANNER_ZOOM_DEFAULT, clampPlannerZoom } from "@/lib/planner-zoom";
 import { PlannerCardData } from "@/components/PlannerCardData";
@@ -841,6 +842,7 @@ function PlannerPage() {
             <RotateCw className="h-4 w-4 text-primary" />
             รีเฟรชงานล่าสุด
           </Button>
+          <DailyAgendaDialog jobs={appts as never} isAdmin={isAdmin} onRefresh={load} />
           <WorkOrderDialog onCreated={load} />
           {isAdmin && (
             <Button
