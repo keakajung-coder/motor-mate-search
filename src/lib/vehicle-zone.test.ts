@@ -33,3 +33,7 @@ test("approval signature changes when date vehicle or province changes", () => {
 test("unknown province never invents a cross-zone conflict", () => {
   assert.deepEqual(findVehicleZoneConflicts({ ...job, customer_address: "" }, [old]), []);
 });
+test("job-site snapshot province wins over address text and other province fields", () => {
+  const site = { ...job, customer_address: "สำนักงานใหญ่ จ.ชลบุรี", province: "กรุงเทพฯ", customer_location: { province: "ระยอง" } };
+  assert.deepEqual(findVehicleZoneConflicts(site, [old]), [{ plate: "กข 1234", province: "ระยอง", otherProvinces: ["ชลบุรี"] }]);
+});

@@ -22,3 +22,11 @@ test("one vehicle may serve several jobs with the same crew", () => {
 test("several technicians may share one vehicle", () => {
   assert.equal(findScheduleConflicts({ visit_date: d, visit_time: "10:00", staff_name: "A, B, C", vehicle_plate: "1กก" }, [], []).length, 0);
 });
+test("current staff time and vehicle replace the previous overlap result", () => {
+  const other = [{ id: "other", visit_date: d, visit_time: "09:00", staff_name: "A", vehicle_plate: "1กก" }];
+  const current = { id: "current", visit_date: d, visit_time: "10:00", staff_name: "A", vehicle_plate: "2ขข" };
+  assert.equal(findScheduleConflicts(current, other, []).length, 1);
+  assert.equal(findScheduleConflicts({ ...current, staff_name: "B" }, other, []).length, 0);
+  assert.equal(findScheduleConflicts({ ...current, visit_time: "14:00" }, other, []).length, 0);
+  assert.equal(findScheduleConflicts({ ...current, vehicle_plate: "1กก" }, other, []).length, 0);
+});

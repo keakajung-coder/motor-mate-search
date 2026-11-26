@@ -133,6 +133,7 @@ import { checkScheduleConflicts } from "@/lib/schedule-check";
 import { ScheduleConflictDialog } from "@/components/ScheduleConflictDialog";
 import { chooseVehicleForJob } from "@/lib/vehicle-zone-client";
 import { VehicleZoneBadge } from "@/components/VehicleZoneBadge";
+import { PlannerOverlapBadge } from "@/components/PlannerOverlapBadge";
 import { logAudit } from "@/lib/audit";
 import { ChecklistForm } from "@/components/ChecklistForm";
 import { ChecklistView } from "@/components/ChecklistView";
@@ -1262,6 +1263,7 @@ function PlannerPage() {
                 leaveRows={visibleLeave}
                 onManageLeave={isAdmin ? setLeaveDate : undefined}
                 appts={visible}
+                allAppts={appts}
                 holidaysMap={holidaysMap}
                 onPick={pickAppt}
                 onPickDate={isAdmin ? (d) => setEditing(newAppointment(d)) : undefined}
@@ -1286,6 +1288,7 @@ function PlannerPage() {
                       : [iso(cursor)]
                   }
                   appts={visible}
+                  allAppts={appts}
                   holidaysMap={holidaysMap}
                   onPick={pickAppt}
                   onPickSlot={
@@ -1299,6 +1302,7 @@ function PlannerPage() {
                 <DayList
                   days={[iso(cursor)]}
                   appts={visible}
+                  allAppts={appts}
                   holidaysMap={holidaysMap}
                   isAdmin={isAdmin}
                   sortBy={sortBy}
@@ -1328,6 +1332,7 @@ function PlannerPage() {
         <DayDetailDialog
           date={dayDetail}
           appts={visible}
+          allAppts={appts}
           holiday={holidaysMap[dayDetail]}
           sortBy={sortBy}
           onClose={() => setDayDetail(null)}
@@ -3021,6 +3026,7 @@ function MonthGrid({
   leaveRows,
   onManageLeave,
   appts,
+  allAppts,
   holidaysMap,
   onPick,
   onPickDate,
@@ -3032,6 +3038,7 @@ function MonthGrid({
   leaveRows: StaffLeave[];
   onManageLeave?: (date: string) => void;
   appts: Appointment[];
+  allAppts: Appointment[];
   holidaysMap?: Record<string, Holiday>;
   onPick: (a: Appointment) => void;
   onPickDate?: (date: string) => void;
@@ -3221,18 +3228,14 @@ function MonthGrid({
                         title={apptSummary(a)}
                       >
                         <StatusRail status={a.status} />
-                        <VehicleZoneBadge approval={a.cross_zone_approval} />
+                        <VehicleZoneBadge approval={a.cross_zone_approval} job={a} jobs={allAppts} />
                         <PlannerCardData job={a} fields={cardFields} mine={visual.isMine} month />
                         {(a.status === "unscheduled" || a.status === "draft") && (
                           <span className="inline-flex items-center gap-0.5 rounded bg-rose-950/20 px-1 py-0.5 text-[9px] font-bold text-rose-900 dark:text-rose-200">
                             🚨 แพลนสัญญา (รอยืนยัน)
                           </span>
                         )}
-                        {a.job_detail?.includes("[Admin Override") && (
-                          <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-200">
-                            ⚡ งานซ้อน (Override)
-                          </span>
-                        )}
+                        <PlannerOverlapBadge job={a} jobs={allAppts} />
                       </button>
                     );
                   })}
@@ -3253,6 +3256,7 @@ function TimeGrid({
   leaveRows,
   onManageLeave,
   appts,
+  allAppts,
   holidaysMap,
   onPick,
   onPickSlot,
@@ -3262,6 +3266,7 @@ function TimeGrid({
   leaveRows: StaffLeave[];
   onManageLeave?: (date: string) => void;
   appts: Appointment[];
+  allAppts: Appointment[];
   holidaysMap?: Record<string, Holiday>;
   onPick: (a: Appointment) => void;
   onPickSlot?: (date: string, time: string) => void;
@@ -3346,18 +3351,14 @@ function TimeGrid({
                   title={apptSummary(a)}
                 >
                   <StatusRail status={a.status} />
-                  <VehicleZoneBadge approval={a.cross_zone_approval} />
+                  <VehicleZoneBadge approval={a.cross_zone_approval} job={a} jobs={allAppts} />
                   <PlannerCardData job={a} fields={cardFields} mine={visual.isMine} />
                   {(a.status === "unscheduled" || a.status === "draft") && (
                     <span className="inline-flex items-center gap-0.5 rounded bg-rose-950/20 px-1 py-0.5 text-[9px] font-bold text-rose-900 dark:text-rose-200">
                       🚨 แพลนสัญญา (รอยืนยัน)
                     </span>
                   )}
-                  {a.job_detail?.includes("[Admin Override") && (
-                    <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-200">
-                      ⚡ งานซ้อน (Override)
-                    </span>
-                  )}
+                  <PlannerOverlapBadge job={a} jobs={allAppts} />
                 </button>
               );
             })}
@@ -3448,6 +3449,7 @@ function TimeGrid({
 function DayDetailDialog({
   date,
   appts,
+  allAppts,
   holiday,
   sortBy = "date-asc",
   onClose,
@@ -3460,6 +3462,7 @@ function DayDetailDialog({
 }: {
   date: string;
   appts: Appointment[];
+  allAppts: Appointment[];
   holiday?: Holiday;
   sortBy?: string;
   onClose: () => void;
@@ -3508,7 +3511,8 @@ function DayDetailDialog({
         >
           <span className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-1.5">
-              <VehicleZoneBadge approval={a.cross_zone_approval} />
+              <VehicleZoneBadge approval={a.cross_zone_approval} job={a} jobs={allAppts} />
+              <PlannerOverlapBadge job={a} jobs={allAppts} />
               {visual.isMine && (
                 <span className="inline-flex items-center gap-1 rounded bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 text-xs font-bold">
                   ⭐ งานของฉัน
@@ -3939,7 +3943,7 @@ function DayDetailDialog({
                   className="absolute left-0 top-0 origin-top-left"
                   style={{ transform: `scale(${zoom})` }}
                 >
-                  <DailyQueueDocument ref={documentRef} date={date} list={list} />
+                  <DailyQueueDocument ref={documentRef} date={date} list={list} allJobs={allAppts} />
                 </div>
               </div>
             </div>
@@ -3959,10 +3963,12 @@ const DailyQueueDocument = ({
   ref,
   date,
   list,
+  allJobs,
 }: {
   ref: React.Ref<HTMLDivElement>;
   date: string;
   list: Appointment[];
+  allJobs: Appointment[];
 }) => (
   <div ref={ref} className="daily-queue-document">
     <header className="daily-queue-document__header">
@@ -4006,7 +4012,7 @@ const DailyQueueDocument = ({
               </div>
               <span className="daily-queue-document__status">
                 {STATUS_LABEL[a.status] ?? a.status}
-                <VehicleZoneBadge approval={a.cross_zone_approval} />
+                <VehicleZoneBadge approval={a.cross_zone_approval} job={a} jobs={allJobs} dismissible={false} />
               </span>
             </div>
             <dl className="daily-queue-document__grid">
@@ -4075,6 +4081,7 @@ const DailyQueueDocument = ({
 function DayList({
   days,
   appts,
+  allAppts,
   holidaysMap,
   isAdmin,
   sortBy = "date-asc",
@@ -4088,6 +4095,7 @@ function DayList({
 }: {
   days: string[];
   appts: Appointment[];
+  allAppts: Appointment[];
   holidaysMap?: Record<string, Holiday>;
   isAdmin: boolean;
   sortBy?: string;
@@ -4187,7 +4195,8 @@ function DayList({
           </div>
           <div className="flex flex-col items-end gap-1">
             <JobStatusBadge status={a.status} />
-            <VehicleZoneBadge approval={a.cross_zone_approval} />
+            <VehicleZoneBadge approval={a.cross_zone_approval} job={a} jobs={allAppts} />
+            <PlannerOverlapBadge job={a} jobs={allAppts} />
             {visual.isMine && (
               <span className="inline-flex items-center gap-1 rounded bg-primary/15 border border-primary/30 px-2 py-0.5 text-xs font-bold text-primary">
                 ⭐ งานของฉัน
