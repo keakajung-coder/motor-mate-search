@@ -99,7 +99,8 @@ export async function passcodeVersion(role: AccessRole) {
     if (cached) return { code: cached.code, version: cached.version };
   }
 
-  const defaultCode = (role === "admin" ? process.env["ADMIN_PASSCODE"] || "1234" : process.env["VIEWER_PASSCODE"] || "5555").trim();
+  const defaultCode = (role === "admin" ? process.env["ADMIN_PASSCODE"] || "" : process.env["VIEWER_PASSCODE"] || "5555").trim();
+  // No hardcoded admin fallback: without a configured code, admin unlock is impossible.
   const fallback = {
     code: defaultCode,
     version: createHash("sha256").update(`${defaultCode}:dev-default`).digest("hex"),
@@ -118,9 +119,9 @@ export async function requireAccess(required: AccessRole = "viewer") {
 
   if (!isCurrentMatch) {
     // Check fallback dev-default version before clearing session
-    const defaultCode = (role === "admin" ? process.env["ADMIN_PASSCODE"] || "1234" : process.env["VIEWER_PASSCODE"] || "5555").trim();
+    const defaultCode = (role === "admin" ? process.env["ADMIN_PASSCODE"] || "" : process.env["VIEWER_PASSCODE"] || "5555").trim();
     const fallbackVersion = createHash("sha256").update(`${defaultCode}:dev-default`).digest("hex");
-    const isFallbackMatch = session.data.version && matchesSecret(session.data.version, fallbackVersion);
+    const isFallbackMatch = !!defaultCode && session.data.version && matchesSecret(session.data.version, fallbackVersion);
 
     if (!isFallbackMatch) {
       await session.clear();

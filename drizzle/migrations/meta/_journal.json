@@ -120,6 +120,13 @@
       "when": 1794886827667,
       "tag": "0016_sync_appointment_edits",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795697918859,
+      "tag": "0017_contract_sync_keep_pending",
+      "breakpoints": true
     }
   ]
 }

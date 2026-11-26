@@ -117,8 +117,11 @@ export const backupDownloadUrl = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; name: string }) => d)
   .handler(async ({ data }) => {
     if (!(await verifyAdmin(data.code))) return { ok: false as const, error: "ต้องปลดล็อกแอดมินก่อน" };
+    if (!/^[\w.\-]+\.xlsx$/.test(data.name)) return { ok: false as const, error: "ชื่อไฟล์ไม่ถูกต้อง" };
+    // Stream through the admin-verified call; no bearer link that outlives the session.
     const db = await admin();
-    const { data: s, error } = await db.storage.from(BUCKET).createSignedUrl(data.name, 60, { download: true });
-    if (error || !s) return { ok: false as const, error: error?.message ?? "ไม่พบไฟล์" };
-    return { ok: true as const, url: s.signedUrl };
+    const { data: blob, error } = await db.storage.from(BUCKET).download(data.name);
+    if (error || !blob) return { ok: false as const, error: "ไม่พบไฟล์" };
+    const base64 = Buffer.from(await blob.arrayBuffer()).toString("base64");
+    return { ok: true as const, name: data.name, base64 };
   });

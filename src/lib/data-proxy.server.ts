@@ -34,6 +34,17 @@ export async function proxyBusinessRequest(request: Request) {
       const table = path.slice("/rest/v1/".length);
       if (!canAccessTable(role, table, method)) return Response.json({ message: "Forbidden" }, { status: 403 });
       if (!/^[a-z_]+$/.test(table)) return Response.json({ message: "Forbidden" }, { status: 403 });
+      // Embedded resources in select must also be allow-listed tables; block raw query injection.
+      if (url.search.length > 8000) return Response.json({ message: "Query too long" }, { status: 400 });
+      for (const [k, v] of url.searchParams) {
+        if (!/^[A-Za-z0-9_.]+$/.test(k)) return Response.json({ message: "Invalid query" }, { status: 400 });
+        if (k === "select" || k.endsWith(".select")) {
+          for (const m of v.matchAll(/([A-Za-z0-9_!:]+)\s*\(/g)) {
+            const embed = m[1].split(":").pop()!.split("!")[0];
+            if (!canAccessTable(role, embed, "GET")) return Response.json({ message: "Forbidden" }, { status: 403 });
+          }
+        }
+      }
       if (method === "PATCH" && !Array.from(url.searchParams.keys()).some((k) => !["select", "order", "limit", "offset", "on_conflict"].includes(k))) return Response.json({ message: "A filter is required" }, { status: 400 });
       if (method === "POST" || method === "PATCH") {
         const text = await request.text();

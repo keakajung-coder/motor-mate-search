@@ -46,7 +46,11 @@ export function ExcelBackupSettings() {
   const download = async (name: string) => {
     const r = await backupDownloadUrl({ data: { code: storedAdminCode(), name } });
     if (!r.ok) return toast.error(r.error);
-    window.open(r.url, "_blank");
+    const bytes = Uint8Array.from(atob(r.base64), (c) => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = r.name; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   };
 
   return (

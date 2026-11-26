@@ -16,7 +16,16 @@ export const sendAdminAlert = createServerFn({ method: "POST" })
     const access = await requireAccess();
     await consumeRateLimit("line", access.sessionId, 20, 60);
     const settings = await readSettings();
-    const text = [data.title, data.body ?? "", data.link ? `ลิงก์: ${data.link}` : ""]
+    const title = String(data.title ?? "").trim().slice(0, 200);
+    const body = String(data.body ?? "").slice(0, 2000);
+    const rawLink = String(data.link ?? "").trim();
+    let link = "";
+    if (rawLink) {
+      try { const u = new URL(rawLink); if (u.protocol === "https:" && rawLink.length <= 500) link = u.toString(); } catch { /* drop invalid link */ }
+      if (!link) throw new Error("Invalid link");
+    }
+    if (!title) throw new Error("Title required");
+    const text = [title, body, link ? `ลิงก์: ${link}` : ""]
       .filter(Boolean)
       .join("\n");
 
