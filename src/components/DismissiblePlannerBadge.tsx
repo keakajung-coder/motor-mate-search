@@ -1,10 +1,11 @@
 import { useEffect, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { Eye, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { useAccess } from "@/lib/access";
 import {
   dismissPlannerBadge,
+  restorePlannerBadge,
   isPlannerBadgeDismissed,
   PLANNER_BADGE_DISMISSAL_EVENT,
   PLANNER_BADGE_DISMISSAL_KEY,
@@ -35,7 +36,28 @@ export function DismissiblePlannerBadge({ jobId, kind, label, className, childre
     };
   }, [jobId, kind]);
 
-  if (hidden) return null;
+  if (hidden) {
+    if (!isAdmin) return null;
+    const restore = (event: MouseEvent | KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (restorePlannerBadge(jobId, kind)) { setHidden(false); toast.success(`แสดงป้าย${label}อีกครั้งแล้ว`); }
+      else toast.error("เบราว์เซอร์ไม่อนุญาตให้บันทึกค่า");
+    };
+    return (
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label={`แสดงป้าย${label}ที่ซ่อนไว้`}
+        title={`แสดงป้าย${label}ที่ซ่อนไว้อีกครั้ง`}
+        className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-full border border-dashed border-muted-foreground/50 text-muted-foreground hover:bg-muted"
+        onClick={restore}
+        onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") restore(event); }}
+      >
+        <Eye className="size-3" aria-hidden />
+      </span>
+    );
+  }
 
   const dismiss = (event: MouseEvent | KeyboardEvent) => {
     event.preventDefault();

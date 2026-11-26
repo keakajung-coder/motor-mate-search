@@ -1,4 +1,5 @@
 import { DailyAgendaDialog } from "@/components/DailyAgendaDialog";
+import { RestoreHiddenBadgesButton } from "@/components/RestoreHiddenBadgesButton";
 import { PlannerZoomArea, PlannerZoomControls, PLANNER_ZOOM_KEY } from "@/components/PlannerZoom";
 import { PLANNER_ZOOM_DEFAULT, clampPlannerZoom } from "@/lib/planner-zoom";
 import { PlannerCardData } from "@/components/PlannerCardData";
@@ -1247,7 +1248,10 @@ function PlannerPage() {
             )}
           </div>
           <div className="flex justify-end">
-            <PlannerZoomControls zoom={gridZoom} onChange={setGridZoom} />
+            <span className="flex flex-wrap items-center justify-end gap-2">
+              {isAdmin && <RestoreHiddenBadgesButton />}
+              <PlannerZoomControls zoom={gridZoom} onChange={setGridZoom} />
+            </span>
           </div>
           <PlannerZoomArea zoom={gridZoom} onChange={setGridZoom}>
           {loading ? (

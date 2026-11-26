@@ -42,3 +42,25 @@ export function dismissPlannerBadge(jobId: string, kind: PlannerBadgeKind, stora
     return false;
   }
 }
+
+export function countDismissedPlannerBadges(storage?: BadgeStorage): number {
+  const target = storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
+  if (!target) return 0;
+  try { return readKeys(target).length; } catch { return 0; }
+}
+
+/** Show a hidden badge again. Without jobId, restores every hidden badge. Job records are untouched. */
+export function restorePlannerBadge(jobId?: string, kind?: PlannerBadgeKind, storage?: BadgeStorage): boolean {
+  const target = storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
+  if (!target) return false;
+  try {
+    const keys = jobId
+      ? readKeys(target).filter((key) => (kind ? key !== storageKey(jobId, kind) : !key.endsWith(`:${jobId}`)))
+      : [];
+    target.setItem(PLANNER_BADGE_DISMISSAL_KEY, JSON.stringify(keys));
+    if (!storage) window.dispatchEvent(new Event(PLANNER_BADGE_DISMISSAL_EVENT));
+    return true;
+  } catch {
+    return false;
+  }
+}
